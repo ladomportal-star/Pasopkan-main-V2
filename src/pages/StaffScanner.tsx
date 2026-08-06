@@ -1,0 +1,874 @@
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  Camera, 
+  CheckCircle2, 
+  XCircle, 
+  AlertCircle, 
+  User, 
+  Ticket as TicketIcon, 
+  Calendar, 
+  MapPin, 
+  Clock, 
+  Search, 
+  RotateCcw, 
+  ShieldCheck, 
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  QrCode,
+  Zap,
+  Sparkles,
+  Download,
+  Check,
+  Building2,
+  Mail,
+  Phone,
+  Globe
+} from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import { events, LaoEvent } from '../data/events';
+import { useLanguage } from '../LanguageContext';
+import { useTheme } from '../ThemeContext';
+
+const LazyScanner = React.lazy(() => 
+  import('@yudiel/react-qr-scanner')
+    .then(module => ({ default: module.Scanner }))
+    .catch(err => {
+      console.error('Failed to dynamically import react-qr-scanner:', err);
+      return {
+        default: () => (
+          <div className="absolute inset-0 bg-zinc-900 flex flex-col items-center justify-center p-6 text-center z-20">
+             <div className="w-16 h-16 rounded-3xl bg-red-500/10 text-red-500 flex items-center justify-center mb-4 border border-red-500/20">
+                <AlertCircle className="w-8 h-8" />
+             </div>
+             <h4 className="text-lg font-black text-white uppercase tracking-tight mb-2">Scanner Camera Unavailable</h4>
+             <p className="text-zinc-400 mb-6 font-bold text-xs leading-relaxed max-w-xs">Camera scanner requires HTTPS or camera permissions in browser.</p>
+          </div>
+        )
+      };
+    })
+);
+
+interface CheckinRecord {
+  id: string;
+  ticketId: string;
+  eventId: string;
+  attendeeName: string;
+  email: string;
+  phone?: string;
+  ticketType: string;
+  zone: string;
+  seat: string;
+  price?: string;
+  time: string;
+  timestamp: number;
+  staffLabel: string;
+}
+
+const translations = {
+  en: {
+    staffPortal: 'Staff Entry & Ticket Verification',
+    scanTitle: 'Scan Ticket QR Code',
+    scanDesc: 'Point staff camera at attendee ticket QR code or enter ticket code manually below.',
+    manualTitle: 'Manual Ticket Verification',
+    enterCodePlaceholder: 'Enter ticket code (e.g., tk_981245 or TK-123)',
+    verifyBtn: 'Verify Code',
+    simulatedScans: 'Quick Test Scans',
+    validTicket: 'VALID TICKET - UNCHECKED',
+    alreadyScanned: 'ALREADY CHECKED IN',
+    invalidTicket: 'INVALID OR UNKNOWN TICKET',
+    confirmCheckIn: 'CONFIRM ENTRY / CHECK-IN',
+    checkInSuccess: 'Attendee Checked In Successfully!',
+    alreadyCheckedInBy: 'Already checked in at {time} by {staff}',
+    attendeeDetails: 'Attendee & Ticket Details',
+    attendeeName: 'Attendee Name',
+    contactEmail: 'Contact Email',
+    ticketTier: 'Ticket Tier',
+    seatZone: 'Zone / Seat',
+    purchasePrice: 'Ticket Price',
+    eventInfo: 'Event Info',
+    recentCheckins: 'Staff Verified Attendees List',
+    noCheckins: 'No check-ins recorded yet by staff.',
+    totalCheckedIn: 'Total Checked In',
+    capacity: 'Capacity',
+    gateStaff: 'Gate Staff',
+    searchAttendee: 'Search verified attendee...',
+    resetScan: 'Scan Next Ticket',
+    backToHome: 'Back to Home',
+  },
+  lo: {
+    staffPortal: 'ລະບົບກວດສອບປີ້ ແລະ ເຊັກອິນສຳລັບພະນັກງານ',
+    scanTitle: 'ສະແກນ QR Code ຂອງປີ້',
+    scanDesc: 'ສ່ອງກ້ອງໃສ່ QR Code ຂອງປີ້ ຫຼື ປ້ອນລະຫັດປີ້ດ້ວຍຕົນເອງຢູ່ດ້ານລຸ່ມ.',
+    manualTitle: 'ກວດສອບປີ້ດ້ວຍຕົນເອງ',
+    enterCodePlaceholder: 'ປ້ອນລະຫັດປີ້ (ເຊັ່ນ: tk_981245 ຫຼື TK-123)',
+    verifyBtn: 'ກວດສອບລະຫັດ',
+    simulatedScans: 'ປີ້ຕົວຢ່າງສຳລັບທົດລອງ',
+    validTicket: 'ປີ້ຖືກຕ້ອງ - ຍັງບໍ່ທັນເຊັກອິນ',
+    alreadyScanned: 'ເຊັກອິນແລ້ວ',
+    invalidTicket: 'ປີ້ບໍ່ຖືກຕ້ອງ ຫຼື ບໍ່ພົບໃນລະບົບ',
+    confirmCheckIn: 'ຢືນຢັນການເຂົ້າ / ເຊັກອິນ',
+    checkInSuccess: 'ເຊັກອິນຜູ້ເຂົ້າຮ່ວມສຳເລັດແລ້ວ!',
+    alreadyCheckedInBy: 'ຖືກເຊັກອິນແລ້ວເມື່ອ {time} ໂດຍ {staff}',
+    attendeeDetails: 'ລາຍລະອຽດຜູ້ເຂົ້າຮ່ວມ ແລະ ປີ້',
+    attendeeName: 'ຊື່ຜູ້ເຂົ້າຮ່ວມ',
+    contactEmail: 'ອີເມວຕິດຕໍ່',
+    ticketTier: 'ປະເພດປີ້',
+    seatZone: 'ເຂດ / ບ່ອນນັ່ງ',
+    purchasePrice: 'ລາຄາປີ້',
+    eventInfo: 'ຂໍ້ມູນກິດຈະກຳ',
+    recentCheckins: 'ລາຍຊື່ຜູ້ເຂົ້າຮ່ວມທີ່ກວດສອບແລ້ວ',
+    noCheckins: 'ຍັງບໍ່ມີຂໍ້ມູນການເຊັກອິນເທື່ອ.',
+    totalCheckedIn: 'ເຊັກອິນແລ້ວທັງໝົດ',
+    capacity: 'ຄວາມຈຸ',
+    gateStaff: 'ພະນັກງານປະຕູ',
+    searchAttendee: 'ຄົ້ນຫາຜູ້ເຂົ້າຮ່ວມ...',
+    resetScan: 'ສະແກນປີ້ຖັດໄປ',
+    backToHome: 'ກັບຄືນໜ້າຫຼັກ',
+  }
+};
+
+export default function StaffScanner() {
+  const [searchParams] = useSearchParams();
+  const { lang, toggleLanguage } = useLanguage();
+  const { theme } = useTheme();
+  const t = translations[lang];
+
+  const eventId = searchParams.get('eventId') || '1';
+  const staffLabel = searchParams.get('staffLabel') || 'Main Entrance Gate';
+
+  const selectedEvent: LaoEvent = useMemo(() => {
+    try {
+      const userEventsRaw = localStorage.getItem('pasopkan_user_events');
+      if (userEventsRaw) {
+        const userEvents = JSON.parse(userEventsRaw);
+        if (Array.isArray(userEvents)) {
+          const found = userEvents.find((e: any) => e.id === eventId);
+          if (found) return found;
+        }
+      }
+    } catch (e) {}
+    return events.find(e => e.id === eventId) || events[0];
+  }, [eventId]);
+
+  const totalCapacity = useMemo(() => {
+    if (selectedEvent.ticketTiers && selectedEvent.ticketTiers.length > 0) {
+      const sumTiers = selectedEvent.ticketTiers.reduce((sum, t) => sum + (Number(t.available) || 0), 0);
+      if (sumTiers > 0) return sumTiers;
+    }
+    if (selectedEvent.seatingZones && selectedEvent.seatingZones.length > 0) {
+      const sumZones = selectedEvent.seatingZones.reduce((sum, z) => sum + (Number(z.capacity) || 0), 0);
+      if (sumZones > 0) return sumZones;
+    }
+    if (selectedEvent.maxTickets && !isNaN(parseInt(selectedEvent.maxTickets, 10)) && parseInt(selectedEvent.maxTickets, 10) > 0) {
+      return parseInt(selectedEvent.maxTickets, 10);
+    }
+    return 500;
+  }, [selectedEvent]);
+
+  const [manualCode, setManualCode] = useState('');
+  const [scannerError, setScannerError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [scannerPage, setScannerPage] = useState(1);
+
+  // Loaded checkins
+  const [checkins, setCheckins] = useState<CheckinRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem('pasopkan_checkins');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((c: any) => c.eventId === selectedEvent.id || !c.eventId);
+        }
+      }
+    } catch (e) {}
+    
+    // Initial default checkins
+    return [
+      {
+        id: 'chk_1',
+        ticketId: 'tk_981245',
+        eventId: selectedEvent.id,
+        attendeeName: 'Marcus Aurelius',
+        email: 'marcus.a@example.com',
+        phone: '+856 20 5512 8900',
+        ticketType: 'VIP Front Stage Pass',
+        zone: 'VIP Row 1',
+        seat: 'Seat 4',
+        price: '450,000 LAK',
+        time: '18:30:12',
+        timestamp: Date.now() - 1000 * 60 * 15,
+        staffLabel: staffLabel
+      },
+      {
+        id: 'chk_2',
+        ticketId: 'tk_301984',
+        eventId: selectedEvent.id,
+        attendeeName: 'Sengdeuan Keo',
+        email: 'sengdeuan.k@example.com',
+        phone: '+856 20 2234 1188',
+        ticketType: 'Standard Zone A Pass',
+        zone: 'Zone A Row 10',
+        seat: 'Seat 18',
+        price: '250,000 LAK',
+        time: '18:42:05',
+        timestamp: Date.now() - 1000 * 60 * 5,
+        staffLabel: staffLabel
+      }
+    ];
+  });
+
+  // Currently scanned ticket result state
+  const [scannedTicket, setScannedTicket] = useState<{
+    ticketId: string;
+    attendeeName: string;
+    email: string;
+    phone: string;
+    ticketType: string;
+    zone: string;
+    seat: string;
+    price: string;
+    bookingDate: string;
+    alreadyCheckedIn: boolean;
+    checkedInRecord?: CheckinRecord;
+    isValid: boolean;
+  } | null>(null);
+
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' | 'warning' } | null>(null);
+  const lastScanTimeRef = useRef<number>(0);
+
+  // Sync checkins to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('pasopkan_checkins', JSON.stringify(checkins));
+    } catch (e) {}
+  }, [checkins]);
+
+  const showToast = (text: string, type: 'success' | 'error' | 'warning') => {
+    setToastMessage({ text, type });
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3500);
+  };
+
+  // Ticket Lookup helper
+  const lookupTicket = (code: string) => {
+    const cleanCode = code.trim();
+    if (!cleanCode) return;
+
+    // Check if valid code format
+    const isValid = cleanCode.startsWith('tk_') || cleanCode.startsWith('TK-') || cleanCode.length >= 4;
+
+    if (!isValid) {
+      setScannedTicket({
+        ticketId: cleanCode,
+        attendeeName: 'Unknown Attendee',
+        email: 'N/A',
+        phone: 'N/A',
+        ticketType: 'N/A',
+        zone: 'N/A',
+        seat: 'N/A',
+        price: '0 LAK',
+        bookingDate: 'N/A',
+        alreadyCheckedIn: false,
+        isValid: false
+      });
+      showToast(t.invalidTicket, 'error');
+      return;
+    }
+
+    // Check if already checked in
+    const existingCheckin = checkins.find(c => c.ticketId.toLowerCase() === cleanCode.toLowerCase());
+
+    // Generate ticket details deterministically or from user purchases
+    const userTicketsStr = localStorage.getItem('pasopkan_user_tickets');
+    let foundUserTicket: any = null;
+    if (userTicketsStr) {
+      try {
+        const userTickets = JSON.parse(userTicketsStr);
+        foundUserTicket = userTickets.find((ut: any) => ut.id === cleanCode || ut.ticketId === cleanCode);
+      } catch (e) {}
+    }
+
+    const firstNames = ['Alex', 'Sarah', 'Sengdeuan', 'John', 'Michael', 'Emma', 'Daniel', 'Sophia', 'James', 'Khamla'];
+    const lastNames = ['Keo', 'Connor', 'Souksavat', 'Smith', 'Scott', 'Davis', 'Wilson', 'Anderson', 'Phomvihane', 'Taylor'];
+    
+    const index = Math.abs(cleanCode.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % firstNames.length;
+    const mockName = foundUserTicket ? (foundUserTicket.userName || `${firstNames[index]} ${lastNames[index]}`) : `${firstNames[index]} ${lastNames[index]}`;
+    const mockEmail = `${mockName.toLowerCase().replace(' ', '.')}@example.com`;
+    const mockPhone = `+856 20 ${5000 + (index * 123)} ${1000 + (index * 456)}`;
+    
+    const tierName = selectedEvent.ticketTiers?.[0]?.name || 'Standard Pass';
+    const tierPrice = selectedEvent.ticketTiers?.[0]?.price;
+    const priceText = tierPrice ? `${tierPrice.toLocaleString()} LAK` : '350,000 LAK';
+
+    setScannedTicket({
+      ticketId: cleanCode,
+      attendeeName: mockName,
+      email: mockEmail,
+      phone: mockPhone,
+      ticketType: tierName,
+      zone: selectedEvent.hasSeating ? 'VIP Zone A' : 'Main Arena',
+      seat: selectedEvent.hasSeating ? `Row ${(index % 12) + 1}, Seat ${(index % 20) + 1}` : 'Standing Area',
+      price: priceText,
+      bookingDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      alreadyCheckedIn: !!existingCheckin,
+      checkedInRecord: existingCheckin,
+      isValid: true
+    });
+
+    if (existingCheckin) {
+      showToast(t.alreadyScanned, 'warning');
+    } else {
+      showToast(t.validTicket, 'success');
+    }
+  };
+
+  const handleScan = (text: string) => {
+    const now = Date.now();
+    if (now - lastScanTimeRef.current < 2000) return;
+    lastScanTimeRef.current = now;
+    lookupTicket(text);
+  };
+
+  const confirmCheckIn = () => {
+    if (!scannedTicket || !scannedTicket.isValid || scannedTicket.alreadyCheckedIn) return;
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-GB', { hour12: false });
+
+    const newRecord: CheckinRecord = {
+      id: `chk_${Date.now()}`,
+      ticketId: scannedTicket.ticketId,
+      eventId: selectedEvent.id,
+      attendeeName: scannedTicket.attendeeName,
+      email: scannedTicket.email,
+      phone: scannedTicket.phone,
+      ticketType: scannedTicket.ticketType,
+      zone: scannedTicket.zone,
+      seat: scannedTicket.seat,
+      price: scannedTicket.price,
+      time: timeStr,
+      timestamp: Date.now(),
+      staffLabel: staffLabel
+    };
+
+    setCheckins(prev => [newRecord, ...prev]);
+
+    setScannedTicket(prev => prev ? {
+      ...prev,
+      alreadyCheckedIn: true,
+      checkedInRecord: newRecord
+    } : null);
+
+    showToast(t.checkInSuccess, 'success');
+  };
+
+  const filteredCheckins = checkins.filter(c => 
+    c.attendeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.ticketId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (c.phone && c.phone.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  return (
+    <div className={`min-h-screen transition-colors ${
+      theme === 'dark' ? 'bg-zinc-950 text-white' : 'bg-gray-50 text-adv-slate'
+    }`}>
+      {/* Toast Notification Bar */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-2xl font-black text-sm flex items-center gap-3 backdrop-blur-md border border-white/20"
+            style={{
+              backgroundColor: toastMessage.type === 'success' ? '#10b981' : toastMessage.type === 'warning' ? '#f59e0b' : '#ef4444',
+              color: '#ffffff'
+            }}
+          >
+            {toastMessage.type === 'success' && <CheckCircle2 className="w-5 h-5 shrink-0" />}
+            {toastMessage.type === 'warning' && <AlertCircle className="w-5 h-5 shrink-0" />}
+            {toastMessage.type === 'error' && <XCircle className="w-5 h-5 shrink-0" />}
+            <span>{toastMessage.text}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Top Header Bar */}
+      <header className={`sticky top-0 z-40 border-b backdrop-blur-xl transition-colors ${
+        theme === 'dark' ? 'bg-zinc-900/90 border-zinc-800' : 'bg-white/90 border-gray-200'
+      }`}>
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <Link to="/" className="shrink-0 transition-transform hover:scale-[1.02]">
+              <img 
+                src="/pasopkan_logo.png" 
+                alt="Pasopkan Logo" 
+                className="h-9 sm:h-11 w-auto object-contain"
+                referrerPolicy="no-referrer"
+              />
+            </Link>
+            <div className="h-6 w-px bg-gray-200 dark:bg-zinc-800 mx-1 hidden sm:block" />
+            <div className="min-w-0">
+              <span className="px-2 py-0.5 rounded-md bg-adv-orange text-white text-[10px] font-black uppercase tracking-wider inline-block">
+                STAFF DASHBOARD
+              </span>
+            </div>
+          </div>
+
+          {/* Language Switcher */}
+          <button
+            onClick={toggleLanguage}
+            className="hover:text-adv-orange p-2 transition-colors text-sm font-bold animate-fade-in shrink-0 cursor-pointer"
+          >
+            {lang === 'lo' ? 'LA' : lang.toUpperCase()}
+          </button>
+        </div>
+      </header>
+
+      {/* Main Body */}
+      <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        
+        {/* Event Info Header Banner */}
+        <div className={`p-5 sm:p-6 rounded-3xl border shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 transition-colors ${
+          theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'
+        }`}>
+          <div className="flex items-center gap-4 min-w-0 w-full sm:w-auto">
+            <img 
+              src={selectedEvent.image} 
+              alt={selectedEvent.title} 
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover shrink-0 shadow-md"
+            />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base sm:text-lg font-black truncate">{selectedEvent.title}</h2>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-gray-500 dark:text-zinc-400 font-medium">
+                <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-adv-orange" /> {selectedEvent.date}</span>
+                <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-adv-orange" /> {selectedEvent.location}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-zinc-800">
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-adv-orange/10 text-adv-orange text-xs font-bold border border-adv-orange/20">
+              <ShieldCheck className="w-4 h-4" />
+              <span>{staffLabel}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Dashboard Quick Metrics Bar */}
+        <div className="grid grid-cols-2 gap-3.5">
+          <div className={`p-4 rounded-2xl border transition-colors ${
+            theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'
+          }`}>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total Checked In</span>
+            <div className="text-xl font-black text-adv-orange font-mono mt-0.5">{checkins.length}</div>
+          </div>
+
+          <div className={`p-4 rounded-2xl border transition-colors ${
+            theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'
+          }`}>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total Capacity</span>
+            <div className="text-xl font-black text-adv-orange font-mono mt-0.5">{totalCapacity.toLocaleString()}</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          {/* Left Column: QR Scanner & Manual Input */}
+          <div className="lg:col-span-5 space-y-6">
+            
+            {/* QR Scanner Container */}
+            <div className={`p-5 rounded-3xl border shadow-sm transition-colors ${
+              theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'
+            }`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-adv-orange/10 text-adv-orange flex items-center justify-center">
+                    <Camera className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-sm font-black uppercase tracking-wider">{t.scanTitle}</h3>
+                </div>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Camera Active
+                </span>
+              </div>
+
+              <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-800 flex items-center justify-center">
+                <React.Suspense fallback={
+                  <div className="flex flex-col items-center gap-2 text-zinc-500">
+                    <QrCode className="w-10 h-10 animate-pulse" />
+                    <span className="text-xs font-bold">Initializing Camera...</span>
+                  </div>
+                }>
+                  <LazyScanner 
+                    onScan={(results) => {
+                      if (results && results.length > 0 && results[0].rawValue) {
+                        handleScan(results[0].rawValue);
+                      }
+                    }}
+                    onError={(error) => {
+                      setScannerError(error?.message || 'Camera Scanner Error');
+                    }}
+                  />
+                </React.Suspense>
+
+                {/* Overlay Scanning Sight Frame */}
+                <div className="absolute inset-0 border-2 border-dashed border-adv-orange/40 pointer-events-none rounded-2xl m-6 flex items-center justify-center">
+                  <div className="w-full h-0.5 bg-adv-orange/80 shadow-[0_0_15px_#ff6b00] animate-pulse" />
+                </div>
+              </div>
+
+              <p className="text-center text-xs text-gray-400 dark:text-zinc-500 font-medium mt-3">
+                {t.scanDesc}
+              </p>
+            </div>
+
+            {/* Manual Code Input */}
+            <div className={`p-5 rounded-3xl border shadow-sm transition-colors ${
+              theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'
+            }`}>
+              <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 dark:text-zinc-400 mb-3">
+                {t.manualTitle}
+              </h3>
+
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  value={manualCode}
+                  onChange={(e) => setManualCode(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && lookupTicket(manualCode)}
+                  placeholder={t.enterCodePlaceholder}
+                  className={`flex-1 px-4 py-3 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-all ${
+                    theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-gray-50 border-gray-200 text-adv-slate'
+                  }`}
+                />
+                <button 
+                  onClick={() => lookupTicket(manualCode)}
+                  className="px-4 py-3 bg-adv-orange hover:bg-orange-600 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
+                >
+                  {t.verifyBtn}
+                </button>
+              </div>
+
+              {/* Demo Ticket Quick Buttons for Easy Testing */}
+              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-zinc-800">
+                <span className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider block mb-2">
+                  {t.simulatedScans}
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    onClick={() => lookupTicket('tk_981245')}
+                    className="p-2 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-adv-orange font-mono font-bold text-[10px] text-left border border-adv-orange/20 transition-all cursor-pointer truncate"
+                  >
+                    VIP: tk_981245
+                  </button>
+                  <button 
+                    onClick={() => lookupTicket('tk_301984')}
+                    className="p-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 font-mono font-bold text-[10px] text-left border border-blue-500/20 transition-all cursor-pointer truncate"
+                  >
+                    Zone A: tk_301984
+                  </button>
+                  <button 
+                    onClick={() => lookupTicket('tk_452819')}
+                    className="p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 font-mono font-bold text-[10px] text-left border border-emerald-500/20 transition-all cursor-pointer truncate"
+                  >
+                    General: tk_452819
+                  </button>
+                  <button 
+                    onClick={() => lookupTicket(`tk_demo_${Math.floor(Math.random() * 89999 + 10000)}`)}
+                    className="p-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 font-mono font-bold text-[10px] text-left border border-purple-500/20 transition-all cursor-pointer truncate"
+                  >
+                    + Random Demo Pass
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* Right Column: Ticket & Attendee Verification Card + Checked-in List */}
+          <div className="lg:col-span-7 space-y-6">
+            
+            {/* Scanned Ticket & Attendee Detail Result Card */}
+            {scannedTicket ? (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className={`p-6 rounded-3xl border shadow-xl transition-all relative overflow-hidden ${
+                  !scannedTicket.isValid
+                    ? 'bg-red-500/10 border-red-500/30'
+                    : scannedTicket.alreadyCheckedIn
+                    ? 'bg-amber-500/10 border-amber-500/30'
+                    : 'bg-emerald-500/10 border-emerald-500/30'
+                }`}
+              >
+                {/* Status Badge */}
+                <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200/50 dark:border-zinc-800">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                      !scannedTicket.isValid
+                        ? 'bg-red-500 text-white'
+                        : scannedTicket.alreadyCheckedIn
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                    }`}>
+                      {!scannedTicket.isValid ? (
+                        <XCircle className="w-6 h-6" />
+                      ) : scannedTicket.alreadyCheckedIn ? (
+                        <AlertCircle className="w-6 h-6" />
+                      ) : (
+                        <CheckCircle2 className="w-6 h-6 animate-bounce" />
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black uppercase tracking-wider">
+                        {!scannedTicket.isValid
+                          ? t.invalidTicket
+                          : scannedTicket.alreadyCheckedIn
+                          ? t.alreadyScanned
+                          : t.validTicket}
+                      </h4>
+                      <p className="text-xs font-mono font-bold opacity-80">
+                        ID: {scannedTicket.ticketId}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => setScannedTicket(null)}
+                    className="p-2 rounded-xl bg-gray-200/50 dark:bg-zinc-800 hover:opacity-80 text-xs font-bold cursor-pointer"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Attendee Details Grid */}
+                {scannedTicket.isValid && (
+                  <div className="space-y-4">
+                    <div className={`p-4 rounded-2xl border transition-colors ${
+                      theme === 'dark' ? 'bg-zinc-900/80 border-zinc-800' : 'bg-white border-gray-200'
+                    }`}>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{t.attendeeDetails}</div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-adv-orange/10 text-adv-orange flex items-center justify-center font-bold text-base">
+                          {(scannedTicket.attendeeName || 'A').charAt(0)}
+                        </div>
+                        <div>
+                          <div className="text-base font-black">{scannedTicket.attendeeName}</div>
+                          <div className="text-xs text-gray-400 font-medium flex items-center gap-2 mt-0.5">
+                            <span className="flex items-center gap-1"><Mail className="w-3 h-3 text-adv-orange" /> {scannedTicket.email}</span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-emerald-500" /> {scannedTicket.phone}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className={`p-4 rounded-2xl border transition-colors ${
+                        theme === 'dark' ? 'bg-zinc-900/80 border-zinc-800' : 'bg-white border-gray-200'
+                      }`}>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t.ticketTier}</div>
+                        <div className="text-sm font-black text-adv-orange mt-1">{scannedTicket.ticketType}</div>
+                      </div>
+
+                      <div className={`p-4 rounded-2xl border transition-colors ${
+                        theme === 'dark' ? 'bg-zinc-900/80 border-zinc-800' : 'bg-white border-gray-200'
+                      }`}>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t.seatZone}</div>
+                        <div className="text-sm font-black mt-1">{scannedTicket.zone} • {scannedTicket.seat}</div>
+                      </div>
+                    </div>
+
+                    {/* Action Check-In Button */}
+                    {!scannedTicket.alreadyCheckedIn ? (
+                      <button
+                        onClick={confirmCheckIn}
+                        className="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-base shadow-xl shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-6 h-6" />
+                        <span>{t.confirmCheckIn}</span>
+                      </button>
+                    ) : (
+                      <div className="p-4 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold text-xs text-center border border-amber-500/30">
+                        {t.alreadyCheckedInBy
+                          .replace('{time}', scannedTicket.checkedInRecord?.time || 'earlier')
+                          .replace('{staff}', scannedTicket.checkedInRecord?.staffLabel || staffLabel)}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            ) : null}
+
+            {/* Staff Check-Ins Live List (Organizer View Style) */}
+            <div className={`rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-8 shadow-sm border transition-all ${
+              theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-gray-100/50 dark:border-zinc-800/50">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-base sm:text-lg font-bold">{t.recentCheckins}</h4>
+                  </div>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
+                    {filteredCheckins.length} {t.attended} • Recorded by {staffLabel}
+                  </p>
+                </div>
+
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input 
+                    type="text" 
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setScannerPage(1);
+                    }}
+                    placeholder={t.searchAttendee}
+                    className={`w-full sm:w-64 pl-9 pr-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-all ${
+                      theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white placeholder-zinc-500' : 'bg-gray-50 border-gray-200 text-adv-slate placeholder-gray-400'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3.5 pr-1">
+                {filteredCheckins.length === 0 ? (
+                  <div className="py-10 text-center text-gray-400 font-bold text-xs sm:text-sm">
+                    {t.noCheckins}
+                  </div>
+                ) : (
+                  (() => {
+                    const CHECKINS_PER_PAGE = 10;
+                    const totalScannerPages = Math.ceil(filteredCheckins.length / CHECKINS_PER_PAGE) || 1;
+                    const safePage = Math.min(scannerPage, totalScannerPages);
+                    const currentCheckins = filteredCheckins.slice((safePage - 1) * CHECKINS_PER_PAGE, safePage * CHECKINS_PER_PAGE);
+
+                    return (
+                      <>
+                        {currentCheckins.map((checkin) => (
+                          <div 
+                            key={checkin.id}
+                            className={`p-4 rounded-2xl border flex flex-col md:flex-row justify-between gap-3 transition-all group ${
+                              theme === 'dark' 
+                                ? 'bg-zinc-950/45 border-zinc-850 hover:border-orange-500/20 hover:bg-orange-500/5' 
+                                : 'bg-[#F9FAFB] border-gray-50 hover:border-orange-100 hover:bg-orange-50/10'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3 min-w-0">
+                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 border transition-all ${
+                                theme === 'dark'
+                                  ? 'bg-green-500/10 text-green-400 border-green-500/20 group-hover:bg-green-500/20'
+                                  : 'bg-green-50 text-green-500 border-green-100 group-hover:bg-green-100'
+                              }`}>
+                                <CheckCircle2 className="w-5 h-5" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span className="text-xs sm:text-sm font-black truncate max-w-[150px] sm:max-w-none">{checkin.attendeeName}</span>
+                                  <span className="px-2 py-0.5 bg-adv-slate dark:bg-zinc-800 text-white rounded text-[8px] font-black uppercase tracking-widest">{checkin.ticketType}</span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 mt-0.5 text-[10px] sm:text-xs font-semibold text-gray-400 dark:text-zinc-400">
+                                  {checkin.email && (
+                                    <span className="flex items-center gap-1 truncate">
+                                      <Mail className="w-3 h-3 text-adv-orange shrink-0" />
+                                      {checkin.email}
+                                    </span>
+                                  )}
+                                  {checkin.phone && (
+                                    <span className="flex items-center gap-1 truncate text-emerald-600 dark:text-emerald-400 font-bold">
+                                      <Phone className="w-3 h-3 text-emerald-500 shrink-0" />
+                                      {checkin.phone}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5 text-[9px] sm:text-[10px] text-gray-400 dark:text-zinc-400 font-bold uppercase tracking-wider">
+                                  {checkin.zone && (
+                                    <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-adv-orange" /> {checkin.zone}</span>
+                                  )}
+                                  {checkin.seat && (
+                                    <>
+                                      <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />
+                                      <span className="flex items-center gap-1"><TicketIcon className="w-3 h-3 text-blue-400" /> {checkin.seat}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex md:flex-col items-center md:items-end justify-between md:justify-center border-t md:border-t-0 pt-2.5 md:pt-0 border-gray-100 dark:border-zinc-850">
+                              <div className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest">
+                                ID: {checkin.ticketId || checkin.id}
+                              </div>
+                              <div className="text-[9px] text-emerald-500 font-black uppercase tracking-wider md:mt-1 flex items-center gap-1.5 bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                {checkin.time}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        {totalScannerPages > 1 && (
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-5 mt-4 border-t border-gray-100 dark:border-zinc-800/80">
+                            <div className="text-xs font-bold text-gray-400">
+                              Page {safePage} of {totalScannerPages} ({filteredCheckins.length} total)
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setScannerPage(prev => Math.max(prev - 1, 1))}
+                                disabled={safePage === 1}
+                                className="p-2 rounded-xl border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer disabled:cursor-not-allowed"
+                              >
+                                <ChevronLeft className="w-4 h-4" />
+                              </button>
+
+                              {Array.from({ length: totalScannerPages }, (_, i) => i + 1).map(p => (
+                                <button
+                                  key={p}
+                                  type="button"
+                                  onClick={() => setScannerPage(p)}
+                                  className={`w-8 h-8 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                    safePage === p
+                                      ? 'bg-adv-orange text-white shadow-sm'
+                                      : 'border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800'
+                                  }`}
+                                >
+                                  {p}
+                                </button>
+                              ))}
+
+                              <button
+                                type="button"
+                                onClick={() => setScannerPage(prev => Math.min(prev + 1, totalScannerPages))}
+                                disabled={safePage === totalScannerPages}
+                                className="p-2 rounded-xl border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer disabled:cursor-not-allowed"
+                              >
+                                <ChevronRight className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </main>
+    </div>
+  );
+}

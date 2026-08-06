@@ -1,0 +1,848 @@
+import { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  ArrowLeft, 
+  Ticket, 
+  Loader2, 
+  Building2, 
+  Activity,
+  Shield,
+  Zap,
+  MapPin,
+  X,
+  Calendar,
+  Clock,
+  CreditCard
+} from 'lucide-react';
+import { LaoEvent, TicketTier, SeatingZone, events, Coupon } from '../data/events';
+import { useLanguage } from '../LanguageContext';
+import { useAuth } from '../AuthContext';
+import { QRCodeSVG } from 'qrcode.react';
+import { doc, setDoc, collection } from 'firebase/firestore';
+import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
+
+const translations = {
+  en: {
+    invalidSession: "Session Expired",
+    backToHome: "Back to Home",
+    paymentSuccess: "Tickets Confirmed!",
+    ticketsConfirmed: "Your tickets for {eventTitle} are confirmed. Tickets have been sent to your account.",
+    totalPaid: "Total Paid",
+    orderSummary: "Activity Summary",
+    zone: "Section",
+    subtotal: "Subtotal",
+    total: "Total",
+    promoCode: "Promo Code",
+    enterPromoCode: "Enter promo code",
+    apply: "Apply",
+    discount: "Discount",
+    invalidCoupon: "Invalid or expired coupon",
+    couponApplied: "Coupon applied successfully",
+    contactDetails: "Contact Information",
+    generateQr: "Generate QR",
+    scanToPay: "Scan to Pay",
+    openAppToScan: "Open your {bankName} app and scan the QR code to complete the payment.",
+    verifyingPayment: "Verifying payment...",
+    completedPayment: "I have completed the payment",
+    checkout: "Pay Now",
+    startingFrom: "From",
+    ticketOwnerInfo: "Guest Information",
+    ticketOwnerDesc: "Please provide the details of the persons attending the activity.",
+    guest: "Guest",
+    fullName: "Full Name",
+    firstName: "First Name",
+    lastName: "Surname",
+    phoneNumber: "Phone Number",
+    email: "Email Address",
+    nextStep: "Continue to Payment",
+  },
+  lo: {
+    invalidSession: "ການເຊື່ອມຕໍ່ໝົດອາຍຸ",
+    backToHome: "ກັບຄືນສູ່ໜ້າຫຼັກ",
+    paymentSuccess: "ຢືນຢັນປີ້ສຳເລັດ!",
+    ticketsConfirmed: "ປີ້ສຳລັບ {eventTitle} ໄດ້ຮັບການຢືນຢັນແລ້ວ. ປີ້ໄດ້ສົ່ງໄປຍັງບັນຊີຂອງທ່ານ.",
+    totalPaid: "ຈ່າຍທັງໝົດ",
+    orderSummary: "ສະຫຼຸບການຈອງ",
+    zone: "ໂຊນ",
+    subtotal: "ລາຄາເບື້ອງຕົ້ນ",
+    total: "ຍອດລວມທັງໝົດ",
+    promoCode: "ລະຫັດສ່ວນຫຼຸດ",
+    enterPromoCode: "ປ້ອນລະຫັດສ່ວນຫຼຸດ",
+    apply: "ໃຊ້ງານ",
+    discount: "ສ່ວນຫຼຸດ",
+    invalidCoupon: "ລະຫັດບໍ່ຖືກຕ້ອງ ຫຼື ໝົດອາຍຸ",
+    couponApplied: "ໃຊ້ລະຫັດສ່ວນຫຼຸດສຳເລັດ",
+    contactDetails: "ຂໍ້ມູນຕິດຕໍ່",
+    generateQr: "ສ້າງ QR code",
+    scanToPay: "ສະແກນເພື່ອຈ່າຍ",
+    openAppToScan: "ໃຊ້ແອັບ {bankName} ເພື່ອສະແກນ QR ແລະ ຊຳລະເງິນ.",
+    verifyingPayment: "ກຳລັງກວດສອບການຊຳລະ...",
+    completedPayment: "ຂ້ອຍໄດ້ຊຳລະເງິນແລ້ວ",
+    checkout: "ຊຳລະເງິນ",
+    startingFrom: "ເລີ່ມຕົ້ນທີ່",
+    ticketOwnerInfo: "ຂໍ້ມູນຜູ້ເຂົ້າຮ່ວມ",
+    ticketOwnerDesc: "ກະລຸນາລະບຸຂໍ້ມູນຂອງຜູ້ທີ່ຈະເຂົ້າຮ່ວມກິດຈະກຳ.",
+    guest: "ຜູ້ເຂົ້າຮ່ວມ",
+    fullName: "ຊື່ ແລະ ນາມສະກຸນ",
+    firstName: "ຊື່",
+    lastName: "ນາມສະກຸນ",
+    phoneNumber: "ເບີໂທລະສັບ",
+    email: "ອີເມວ",
+    nextStep: "ໄປຫາການຊຳລະເງິນ",
+  }
+};
+
+interface CheckoutState {
+  event: LaoEvent;
+  tier: TicketTier | null;
+  zone: SeatingZone | null;
+  quantity: number;
+  selectedTiers?: Array<{ tier: TicketTier; quantity: number }>;
+  initialDiscountCode?: string;
+  selectedDate?: string;
+  selectedTime?: string;
+}
+
+const LAOS_BANKS = [
+  { id: 'bcel', name: 'BCEL One', color: 'bg-red-600' },
+  { id: 'ldb', name: 'LDB Trust', color: 'bg-blue-700' },
+  { id: 'jdb', name: 'JDB Yes', color: 'bg-green-600' },
+  { id: 'ib', name: 'IB Bank', color: 'bg-teal-600' },
+  { id: 'stb', name: 'ST Bank', color: 'bg-emerald-600' },
+];
+
+export default function Checkout() {
+  const { lang } = useLanguage();
+  const t = translations[lang === 'en' ? 'en' : 'lo'];
+  const currency = lang === 'lo' ? 'ກີບ' : 'Kip';
+  const location = useLocation();
+  const navigate = useNavigate();
+  const state = location.state as CheckoutState;
+  const { isAuthenticated, user, token } = useAuth();
+  const { event, tier, zone, quantity, selectedTiers, selectedDate, selectedTime } = state || {};
+  const displayDate = selectedDate || event?.date;
+  
+  const selectedTiersList = useMemo(() => {
+    if (selectedTiers && selectedTiers.length > 0) {
+      return selectedTiers;
+    }
+    if (tier) {
+      return [{ tier, quantity: quantity || 1 }];
+    }
+    return [];
+  }, [selectedTiers, tier, quantity]);
+
+  const totalQuantity = useMemo(() => {
+    if (selectedTiersList.length > 0) {
+      return selectedTiersList.reduce((sum, item) => sum + item.quantity, 0);
+    }
+    return quantity || 1;
+  }, [selectedTiersList, quantity]);
+
+  const subtotal = useMemo(() => {
+    if (zone) return zone.price * (quantity || 1);
+    if (selectedTiersList.length > 0) {
+      return selectedTiersList.reduce((acc, item) => acc + (item.tier.price || 0) * item.quantity, 0);
+    }
+    return (tier?.price || 0) * (quantity || 1);
+  }, [zone, selectedTiersList, tier, quantity]);
+
+  const [step, setStep] = useState<'details' | 'selection' | 'qr' | 'success'>('details');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedBank, setSelectedBank] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState(900);
+  const [qrCodeData, setQrCodeData] = useState<string | null>(null);
+  const [creditCardUrl, setCreditCardUrl] = useState<string | null>(null);
+  const [transactionId, setTransactionId] = useState<string | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  
+  const [ticketOwners, setTicketOwners] = useState(
+    Array.from({ length: totalQuantity }, () => ({ firstName: '', lastName: '', phone: '', email: '' }))
+  );
+
+  const handleTicketOwnerChange = (index: number, field: 'firstName' | 'lastName' | 'phone' | 'email', value: string) => {
+    const newOwners = [...ticketOwners];
+    let processedValue = value;
+    if (field === 'firstName' || field === 'lastName') {
+      processedValue = value.replace(/[0-9]/g, '');
+    } else if (field === 'phone') {
+      const digitsOnly = value.replace(/\D/g, '');
+      const maxLen = 
+        digitsOnly.startsWith('856020') ? 14 :
+        digitsOnly.startsWith('85620') ? 13 :
+        digitsOnly.startsWith('856') ? 14 :
+        digitsOnly.startsWith('020') ? 11 : 10;
+      processedValue = digitsOnly.slice(0, maxLen);
+    }
+    newOwners[index][field] = processedValue;
+    setTicketOwners(newOwners);
+  };
+
+  const isDetailsValid = ticketOwners.every(owner => 
+    owner.firstName.trim() !== '' && 
+    owner.lastName.trim() !== '' && 
+    owner.phone.trim() !== '' && 
+    owner.email.trim() !== '' &&
+    owner.email.includes('@')
+  );
+
+  const calculateDiscount = () => {
+    if (!appliedCoupon) return 0;
+    const discountVal = Number(appliedCoupon.discount);
+    
+    if (appliedCoupon.type === 'percentage') {
+      return (subtotal * discountVal) / 100;
+    }
+    return discountVal;
+  };
+
+  useEffect(() => {
+    if (state.initialDiscountCode) {
+      const coupon = state.event.coupons?.find(
+        c => c.code.trim().toUpperCase() === state.initialDiscountCode?.trim().toUpperCase() && c.isActive
+      );
+      if (coupon) setAppliedCoupon(coupon);
+    }
+  }, [state.initialDiscountCode, state.event.coupons]);
+
+  useEffect(() => {
+    if (!state || !state.event) return;
+    if (!isAuthenticated) {
+      navigate('/login', { state: { returnTo: location.pathname, checkoutState: state } });
+    }
+  }, [isAuthenticated, navigate, location.pathname, state]);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (step === 'qr' && countdown > 0) {
+      timer = setInterval(() => setCountdown(prev => prev - 1), 1000);
+    } else if (countdown === 0 && step === 'qr') {
+      setStep('details');
+      setCountdown(900);
+      alert('Payment window expired. Please try again.');
+    }
+    return () => clearInterval(timer);
+  }, [step, countdown]);
+
+  if (!state || !state.event) {
+    return (
+      <div className="min-h-screen bg-[#F9FAFB] flex flex-col items-center justify-center p-8 text-center">
+        <Activity className="w-16 h-16 text-adv-orange mb-8 animate-pulse" />
+        <h2 className="text-3xl font-bold text-adv-slate mb-6">{t.invalidSession}</h2>
+        <Link to="/" className="text-adv-orange font-bold flex items-center gap-2 hover:underline">
+          <ArrowLeft className="w-5 h-5" /> {t.backToHome}
+        </Link>
+      </div>
+    );
+  }
+
+  const price = zone ? zone.price : (tier?.price || 0);
+  const itemName = zone ? zone.name : (selectedTiersList.length > 0 ? selectedTiersList.map(i => `${i.quantity}x ${i.tier.name}`).join(', ') : (tier?.name || ''));
+  const discount = calculateDiscount();
+  const total = Math.max(0, subtotal - discount);
+
+  const handleBankSelection = async () => {
+    if (!selectedBank) return;
+    setIsProcessing(true);
+    
+    if (selectedBank === 'credit_card') {
+      try {
+        const response = await fetch('https://payment-gateway.phajay.co/v1/api/jdb2c2p/payment/payment-link', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Basic ' + btoa('$2a$10$KAXhz.SdbngsbYr.8TYn5ukiYgIJxHT7JqIc5L21K7GJtipmNVJ2.')
+          },
+          body: JSON.stringify({
+            amount: total,
+            description: `Ticket: ${event.title}`.replace(/[^\x00-\x7F]/g, "").trim(),
+            tag1: 'Pasopkan',
+            tag2: user?.uid || 'anonymous',
+            tag3: event.id
+          })
+        });
+
+        const data = await response.json();
+        if (data.message === "SUCCESSFULLY") {
+          setCreditCardUrl(data.paymentUrl);
+          setTransactionId(data.transactionId);
+          setStep('qr');
+        } else {
+          alert(data.message || "Failed to generate Credit Card payment link.");
+        }
+      } catch (error) {
+        console.error(error);
+        alert("Network error. Please try again.");
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
+
+    const bankUrls: Record<string, string> = {
+      bcel: 'generate-bcel-qr',
+      ldb: 'generate-ldb-qr',
+      jdb: 'generate-jdb-qr',
+      ib: 'generate-ib-qr',
+      stb: 'generate-stb-qr'
+    };
+    
+    try {
+      const response = await fetch(`https://payment-gateway.phajay.co/v1/api/payment/${bankUrls[selectedBank]}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'secretKey': '$2a$10$KAXhz.SdbngsbYr.8TYn5ukiYgIJxHT7JqIc5L21K7GJtipmNVJ2.'
+        },
+        body: JSON.stringify({
+          amount: total,
+          description: `Ticket: ${event.title}`.replace(/[^\x00-\x7F]/g, "").trim()
+        })
+      });
+      
+      const data = await response.json();
+      if (data.message === "SUCCESSFULLY") {
+        setQrCodeData(data.qrCode);
+        setTransactionId(data.transactionId);
+        setStep('qr');
+      } else {
+        alert(data.message || "Failed to generate payment QR.");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Network error. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  useEffect(() => {
+    let activeSocket: any = null;
+
+    if (step === 'qr' && transactionId) {
+      import('socket.io-client').then(({ io }) => {
+        if (step !== 'qr' || !transactionId) return;
+        const socket = io("https://payment-gateway.phajay.co/");
+        activeSocket = socket;
+        const secretKey = '$2a$10$KAXhz.SdbngsbYr.8TYn5ukiYgIJxHT7JqIc5L21K7GJtipmNVJ2.';
+
+        socket.on('connect', () => {
+          socket.on('join::' + secretKey, (data: any) => {
+            if (data && data.transactionId === transactionId && data.status === 'PAYMENT_COMPLETED') {
+              setIsProcessing(false);
+              setStep('success');
+              setTimeout(() => {
+                navigate('/dashboard', { state: { newTicket: { event, tier, quantity: totalQuantity, selectedTiers: selectedTiersList, selectedDate: state.selectedDate, selectedTime: state.selectedTime } } });
+              }, 3000);
+            }
+          });
+        });
+      }).catch(err => {
+        console.error('Socket.io load/connection failure:', err);
+      });
+
+      return () => {
+        if (activeSocket) {
+          activeSocket.disconnect();
+        }
+      };
+    }
+  }, [step, transactionId, navigate, event, tier, quantity, state.selectedDate, state.selectedTime]);
+
+  // Simulated fallback for payment completion
+  useEffect(() => {
+    if (step === 'qr' && isProcessing) {
+      const timer = setTimeout(() => {
+        setIsProcessing(false);
+        setStep('success');
+        setTimeout(() => {
+          navigate('/dashboard', { 
+            state: { 
+              newTicket: { 
+                event, 
+                tier, 
+                quantity: totalQuantity, 
+                selectedTiers: selectedTiersList,
+                selectedDate: state.selectedDate,
+                selectedTime: state.selectedTime 
+              } 
+            } 
+          });
+        }, 3000);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [step, isProcessing, navigate, event, tier, quantity, state.selectedDate, state.selectedTime]);
+
+  useEffect(() => {
+    if (step === 'success' && event?.id) {
+      // 1. Local storage tracking
+      try {
+        const purchased = localStorage.getItem('pasopkan_purchased_event_ids');
+        const list = purchased ? JSON.parse(purchased) : [];
+        if (!list.includes(event.id)) {
+          list.push(event.id);
+          localStorage.setItem('pasopkan_purchased_event_ids', JSON.stringify(list));
+        }
+      } catch (e) {
+        console.error('Error saving purchased event ID:', e);
+      }
+
+      // 2. Firestore tickets collection tracking
+      const eventId = event.id;
+      const rawTitle = event.title;
+      const createFirestoreTicket = async () => {
+        const activeUser = user || auth.currentUser;
+        if (activeUser) {
+          const titleStr = rawTitle 
+            ? (typeof rawTitle === 'object' && rawTitle !== null
+                ? ((rawTitle as any).en || (rawTitle as any).lo || 'Event') 
+                : String(rawTitle))
+            : 'Event';
+
+          if (auth.currentUser && activeUser.uid === auth.currentUser.uid) {
+            try {
+              const ticketRef = doc(collection(db, 'tickets'));
+              await setDoc(ticketRef, {
+                eventId: eventId,
+                userId: activeUser.uid,
+                tierId: tier?.id || 'standard',
+                quantity: quantity,
+                eventTitle: titleStr,
+                tierName: tier?.name || 'Standard',
+                price: Number(tier?.price) || 0,
+                selectedDate: state?.selectedDate || '',
+                selectedTime: state?.selectedTime || '',
+                status: 'confirmed'
+              });
+              console.log('Ticket synced with Firestore successfully:', ticketRef.id);
+            } catch (err) {
+              handleFirestoreError(err, OperationType.CREATE, 'tickets');
+            }
+          } else {
+            console.log('Operating in mock local session mode, bypassing Firestore write for tickets.');
+          }
+
+          // Sync with Cloud SQL PostgreSQL
+          const currentToken = token || localStorage.getItem('token');
+          if (currentToken) {
+            try {
+              const cloudSqlResponse = await fetch('/api/tickets', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${currentToken}`
+                },
+                body: JSON.stringify({
+                  eventId: eventId,
+                  eventTitle: titleStr,
+                  tierId: tier?.id || 'standard',
+                  tierName: tier?.name || 'Standard',
+                  price: Number(tier?.price) || 0,
+                  quantity: quantity,
+                  selectedDate: state?.selectedDate || '',
+                  selectedTime: state?.selectedTime || ''
+                })
+              });
+              if (cloudSqlResponse.ok) {
+                console.log('Ticket synced with Cloud SQL successfully!');
+              } else {
+                console.error('Failed to sync ticket to Cloud SQL:', await cloudSqlResponse.text());
+              }
+            } catch (sqlErr) {
+              console.error('Error sending ticket to Cloud SQL backend:', sqlErr);
+            }
+          }
+        }
+      };
+      createFirestoreTicket();
+    }
+  }, [step, event, tier, quantity, state?.selectedDate, state?.selectedTime]);
+
+  if (step === 'success') {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-8">
+        <motion.div 
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="max-w-md w-full text-center space-y-8"
+        >
+          <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto text-white">
+            <Zap className="w-10 h-10" />
+          </div>
+          <h2 className="text-3xl font-bold text-adv-slate">{t.paymentSuccess}</h2>
+          <p className="text-gray-500 font-medium">
+            {t.ticketsConfirmed.replace('{eventTitle}', event.title)}
+          </p>
+          <div className="bg-gray-50 rounded-2xl p-6 text-left border border-gray-100">
+             <div className="flex justify-between items-center">
+                <div>
+                   <div className="text-xs text-gray-400 font-bold mb-1 uppercase tracking-wider">Ticket Detail</div>
+                   <div className="font-bold text-adv-slate text-lg">{quantity}x {itemName}</div>
+                </div>
+                <div className="text-xl font-bold text-adv-orange">{total.toLocaleString()} {currency}</div>
+             </div>
+          </div>
+          <div className="flex items-center justify-center gap-3 text-adv-orange font-bold text-sm">
+             <Loader2 className="w-4 h-4 animate-spin" />
+             Redirecting to Tickets...
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F9FAFB] pt-1 sm:pt-2 pb-12 px-4 lg:px-8">
+      <AnimatePresence>
+        {fullscreenImage && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setFullscreenImage(null)}
+            className="fixed inset-0 z-[999] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 cursor-zoom-out"
+          >
+            <motion.button 
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="absolute top-6 right-6 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors z-10"
+              onClick={(e) => {
+                e.stopPropagation();
+                setFullscreenImage(null);
+              }}
+            >
+              <X className="w-6 h-6" />
+            </motion.button>
+            
+            <motion.img 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              src={fullscreenImage} 
+              alt="Full view"
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="max-w-6xl mx-auto">
+        <button 
+          onClick={() => {
+            if (step === 'qr') setStep('details');
+            else navigate(-1);
+          }}
+          className="inline-flex items-center gap-2 text-gray-400 hover:text-adv-orange mb-3 transition-colors font-bold text-sm"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          {t.backToHome}
+        </button>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+          {/* Payment Terminal / Guest Information */}
+          <div className="lg:col-span-7 order-2 lg:order-1">
+            <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-150/60">
+               <AnimatePresence mode="wait">
+                  {step === 'details' ? (
+                    <motion.div key="details" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                      <div className="mb-4">
+                        <h3 className="text-lg sm:text-xl font-bold text-adv-slate mb-0.5">{t.ticketOwnerInfo}</h3>
+                        <p className="text-xs text-gray-500">{t.ticketOwnerDesc}</p>
+                      </div>
+
+                      <div className="space-y-3 mb-4 max-h-[280px] sm:max-h-[360px] overflow-y-auto pr-1.5 custom-scrollbar">
+                        {ticketOwners.map((owner, idx) => (
+                          <div key={idx} className="p-3 sm:p-4 bg-gray-50/80 rounded-xl border border-gray-100 space-y-2.5">
+                            <div className="flex items-center justify-between">
+                               <span className="text-[10px] font-black text-adv-orange uppercase tracking-widest">{t.guest} {idx + 1}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2.5">
+                              <div>
+                                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-0.5">{t.firstName}</label>
+                                <input 
+                                  type="text"
+                                  value={owner.firstName || ""}
+                                  onChange={(e) => handleTicketOwnerChange(idx, 'firstName', e.target.value)}
+                                  placeholder={lang === 'en' ? 'John' : 'ຊື່'}
+                                  className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-0.5">{t.lastName}</label>
+                                <input 
+                                  type="text"
+                                  value={owner.lastName || ""}
+                                  onChange={(e) => handleTicketOwnerChange(idx, 'lastName', e.target.value)}
+                                  placeholder={lang === 'en' ? 'Doe' : 'ນາມສະກຸນ'}
+                                  className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                                />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                              <div>
+                                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-0.5">{t.phoneNumber}</label>
+                                <input 
+                                  type="tel"
+                                  inputMode="numeric"
+                                  maxLength={
+                                    owner.phone.startsWith('856020') ? 14 :
+                                    owner.phone.startsWith('85620') ? 13 :
+                                    owner.phone.startsWith('856') ? 14 :
+                                    owner.phone.startsWith('020') ? 11 : 10
+                                  }
+                                  value={owner.phone || ""}
+                                  onChange={(e) => handleTicketOwnerChange(idx, 'phone', e.target.value)}
+                                  placeholder="20XXXXXXXX"
+                                  className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-0.5">{t.email}</label>
+                                <input 
+                                  type="email"
+                                  value={owner.email || ""}
+                                  onChange={(e) => handleTicketOwnerChange(idx, 'email', e.target.value)}
+                                  placeholder="example@email.com"
+                                  className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="pt-2 sm:pt-4 border-t border-gray-100">
+                        <h3 className="text-lg sm:text-xl font-bold text-adv-slate mb-3 sm:mb-4">Payment Method</h3>
+                        <div className="space-y-2 mb-4">
+                          {LAOS_BANKS.map((bank) => (
+                            <button
+                              key={bank.id}
+                              onClick={() => setSelectedBank(bank.id)}
+                              className={`w-full flex items-center p-3 rounded-xl border-2 transition-all ${
+                                selectedBank === bank.id 
+                                ? 'border-adv-orange bg-orange-50/50' 
+                                : 'border-gray-50 hover:border-gray-100 bg-gray-50/50'
+                              }`}
+                            >
+                              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl ${bank.color} flex items-center justify-center mr-3 shrink-0 shadow-sm`}>
+                                <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                              </div>
+                              <div className="flex-1 text-left">
+                                <h4 className="text-sm sm:text-base font-bold text-adv-slate">{bank.name}</h4>
+                                <p className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider">Mobile Banking</p>
+                              </div>
+                            </button>
+                          ))}
+
+                          <button
+                            key="credit_card"
+                            onClick={() => setSelectedBank('credit_card')}
+                            className={`w-full flex items-center p-3 rounded-xl border-2 transition-all ${
+                              selectedBank === 'credit_card' 
+                              ? 'border-adv-orange bg-orange-50/50' 
+                              : 'border-gray-50 hover:border-gray-100 bg-gray-50/50'
+                            }`}
+                          >
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-orange-500 flex items-center justify-center mr-3 shrink-0 shadow-sm">
+                              <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                            </div>
+                            <div className="flex-1 text-left">
+                              <h4 className="text-sm sm:text-base font-bold text-adv-slate">{lang === 'en' ? 'Credit Card' : 'ບັດເຄຣດິດ'}</h4>
+                              <p className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider">Visa / Mastercard (3DS)</p>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+
+                      <button 
+                        disabled={!isDetailsValid || !selectedBank || isProcessing}
+                        onClick={handleBankSelection}
+                        className="w-full py-3 bg-adv-orange text-white rounded-xl font-bold text-sm sm:text-base hover:bg-orange-600 transition-all flex items-center justify-center gap-2 shadow-md shadow-orange-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isProcessing ? <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" /> : t.checkout}
+                      </button>
+                   </motion.div>
+                 ) : (
+                   <motion.div key="qr" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col items-center">
+                      {selectedBank === 'credit_card' ? (
+                        <>
+                          <div className="text-center mb-8">
+                            <h3 className="text-2xl font-bold text-adv-slate mb-3">
+                              {lang === 'en' ? 'Credit Card Checkout' : 'ຊຳລະດ້ວຍບັດເຄຣດິດ'}
+                            </h3>
+                            <p className="text-gray-500 text-sm font-medium">
+                              {lang === 'en' 
+                                ? 'Complete your payment securely via our Visa/Mastercard gateway.' 
+                                : 'ຊຳລະເງິນຢ່າງປອດໄພຜ່ານລະບົບ Visa/Mastercard ຂອງພວກເຮົາ.'}
+                            </p>
+                          </div>
+                          
+                          <div className="p-6 bg-gray-50 rounded-3xl w-full flex flex-col items-center border border-gray-100 mb-8">
+                             <div className="flex justify-between w-full mb-6 text-xs font-bold uppercase tracking-widest">
+                                <span className="text-adv-green flex items-center gap-2">
+                                   <div className="w-2 h-2 bg-adv-green rounded-full animate-pulse" /> Gateway Secure
+                                </span>
+                                <span className="text-red-500">{Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}</span>
+                             </div>
+                             
+                             <div className="w-full bg-white rounded-2xl p-6 border border-gray-100 text-center space-y-6">
+                               <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mx-auto text-adv-orange animate-pulse">
+                                 <CreditCard className="w-8 h-8" />
+                               </div>
+                               
+                               <div className="space-y-2">
+                                 <h4 className="font-extrabold text-adv-slate text-base">
+                                   {lang === 'en' ? 'Secure Payment Portal Ready' : 'ຊ່ອງທາງການຊຳລະເງິນປອດໄພພ້ອມແລ້ວ'}
+                                 </h4>
+                                 <p className="text-xs text-gray-400 font-semibold max-w-xs mx-auto leading-relaxed">
+                                   {lang === 'en' 
+                                     ? 'Click the button below to open the secure banking page and complete your transaction. Only 3D Secure (3DS) cards are supported.' 
+                                     : 'ກະລຸນາຄລິກປຸ່ມລຸ່ມນີ້ເພື່ອເປີດໜ້າຊຳລະເງິນຂອງທະນາຄານຢ່າງປອດໄພ. ຮອງຮັບສະເພາະບັດທີ່ມີລະບົບ 3D Secure (3DS) ເທົ່ານັ້ນ.'}
+                                 </p>
+                               </div>
+
+                               {creditCardUrl && (
+                                 <a 
+                                   href={creditCardUrl}
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   className="inline-flex w-full py-4 px-6 bg-adv-orange hover:bg-orange-600 text-white rounded-2xl font-extrabold text-sm uppercase tracking-wider transition-all items-center justify-center gap-2 shadow-lg shadow-orange-100 active:scale-[0.98]"
+                                 >
+                                   <span>{lang === 'en' ? 'Open Payment Portal' : 'ເປີດໜ້າຊຳລະເງິນ'}</span>
+                                   <Zap className="w-4 h-4 text-white" />
+                                 </a>
+                               )}
+                             </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-center mb-8">
+                            <h3 className="text-2xl font-bold text-adv-slate mb-3">{t.scanToPay}</h3>
+                            <p className="text-gray-500 text-sm font-medium">{t.openAppToScan.replace('{bankName}', LAOS_BANKS.find(b => b.id === selectedBank)?.name || '')}</p>
+                          </div>
+                          
+                          <div className="p-6 bg-gray-50 rounded-3xl w-full flex flex-col items-center border border-gray-100 mb-8">
+                             <div className="flex justify-between w-full mb-4 text-xs font-bold uppercase tracking-widest">
+                                <span className="text-adv-green flex items-center gap-2">
+                                   <div className="w-2 h-2 bg-adv-green rounded-full animate-pulse" /> Link Active
+                                </span>
+                                <span className="text-red-500">{Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}</span>
+                             </div>
+                             <div className="w-full aspect-square bg-white rounded-2xl flex items-center justify-center p-6 shadow-inner relative overflow-hidden">
+                                {qrCodeData && <QRCodeSVG value={qrCodeData} size={256} className="w-full h-full" />}
+                             </div>
+                          </div>
+                        </>
+                      )}
+
+                      <button 
+                        onClick={() => setIsProcessing(true)} 
+                        className="w-full py-4 bg-adv-slate text-white rounded-2xl font-bold flex items-center justify-center gap-3 group transition-all hover:bg-black"
+                      >
+                         {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : t.completedPayment}
+                         <Zap className="w-4 h-4 text-adv-orange" />
+                      </button>
+                   </motion.div>
+                 )}
+               </AnimatePresence>
+            </div>
+          </div>
+
+          {/* Manifest Summary (Sticky Sidebar) */}
+          <div className="lg:col-span-5 lg:sticky lg:top-4 order-1 lg:order-2">
+             <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-150/60 space-y-4">
+                <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+                   <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest">{t.orderSummary}</h2>
+                </div>
+                <div className="flex gap-4 items-center">
+                   <div 
+                     className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden cursor-zoom-in shrink-0 border border-gray-100 group"
+                     onClick={() => setFullscreenImage(event.image)}
+                   >
+                     <img src={event.image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                   </div>
+                   <div className="flex-1 min-w-0">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-adv-orange px-2 py-0.5 bg-orange-50 rounded-md inline-block mb-1">
+                         {event.category || 'Activity'}
+                      </span>
+                      <h3 className="text-sm sm:text-base font-black text-adv-slate leading-snug truncate">{event.title}</h3>
+                   </div>
+                </div>
+
+                {/* Event Date & Location Block */}
+                <div className="grid grid-cols-2 gap-3 bg-gray-50/80 p-3 rounded-xl border border-gray-100 text-xs">
+                   <div className="space-y-0.5">
+                      <span className="text-[9px] uppercase tracking-wider text-gray-400 font-bold block">
+                         {lang === 'en' ? 'Date of Event' : 'ວັນທີກິດຈະກຳ'}
+                      </span>
+                      <div className="font-extrabold text-adv-slate flex items-center gap-1.5">
+                         <Calendar className="w-3.5 h-3.5 text-adv-orange shrink-0" />
+                         <span>
+                            {displayDate ? new Date(displayDate).toLocaleDateString(lang === 'en' ? 'en-US' : 'lo-LA', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }) : (lang === 'en' ? 'Flexible' : 'ວັນທີປ່ຽນແປງໄດ້')}
+                         </span>
+                      </div>
+                   </div>
+                   <div className="space-y-0.5 border-l border-gray-200/60 pl-3">
+                      <span className="text-[9px] uppercase tracking-wider text-gray-400 font-bold block">
+                         {lang === 'en' ? 'Venue' : 'ສະຖານທີ່'}
+                      </span>
+                      <div className="font-extrabold text-adv-slate flex items-center gap-1.5 truncate">
+                         <MapPin className="w-3.5 h-3.5 text-adv-orange shrink-0" />
+                         <span className="truncate" title={event.location}>{event.location}</span>
+                      </div>
+                   </div>
+                </div>
+
+
+
+                <div className="border-t border-gray-100 pt-1 space-y-2 text-xs font-bold text-gray-600">
+                   {selectedTiersList.length > 0 ? (
+                     <div className="space-y-1.5">
+                       {selectedTiersList.map(({ tier: tItem, quantity: qty }) => (
+                         <div key={tItem.id} className="flex justify-between items-center text-adv-slate text-xs sm:text-sm font-extrabold">
+                           <span>{qty}x {tItem.name}</span>
+                           <span className="font-mono text-adv-orange">{(tItem.price * qty).toLocaleString()} {currency}</span>
+                         </div>
+                       ))}
+                     </div>
+                   ) : (
+                     <div className="flex justify-between items-center text-adv-slate text-sm font-extrabold">
+                        <span>{quantity}x {itemName}</span>
+                        <span>{subtotal.toLocaleString()} {currency}</span>
+                     </div>
+                   )}
+
+                   {appliedCoupon && (
+                      <div className="flex justify-between items-center text-adv-green text-xs font-semibold bg-emerald-50/50 px-2.5 py-1.5 rounded-lg border border-emerald-100/40">
+                         <span className="flex items-center gap-1.5">
+                            <Ticket className="w-3.5 h-3.5" />
+                            <span>{t.discount} ({appliedCoupon.code})</span>
+                         </span>
+                         <span>-{discount.toLocaleString()} {currency}</span>
+                      </div>
+                   )}
+
+                   <div className="border-t border-gray-150/50 pt-3 flex justify-between items-baseline">
+                      <span className="text-xs font-black text-adv-slate uppercase tracking-wider">{t.total}</span>
+                      <span className="text-xl sm:text-2xl font-black text-adv-orange">{total.toLocaleString()} {currency}</span>
+                   </div>
+                </div>
+             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

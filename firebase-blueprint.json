@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "firstName": { "type": "string", "maxLength": 100 },
+        "lastName": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "gender": { "type": "string", "maxLength": 20 },
+        "dob": { "type": "string", "maxLength": 20 },
+        "profilePic": { "type": "string", "maxLength": 500000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "firstName"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "User reviews and comments on events",
+      "type": "object",
+      "properties": {
+        "eventId": { "type": "string", "maxLength": 100 },
+        "userId": { "type": "string", "maxLength": 100 },
+        "userName": { "type": "string", "maxLength": 200 },
+        "rating": { "type": "integer" },
+        "comment": { "type": "string", "maxLength": 5000 },
+        "date": { "type": "string", "maxLength": 20 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["eventId", "userId", "rating", "comment"]
+    },
+    "Ticket": {
+      "title": "Ticket",
+      "description": "Purchased tickets for events",
+      "type": "object",
+      "properties": {
+        "eventId": { "type": "string", "maxLength": 100 },
+        "eventTitle": { "type": "string", "maxLength": 300 },
+        "tierId": { "type": "string", "maxLength": 100 },
+        "tierName": { "type": "string", "maxLength": 100 },
+        "price": { "type": "number" },
+        "quantity": { "type": "integer" },
+        "selectedDate": { "type": "string", "maxLength": 20 },
+        "selectedTime": { "type": "string", "maxLength": 20 },
+        "userId": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["eventId", "userId", "tierId", "quantity"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Users collection indexed by Auth UID"
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Public reviews for events"
+    },
+    "/tickets/{ticketId}": {
+      "schema": "Ticket",
+      "description": "User ticket orders"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <div id="editor" contenteditable="true" style="border: 1px solid black; padding: 20px; min-height: 200px;">
+    <p>Some text to drag around</p>
+    <img src="https://via.placeholder.com/150" style="width: 150px; height: 150px;" />
+  </div>
+  <script>
+    const editor = document.getElementById('editor');
+    editor.addEventListener('dragover', (e) => {
+      if (e.dataTransfer.types.includes('Files')) {
+        e.preventDefault();
+      }
+    });
+    editor.addEventListener('drop', (e) => {
+      if (e.dataTransfer.types.includes('Files')) {
+        e.preventDefault();
+        console.log('File dropped');
+      }
+    });
+  </script>
+</body>
+</html>
