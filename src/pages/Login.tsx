@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Ticket, Phone, Key, ArrowRight, ArrowLeft, Globe, Loader2, AlertCircle } from 'lucide-react';
+import { Ticket, Phone, Key, ArrowRight, ArrowLeft, Globe, Loader2, AlertCircle, Smartphone, Lock } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../AuthContext';
 import { useLanguage } from '../LanguageContext';
 import { useTheme } from '../ThemeContext';
 import Logo from '../components/Logo';
 import OtpInput from '../components/OtpInput';
+import { safeStorage } from '../lib/storage';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -14,9 +15,10 @@ export default function Login() {
   const { loginAnonymously, loginWithGoogle } = useAuth();
   const { lang, toggleLanguage } = useLanguage();
   const { theme } = useTheme();
-  const [step, setStep] = useState<'phone' | 'otp'>('phone');
+  const [step, setStep] = useState<'phone' | 'otp' | '2fa'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
+  const [twoFactorCode, setTwoFactorCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
@@ -42,7 +44,11 @@ export default function Login() {
       resendIn: 'Resend in',
       codeResent: 'A new verification code has been sent!',
       otpRequired: 'Please enter the verification code',
-      incorrectOtp: 'Incorrect verification code'
+      incorrectOtp: 'Incorrect verification code',
+      twoFactorTitle: '2FA Authenticator Security Lock',
+      twoFactorPrompt: '2FA is enabled on your account. Please enter the 6-digit code from your Google Authenticator or Authy app.',
+      twoFactorLabel: '2FA Authenticator Code',
+      verify2faBtn: 'Verify 2FA & Log In'
     },
     lo: {
       back: 'ກັບຄືນ',
@@ -55,7 +61,7 @@ export default function Login() {
       sendCodeBtn: 'ສົ່ງລະຫັດ',
       verifyLabel: 'ລະຫັດຢືນຢັນ',
       verifyPlaceholder: '123456',
-      verifyBtn: 'ຢືນຢັນ & ເဝ်ົ້າສູ່ລະບົບ',
+      verifyBtn: 'ຢືນຢັນ & ເຂົ້າສູ່ລະບົບ',
       backToPhone: 'ກັບຄືນໄປຫາເບີໂທລະສັບ',
       orContinue: 'ຫຼື ສືບຕໍ່ດ້ວຍ',
       googleSignIn: 'ເຂົ້າສູ່ລະບົບດ້ວຍ Google',
@@ -63,11 +69,24 @@ export default function Login() {
       resendIn: 'ສົ່ງອີກຄັ້ງໃນ',
       codeResent: 'ສົ່ງລະຫັດຢືນຢັນໃໝ່ແລ້ວ!',
       otpRequired: 'ກະລຸນາໃສ່ລະຫັດຢືນຢັນ',
-      incorrectOtp: 'ລະຫັດຢືນຢັນບໍ່ຖືກຕ້ອງ'
+      incorrectOtp: 'ລະຫັດຢືນຢັນບໍ່ຖືກຕ້ອງ',
+      twoFactorTitle: 'ການຢືນຢັນ 2FA ເພື່ອຄວາມປອດໄພ',
+      twoFactorPrompt: 'ບັນຊີຂອງທ່ານເປີດໃຊ້ 2FA ຢູ່. ກະລຸນາປ້ອນລະຫັດ 6 ຫຼັກຈາກແອັບ Google Authenticator ຫຼື Authy ຂອງທ່ານ.',
+      twoFactorLabel: 'ລະຫັດ 2FA Authenticator',
+      verify2faBtn: 'ຢືນຢັນ 2FA & ເຂົ້າສູ່ລະບົບ'
     }
   };
 
   const t = translations[lang];
+
+  const finishLoginAndRedirect = () => {
+    const state = location.state as any;
+    if (state?.returnTo) {
+      navigate(state.returnTo, { state: state.checkoutState });
+    } else {
+      navigate('/');
+    }
+  };
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,17 +190,33 @@ export default function Login() {
       }
       localStorage.setItem('pasopkan_user_profile', JSON.stringify(localProfile));
 
-      const state = location.state as any;
-      if (state?.returnTo) {
-        navigate(state.returnTo, { state: state.checkoutState });
-      } else {
-        navigate('/');
+      if (safeStorage.getItem('user_2fa_enabled') === 'true') {
+        setStep('2fa');
+        setIsLoading(false);
+        return;
       }
+
+      finishLoginAndRedirect();
     } catch (err: any) {
       setError(err.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleVerify2FA = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!twoFactorCode || twoFactorCode.trim().length < 6) {
+      setError(lang === 'en' ? 'Please enter the 6-digit verification code' : 'ກະລຸນາໃສ່ລະຫັດຢືນຢັນ 6 ຕົວເລກ');
+      return;
+    }
+
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      finishLoginAndRedirect();
+    }, 600);
   };
 
   return (
@@ -397,6 +432,70 @@ export default function Login() {
             </form>
           )}
 
+          {step === '2fa' && (
+            <form onSubmit={handleVerify2FA} className="space-y-6">
+              <div className="text-center sm:text-left mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-orange-100 dark:bg-orange-950/40 text-adv-orange flex items-center justify-center mb-3 mx-auto sm:mx-0 shadow-xs">
+                  <Smartphone className="w-6 h-6" />
+                </div>
+                <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>
+                  {t.twoFactorTitle}
+                </h2>
+                <p className="text-xs text-gray-400 font-medium leading-relaxed mt-1">
+                  {t.twoFactorPrompt}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">
+                  {t.twoFactorLabel}
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={twoFactorCode}
+                    onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="123456"
+                    autoFocus
+                    className={`w-full border rounded-2xl px-6 py-4 text-adv-slate font-mono font-black text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all ${
+                      theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-[#F9FAFB] border-gray-200'
+                    }`}
+                  />
+                  <Lock className="w-5 h-5 text-gray-300 absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={isLoading || twoFactorCode.length < 6}
+                  className="w-full py-4 rounded-2xl bg-adv-slate hover:bg-black text-white font-bold text-sm transition-all shadow-xl shadow-gray-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-adv-orange" />
+                  ) : (
+                    <Smartphone className="w-5 h-5 text-adv-orange" />
+                  )}
+                  <span>{t.verify2faBtn}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStep('phone')}
+                  className={`w-full flex justify-center items-center gap-2 py-3.5 px-4 border rounded-xl text-sm font-semibold transition-colors focus:outline-none ${
+                    theme === 'dark' 
+                      ? 'border-white/10 text-zinc-300 bg-transparent hover:bg-white/5' 
+                      : 'border-gray-200 text-gray-700 bg-transparent hover:bg-gray-50'
+                  }`}
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  {t.backToPhone}
+                </button>
+              </div>
+            </form>
+          )}
+
           {step === 'phone' && (
             <div className="mt-6">
               <div className="relative">
@@ -420,12 +519,12 @@ export default function Login() {
                     setIsLoading(true);
                     try {
                       await loginWithGoogle();
-                      const state = location.state as any;
-                      if (state?.returnTo) {
-                        navigate(state.returnTo, { state: state.checkoutState });
-                      } else {
-                        navigate('/');
+                      if (safeStorage.getItem('user_2fa_enabled') === 'true') {
+                        setStep('2fa');
+                        setIsLoading(false);
+                        return;
                       }
+                      finishLoginAndRedirect();
                     } catch (err: any) {
                       setError(err.message || 'Google login failed');
                     } finally {

@@ -29,6 +29,14 @@ export interface Coupon {
   isActive: boolean;
 }
 
+export interface AttendeeQuestion {
+  id: string;
+  type: 'text' | 'long_text' | 'options' | 'single_choice' | 'url' | 'checkbox';
+  label: string;
+  required: boolean;
+  options?: string[];
+}
+
 export interface LaoEvent {
   id: string;
   title: string;
@@ -49,6 +57,8 @@ export interface LaoEvent {
   coupons?: Coupon[];
   hasTimeSelection?: boolean;
   timeSlots?: string[];
+  availableDates?: { date: string, startTime: string, endTime: string }[];
+  requireEveryTicketInfo?: boolean;
   endDate?: string;
   endTime?: string;
   organizer?: string;
@@ -68,6 +78,7 @@ export interface LaoEvent {
   latitude?: number;
   longitude?: number;
   googleMapUrl?: string;
+  attendeeQuestions?: AttendeeQuestion[];
 }
 
 export const events: LaoEvent[] = [
@@ -102,32 +113,43 @@ export const events: LaoEvent[] = [
   },
   {
     id: '2',
-    title: 'Traditional Silk Weaving',
-    durationEn: '3 Hours',
-    durationLo: '3 ຊົ່ວໂມງ',
+    title: 'AI Developer Summit 2026',
+    durationEn: '1 Day',
+    durationLo: '1 ວັນ',
     date: '2026-09-10',
     time: '09:00',
-    location: 'Luang Prabang, LA',
-    venue: 'Ock Pop Tok Living Crafts Centre',
-    image: 'https://images.unsplash.com/photo-1594911762194-4363297a70a1?q=80&w=2000&auto=format&fit=crop',
+    location: 'Vientiane, LA',
+    venue: 'National Convention Centre',
+    image: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?q=80&w=2000&auto=format&fit=crop',
     category: 'Workshop',
     status: 'selling_fast',
-    languages: ['English', 'Lao', 'French'],
-    description: 'Immerse yourself in the world of Lao textiles. Learn from master weavers about natural dyes, silk production, and the intricate art of the backstrap loom.',
-    hasTimeSelection: true,
-    timeSlots: ['09:00', '13:00', '15:30'],
+    languages: ['English', 'Lao'],
+    description: 'Join top engineers and AI enthusiasts to discuss the latest in generative models, agentic frameworks, and the future of coding. Learn how to scale AI applications in production.',
+    hasTimeSelection: false,
     exampleImages: [
-      'https://images.unsplash.com/photo-1594911762194-4363297a70a1?q=80&w=1000&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?q=80&w=1000&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1506806732259-39c2d0268443?q=80&w=1000&auto=format&fit=crop'
+      'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?q=80&w=1000&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1591453006322-5172b665d009?q=80&w=1000&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?q=80&w=1000&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=1000&auto=format&fit=crop'
     ],
     ticketTiers: [
-      { id: 't3', name: 'Full Day Workshop', price: 450, available: 12, description: 'Includes lunch and local materials.' },
-      { id: 't4', name: 'Introductory Session', price: 250, available: 20, description: 'A 3-hour introduction to basic weaving.' },
+      { id: 't3', name: 'General Admission', price: 1500, available: 150, description: 'Includes access to all keynotes and panel discussions.' },
+      { id: 't4', name: 'VIP Developer Pass', price: 3000, available: 20, description: 'Includes hands-on workshops and exclusive networking lunch.' },
+    ],
+    attendeeQuestions: [
+      { id: 'q1', type: 'text', label: 'What company do you work for?', required: true },
+      { id: 'q2', type: 'long_text', label: 'What is your job title?', required: true },
+      { id: 'q3', type: 'single_choice', label: 'How much is your average monthly AI spend?', required: true, options: ['<$100', '$100-$1000', '>$1000'] },
+      { id: 'q4', type: 'single_choice', label: 'How often do you hit Token or API Rate Limit?', required: true, options: ['Never', 'Sometimes', 'Often'] },
+      { id: 'q5', type: 'options', label: 'Favorite Model?', required: true, options: ['GPT-4', 'Claude 3', 'Gemini 1.5 Pro'] },
+      { id: 'q6', type: 'options', label: 'Which Harness?', required: true, options: ['LangChain', 'LlamaIndex', 'Custom'] },
+      { id: 'q7', type: 'single_choice', label: 'Does your company supports your token budget?', required: true, options: ['Yes', 'No'] },
+      { id: 'q8', type: 'checkbox', label: 'Are you actively looking for a job?', required: false },
+      { id: 'q9', type: 'checkbox', label: 'Is your company hiring Lead Engineer or Engineering Management roles?', required: false },
+      { id: 'q10', type: 'url', label: 'Your LinkedIn Profile', required: false },
     ],
     coupons: [
-      { id: 'c3', code: 'WEAVE10', discount: 10, type: 'percentage', isActive: true }
+      { id: 'c3', code: 'DEV10', discount: 10, type: 'percentage', isActive: true }
     ]
   },
   {

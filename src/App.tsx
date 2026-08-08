@@ -49,6 +49,7 @@ export default function App() {
               <Route path="edit-profile" element={<EditProfile />} />
               <Route path="notifications" element={<Notifications />} />
               <Route path="security" element={<Security />} />
+              <Route path="security/2fa" element={<UpdatePassword />} />
               <Route path="security/password" element={<UpdatePassword />} />
               <Route path="payment-methods" element={<PaymentMethods />} />
               <Route path="help" element={<Help />} />

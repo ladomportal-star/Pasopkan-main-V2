@@ -13,6 +13,7 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from './lib/firebase';
 import { safeStorage } from './lib/storage';
+import DotsLoader from './components/DotsLoader';
 
 interface AuthContextType {
   token: string | null;
@@ -346,7 +347,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       syncProfileToFirestore
     }}>
-      {!loading && children}
+      {loading ? (
+        <div className="min-h-screen bg-white flex flex-col items-center justify-center">
+          <DotsLoader />
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 }

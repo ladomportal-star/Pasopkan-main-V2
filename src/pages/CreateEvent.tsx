@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
-import { Calendar, Folder, FileText, Plus, User, Users, Mail, ChevronDown, Inbox, Ticket, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, Image as ImageIcon, Video, MapPin, Loader2, Trash2, X, Check, QrCode, LogOut, Edit, ShieldCheck, DollarSign, RefreshCcw, FileCheck, BookOpen, AlertCircle, ShieldAlert, ArrowLeft, ArrowRight, Globe, Clock, Settings, Lock, Eye, UploadCloud, ExternalLink, Monitor, Smartphone, CheckCircle2, Sparkles, Paperclip, Search, Quote, Minus, Heading1, Heading2 } from 'lucide-react';
+import { Calendar, Folder, FileText, Plus, User, Users, Mail, ChevronDown, Inbox, Ticket, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, Image as ImageIcon, Video, MapPin, Loader2, Trash2, X, Check, QrCode, LogOut, Edit, ShieldCheck, DollarSign, RefreshCcw, FileCheck, BookOpen, AlertCircle, ShieldAlert, ArrowLeft, ArrowRight, Globe, Clock, Settings, Lock, Eye, UploadCloud, ExternalLink, Monitor, Smartphone, CheckCircle2, Sparkles, Paperclip, Search, Quote, Minus, Heading1, Heading2, Link as LinkIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { safeStorage } from '../lib/storage';
@@ -9,6 +9,9 @@ import { events } from '../data/events';
 import Logo from '../components/Logo';
 import { EventMapPicker } from '../components/EventMapPicker';
 import { ScrollTimePicker } from '../components/ScrollTimePicker';
+import { FlexibleDatePicker } from '../components/FlexibleDatePicker';
+import { CalendarPicker } from '../components/CalendarPicker';
+import SocialLinksForm, { SocialLinks } from '../components/SocialLinksForm';
 
 const translations = {
   en: {
@@ -174,6 +177,8 @@ const translations = {
     saleEndsOptional: 'Sale Ends (Optional)',
     showRemainingTickets: 'Show Remaining Tickets',
     showRemainingTicketsDesc: 'Display the number of available tickets on the event page.',
+    requireEveryTicketInfo: 'Require Guest Info for Every Ticket',
+    requireEveryTicketInfoDesc: 'If disabled, only the buyer\'s information is required even when purchasing multiple tickets.',
     enableCountdown: 'Enable Event Countdown Timer',
     enableCountdownDesc: 'Show a live real-time countdown timer to the event start time on the details page.',
     allowRefunds: 'Allow Refunds',
@@ -411,6 +416,8 @@ const translations = {
     saleEndsOptional: 'ສິ້ນສຸດການຂາຍ (ທາງເລືອກ)',
     showRemainingTickets: 'ສະແດງຈຳນວນປີ້ທີ່ເຫຼືອ',
     showRemainingTicketsDesc: 'ສະແດງຈຳນວນປີ້ທີ່ຍັງສາມາດຊື້ໄດ້ໃນໜ້າ event.',
+    requireEveryTicketInfo: 'ຕ້ອງການຂໍ້ມູນແຂກສຳລັບທຸກໆປີ້',
+    requireEveryTicketInfoDesc: 'ຖ້າປິດການນຳໃຊ້, ຈະຕ້ອງການພຽງແຕ່ຂໍ້ມູນຂອງຜູ້ຊື້ເທົ່ານັ້ນ ເຖິງແມ່ນວ່າຈະຊື້ຫຼາຍປີ້ກໍຕາມ.',
     enableCountdown: 'ເປີດໃຊ້ງານໂມງນັບຖອຍຫຼັງ',
     enableCountdownDesc: 'ສະແດງໂມງນັບຖອຍຫຼັງແບບສົດໆ ກ່ອນເວລາເລີ່ມຕົ້ນຂອງ event ໃນໜ້າລາຍລະອຽດ.',
     allowRefunds: 'ອະນຸຍາດໃຫ້ຄືນເງິນ',
@@ -520,30 +527,6 @@ const ONLINE_PLATFORMS_LIST = [
     icon: Globe
   },
   {
-    id: 'youtube_live',
-    name: 'YouTube Live',
-    nameLo: 'YouTube Live Stream',
-    badge: 'Broadcasting',
-    iconBg: 'bg-red-600 text-white',
-    activeBorder: 'border-red-600 bg-red-50/70 ring-2 ring-red-600/20',
-    placeholder: 'https://youtube.com/live/your-live-stream-id',
-    descEn: 'Broadcast high quality video stream to large audiences with live chat',
-    descLo: 'ຖ່າຍທອດສົດຄຸນນະພາບ HD ຮອງຮັບຜູ້ຊົມຈຳນວນຫຼາຍ ພ້ອມແຊັດສົດ',
-    icon: Video
-  },
-  {
-    id: 'facebook_live',
-    name: 'Facebook Live',
-    nameLo: 'Facebook Live',
-    badge: 'Social Streaming',
-    iconBg: 'bg-blue-600 text-white',
-    activeBorder: 'border-blue-600 bg-blue-50/70 ring-2 ring-blue-600/20',
-    placeholder: 'https://facebook.com/events/live/1234567890',
-    descEn: 'Stream directly to your Facebook Page, Group, or Event page',
-    descLo: 'ໄລຟ໌ສົດຜ່ານ Facebook Page, ເພຈກິດຈະກຳ ຫຼື Private Group',
-    icon: Globe
-  },
-  {
     id: 'ms_teams',
     name: 'Microsoft Teams',
     nameLo: 'Microsoft Teams',
@@ -554,30 +537,6 @@ const ONLINE_PLATFORMS_LIST = [
     descEn: 'Professional conferencing for corporate, academic & enterprise events',
     descLo: 'ແພລດຟອມປະຊຸມສຳລັບອົງກອນ, ບໍລິສັດ ແລະ ສຳມະນາທາງວິຊາການ',
     icon: Users
-  },
-  {
-    id: 'tiktok_live',
-    name: 'TikTok Live',
-    nameLo: 'TikTok Live',
-    badge: 'Mobile Stream',
-    iconBg: 'bg-slate-900 text-white',
-    activeBorder: 'border-slate-900 bg-slate-100 ring-2 ring-slate-900/20',
-    placeholder: 'https://www.tiktok.com/@username/live',
-    descEn: 'Engage mobile users with vertical interactive stream and live gifts',
-    descLo: 'ຖ່າຍທອດສົດແນວຕັ້ງ ເໝາະສຳລັບຜູ້ໃຊ້ສື່ໂຊຊຽວໃນມືຖື',
-    icon: Smartphone
-  },
-  {
-    id: 'webex',
-    name: 'Cisco Webex',
-    nameLo: 'Cisco Webex',
-    badge: 'Secure Video',
-    iconBg: 'bg-cyan-600 text-white',
-    activeBorder: 'border-cyan-600 bg-cyan-50/70 ring-2 ring-cyan-600/20',
-    placeholder: 'https://webex.com/meet/organizer-id',
-    descEn: 'High-security video meetings & large web events',
-    descLo: 'ລະບົບປະຊຸມຄວາມປອດໄພສູງ ເໝາະສຳລັບງານສຳມະນາລະດັບສູງ',
-    icon: ShieldCheck
   },
   {
     id: 'custom',
@@ -592,6 +551,14 @@ const ONLINE_PLATFORMS_LIST = [
     icon: ExternalLink
   }
 ];
+
+export interface AttendeeQuestion {
+  id: string;
+  type: 'text' | 'options' | 'single_choice' | 'url' | 'checkbox';
+  label: string;
+  required: boolean;
+  options?: string[]; // for type 'options' or 'single_choice'
+}
 
 export default function CreateEvent() {
   const navigate = useNavigate();
@@ -617,14 +584,16 @@ export default function CreateEvent() {
   const [organizerContact, setOrganizerContact] = useState('');
   const [organizerPhone, setOrganizerPhone] = useState('');
   const [organizerEmail, setOrganizerEmail] = useState('');
+  const [organizerSocialLinks, setOrganizerSocialLinks] = useState<SocialLinks>({});
   const [durationEn, setDurationEn] = useState('');
   const [durationLo, setDurationLo] = useState('');
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['Lao', 'English']);
   const [eventType, setEventType] = useState('offline');
-  const [onlinePlatform, setOnlinePlatform] = useState<'zoom' | 'google_meet' | 'youtube_live' | 'facebook_live' | 'ms_teams' | 'tiktok_live' | 'webex' | 'custom'>('zoom');
+  const [onlinePlatform, setOnlinePlatform] = useState<'zoom' | 'google_meet' | 'ms_teams' | 'custom' | string>('zoom');
   const [onlineMeetingUrl, setOnlineMeetingUrl] = useState('');
   const [onlinePasscode, setOnlinePasscode] = useState('');
   const [onlineInstructions, setOnlineInstructions] = useState('');
+  const [attendeeQuestions, setAttendeeQuestions] = useState<AttendeeQuestion[]>([]);
   const [dateType, setDateType] = useState('fixed'); // 'fixed' or 'flexible'
   const [flexibleDateDesc, setFlexibleDateDesc] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -714,7 +683,7 @@ export default function CreateEvent() {
             execCommand('insertHTML', attachmentHtml);
           }
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(file as File);
       }
     };
     input.click();
@@ -763,6 +732,7 @@ export default function CreateEvent() {
   const [allowReviews, setAllowReviews] = useState(true);
   const [eventStatus, setEventStatus] = useState<string>('active');
   const [maxTickets, setMaxTickets] = useState('4');
+  const [requireEveryTicketInfo, setRequireEveryTicketInfo] = useState(true);
   const [enableCountdown, setEnableCountdown] = useState(true);
   const [cancellationPolicy, setCancellationPolicy] = useState('');
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
@@ -777,7 +747,7 @@ export default function CreateEvent() {
     const preview = {
       id: editingEventId || 'preview-temp-id',
       title: eventName.trim() || (lang === 'lo' ? 'ຊື່ກິດຈະກຳຕົວຢ່າງ' : 'Sample Event Name'),
-      category: category || 'Festival',
+      category: eventType === 'online' ? 'Workshop' : (category || 'Festival'),
       venue: venueName || (lang === 'lo' ? 'ສະຖານທີ່ຈັດງານ' : 'Event Venue'),
       province: province || 'Vientiane',
       district: district || 'Chanthabouly',
@@ -788,6 +758,7 @@ export default function CreateEvent() {
       organizerPhone: organizerPhone || '',
       organizerEmail: organizerEmail || '',
       organizerLogo: organizerLogo || '',
+      organizerSocialLinks: organizerSocialLinks || {},
       eventType: eventType,
       onlinePlatform: onlinePlatform,
       onlineMeetingUrl: onlineMeetingUrl,
@@ -811,7 +782,9 @@ export default function CreateEvent() {
       zoneImage: zoneImage,
       hasTimeSelection: hasTimeSelection,
       timeSlots: timeSlots,
+      availableDates: availableDates,
       status: 'preview',
+      requireEveryTicketInfo: requireEveryTicketInfo,
       enableCountdown: enableCountdown,
       allowRefunds: allowRefunds,
       allowReviews: allowReviews,
@@ -852,6 +825,7 @@ export default function CreateEvent() {
     setOrganizerPhone(event.organizerPhone || '');
     setOrganizerEmail(event.organizerEmail || '');
     setOrganizerLogo(event.organizerLogo || null);
+    setOrganizerSocialLinks(event.organizerSocialLinks || {});
     setEventType(event.eventType || 'offline');
     setOnlinePlatform(event.onlinePlatform || 'zoom');
     setOnlineMeetingUrl(event.onlineMeetingUrl || '');
@@ -873,6 +847,7 @@ export default function CreateEvent() {
     setZoneImage(event.zoneImage || null);
     setHasTimeSelection(event.hasTimeSelection || false);
     setTimeSlots(event.timeSlots || []);
+    setAvailableDates(event.availableDates || []);
     setVerticalImage(event.image || null);
     setHorizontalImage(event.image || null);
     setGalleryImages(event.exampleImages || event.galleryImages || []);
@@ -903,6 +878,39 @@ export default function CreateEvent() {
       }
     }
   }, [searchParams, location.state]);
+
+  const handleToggleDateTypeInOrganizer = (eventToToggle: any) => {
+    const currentType = eventToToggle.dateType || 'fixed';
+    const newType = currentType === 'flexible' ? 'fixed' : 'flexible';
+    
+    const updatedEvents = localEvents.map(evt => {
+      if (evt.id === eventToToggle.id) {
+        return {
+          ...evt,
+          dateType: newType,
+          date: evt.date || new Date().toISOString().split('T')[0],
+          endDate: evt.endDate || evt.date || new Date().toISOString().split('T')[0],
+          time: evt.time || '09:00',
+          endTime: evt.endTime || '17:00'
+        };
+      }
+      return evt;
+    });
+
+    setLocalEvents(updatedEvents);
+    safeStorage.setItem('organizer_events', JSON.stringify(updatedEvents));
+    
+    if (selectedEvent && selectedEvent.id === eventToToggle.id) {
+      setSelectedEvent({
+        ...selectedEvent,
+        dateType: newType,
+        date: selectedEvent.date || new Date().toISOString().split('T')[0],
+        endDate: selectedEvent.endDate || selectedEvent.date || new Date().toISOString().split('T')[0],
+        time: selectedEvent.time || '09:00',
+        endTime: selectedEvent.endTime || '17:00'
+      });
+    }
+  };
   
   const [verticalImage, setVerticalImage] = useState<string | null>(null);
   const [horizontalImage, setHorizontalImage] = useState<string | null>(null);
@@ -954,6 +962,7 @@ export default function CreateEvent() {
 
   const [hasTimeSelection, setHasTimeSelection] = useState(false);
   const [timeSlots, setTimeSlots] = useState<string[]>([]);
+  const [availableDates, setAvailableDates] = useState<{ date: string, startTime: string, endTime: string }[]>([]);
   const [newTimeSlot, setNewTimeSlot] = useState('');
   const [flexTimeStart, setFlexTimeStart] = useState('09:00');
   const [flexTimeEnd, setFlexTimeEnd] = useState('17:00');
@@ -967,6 +976,39 @@ export default function CreateEvent() {
   const editorRef = useRef<HTMLDivElement>(null);
   const [editorContent, setEditorContent] = useState<string | null>(null);
   const [plusButtonPos, setPlusButtonPos] = useState<{ top: number; left: number } | null>(null);
+  const [selectionMenuPos, setSelectionMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [savedSelectionRange, setSavedSelectionRange] = useState<Range | null>(null);
+  
+  const showLinkInputRef = useRef(false);
+  useEffect(() => {
+    showLinkInputRef.current = showLinkInput;
+  }, [showLinkInput]);
+
+  const updateSelectionMenuPosition = React.useCallback(() => {
+    if (showLinkInputRef.current) return;
+    if (!editorRef.current) {
+      setSelectionMenuPos(null);
+      return;
+    }
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
+      setSelectionMenuPos(null);
+      return;
+    }
+    const range = sel.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+
+    if (rect && rect.width > 0) {
+      setSelectionMenuPos({
+        top: Math.max(0, rect.top - 48), // 48px above the selection in viewport
+        left: rect.left + (rect.width / 2) - 100 // roughly center
+      });
+    } else {
+      setSelectionMenuPos(null);
+    }
+  }, []);
 
   const updatePlusButtonPosition = React.useCallback(() => {
     if (!editorRef.current) {
@@ -1032,11 +1074,12 @@ export default function CreateEvent() {
     const handleSelectionChange = () => {
       if (document.activeElement === editorRef.current || editorRef.current?.contains(document.activeElement)) {
         updatePlusButtonPosition();
+        updateSelectionMenuPosition();
       }
     };
     document.addEventListener('selectionchange', handleSelectionChange);
     return () => document.removeEventListener('selectionchange', handleSelectionChange);
-  }, [updatePlusButtonPosition]);
+  }, [updatePlusButtonPosition, updateSelectionMenuPosition]);
   
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null);
   const [imageRect, setImageRect] = useState<{top: number, left: number, width: number, height: number} | null>(null);
@@ -1170,7 +1213,7 @@ export default function CreateEvent() {
             img.src = event.target.result.toString();
           }
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(file as File);
       }
     };
     input.click();
@@ -1218,7 +1261,7 @@ export default function CreateEvent() {
             img.src = event.target.result.toString();
           }
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(file as File);
       }
     } else {
       // It's a native drag of an existing element inside the editor. Let the browser handle it.
@@ -1240,6 +1283,7 @@ export default function CreateEvent() {
         if (parsed.organizerInfo) setOrganizerInfo(parsed.organizerInfo);
         if (parsed.organizerContact) setOrganizerContact(parsed.organizerContact);
         if (parsed.organizerLogo) setOrganizerLogo(parsed.organizerLogo);
+        if (parsed.organizerSocialLinks) setOrganizerSocialLinks(parsed.organizerSocialLinks);
         if (parsed.eventType) setEventType(parsed.eventType);
         if (parsed.onlinePlatform) setOnlinePlatform(parsed.onlinePlatform);
         if (parsed.onlineMeetingUrl) setOnlineMeetingUrl(parsed.onlineMeetingUrl);
@@ -1254,6 +1298,7 @@ export default function CreateEvent() {
         if (parsed.enableCountdown !== undefined) setEnableCountdown(parsed.enableCountdown);
         if (parsed.verticalImage) setVerticalImage(parsed.verticalImage);
         if (parsed.horizontalImage) setHorizontalImage(parsed.horizontalImage);
+        if (parsed.galleryImages && Array.isArray(parsed.galleryImages)) setGalleryImages(parsed.galleryImages);
         
         if (parsed.startDate) setStartDate(parsed.startDate);
         if (parsed.startTime) setStartTime(parsed.startTime);
@@ -1271,6 +1316,7 @@ export default function CreateEvent() {
         if (parsed.zoneImage) setZoneImage(parsed.zoneImage);
         if (parsed.hasTimeSelection !== undefined) setHasTimeSelection(parsed.hasTimeSelection);
         if (parsed.timeSlots) setTimeSlots(parsed.timeSlots);
+        if (parsed.availableDates) setAvailableDates(parsed.availableDates);
         if (parsed.idCardFile) setIdCardFile(parsed.idCardFile);
         if (parsed.businessRegFile) setBusinessRegFile(parsed.businessRegFile);
         if (parsed.editorContent) setEditorContent(parsed.editorContent);
@@ -1331,6 +1377,7 @@ export default function CreateEvent() {
       organizerInfo,
       organizerContact,
       organizerLogo,
+      organizerSocialLinks,
       eventType,
       onlinePlatform,
       onlineMeetingUrl,
@@ -1345,6 +1392,7 @@ export default function CreateEvent() {
       enableCountdown,
       verticalImage,
       horizontalImage,
+      galleryImages,
       startDate,
       startTime,
       endDate,
@@ -1359,6 +1407,7 @@ export default function CreateEvent() {
       zoneImage,
       hasTimeSelection,
       timeSlots,
+      availableDates,
       idCardFile,
       businessRegFile,
       editorContent: currentHtml || editorContent || ''
@@ -1427,7 +1476,7 @@ export default function CreateEvent() {
           }, 100);
         }
       };
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(file as File);
     }
   };
 
@@ -1442,6 +1491,125 @@ export default function CreateEvent() {
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>, setImage: (val: string) => void, setProgress: (val: number | null) => void) => {
     if (e.target.files && e.target.files[0]) {
       simulateUpload(e.target.files[0], setImage, setProgress);
+    }
+  };
+
+  const [isDraggingGallery, setIsDraggingGallery] = useState(false);
+  const [galleryUploadProgress, setGalleryUploadProgress] = useState<number | null>(null);
+
+  const handleGalleryFilesInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    const remainingSlots = 10 - galleryImages.length;
+    if (remainingSlots <= 0) {
+      alert(lang === 'lo' ? 'ເພີ່ມຮູບສະໄລ້ໄດ້ສູງສຸດ 10 ຮູບ' : 'Maximum 10 slideshow images allowed');
+      return;
+    }
+    
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+    setGalleryUploadProgress(10);
+    
+    let processed = 0;
+    const newUrls: string[] = [];
+    
+    filesToProcess.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          newUrls.push(event.target.result.toString());
+        }
+        processed++;
+        setGalleryUploadProgress((processed / filesToProcess.length) * 100);
+        
+        if (processed === filesToProcess.length) {
+          setTimeout(() => {
+            setGalleryImages(prev => {
+              const updated = [...prev, ...newUrls].slice(0, 10);
+              if (!horizontalImage && !verticalImage && updated.length > 0) {
+                setHorizontalImage(updated[0]);
+                setVerticalImage(updated[0]);
+              }
+              return updated;
+            });
+            setGalleryUploadProgress(null);
+          }, 300);
+        }
+      };
+      reader.readAsDataURL(file as File);
+    });
+    
+    e.target.value = '';
+  };
+
+  const handleGalleryDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDraggingGallery(false);
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+    
+    const remainingSlots = 10 - galleryImages.length;
+    if (remainingSlots <= 0) {
+      alert(lang === 'lo' ? 'ເພີ່ມຮູບສະໄລ້ໄດ້ສູງສຸດ 10 ຮູບ' : 'Maximum 10 slideshow images allowed');
+      return;
+    }
+    
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+    setGalleryUploadProgress(10);
+    
+    let processed = 0;
+    const newUrls: string[] = [];
+    
+    filesToProcess.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          newUrls.push(event.target.result.toString());
+        }
+        processed++;
+        setGalleryUploadProgress((processed / filesToProcess.length) * 100);
+        
+        if (processed === filesToProcess.length) {
+          setTimeout(() => {
+            setGalleryImages(prev => {
+              const updated = [...prev, ...newUrls].slice(0, 10);
+              if (!horizontalImage && !verticalImage && updated.length > 0) {
+                setHorizontalImage(updated[0]);
+                setVerticalImage(updated[0]);
+              }
+              return updated;
+            });
+            setGalleryUploadProgress(null);
+          }, 300);
+        }
+      };
+      reader.readAsDataURL(file as File);
+    });
+  };
+
+  const handleSetCoverFromGallery = (url: string) => {
+    setHorizontalImage(url);
+    setVerticalImage(url);
+  };
+
+  const handleRemoveCover = () => {
+    setHorizontalImage(null);
+    setVerticalImage(null);
+  };
+
+  const handleRemoveGalleryImage = (indexToRemove: number) => {
+    const removedUrl = galleryImages[indexToRemove];
+    const nextGallery = galleryImages.filter((_, idx) => idx !== indexToRemove);
+    setGalleryImages(nextGallery);
+    
+    if ((horizontalImage === removedUrl || verticalImage === removedUrl)) {
+      if (nextGallery.length > 0) {
+        setHorizontalImage(nextGallery[0]);
+        setVerticalImage(nextGallery[0]);
+      } else {
+        setHorizontalImage(null);
+        setVerticalImage(null);
+      }
     }
   };
 
@@ -1484,6 +1652,7 @@ export default function CreateEvent() {
     setTimeSlots([]);
     setVerticalImage(null);
     setHorizontalImage(null);
+    setGalleryImages([]);
     setEventPrivacy('public');
     setAttendeeMessage('');
 
@@ -1512,7 +1681,7 @@ export default function CreateEvent() {
 
   const handleContinue = async () => {
     // Event name validation for Step 1
-    if (activeStep === 1 || activeStep === 4) {
+    if (activeStep === 1 || activeStep === 5) {
       if (!eventName.trim()) {
         setValidationError(lang === 'lo' ? 'ກະລຸນາປ້ອນຊື່ກິດຈະກຳ' : 'Please enter the event name.');
         setActiveStep(1);
@@ -1520,11 +1689,11 @@ export default function CreateEvent() {
         return;
       }
 
-      if (!organizerName.trim() || !organizerContact.trim() || !organizerPhone.trim() || !organizerEmail.trim() || !organizerInfo.trim()) {
+      if (!organizerName.trim() || !organizerPhone.trim() || !organizerEmail.trim() || !organizerInfo.trim()) {
         setValidationError(
           lang === 'lo'
-            ? 'ກະລຸນາປ້ອນຂໍ້ມູນຜູ້ຈັດງານໃຫ້ຄົບຖ້ວນທຸກຊ່ອງ (ຊື່ຜູ້ຈັດງານ, ຂໍ້ມູນຕິດຕໍ່, ເບີໂທ, ອີເມວ, ແລະ ກ່ຽວກັບຜູ້ຈັດງານ)'
-            : 'Please fill in all organizer information fields (Organizer Name, Contact, Phone, Email, and Bio).'
+            ? 'ກະລຸນາປ້ອນຂໍ້ມູນຜູ້ຈັດງານໃຫ້ຄົບຖ້ວນທຸກຊ່ອງ (ຊື່ຜູ້ຈັດງານ, ເບີໂທ, ອີເມວ, ແລະ ກ່ຽວກັບຜູ້ຈັດງານ)'
+            : 'Please fill in all organizer information fields (Organizer Name, Phone, Email, and Bio).'
         );
         setActiveStep(1);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1533,8 +1702,8 @@ export default function CreateEvent() {
       setValidationError(null);
     }
 
-    // Payment Info validation for Step 4
-    if (activeStep === 4) {
+    // Payment Info validation for Step 5
+    if (activeStep === 5) {
       if (!bankName.trim() || !accountNumber.trim() || !accountHolder.trim()) {
         setValidationError(
           lang === 'lo'
@@ -1548,10 +1717,10 @@ export default function CreateEvent() {
     }
 
     // 14-day validation for Event creation
-    if ((activeStep === 2 || activeStep === 4) && dateType !== 'flexible') {
+    if ((activeStep === 3 || activeStep === 5) && dateType !== 'flexible') {
       if (!startDate) {
         setValidationError(lang === 'lo' ? 'ກະລຸນາເລືອກວັນທີເລີ່ມຕົ້ນ' : 'Please select a start date.');
-        setActiveStep(2);
+        setActiveStep(3);
         return;
       }
       
@@ -1566,7 +1735,7 @@ export default function CreateEvent() {
       
       if (diffDays < 14) {
         setValidationError(t.dateValidationError);
-        setActiveStep(2);
+        setActiveStep(3);
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       } else {
@@ -1584,7 +1753,7 @@ export default function CreateEvent() {
     // Simulate API call / form submission
     await new Promise(resolve => setTimeout(resolve, 1500));
     setIsLoading(false);
-    if (activeStep < 4) {
+    if (activeStep < 5) {
       setActiveStep(activeStep + 1);
     } else {
       // Save payment info for organizer so they don't have to enter it again
@@ -1603,7 +1772,7 @@ export default function CreateEvent() {
             return {
               ...evt,
               title: eventName,
-              category,
+              category: eventType === 'online' ? 'Workshop' : category,
               venue: venueName,
               province,
               district,
@@ -1617,6 +1786,7 @@ export default function CreateEvent() {
               organizerPhone,
               organizerEmail,
               organizerLogo,
+              organizerSocialLinks,
               bankName: bankName || 'BCEL',
               accountNumber: accountNumber || '160-12-00001234-001',
               accountHolder: accountHolder || 'LAO EVENT ORGANIZER CO., LTD',
@@ -1646,6 +1816,7 @@ export default function CreateEvent() {
               zoneImage: dateType === 'flexible' ? null : zoneImage,
               hasTimeSelection: dateType === 'flexible',
               timeSlots: dateType === 'flexible' ? timeSlots : [],
+              availableDates: dateType === 'flexible' ? availableDates : [],
               image: verticalImage || horizontalImage || evt.image,
               exampleImages: galleryImages.length > 0 ? galleryImages : (verticalImage ? [verticalImage] : []),
               description: finalDescription || evt.description || (eventName + ' description'),
@@ -1671,7 +1842,7 @@ export default function CreateEvent() {
         const newEvent = {
           id: String(Date.now()),
           title: eventName,
-          category,
+          category: eventType === 'online' ? 'Workshop' : category,
           venue: venueName,
           province,
           district,
@@ -1685,6 +1856,7 @@ export default function CreateEvent() {
           organizerPhone,
           organizerEmail,
           organizerLogo,
+          organizerSocialLinks,
           bankName: bankName || 'BCEL',
           accountNumber: accountNumber || '160-12-00001234-001',
           accountHolder: accountHolder || 'LAO EVENT ORGANIZER CO., LTD',
@@ -1714,6 +1886,7 @@ export default function CreateEvent() {
           zoneImage: dateType === 'flexible' ? null : zoneImage,
           hasTimeSelection: dateType === 'flexible',
           timeSlots: dateType === 'flexible' ? timeSlots : [],
+          availableDates: dateType === 'flexible' ? availableDates : [],
           image: verticalImage || horizontalImage || 'https://images.unsplash.com/photo-1540611025311-01df3cef54b5?q=80&w=2000&auto=format&fit=crop',
           exampleImages: galleryImages.length > 0 ? galleryImages : (verticalImage ? [verticalImage] : []),
           description: finalDescription || (eventName + ' description'),
@@ -1851,21 +2024,28 @@ export default function CreateEvent() {
                       className={`flex-1 pb-4 flex items-center justify-center gap-2 transition-colors ${activeStep === 2 ? 'border-b-2 border-adv-orange translate-y-[1px]' : 'hover:bg-gray-50'}`}
                     >
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === 2 ? 'bg-adv-orange text-white' : 'bg-gray-100 text-gray-500'}`}>2</div>
-                      <span className={`text-sm font-bold ${activeStep === 2 ? 'text-adv-slate' : 'text-gray-400'}`}>{t.step2}</span>
+                      <span className={`text-sm font-bold ${activeStep === 2 ? 'text-adv-slate' : 'text-gray-400'}`}>{lang === 'lo' ? 'ຄຳຖາມ' : 'Questions'}</span>
                     </button>
                     <button 
                       onClick={() => setActiveStep(3)}
                       className={`flex-1 pb-4 flex items-center justify-center gap-2 transition-colors ${activeStep === 3 ? 'border-b-2 border-adv-orange translate-y-[1px]' : 'hover:bg-gray-50'}`}
                     >
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === 3 ? 'bg-adv-orange text-white' : 'bg-gray-100 text-gray-500'}`}>3</div>
-                      <span className={`text-sm font-bold ${activeStep === 3 ? 'text-adv-slate' : 'text-gray-400'}`}>{t.step3}</span>
+                      <span className={`text-sm font-bold ${activeStep === 3 ? 'text-adv-slate' : 'text-gray-400'}`}>{t.step2}</span>
                     </button>
                     <button 
                       onClick={() => setActiveStep(4)}
                       className={`flex-1 pb-4 flex items-center justify-center gap-2 transition-colors ${activeStep === 4 ? 'border-b-2 border-adv-orange translate-y-[1px]' : 'hover:bg-gray-50'}`}
                     >
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === 4 ? 'bg-adv-orange text-white' : 'bg-gray-100 text-gray-500'}`}>4</div>
-                      <span className={`text-sm font-bold ${activeStep === 4 ? 'text-adv-slate' : 'text-gray-400'}`}>{t.step4}</span>
+                      <span className={`text-sm font-bold ${activeStep === 4 ? 'text-adv-slate' : 'text-gray-400'}`}>{t.step3}</span>
+                    </button>
+                    <button 
+                      onClick={() => setActiveStep(5)}
+                      className={`flex-1 pb-4 flex items-center justify-center gap-2 transition-colors ${activeStep === 5 ? 'border-b-2 border-adv-orange translate-y-[1px]' : 'hover:bg-gray-50'}`}
+                    >
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === 5 ? 'bg-adv-orange text-white' : 'bg-gray-100 text-gray-500'}`}>5</div>
+                      <span className={`text-sm font-bold ${activeStep === 5 ? 'text-adv-slate' : 'text-gray-400'}`}>{t.step4}</span>
                     </button>
                   </div>
 
@@ -1879,7 +2059,7 @@ export default function CreateEvent() {
                         title={t.eventPrivacy}
                       >
                         {eventPrivacy === 'private' ? (
-                          <Sparkles className="w-3.5 h-3.5 text-adv-orange shrink-0" />
+                          <Lock className="w-3.5 h-3.5 text-adv-orange shrink-0" />
                         ) : (
                           <Globe className="w-3.5 h-3.5 text-adv-orange shrink-0" />
                         )}
@@ -1941,7 +2121,7 @@ export default function CreateEvent() {
                               }`}
                             >
                               <div className="flex items-start gap-3">
-                                <Sparkles className="w-4.5 h-4.5 text-adv-orange shrink-0 mt-0.5" />
+                                <Lock className="w-4.5 h-4.5 text-adv-orange shrink-0 mt-0.5" />
                                 <div>
                                   <div className={`text-sm leading-snug ${eventPrivacy === 'private' ? 'font-extrabold text-adv-orange' : 'font-bold text-adv-slate'}`}>
                                     {t.privateEvent}
@@ -1979,7 +2159,7 @@ export default function CreateEvent() {
                       className="flex items-center justify-center gap-2 px-6 py-2 bg-adv-orange text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition-colors disabled:opacity-70 disabled:cursor-not-allowed min-w-[100px] shadow-sm"
                     >
                       {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                      {activeStep === 4 ? t.publish : t.continue}
+                      {activeStep === 5 ? t.publish : t.continue}
                     </button>
                   </div>
                 </div>
@@ -2006,121 +2186,281 @@ export default function CreateEvent() {
                     </div>
                   </div>
 
-                  {/* Image Upload Section */}
-                  <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="text-adv-orange font-bold">*</span>
-                      <span className="text-adv-slate font-bold text-sm">{t.uploadImages}</span>
+                  {/* Redesigned Image Upload Section */}
+                  <div className="bg-white rounded-2xl p-6 sm:p-7 shadow-xs border border-gray-150/80 space-y-7">
+                    {/* Section Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-adv-orange font-black text-base">*</span>
+                          <h3 className="text-lg font-extrabold text-adv-slate">
+                            {lang === 'lo' ? 'ຮູບໜ້າປົກ & ຮູບສະໄລ້ກິດຈະກຳ' : 'Event Cover & Gallery Slideshow'}
+                          </h3>
+                        </div>
+                        <p className="text-xs text-gray-500 font-medium mt-1">
+                          {lang === 'lo' 
+                            ? 'ເພີ່ມ 1 ຮູບໜ້າປົກຫຼັກ ແລະ ຮູບສະໄລ້ໄດ້ສູງສຸດ 10 ຮູບ ສຳລັບສະແດງໃນໜ້າກິດຈະກຳ'
+                            : 'Upload 1 main event cover photo and up to 10 slideshow images for your event page'}
+                        </p>
+                      </div>
+
+                      {/* Image Count Badge */}
+                      <div className="flex items-center gap-2 self-start sm:self-center bg-orange-50 text-adv-orange px-3.5 py-1.5 rounded-xl border border-orange-100 font-bold text-xs">
+                        <ImageIcon className="w-4 h-4 text-adv-orange" />
+                        <span>
+                          {lang === 'lo' ? 'ຮູບສະໄລ້:' : 'Slideshow:'} {galleryImages.length} / 10
+                        </span>
+                      </div>
                     </div>
-                
-                <div className="flex flex-col md:flex-row gap-6">
-                  {/* Vertical Image */}
-                  <div 
-                    className={`relative w-full md:w-72 h-[350px] rounded-2xl border-2 border-dashed ${isDraggingVertical ? 'border-adv-orange bg-adv-orange/5' : 'border-gray-300 bg-gray-50 hover:bg-adv-orange/5 hover:border-adv-orange'} flex flex-col items-center justify-center p-6 text-center cursor-pointer transition-all duration-300 group overflow-hidden`}
-                    onDragOver={(e) => handleDragOver(e, setIsDraggingVertical)}
-                    onDragLeave={(e) => handleDragLeave(e, setIsDraggingVertical)}
-                    onDrop={(e) => handleDrop(e, setVerticalImage, setIsDraggingVertical, setVerticalUploadProgress)}
-                    onClick={() => !verticalImage && !verticalUploadProgress && document.getElementById('vertical-upload')?.click()}
-                  >
-                    <input 
-                      id="vertical-upload" 
-                      type="file" 
-                      accept="image/*" 
-                      className="hidden" 
-                      onChange={(e) => handleFileInput(e, setVerticalImage, setVerticalUploadProgress)} 
-                    />
-                    {verticalUploadProgress !== null ? (
-                      <div className="flex flex-col items-center justify-center w-full">
-                        <Loader2 className="w-8 h-8 text-adv-orange animate-spin mb-4" />
-                        <div className="w-full max-w-[200px] bg-gray-200 rounded-full h-2.5 mb-2">
-                          <div className="bg-adv-orange h-2.5 rounded-full transition-all duration-200" style={{ width: `${Math.min(verticalUploadProgress, 100)}%` }}></div>
-                        </div>
-                        <span className="text-sm text-gray-500">{Math.round(Math.min(verticalUploadProgress, 100))}%</span>
+
+                    {/* 1. COVER EVENT IMAGE BOX */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-extrabold text-adv-slate uppercase tracking-wider flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-adv-orange" />
+                          <span>{lang === 'lo' ? 'ຮູບໜ້າປົກກິດຈະກຳ (Cover Event Image)' : 'Main Event Cover Photo'}</span>
+                          <span className="text-adv-orange">*</span>
+                        </label>
+                        <span className="text-[11px] font-semibold text-gray-400">
+                          (1280 x 720 px recommended)
+                        </span>
                       </div>
-                    ) : verticalImage ? (
-                      <>
-                        <img src={verticalImage} alt="Vertical preview" className="absolute inset-0 w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); document.getElementById('vertical-upload')?.click(); }}
-                            className="text-white font-medium bg-black/50 hover:bg-black/70 px-4 py-2 rounded-full backdrop-blur-sm transition-colors"
-                          >
-                            Change
-                          </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setVerticalImage(null); }}
-                            className="text-white font-medium bg-red-500/80 hover:bg-red-500 px-4 py-2 rounded-full backdrop-blur-sm transition-colors flex items-center gap-1"
-                          >
-                            <X className="w-4 h-4" /> Remove
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors ${isDraggingVertical ? 'bg-adv-orange/20' : 'bg-white shadow-sm border border-gray-200 group-hover:border-adv-orange group-hover:bg-adv-orange/10'}`}>
-                          <UploadCloud className={`w-8 h-8 ${isDraggingVertical ? 'text-adv-orange' : 'text-gray-400 group-hover:text-adv-orange'} transition-colors`} />
-                        </div>
-                        <p className="text-sm text-adv-slate mb-2 font-bold whitespace-pre-line">{t.addEventImageOther}</p>
-                        <p className="text-sm text-gray-500 mb-2">{t.clickToUpload}</p>
-                        <p className="text-xs text-gray-400 font-medium">(720x958)</p>
-                      </>
-                    )}
-                  </div>
-                  
-                  {/* Horizontal Image */}
-                  <div 
-                    className={`relative flex-1 h-[350px] rounded-2xl border-2 border-dashed ${isDraggingHorizontal ? 'border-adv-orange bg-adv-orange/5' : 'border-gray-300 bg-gray-50 hover:bg-adv-orange/5 hover:border-adv-orange'} flex flex-col items-center justify-center p-6 text-center cursor-pointer transition-all duration-300 group overflow-hidden`}
-                    onDragOver={(e) => handleDragOver(e, setIsDraggingHorizontal)}
-                    onDragLeave={(e) => handleDragLeave(e, setIsDraggingHorizontal)}
-                    onDrop={(e) => handleDrop(e, setHorizontalImage, setIsDraggingHorizontal, setHorizontalUploadProgress)}
-                    onClick={() => !horizontalImage && !horizontalUploadProgress && document.getElementById('horizontal-upload')?.click()}
-                  >
-                    <input 
-                      id="horizontal-upload" 
-                      type="file" 
-                      accept="image/*" 
-                      className="hidden" 
-                      onChange={(e) => handleFileInput(e, setHorizontalImage, setHorizontalUploadProgress)} 
-                    />
-                    {horizontalUploadProgress !== null ? (
-                      <div className="flex flex-col items-center justify-center w-full">
-                        <Loader2 className="w-8 h-8 text-adv-orange animate-spin mb-4" />
-                        <div className="w-full max-w-[200px] bg-gray-200 rounded-full h-2.5 mb-2">
-                          <div className="bg-adv-orange h-2.5 rounded-full transition-all duration-200" style={{ width: `${Math.min(horizontalUploadProgress, 100)}%` }}></div>
-                        </div>
-                        <span className="text-sm text-gray-500">{Math.round(Math.min(horizontalUploadProgress, 100))}%</span>
+
+                      <div 
+                        className={`relative w-full aspect-video rounded-2xl border-2 border-dashed ${
+                          isDraggingHorizontal ? 'border-adv-orange bg-adv-orange/5' : 'border-gray-300 bg-gray-50/70 hover:bg-adv-orange/5 hover:border-adv-orange'
+                        } flex flex-col items-center justify-center p-6 text-center cursor-pointer transition-all duration-300 group overflow-hidden shadow-xs`}
+                        onDragOver={(e) => handleDragOver(e, setIsDraggingHorizontal)}
+                        onDragLeave={(e) => handleDragLeave(e, setIsDraggingHorizontal)}
+                        onDrop={(e) => handleDrop(e, (url) => { setHorizontalImage(url); setVerticalImage(url); }, setIsDraggingHorizontal, setHorizontalUploadProgress)}
+                        onClick={() => !horizontalImage && !horizontalUploadProgress && document.getElementById('main-cover-upload')?.click()}
+                      >
+                        <input 
+                          id="main-cover-upload" 
+                          type="file" 
+                          accept="image/*" 
+                          className="hidden" 
+                          onChange={(e) => handleFileInput(e, (url) => { setHorizontalImage(url); setVerticalImage(url); }, setHorizontalUploadProgress)} 
+                        />
+
+                        {horizontalUploadProgress !== null ? (
+                          <div className="flex flex-col items-center justify-center w-full">
+                            <Loader2 className="w-8 h-8 text-adv-orange animate-spin mb-3" />
+                            <div className="w-full max-w-[200px] bg-gray-200 rounded-full h-2 mb-2">
+                              <div className="bg-adv-orange h-2 rounded-full transition-all duration-200" style={{ width: `${Math.min(horizontalUploadProgress, 100)}%` }}></div>
+                            </div>
+                            <span className="text-xs text-gray-500 font-bold">{Math.round(Math.min(horizontalUploadProgress, 100))}%</span>
+                          </div>
+                        ) : horizontalImage || verticalImage ? (
+                          <>
+                            <img 
+                              src={horizontalImage || verticalImage || ''} 
+                              alt="Main cover preview" 
+                              className="absolute inset-0 w-full h-full object-cover" 
+                            />
+                            {/* Cover Badge */}
+                            <div className="absolute top-3 left-3 bg-adv-slate/90 text-white text-[11px] font-extrabold px-3 py-1 rounded-full backdrop-blur-md shadow-md flex items-center gap-1.5 border border-white/20">
+                              <Sparkles className="w-3.5 h-3.5 text-adv-orange" />
+                              <span>{lang === 'lo' ? 'ຮູບໜ້າປົກຫຼັກ' : 'Main Cover Photo'}</span>
+                            </div>
+
+                            {/* Action Overlay */}
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 p-4">
+                              <button 
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); document.getElementById('main-cover-upload')?.click(); }}
+                                className="text-white font-bold bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl backdrop-blur-md transition-colors text-xs flex items-center gap-1.5 border border-white/30"
+                              >
+                                <RefreshCcw className="w-3.5 h-3.5" />
+                                {lang === 'lo' ? 'ປ່ຽນຮູບ' : 'Change Cover'}
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleRemoveCover(); }}
+                                className="text-white font-bold bg-rose-500/80 hover:bg-rose-600 px-4 py-2 rounded-xl backdrop-blur-md transition-colors text-xs flex items-center gap-1.5 shadow-md"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                {lang === 'lo' ? 'ລຶບ' : 'Remove'}
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 transition-colors ${
+                              isDraggingHorizontal ? 'bg-adv-orange/20 text-adv-orange' : 'bg-white shadow-sm border border-gray-200 text-gray-400 group-hover:border-adv-orange group-hover:bg-adv-orange/10 group-hover:text-adv-orange'
+                            }`}>
+                              <UploadCloud className="w-7 h-7" />
+                            </div>
+                            <p className="text-sm text-adv-slate font-extrabold mb-1">
+                              {lang === 'lo' ? 'ອັບໂຫຼດຮູບໜ້າປົກກິດຈະກຳ' : 'Upload Event Cover Photo'}
+                            </p>
+                            <p className="text-xs text-gray-400 font-medium max-w-xs">
+                              {lang === 'lo' ? 'ຄລິກ ຫຼື ລາກໄຟລ໌ມາເພີ່ມທີ່ນີ້ (ຮອງຮັບ PNG, JPG, WEBP)' : 'Click or drag & drop cover image file here (PNG, JPG, WEBP)'}
+                            </p>
+                          </>
+                        )}
                       </div>
-                    ) : horizontalImage ? (
-                      <>
-                        <img src={horizontalImage} alt="Horizontal preview" className="absolute inset-0 w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); document.getElementById('horizontal-upload')?.click(); }}
-                            className="text-white font-medium bg-black/50 hover:bg-black/70 px-4 py-2 rounded-full backdrop-blur-sm transition-colors"
-                          >
-                            Change
-                          </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setHorizontalImage(null); }}
-                            className="text-white font-medium bg-red-500/80 hover:bg-red-500 px-4 py-2 rounded-full backdrop-blur-sm transition-colors flex items-center gap-1"
-                          >
-                            <X className="w-4 h-4" /> Remove
-                          </button>
+                    </div>
+
+                    {/* 2. SLIDESHOW / GALLERY IMAGES SECTION (MAX 10) */}
+                    <div className="pt-5 border-t border-gray-150/70 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <label className="text-xs font-extrabold text-adv-slate uppercase tracking-wider flex items-center gap-2">
+                            <ImageIcon className="w-4 h-4 text-adv-orange" />
+                            <span>{lang === 'lo' ? 'ຮູບສະໄລ້ໂຊກິດຈະກຳ (Slideshow Gallery)' : 'Event Slideshow Gallery'}</span>
+                            <span className="text-gray-400 font-normal text-xs">(Max 10)</span>
+                          </label>
+                          <p className="text-[11px] text-gray-500 font-medium mt-0.5">
+                            {lang === 'lo' 
+                              ? 'ຮູບພາບທີ່ຈະສະແດງເປັນສະໄລ້ໃນໜ້າກິດຈະກຳ. ສາມາດເລືອກຮູບໃດໜຶ່ງເປັນຮູບໜ້າປົກໄດ້.'
+                              : 'Images will be displayed as a slideshow on the event page. You can set any slide as Cover.'}
+                          </p>
                         </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors ${isDraggingHorizontal ? 'bg-adv-orange/20' : 'bg-white shadow-sm border border-gray-200 group-hover:border-adv-orange group-hover:bg-adv-orange/10'}`}>
-                          <UploadCloud className={`w-8 h-8 ${isDraggingHorizontal ? 'text-adv-orange' : 'text-gray-400 group-hover:text-adv-orange'} transition-colors`} />
+
+                        {/* Upload Button */}
+                        {galleryImages.length < 10 && (
+                          <button
+                            type="button"
+                            onClick={() => document.getElementById('gallery-multi-upload')?.click()}
+                            className="bg-adv-orange hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-sm shadow-orange-500/20 active:scale-95 shrink-0 self-start sm:self-center cursor-pointer"
+                          >
+                            <Plus className="w-4 h-4 stroke-[3]" />
+                            <span>{lang === 'lo' ? 'ເພີ່ມຮູບສະໄລ້' : 'Add Slide Image'}</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Hidden Multi-file input */}
+                      <input 
+                        id="gallery-multi-upload" 
+                        type="file" 
+                        accept="image/*" 
+                        multiple 
+                        className="hidden" 
+                        onChange={handleGalleryFilesInput} 
+                      />
+
+                      {/* Gallery Upload Progress */}
+                      {galleryUploadProgress !== null && (
+                        <div className="p-4 bg-orange-50/60 rounded-xl border border-orange-200/80 space-y-2">
+                          <div className="flex items-center justify-between text-xs font-bold text-adv-orange">
+                            <span className="flex items-center gap-2">
+                              <Loader2 className="w-4 h-4 animate-spin text-adv-orange" />
+                              {lang === 'lo' ? 'ກຳລັງອັບໂຫຼດຮູບສະໄລ້...' : 'Uploading slideshow images...'}
+                            </span>
+                            <span>{Math.round(galleryUploadProgress)}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                            <div 
+                              className="bg-adv-orange h-1.5 rounded-full transition-all duration-200" 
+                              style={{ width: `${Math.min(galleryUploadProgress, 100)}%` }} 
+                            />
+                          </div>
                         </div>
-                        <p className="text-sm text-adv-slate mb-2 font-bold">{t.addEventBgImage}</p>
-                        <p className="text-sm text-gray-500 mb-2">{t.clickToUpload}</p>
-                        <p className="text-xs text-gray-400 font-medium">(1280x720)</p>
-                      </>
-                    )}
+                      )}
+
+                      {/* Gallery Grid */}
+                      <div 
+                        className={`p-4 rounded-2xl border-2 border-dashed transition-all ${
+                          isDraggingGallery ? 'border-adv-orange bg-adv-orange/5' : 'border-gray-200 bg-gray-50/40'
+                        }`}
+                        onDragOver={(e) => { e.preventDefault(); setIsDraggingGallery(true); }}
+                        onDragLeave={(e) => { e.preventDefault(); setIsDraggingGallery(false); }}
+                        onDrop={handleGalleryDrop}
+                      >
+                        {galleryImages.length === 0 ? (
+                          <div 
+                            onClick={() => document.getElementById('gallery-multi-upload')?.click()}
+                            className="py-10 flex flex-col items-center justify-center text-center cursor-pointer group"
+                          >
+                            <div className="w-12 h-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center text-gray-400 group-hover:border-adv-orange group-hover:text-adv-orange group-hover:bg-adv-orange/5 transition-colors mb-3 shadow-xs">
+                              <UploadCloud className="w-6 h-6" />
+                            </div>
+                            <p className="text-xs font-extrabold text-adv-slate mb-1">
+                              {lang === 'lo' ? 'ຍັງບໍ່ທັນມີຮູບສະໄລ້' : 'No slideshow images added yet'}
+                            </p>
+                            <p className="text-[11px] text-gray-400 font-medium">
+                              {lang === 'lo' ? 'ຄລິກ ຫຼື ລາກຮູບຫຼາຍໆຮູບມາເພີ່ມຢູ່ທີ່ນີ້ (ສູງສຸດ 10 ຮູບ)' : 'Click or drag & drop multiple images here (Maximum 10 images)'}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+                            {galleryImages.map((imgUrl, index) => {
+                              const isCover = (horizontalImage === imgUrl || verticalImage === imgUrl);
+                              return (
+                                <div 
+                                  key={index} 
+                                  className={`relative aspect-video rounded-xl overflow-hidden border-2 transition-all group bg-gray-100 shadow-xs ${
+                                    isCover ? 'border-adv-orange ring-2 ring-adv-orange/30' : 'border-gray-200/80 hover:border-gray-300'
+                                  }`}
+                                >
+                                  <img 
+                                    src={imgUrl} 
+                                    alt={`Slide ${index + 1}`} 
+                                    className="w-full h-full object-cover" 
+                                  />
+
+                                  {/* Slide Badge */}
+                                  <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] font-black px-2 py-0.5 rounded-md backdrop-blur-xs">
+                                    #{index + 1}
+                                  </div>
+
+                                  {/* Is Cover Indicator */}
+                                  {isCover && (
+                                    <div className="absolute top-2 right-2 bg-adv-orange text-white text-[10px] font-black px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1">
+                                      <Sparkles className="w-2.5 h-2.5" />
+                                      <span>Cover</span>
+                                    </div>
+                                  )}
+
+                                  {/* Overlay Controls */}
+                                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2 text-center">
+                                    {!isCover && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSetCoverFromGallery(imgUrl)}
+                                        className="bg-adv-orange hover:bg-orange-600 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
+                                      >
+                                        <Sparkles className="w-3 h-3" />
+                                        <span>{lang === 'lo' ? 'ຕັ້ງເປັນໜ້າປົກ' : 'Set as Cover'}</span>
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveGalleryImage(index)}
+                                      className="bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                      <span>{lang === 'lo' ? 'ລຶບອອກ' : 'Remove'}</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+
+                            {/* Extra "+ Add" card in grid if < 10 */}
+                            {galleryImages.length < 10 && (
+                              <div 
+                                onClick={() => document.getElementById('gallery-multi-upload')?.click()}
+                                className="aspect-video rounded-xl border-2 border-dashed border-gray-300 hover:border-adv-orange hover:bg-adv-orange/5 bg-white flex flex-col items-center justify-center p-3 text-center cursor-pointer transition-all group"
+                              >
+                                <div className="w-8 h-8 rounded-full bg-gray-100 group-hover:bg-adv-orange/10 text-gray-400 group-hover:text-adv-orange flex items-center justify-center transition-colors mb-1.5">
+                                  <Plus className="w-4 h-4 stroke-[3]" />
+                                </div>
+                                <span className="text-[11px] font-bold text-gray-500 group-hover:text-adv-orange transition-colors">
+                                  {lang === 'lo' ? 'ເພີ່ມຮູບ' : 'Add Image'}
+                                </span>
+                                <span className="text-[9px] text-gray-400">
+                                  ({10 - galleryImages.length} {lang === 'lo' ? 'ຮູບທີ່เหลือ' : 'slots left'})
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
               {/* Event Address */}
               <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 space-y-4">
@@ -2153,6 +2493,7 @@ export default function CreateEvent() {
                       type="button"
                       onClick={() => {
                         setEventType('online');
+                        setCategory('Workshop');
                         setVenueName('Online Event / ງານອອນລາຍ');
                         setProvince('Online');
                         setDistrict('Online');
@@ -2290,7 +2631,7 @@ export default function CreateEvent() {
                               setOnlinePlatform(item.id as any);
                               setVenueName(`Online: ${item.name}`);
                             }}
-                            className={`p-4 rounded-2xl border text-left transition-all duration-200 relative flex flex-col justify-between min-h-[95px] ${
+                            className={`p-4 rounded-2xl border text-left transition-all duration-200 relative flex flex-col justify-between ${
                               isSelected
                                 ? `${item.activeBorder} shadow-md`
                                 : 'bg-white border-gray-200/80 hover:border-gray-300 hover:shadow-sm'
@@ -2307,14 +2648,9 @@ export default function CreateEvent() {
                                   </span>
                                 )}
                               </div>
-                              <h5 className="font-extrabold text-sm text-adv-slate line-clamp-1">
-                                {lang === 'lo' ? item.nameLo : item.name}
+                              <h5 className="font-extrabold text-sm text-adv-slate leading-snug">
+                                {item.name}
                               </h5>
-                            </div>
-                            <div className="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between">
-                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                                {item.badge}
-                              </span>
                             </div>
                           </button>
                         );
@@ -2326,22 +2662,6 @@ export default function CreateEvent() {
                       const activeItem = ONLINE_PLATFORMS_LIST.find(p => p.id === onlinePlatform) || ONLINE_PLATFORMS_LIST[0];
                       return (
                         <div className="bg-white p-6 rounded-2xl border border-gray-200/80 space-y-5 shadow-sm">
-                          <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${activeItem.iconBg} shadow-sm`}>
-                                <activeItem.icon className="w-5 h-5" />
-                              </div>
-                              <div>
-                                <h5 className="text-sm font-extrabold text-adv-slate">
-                                  {lang === 'lo' ? `ຕັ້ງຄ່າ ${activeItem.nameLo}` : `Configure ${activeItem.name}`}
-                                </h5>
-                                <p className="text-xs text-gray-400 font-medium">
-                                  {lang === 'lo' ? 'ປ້ອນຂໍ້ມູນລິ້ງ ແລະ ວິທີເຂົ້າຮ່ວມ' : 'Provide meeting details & attendee access guidelines'}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             {/* Meeting / Stream Link */}
                             <div className="md:col-span-2">
@@ -2400,83 +2720,85 @@ export default function CreateEvent() {
               </div>
 
               {/* Event Category & Duration */}
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-adv-orange font-bold">*</span>
-                    <span className="text-adv-slate font-bold text-sm">{t.eventCategory}</span>
+              {eventType !== 'online' && (
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-adv-orange font-bold">*</span>
+                      <span className="text-adv-slate font-bold text-sm">{t.eventCategory}</span>
+                    </div>
+                    <div className="relative">
+                      <select 
+                        value={category} 
+                        onChange={(e) => setCategory(e.target.value as any)}
+                        className="w-full bg-white text-adv-slate border border-gray-200 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all appearance-none font-bold"
+                      >
+                        <option value="Festival">{t.festival}</option>
+                        <option value="Concert">{t.concert}</option>
+                        <option value="Sports">{t.sports}</option>
+                        <option value="Workshop">{t.workshop}</option>
+                        <option value="Voucher">{t.voucher}</option>
+                      </select>
+                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    </div>
                   </div>
-                  <div className="relative">
-                    <select 
-                      value={category} 
-                      onChange={(e) => setCategory(e.target.value as any)}
-                      className="w-full bg-white text-adv-slate border border-gray-200 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all appearance-none font-bold"
-                    >
-                      <option value="Festival">{t.festival}</option>
-                      <option value="Concert">{t.concert}</option>
-                      <option value="Sports">{t.sports}</option>
-                      <option value="Workshop">{t.workshop}</option>
-                      <option value="Voucher">{t.voucher}</option>
-                    </select>
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                  </div>
-                </div>
 
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Clock className="w-4 h-4 text-adv-orange" />
-                    <span className="text-adv-slate font-bold text-sm">
-                      {lang === 'lo' ? 'ໄລຍະເວລາຈັດງານ / Duration' : 'Event Duration'}
-                    </span>
-                  </div>
-                  <div className="relative">
-                    <select
-                      value={durationEn}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setDurationEn(val);
-                        
-                        // Map to Lao equivalent for durationLo
-                        const loMapping: Record<string, string> = {
-                          '30 Minutes': '30 ນາທີ',
-                          '1 Hour': '1 ຊົ່ວໂມງ',
-                          '1.5 Hours': '1.5 ຊົ່ວໂມງ',
-                          '2 Hours': '2 ຊົ່ວໂມງ',
-                          '2.5 Hours': '2.5 ຊົ່ວໂມງ',
-                          '3 Hours': '3 ຊົ່ວໂມງ',
-                          '4 Hours': '4 ຊົ່ວໂມງ',
-                          '5 Hours': '5 ຊົ່ວໂມງ',
-                          '6 Hours': '6 ຊົ່ວໂມງ',
-                          'Half Day': 'ເຄິ່ງມື້',
-                          'Full Day': 'ເຕັມມື້',
-                          '2 Days': '2 ມື້',
-                          '3 Days': '3 ມື້',
-                          '1 Week': '1 ອາທິດ'
-                        };
-                        setDurationLo(loMapping[val] || val);
-                      }}
-                      className="w-full bg-white text-adv-slate border border-gray-200 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all appearance-none cursor-pointer font-medium"
-                    >
-                      <option value="" disabled>{lang === 'lo' ? 'ເລືອກໄລຍະເວລາ' : 'Select Duration'}</option>
-                      <option value="30 Minutes">{lang === 'lo' ? '30 ນາທີ' : '30 Minutes'}</option>
-                      <option value="1 Hour">{lang === 'lo' ? '1 ຊົ່ວໂມງ' : '1 Hour'}</option>
-                      <option value="1.5 Hours">{lang === 'lo' ? '1.5 ຊົ່ວໂມງ' : '1.5 Hours'}</option>
-                      <option value="2 Hours">{lang === 'lo' ? '2 ຊົ່ວໂມງ' : '2 Hours'}</option>
-                      <option value="2.5 Hours">{lang === 'lo' ? '2.5 ຊົ່ວໂມງ' : '2.5 Hours'}</option>
-                      <option value="3 Hours">{lang === 'lo' ? '3 ຊົ່ວໂມງ' : '3 Hours'}</option>
-                      <option value="4 Hours">{lang === 'lo' ? '4 ຊົ່ວໂມງ' : '4 Hours'}</option>
-                      <option value="5 Hours">{lang === 'lo' ? '5 ຊົ່ວໂມງ' : '5 Hours'}</option>
-                      <option value="6 Hours">{lang === 'lo' ? '6 ຊົ່ວໂມງ' : '6 Hours'}</option>
-                      <option value="Half Day">{lang === 'lo' ? 'ເຄິ່ງມື້' : 'Half Day'}</option>
-                      <option value="Full Day">{lang === 'lo' ? 'ເຕັມມື້' : 'Full Day'}</option>
-                      <option value="2 Days">{lang === 'lo' ? '2 ມື້' : '2 Days'}</option>
-                      <option value="3 Days">{lang === 'lo' ? '3 ມື້' : '3 Days'}</option>
-                      <option value="1 Week">{lang === 'lo' ? '1 ອາທິດ' : '1 Week'}</option>
-                    </select>
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Clock className="w-4 h-4 text-adv-orange" />
+                      <span className="text-adv-slate font-bold text-sm">
+                        {lang === 'lo' ? 'ໄລຍະເວລາຈັດງານ / Duration' : 'Event Duration'}
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <select
+                        value={durationEn}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setDurationEn(val);
+                          
+                          // Map to Lao equivalent for durationLo
+                          const loMapping: Record<string, string> = {
+                            '30 Minutes': '30 ນາທີ',
+                            '1 Hour': '1 ຊົ່ວໂມງ',
+                            '1.5 Hours': '1.5 ຊົ່ວໂມງ',
+                            '2 Hours': '2 ຊົ່ວໂມງ',
+                            '2.5 Hours': '2.5 ຊົ່ວໂມງ',
+                            '3 Hours': '3 ຊົ່ວໂມງ',
+                            '4 Hours': '4 ຊົ່ວໂມງ',
+                            '5 Hours': '5 ຊົ່ວໂມງ',
+                            '6 Hours': '6 ຊົ່ວໂມງ',
+                            'Half Day': 'ເຄິ່ງມື້',
+                            'Full Day': 'ເຕັມມື້',
+                            '2 Days': '2 ມື້',
+                            '3 Days': '3 ມື້',
+                            '1 Week': '1 ອາທິດ'
+                          };
+                          setDurationLo(loMapping[val] || val);
+                        }}
+                        className="w-full bg-white text-adv-slate border border-gray-200 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all appearance-none cursor-pointer font-medium"
+                      >
+                        <option value="" disabled>{lang === 'lo' ? 'ເລືອກໄລຍະເວລາ' : 'Select Duration'}</option>
+                        <option value="30 Minutes">{lang === 'lo' ? '30 ນາທີ' : '30 Minutes'}</option>
+                        <option value="1 Hour">{lang === 'lo' ? '1 ຊົ່ວໂມງ' : '1 Hour'}</option>
+                        <option value="1.5 Hours">{lang === 'lo' ? '1.5 ຊົ່ວໂມງ' : '1.5 Hours'}</option>
+                        <option value="2 Hours">{lang === 'lo' ? '2 ຊົ່ວໂມງ' : '2 Hours'}</option>
+                        <option value="2.5 Hours">{lang === 'lo' ? '2.5 ຊົ່ວໂມງ' : '2.5 Hours'}</option>
+                        <option value="3 Hours">{lang === 'lo' ? '3 ຊົ່ວໂມງ' : '3 Hours'}</option>
+                        <option value="4 Hours">{lang === 'lo' ? '4 ຊົ່ວໂມງ' : '4 Hours'}</option>
+                        <option value="5 Hours">{lang === 'lo' ? '5 ຊົ່ວໂມງ' : '5 Hours'}</option>
+                        <option value="6 Hours">{lang === 'lo' ? '6 ຊົ່ວໂມງ' : '6 Hours'}</option>
+                        <option value="Half Day">{lang === 'lo' ? 'ເຄິ່ງມື້' : 'Half Day'}</option>
+                        <option value="Full Day">{lang === 'lo' ? 'ເຕັມມື້' : 'Full Day'}</option>
+                        <option value="2 Days">{lang === 'lo' ? '2 ມື້' : '2 Days'}</option>
+                        <option value="3 Days">{lang === 'lo' ? '3 ມື້' : '3 Days'}</option>
+                        <option value="1 Week">{lang === 'lo' ? '1 ອາທິດ' : '1 Week'}</option>
+                      </select>
+                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Event Information (Rich Text) */}
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -2485,58 +2807,10 @@ export default function CreateEvent() {
                   <span className="text-adv-slate font-bold text-sm">{t.eventInfo}</span>
                 </div>
                 
-                <div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm relative">
-                  {/* Toolbar */}
-                  <div className="flex items-center flex-wrap gap-1 p-3 border-b border-gray-200 bg-gray-50/50">
-                    <div className="relative flex items-center mr-2">
-                      <select 
-                        defaultValue="p" 
-                        onChange={(e) => execCommand('formatBlock', e.target.value)}
-                        className="bg-transparent text-adv-slate text-sm outline-none appearance-none pr-6 cursor-pointer font-medium"
-                      >
-                        <option value="p">Paragraph</option>
-                        <option value="h1">Heading 1</option>
-                        <option value="h2">Heading 2</option>
-                        <option value="h3">Heading 3</option>
-                        <option value="h4">Heading 4</option>
-                        <option value="h5">Heading 5</option>
-                        <option value="h6">Heading 6</option>
-                      </select>
-                      <ChevronDown className="w-3 h-3 text-gray-400 absolute right-1 pointer-events-none" />
-                    </div>
-                    
-                    <div className="w-px h-5 bg-gray-200 mx-1"></div>
-                    
-                    <div className="flex items-center gap-1 mr-2">
-                      <button type="button" onClick={() => execCommand('foreColor', '#1e293b')} className="w-4 h-4 bg-slate-800 rounded-sm cursor-pointer border border-gray-200"></button>
-                      <button type="button" onClick={() => execCommand('foreColor', '#ef4444')} className="w-4 h-4 bg-red-500 rounded-sm cursor-pointer border border-gray-200"></button>
-                      <button type="button" onClick={() => execCommand('foreColor', '#ff4d00')} className="w-4 h-4 bg-adv-orange rounded-sm cursor-pointer border border-gray-200"></button>
-                      <button type="button" onClick={() => execCommand('foreColor', '#22c55e')} className="w-4 h-4 bg-green-500 rounded-sm cursor-pointer border border-gray-200"></button>
-                    </div>
-
-                    <div className="w-px h-5 bg-gray-200 mx-1"></div>
-
-                    <button type="button" onClick={() => execCommand('bold')} className="p-1.5 hover:bg-gray-200 rounded text-gray-600"><Bold className="w-4 h-4" /></button>
-                    <button type="button" onClick={() => execCommand('italic')} className="p-1.5 hover:bg-gray-200 rounded text-gray-600"><Italic className="w-4 h-4" /></button>
-                    <button type="button" onClick={() => execCommand('underline')} className="p-1.5 hover:bg-gray-200 rounded text-gray-600"><Underline className="w-4 h-4" /></button>
-
-                    <div className="w-px h-5 bg-gray-200 mx-1"></div>
-
-                    <button type="button" onClick={() => execCommand('justifyLeft')} className="p-1.5 hover:bg-gray-200 rounded text-gray-600"><AlignLeft className="w-4 h-4" /></button>
-                    <button type="button" onClick={() => execCommand('justifyCenter')} className="p-1.5 hover:bg-gray-200 rounded text-gray-600"><AlignCenter className="w-4 h-4" /></button>
-                    <button type="button" onClick={() => execCommand('justifyRight')} className="p-1.5 hover:bg-gray-200 rounded text-gray-600"><AlignRight className="w-4 h-4" /></button>
-                    <button type="button" onClick={() => execCommand('justifyFull')} className="p-1.5 hover:bg-gray-200 rounded text-gray-600"><AlignJustify className="w-4 h-4" /></button>
-
-                    <div className="w-px h-5 bg-gray-200 mx-1"></div>
-
-                    <button type="button" onClick={() => execCommand('insertUnorderedList')} className="p-1.5 hover:bg-gray-200 rounded text-gray-600"><List className="w-4 h-4" /></button>
-                    <button type="button" onClick={() => execCommand('insertOrderedList')} className="p-1.5 hover:bg-gray-200 rounded text-gray-600"><ListOrdered className="w-4 h-4" /></button>
-                    <div className="w-px h-5 bg-gray-200 mx-1"></div>
-                    <button type="button" onClick={handleEditorAttachmentUpload} className="p-1.5 hover:bg-gray-200 rounded text-gray-600" title="Attach Document"><Paperclip className="w-4 h-4" /></button>
-                  </div>
-
-                  {/* Floating Inline Luma-style + Button on Empty Paragraphs */}
-                  {plusButtonPos && (
+                <div className="border border-gray-200 rounded-xl bg-white shadow-sm relative focus-within:ring-2 focus-within:ring-adv-orange/20 focus-within:border-adv-orange transition-all">
+                  <div className="p-4 relative">
+                    {/* Floating Inline Luma-style + Button on Empty Paragraphs */}
+                    {plusButtonPos && (
                       <div
                         style={{ top: `${plusButtonPos.top}px`, left: `${plusButtonPos.left}px` }}
                         className="absolute z-20 flex items-center gap-2 pointer-events-auto transition-all duration-150"
@@ -2548,17 +2822,16 @@ export default function CreateEvent() {
                             e.stopPropagation();
                             setShowBlockMenu(!showBlockMenu);
                           }}
-                          className="w-6 h-6 rounded-full bg-orange-50 hover:bg-adv-orange text-adv-orange hover:text-white flex items-center justify-center transition-all cursor-pointer shadow-xs border border-orange-200 hover:border-adv-orange shrink-0 font-bold"
+                          className="w-6 h-6 rounded-md bg-white hover:bg-gray-50 text-gray-500 hover:text-gray-800 flex items-center justify-center transition-all cursor-pointer font-bold border border-gray-200 shadow-sm"
                           title="Add block"
                         >
-                          <Plus className="w-3.5 h-3.5" />
+                          <Plus className="w-4 h-4" />
                         </button>
-
                         <span
                           onClick={() => setShowBlockMenu(true)}
-                          className="text-orange-400/90 hover:text-adv-orange text-sm font-medium cursor-pointer select-none transition-colors"
+                          className="text-gray-400 hover:text-gray-600 text-sm font-medium cursor-pointer select-none transition-colors"
                         >
-                          Who should come? What's the event about?
+                          {lang === 'lo' ? 'ໃຜຄວນມາຮ່ວມ? ງານນີ້ກ່ຽວກັບຫຍັງ?' : "Who should come? What's the event about?"}
                         </span>
                       </div>
                     )}
@@ -2571,33 +2844,32 @@ export default function CreateEvent() {
                           top: `${(plusButtonPos?.top || 12) + 32}px`,
                           left: `${plusButtonPos?.left || 16}px`
                         }}
-                        className="absolute z-50 w-72 bg-white text-adv-slate rounded-2xl shadow-xl shadow-orange-500/10 border border-orange-200/90 ring-1 ring-orange-100 p-2.5 animate-in fade-in zoom-in-95 duration-150"
+                        className="absolute z-50 w-72 bg-white text-gray-800 rounded-xl shadow-xl border border-gray-200 p-2 animate-in fade-in zoom-in-95 duration-150"
                       >
                         {/* Search Box */}
-                        <div className="relative mb-2">
-                          <Search className="w-3.5 h-3.5 text-adv-orange/70 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <div className="relative mb-2 px-1 pt-1">
                           <input
                             type="text"
                             placeholder="Search"
                             value={blockSearchQuery}
                             onChange={(e) => setBlockSearchQuery(e.target.value)}
-                            className="w-full bg-orange-50/50 text-xs text-adv-slate pl-8 pr-3 py-2 rounded-xl border border-orange-200/70 outline-none placeholder:text-orange-300 focus:border-adv-orange focus:bg-white focus:ring-2 focus:ring-orange-100 transition-all"
+                            className="w-full bg-gray-50 text-sm text-gray-800 px-3 py-2 rounded-lg border border-gray-200 outline-none placeholder:text-gray-400 focus:border-adv-orange focus:ring-1 focus:ring-adv-orange transition-all"
                             autoFocus
                           />
                         </div>
 
-                        {/* List of Block Options - Show All Without Scroll */}
-                        <div className="space-y-0.5">
+                        <div className="space-y-0.5 max-h-[300px] overflow-y-auto custom-scrollbar">
                           {[
-                            { id: 'h1', label: 'Heading', icon: Heading1, badge: 'H1' },
-                            { id: 'h2', label: 'Subheading', icon: Heading2, badge: 'H2' },
+                            { id: 'h1', label: 'Heading', icon: Heading1 },
+                            { id: 'h2', label: 'Subheading', icon: Heading2 },
+                            { id: 'attachment', label: 'Image', icon: ImageIcon },
                             { id: 'blockquote', label: 'Blockquote', icon: Quote },
                             { id: 'divider', label: 'Divider', icon: Minus },
                             { id: 'list', label: 'List', icon: List },
                             { id: 'numbered_list', label: 'Numbered List', icon: ListOrdered },
-                            { id: 'attachment', label: 'Attachment', icon: Paperclip },
+                            { id: 'attachment_doc', label: 'Attachment', icon: Paperclip },
                           ]
-                            .filter(item => item.label.toLowerCase().includes(blockSearchQuery.toLowerCase()) || item.id.includes(blockSearchQuery.toLowerCase()))
+                            .filter(item => item.label.toLowerCase().includes(blockSearchQuery.toLowerCase()))
                             .map((item) => {
                               const IconComp = item.icon;
                               return (
@@ -2605,23 +2877,155 @@ export default function CreateEvent() {
                                   key={item.id}
                                   type="button"
                                   onClick={() => handleInsertBlock(item.id)}
-                                  className="w-full text-left px-3 py-2 rounded-xl hover:bg-orange-50 text-adv-slate hover:text-adv-orange flex items-center justify-between transition-colors cursor-pointer group"
+                                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-900 flex items-center transition-colors cursor-pointer group gap-3"
                                 >
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-6 h-6 rounded-md bg-orange-100/70 group-hover:bg-adv-orange flex items-center justify-center text-adv-orange group-hover:text-white transition-colors">
-                                      <IconComp className="w-3.5 h-3.5" />
-                                    </div>
-                                    <span className="text-sm font-semibold">{item.label}</span>
+                                  <div className="text-gray-400 group-hover:text-gray-600">
+                                    <IconComp className="w-4 h-4" />
                                   </div>
-                                  {item.badge && (
-                                    <span className="text-[10px] font-extrabold text-adv-orange bg-orange-100/90 border border-orange-200/50 px-1.5 py-0.5 rounded-md">
-                                      {item.badge}
-                                    </span>
-                                  )}
+                                  <span className="text-sm font-medium">{item.label}</span>
                                 </button>
                               );
                             })}
                         </div>
+                      </div>
+                    )}
+                    
+                    {/* Formatting Selection Menu */}
+                    {selectionMenuPos && (
+                      <div
+                        style={{
+                          top: `${selectionMenuPos.top}px`,
+                          left: `${selectionMenuPos.left}px`,
+                        }}
+                        className="fixed z-[100] flex items-center bg-[#1C1C1E] text-zinc-300 rounded-xl shadow-2xl border border-white/10 px-2 py-2 animate-in fade-in zoom-in-95 duration-150 gap-1"
+                        onMouseDown={(e) => {
+                          if (!showLinkInput) {
+                            e.preventDefault();
+                          }
+                        }}
+                      >
+                        {showLinkInput ? (
+                          <div className="flex items-center gap-2 px-1 w-64" onMouseDown={(e) => e.stopPropagation()}>
+                            <input
+                              type="url"
+                              value={linkUrl}
+                              onChange={(e) => setLinkUrl(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  if (linkUrl && savedSelectionRange) {
+                                    const sel = window.getSelection();
+                                    sel?.removeAllRanges();
+                                    sel?.addRange(savedSelectionRange);
+                                    execCommand('createLink', linkUrl);
+                                  }
+                                  setShowLinkInput(false);
+                                  setLinkUrl('');
+                                  setSavedSelectionRange(null);
+                                } else if (e.key === 'Escape') {
+                                  e.preventDefault();
+                                  setShowLinkInput(false);
+                                  setLinkUrl('');
+                                  setSavedSelectionRange(null);
+                                }
+                              }}
+                              placeholder="Enter link URL"
+                              className="flex-1 bg-transparent text-sm text-white placeholder-zinc-500 outline-none border-none py-1"
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (linkUrl && savedSelectionRange) {
+                                  const sel = window.getSelection();
+                                  sel?.removeAllRanges();
+                                  sel?.addRange(savedSelectionRange);
+                                  execCommand('createLink', linkUrl);
+                                }
+                                setShowLinkInput(false);
+                                setLinkUrl('');
+                                setSavedSelectionRange(null);
+                              }}
+                              className="w-7 h-7 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors shrink-0"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowLinkInput(false);
+                                setLinkUrl('');
+                                setSavedSelectionRange(null);
+                              }}
+                              className="w-7 h-7 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors shrink-0"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => execCommand('formatBlock', 'H2')}
+                              className="w-8 h-8 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors font-semibold"
+                              title="Heading 1"
+                            >
+                              H1
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => execCommand('formatBlock', 'H3')}
+                              className="w-8 h-8 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors font-semibold"
+                              title="Heading 2"
+                            >
+                              H2
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => execCommand('bold')}
+                              className="w-8 h-8 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors font-bold text-lg"
+                              title="Bold"
+                            >
+                              B
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => execCommand('italic')}
+                              className="w-8 h-8 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors font-serif italic text-lg"
+                              title="Italic"
+                            >
+                              I
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                const sel = window.getSelection();
+                                if (!sel || sel.rangeCount === 0) return;
+                                setSavedSelectionRange(sel.getRangeAt(0).cloneRange());
+                                setShowLinkInput(true);
+                                setLinkUrl('');
+                              }}
+                              className="w-8 h-8 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors"
+                              title="Link"
+                            >
+                              <LinkIcon className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                try {
+                                  execCommand('formatBlock', 'blockquote');
+                                } catch (e) {
+                                  execCommand('formatBlock', 'BLOCKQUOTE');
+                                }
+                              }}
+                              className="w-8 h-8 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors font-serif text-lg leading-none pt-1"
+                              title="Blockquote"
+                            >
+                              &rdquo;
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                     
@@ -2632,103 +3036,103 @@ export default function CreateEvent() {
                       onClick={handleEditorClick}
                       onInput={handleEditorInput}
                       onKeyUp={handleEditorInput}
-                    onScroll={() => setTimeout(updateImageRect, 10)}
-                    onDrop={handleEditorDrop}
-                    onDragOver={(e) => {
-                      if (e.dataTransfer?.types?.includes('Files')) {
-                        e.preventDefault();
-                      }
-                    }}
-                    className="p-4 min-h-[300px] text-sm text-adv-slate outline-none rich-text max-w-none"
-                    suppressContentEditableWarning
-                  >
-                    <p className="font-bold mb-2">{t.intro}</p>
-                    <p className="mb-4">{t.introPlaceholder}</p>
-                    
-                    <p className="font-bold mb-2">{t.details}</p>
-                    <ul className="list-disc pl-5 mb-4 space-y-1">
-                      <li><strong>{t.mainProgram}</strong> {t.mainProgramDesc}</li>
-                      <li><strong>{t.guests}</strong> {t.guestsDesc}</li>
-                      <li><strong>{t.specialExperience}</strong> {t.specialExperienceDesc}</li>
-                    </ul>
-
-                    <p className="font-bold mb-2">{t.termsAndConditions}</p>
-                    <p className="mb-2">{t.tncEvent}</p>
-                    <p className="mb-2">{t.childTerms}</p>
-                    <p>{t.vatTerms}</p>
-                  </div>
-                  
-                  {selectedImage && imageRect && (
-                    <div 
-                      style={{
-                        position: 'absolute',
-                        top: imageRect.top,
-                        left: imageRect.left,
-                        width: imageRect.width,
-                        height: imageRect.height,
-                        border: '2px solid #FF5B00',
-                        pointerEvents: 'none',
-                        zIndex: 10
+                      onScroll={() => setTimeout(updateImageRect, 10)}
+                      onDrop={handleEditorDrop}
+                      onDragOver={(e) => {
+                        if (e.dataTransfer?.types?.includes('Files')) {
+                          e.preventDefault();
+                        }
                       }}
+                      className="min-h-[300px] text-base text-gray-800 outline-none rich-text max-w-none prose prose-sm prose-slate"
+                      suppressContentEditableWarning
                     >
+                      <p className="font-bold mb-2">{t.intro}</p>
+                      <p className="mb-4 text-gray-400">{t.introPlaceholder}</p>
+                      
+                      <p className="font-bold mb-2">{t.details}</p>
+                      <ul className="list-disc pl-5 mb-4 space-y-1 text-gray-600">
+                        <li><strong>{t.mainProgram}</strong> {t.mainProgramDesc}</li>
+                        <li><strong>{t.guests}</strong> {t.guestsDesc}</li>
+                        <li><strong>{t.specialExperience}</strong> {t.specialExperienceDesc}</li>
+                      </ul>
+
+                      <p className="font-bold mb-2">{t.termsAndConditions}</p>
+                      <p className="mb-2 text-gray-600">{t.tncEvent}</p>
+                      <p className="mb-2 text-gray-600">{t.childTerms}</p>
+                      <p className="text-gray-600">{t.vatTerms}</p>
+                    </div>
+
+                    {selectedImage && imageRect && (
                       <div 
                         style={{
                           position: 'absolute',
-                          right: -6,
-                          bottom: -6,
-                          width: 12,
-                          height: 12,
-                          backgroundColor: '#FF5B00',
-                          border: '2px solid white',
-                          borderRadius: '50%',
-                          cursor: 'nwse-resize',
-                          pointerEvents: 'auto'
+                          top: imageRect.top,
+                          left: imageRect.left,
+                          width: imageRect.width,
+                          height: imageRect.height,
+                          border: '2px solid #FF5B00',
+                          pointerEvents: 'none',
+                          zIndex: 10
                         }}
-                        onMouseDown={startResize}
-                      />
-                      <button
-                        type="button"
-                        onMouseDown={deleteSelectedImage}
-                        style={{
-                          position: 'absolute',
-                          top: -12,
-                          right: -12,
-                          pointerEvents: 'auto'
-                        }}
-                        className="w-8 h-8 bg-white border border-gray-200 text-rose-500 rounded-full flex items-center justify-center shadow-sm hover:bg-rose-50 hover:text-rose-600 transition-colors"
-                        title={lang === 'lo' ? 'ລຶບຮູບ' : 'Delete image'}
                       >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
+                        <div 
+                          style={{
+                            position: 'absolute',
+                            right: -6,
+                            bottom: -6,
+                            width: 12,
+                            height: 12,
+                            backgroundColor: '#FF5B00',
+                            border: '2px solid white',
+                            borderRadius: '50%',
+                            cursor: 'nwse-resize',
+                            pointerEvents: 'auto'
+                          }}
+                          onMouseDown={startResize}
+                        />
+                        <button
+                          type="button"
+                          onMouseDown={deleteSelectedImage}
+                          style={{
+                            position: 'absolute',
+                            top: -12,
+                            right: -12,
+                            pointerEvents: 'auto'
+                          }}
+                          className="w-8 h-8 bg-white border border-gray-200 text-rose-500 rounded-full flex items-center justify-center shadow-sm hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                          title={lang === 'lo' ? 'ລຶບຮູບ' : 'Delete image'}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
               {/* Organizer Info & KYC */}
-              <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100 mt-8 relative overflow-hidden">
+              <div className="bg-white rounded-2xl p-5 sm:p-7 shadow-sm border border-gray-100 mt-6 relative overflow-hidden">
                 <div className="absolute -top-24 -right-24 w-64 h-64 bg-adv-orange/5 rounded-full blur-[80px] pointer-events-none" />
                 
-                <div className="relative z-10 mb-8 pb-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="relative z-10 mb-6 pb-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <h3 className="text-2xl font-bold text-adv-slate flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-adv-orange/10 flex items-center justify-center border border-adv-orange/20">
-                        <User className="w-5 h-5 text-adv-orange" />
+                    <h3 className="text-lg sm:text-xl font-bold text-adv-slate flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-adv-orange/10 flex items-center justify-center border border-adv-orange/20 shrink-0">
+                        <User className="w-4 h-4 text-adv-orange" />
                       </div>
                       {t.organizerProfile}
                     </h3>
-                    <p className="text-gray-500 mt-2 text-sm leading-relaxed max-w-xl">{t.organizerProfileDesc}</p>
+                    <p className="text-gray-500 mt-1 text-xs sm:text-sm leading-relaxed max-w-xl">{t.organizerProfileDesc}</p>
                   </div>
                 </div>
 
-                <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8">
-                  {/* Left Column: Visuals & Verification */}
-                  <div className="lg:col-span-4 flex flex-col gap-6">
-                    {/* Logo Section */}
-                    <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 flex flex-col items-center text-center">
-                      <label className="text-sm font-bold text-adv-slate mb-4 w-full text-left">{t.addOrganizerLogo}</label>
+                <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
+                  {/* Left Column: Organizer Logo Uploader */}
+                  <div className="lg:col-span-3">
+                    <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-100 flex flex-col items-center text-center h-full justify-center min-h-[200px]">
+                      <label className="text-xs font-bold text-adv-slate mb-3 w-full text-left">{t.addOrganizerLogo}</label>
                       <div 
-                        className={`w-40 h-40 rounded-full border-2 border-dashed ${isDraggingLogo ? 'border-adv-orange bg-adv-orange/5' : 'border-gray-300 bg-white hover:bg-adv-orange/5 hover:border-adv-orange'} flex flex-col items-center justify-center p-4 cursor-pointer transition-all duration-300 group relative overflow-hidden shadow-sm mb-4`}
+                        className={`w-28 h-28 rounded-full border-2 border-dashed ${isDraggingLogo ? 'border-adv-orange bg-adv-orange/5' : 'border-gray-300 bg-white hover:bg-adv-orange/5 hover:border-adv-orange'} flex flex-col items-center justify-center p-2 cursor-pointer transition-all duration-300 group relative overflow-hidden shadow-sm mb-3`}
                         onDragOver={(e) => handleDragOver(e, setIsDraggingLogo)}
                         onDragLeave={(e) => handleDragLeave(e, setIsDraggingLogo)}
                         onDrop={(e) => handleDrop(e, setOrganizerLogo, setIsDraggingLogo, setOrganizerLogoProgress)}
@@ -2743,137 +3147,126 @@ export default function CreateEvent() {
                         />
                         {organizerLogoProgress !== null ? (
                           <div className="flex flex-col items-center justify-center w-full">
-                            <Loader2 className="w-8 h-8 text-adv-orange animate-spin mb-3" />
-                            <div className="w-full max-w-[80px] bg-gray-200 rounded-full h-1.5 mb-2">
-                              <div className="bg-adv-orange h-1.5 rounded-full transition-all duration-200" style={{ width: `${Math.min(organizerLogoProgress, 100)}%` }}></div>
+                            <Loader2 className="w-6 h-6 text-adv-orange animate-spin mb-1.5" />
+                            <div className="w-full max-w-[60px] bg-gray-200 rounded-full h-1 mb-1">
+                              <div className="bg-adv-orange h-1 rounded-full transition-all duration-200" style={{ width: `${Math.min(organizerLogoProgress, 100)}%` }}></div>
                             </div>
-                            <span className="text-xs text-gray-500">{Math.round(Math.min(organizerLogoProgress, 100))}%</span>
+                            <span className="text-[10px] text-gray-500">{Math.round(Math.min(organizerLogoProgress, 100))}%</span>
                           </div>
                         ) : organizerLogo ? (
                           <>
                             <img src={organizerLogo} alt="Logo preview" className="absolute inset-0 w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5">
                               <button 
                                 onClick={(e) => { e.stopPropagation(); document.getElementById('logo-upload')?.click(); }}
-                                className="text-white font-medium bg-white/20 hover:bg-white/30 px-4 py-1.5 rounded-full backdrop-blur-sm transition-colors text-xs"
+                                className="text-white font-medium bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full backdrop-blur-sm transition-colors text-[10px]"
                               >
                                 {t.change}
                               </button>
                               <button 
                                 onClick={(e) => { e.stopPropagation(); setOrganizerLogo(null); }}
-                                className="text-white font-medium bg-red-500/80 hover:bg-red-500 px-4 py-1.5 rounded-full backdrop-blur-sm transition-colors flex items-center gap-1 text-xs"
+                                className="text-white font-medium bg-red-500/80 hover:bg-red-500 px-3 py-1 rounded-full backdrop-blur-sm transition-colors flex items-center gap-0.5 text-[10px]"
                               >
-                                <X className="w-3 h-3" /> {t.remove}
+                                <X className="w-2.5 h-2.5" /> {t.remove}
                               </button>
                             </div>
                           </>
                         ) : (
                           <>
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-colors ${isDraggingLogo ? 'bg-adv-orange/20' : 'bg-gray-100 group-hover:bg-adv-orange/10 group-hover:text-adv-orange'}`}>
-                              <UploadCloud className={`w-6 h-6 ${isDraggingLogo ? 'text-adv-orange' : 'text-gray-400 group-hover:text-adv-orange'} transition-colors`} />
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center mb-1 transition-colors ${isDraggingLogo ? 'bg-adv-orange/20' : 'bg-gray-100 group-hover:bg-adv-orange/10 group-hover:text-adv-orange'}`}>
+                              <UploadCloud className={`w-4 h-4 ${isDraggingLogo ? 'text-adv-orange' : 'text-gray-400 group-hover:text-adv-orange'} transition-colors`} />
                             </div>
-                            <p className="text-xs text-gray-500 font-medium px-2 leading-tight">{t.clickToUpload}</p>
+                            <p className="text-[10px] text-gray-500 font-medium px-1 leading-tight">{t.clickToUpload}</p>
                           </>
                         )}
                       </div>
-                      <p className="text-xs text-gray-400 max-w-[12rem] whitespace-pre-line leading-relaxed">
+                      <p className="text-[10px] text-gray-400 whitespace-pre-line leading-tight">
                         {t.recommendedLogoSize}
                       </p>
                     </div>
                   </div>
 
-                  {/* Right Column: Text Details */}
-                  <div className="lg:col-span-8">
-                    <div className="bg-gray-50 p-6 sm:p-8 rounded-2xl border border-gray-100 space-y-6 h-full shadow-sm">
+                  {/* Right Column: Organizer Form Fields */}
+                  <div className="lg:col-span-9 space-y-4">
+                    {/* Organizer Name */}
+                    <div>
+                      <label className="flex items-center gap-1 mb-1.5 text-xs font-bold text-adv-slate">
+                        {t.organizerName} <span className="text-adv-orange">*</span>
+                      </label>
+                      <input 
+                        type="text"
+                        value={organizerName}
+                        onChange={(e) => {
+                          setOrganizerName(e.target.value.replace(/[0-9]/g, ''));
+                          setValidationError(null);
+                        }}
+                        maxLength={80}
+                        placeholder="e.g. LiveNation Laos"
+                        className="w-full bg-gray-50/80 border border-gray-200 text-adv-slate rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-adv-orange/20 focus:border-adv-orange transition-all placeholder:text-gray-300"
+                      />
+                    </div>
+
+                    {/* Phone & Email Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                       <div>
-                        <label className="flex items-center gap-2 mb-2 text-sm font-bold text-adv-slate">
-                          {t.organizerName} <span className="text-adv-orange">*</span>
+                        <label className="flex items-center gap-1 mb-1.5 text-xs font-bold text-adv-slate">
+                          {lang === 'en' ? 'Organizer Phone' : 'ເບີໂທຜູ້ຈັດງານ'} <span className="text-adv-orange">*</span>
                         </label>
-                        <div className="relative">
-                          <input 
-                            type="text"
-                            value={organizerName}
-                            onChange={(e) => {
-                              setOrganizerName(e.target.value.replace(/[0-9]/g, ''));
-                              setValidationError(null);
-                            }}
-                            maxLength={80}
-                            placeholder="e.g. LiveNation Laos"
-                            className="w-full bg-white border border-gray-200 text-adv-slate rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all placeholder:text-gray-300 shadow-inner"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="flex items-center gap-2 mb-2 text-sm font-bold text-adv-slate">
-                          {t.organizerContact} <span className="text-adv-orange">*</span>
-                        </label>
-                        <div className="relative">
-                          <input 
-                            type="text"
-                            value={organizerContact}
-                            onChange={(e) => {
-                              setOrganizerContact(e.target.value);
-                              setValidationError(null);
-                            }}
-                            maxLength={100}
-                            placeholder="Website link or Social Handle"
-                            className="w-full bg-white border border-gray-200 text-adv-slate rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all placeholder:text-gray-300 shadow-inner"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="flex items-center gap-1 mb-2 text-sm font-bold text-adv-slate">
-                            {lang === 'en' ? 'Organizer Phone' : 'ເບີໂທຜູ້ຈັດງານ'} <span className="text-adv-orange">*</span>
-                          </label>
-                          <input 
-                            type="tel"
-                            value={organizerPhone}
-                            onChange={(e) => {
-                              setOrganizerPhone(e.target.value);
-                              setValidationError(null);
-                            }}
-                            placeholder="+856 20 ..."
-                            className="w-full bg-white border border-gray-200 text-adv-slate rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-adv-orange"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="flex items-center gap-1 mb-2 text-sm font-bold text-adv-slate">
-                            {lang === 'en' ? 'Organizer Email' : 'ອີເມວຜູ້ຈັດງານ'} <span className="text-adv-orange">*</span>
-                          </label>
-                          <input 
-                            type="email"
-                            value={organizerEmail}
-                            onChange={(e) => {
-                              setOrganizerEmail(e.target.value);
-                              setValidationError(null);
-                            }}
-                            placeholder="organizer@domain.com"
-                            className="w-full bg-white border border-gray-200 text-adv-slate rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-adv-orange"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="flex items-center gap-1 mb-2 text-sm font-bold text-adv-slate">
-                          {lang === 'en' ? 'About Organizer / Bio' : 'ກ່ຽວກັບຜູ້ຈັດງານ'} <span className="text-adv-orange">*</span>
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={organizerInfo}
+                        <input 
+                          type="tel"
+                          value={organizerPhone}
                           onChange={(e) => {
-                            setOrganizerInfo(e.target.value);
+                            setOrganizerPhone(e.target.value);
                             setValidationError(null);
                           }}
-                          placeholder={lang === 'en' ? 'Brief description about the event organizing team...' : 'ຂໍ້ມູນກ່ຽວກັບທີມງານຈັດງານ...'}
-                          className="w-full bg-white border border-gray-200 text-adv-slate rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-adv-orange"
+                          placeholder="+856 20 ..."
+                          className="w-full bg-gray-50/80 border border-gray-200 text-adv-slate rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-adv-orange/20 focus:border-adv-orange transition-all placeholder:text-gray-300"
                         />
                       </div>
 
+                      <div>
+                        <label className="flex items-center gap-1 mb-1.5 text-xs font-bold text-adv-slate">
+                          {lang === 'en' ? 'Organizer Email' : 'ອີເມວຜູ້ຈັດງານ'} <span className="text-adv-orange">*</span>
+                        </label>
+                        <input 
+                          type="email"
+                          value={organizerEmail}
+                          onChange={(e) => {
+                            setOrganizerEmail(e.target.value);
+                            setValidationError(null);
+                          }}
+                          placeholder="organizer@domain.com"
+                          className="w-full bg-gray-50/80 border border-gray-200 text-adv-slate rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-adv-orange/20 focus:border-adv-orange transition-all placeholder:text-gray-300"
+                        />
+                      </div>
+                    </div>
 
+                    {/* About Organizer / Bio */}
+                    <div>
+                      <label className="flex items-center gap-1 mb-1.5 text-xs font-bold text-adv-slate">
+                        {lang === 'en' ? 'About Organizer / Bio' : 'ກ່ຽວກັບຜູ້ຈັດງານ'} <span className="text-adv-orange">*</span>
+                      </label>
+                      <textarea
+                        rows={2.5}
+                        value={organizerInfo}
+                        onChange={(e) => {
+                          setOrganizerInfo(e.target.value);
+                          setValidationError(null);
+                        }}
+                        placeholder={lang === 'en' ? 'Brief description about the event organizing team...' : 'ຂໍ້ມູນກ່ຽວກັບທີມງານຈັດງານ...'}
+                        className="w-full bg-gray-50/80 border border-gray-200 text-adv-slate rounded-xl p-3 text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-adv-orange/20 focus:border-adv-orange transition-all placeholder:text-gray-300 resize-none"
+                      />
+                    </div>
+
+                    {/* Organizer Social Links */}
+                    <div className="pt-1">
+                      <SocialLinksForm
+                        value={organizerSocialLinks}
+                        onChange={(links) => setOrganizerSocialLinks(links)}
+                        lang={lang}
+                        theme="light"
+                        compact={true}
+                      />
                     </div>
                   </div>
                 </div>
@@ -2882,6 +3275,196 @@ export default function CreateEvent() {
               )}
 
               {activeStep === 2 && (
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-8">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-bold text-adv-slate mb-2">
+                        {lang === 'lo' ? 'ຄຳຖາມສຳລັບຜູ້ເຂົ້າຮ່ວມ' : 'Attendee Questions'}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {lang === 'lo' ? 'ເພີ່ມຄຳຖາມເພື່ອເກັບກຳຂໍ້ມູນເພີ່ມເຕີມຈາກຜູ້ເຂົ້າຮ່ວມ ເຊັ່ນ: ບໍລິສັດ, ຂະໜາດເສື້ອ, ຫຼື ຂໍ້ຈຳກັດດ້ານອາຫານ.' : 'Add custom questions to collect more info from attendees (e.g. Company, T-shirt size, Dietary restrictions).'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAttendeeQuestions([...attendeeQuestions, { id: Date.now().toString(), type: 'text', label: '', required: false }])}
+                      className="px-4 py-2 bg-adv-orange/10 hover:bg-adv-orange/20 text-adv-orange rounded-xl text-sm font-bold flex items-center gap-2 transition-colors shrink-0"
+                    >
+                      <Plus className="w-4 h-4" />
+                      {lang === 'lo' ? 'ເພີ່ມຄຳຖາມ' : 'Add Question'}
+                    </button>
+                  </div>
+                  
+                  <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+                    <h4 className="text-sm font-bold text-adv-slate mb-3 flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-green-500" />
+                      {lang === 'lo' ? 'ຄຳຖາມເລີ່ມຕົ້ນ (ລວມຢູ່ແລ້ວ)' : 'Default Questions (Already Included)'}
+                    </h4>
+                    <p className="text-xs text-gray-500 mb-4">
+                      {lang === 'lo' ? 'ຂໍ້ມູນເຫຼົ່ານີ້ຈະຖືກເກັບກຳຈາກຜູ້ຊື້ປີ້ທຸກຄົນໂດຍອັດຕະໂນມັດ ທ່ານບໍ່ຈຳເປັນຕ້ອງເພີ່ມຄຳຖາມເຫຼົ່ານີ້ອີກ:' : 'This information will be collected automatically from all ticket buyers. You do not need to add these questions:'}
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {['First Name', 'Last Name', 'Phone Number', 'Email'].map((field, i) => (
+                        <div key={i} className="px-3 py-2 bg-white rounded-lg border border-gray-100 text-sm font-medium text-gray-600 flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-adv-orange/70" />
+                          {lang === 'lo' ? ['ຊື່', 'ນາມສະກຸນ', 'ເບີໂທລະສັບ', 'ອີເມວ'][i] : field}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {attendeeQuestions.length === 0 ? (
+                    <div className="p-8 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-center">
+                      <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-400">
+                        <FileText className="w-6 h-6" />
+                      </div>
+                      <p className="text-sm font-bold text-gray-600 mb-1">
+                        {lang === 'lo' ? 'ຍັງບໍ່ມີຄຳຖາມເພີ່ມເຕີມ' : 'No custom questions added'}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {lang === 'lo' ? 'ຄລິກ "ເພີ່ມຄຳຖາມ" ເພື່ອເລີ່ມສ້າງແບບຟອມ' : 'Click "Add Question" to start building your form'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {attendeeQuestions.map((q, idx) => (
+                        <div key={q.id} className="p-5 border border-gray-200 rounded-xl bg-white shadow-sm space-y-4 relative group">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = [...attendeeQuestions];
+                              next.splice(idx, 1);
+                              setAttendeeQuestions(next);
+                            }}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pr-10">
+                            <div>
+                              <label className="block text-[11px] font-bold text-gray-500 mb-1">
+                                {lang === 'lo' ? 'ປະເພດຄຳຖາມ' : 'Question Type'}
+                              </label>
+                              <div className="relative">
+                                <select
+                                  value={q.type}
+                                  onChange={(e) => {
+                                    const next = [...attendeeQuestions];
+                                    next[idx].type = e.target.value as any;
+                                    if (e.target.value === 'dropdown' || e.target.value === 'radio') {
+                                      next[idx].options = ['Option 1'];
+                                    } else {
+                                      delete next[idx].options;
+                                    }
+                                    setAttendeeQuestions(next);
+                                  }}
+                                  className="w-full bg-gray-50 border border-gray-200 text-adv-slate rounded-xl px-4 py-2.5 text-sm font-semibold appearance-none focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all pr-10"
+                                >
+                                  <option value="text">{lang === 'lo' ? 'ຂໍ້ຄວາມສັ້ນ (Text)' : 'Short Text'}</option>
+                                  <option value="dropdown">{lang === 'lo' ? 'ເລືອກແບບເລື່ອນລົງ (Dropdown)' : 'Dropdown'}</option>
+                                  <option value="radio">{lang === 'lo' ? 'ເລືອກຂໍ້ດຽວ (Radio Options)' : 'Radio Options'}</option>
+                                </select>
+                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <label className="block text-[11px] font-bold text-gray-500 mb-1">
+                                {lang === 'lo' ? 'ຄຳຖາມ' : 'Question Label'}
+                              </label>
+                              <input
+                                type="text"
+                                value={q.label}
+                                onChange={(e) => {
+                                  const next = [...attendeeQuestions];
+                                  next[idx].label = e.target.value;
+                                  setAttendeeQuestions(next);
+                                }}
+                                placeholder={lang === 'lo' ? 'ເຊັ່ນ: ຂະໜາດເສື້ອ...' : 'e.g. T-shirt size...'}
+                                className="w-full bg-gray-50 border border-gray-200 text-adv-slate rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all"
+                              />
+                            </div>
+                          </div>
+                          
+                          {(q.type === 'dropdown' || q.type === 'radio') && (
+                            <div className="pt-2 border-t border-gray-100">
+                              <label className="block text-[11px] font-bold text-gray-500 mb-2">
+                                {lang === 'lo' ? 'ຕົວເລືອກ (Options)' : 'Options'}
+                              </label>
+                              <div className="space-y-2">
+                                {(q.options || []).map((opt, optIdx) => (
+                                  <div key={optIdx} className="flex items-center gap-2">
+                                    <input
+                                      type="text"
+                                      value={opt}
+                                      onChange={(e) => {
+                                        const next = [...attendeeQuestions];
+                                        if (next[idx].options) {
+                                          next[idx].options![optIdx] = e.target.value;
+                                          setAttendeeQuestions(next);
+                                        }
+                                      }}
+                                      placeholder={lang === 'lo' ? 'ຕົວເລືອກ...' : 'Option...'}
+                                      className="flex-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-adv-orange/50 transition-all text-sm"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const next = [...attendeeQuestions];
+                                        next[idx].options = next[idx].options!.filter((_, i) => i !== optIdx);
+                                        setAttendeeQuestions(next);
+                                      }}
+                                      disabled={(q.options || []).length <= 1}
+                                      className="p-2 text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                ))}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = [...attendeeQuestions];
+                                    if (next[idx].options) {
+                                      next[idx].options!.push(`Option ${(next[idx].options!.length + 1)}`);
+                                      setAttendeeQuestions(next);
+                                    }
+                                  }}
+                                  className="text-xs font-bold text-adv-orange hover:text-orange-600 transition-colors flex items-center gap-1 mt-2"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                  {lang === 'lo' ? 'ເພີ່ມຕົວເລືອກ' : 'Add Option'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          
+                          <div className="pt-2">
+                            <label className="flex items-center gap-2 cursor-pointer w-fit">
+                              <input
+                                type="checkbox"
+                                checked={q.required}
+                                onChange={(e) => {
+                                  const next = [...attendeeQuestions];
+                                  next[idx].required = e.target.checked;
+                                  setAttendeeQuestions(next);
+                                }}
+                                className="w-4 h-4 text-adv-orange border-gray-300 rounded focus:ring-adv-orange focus:ring-offset-0"
+                              />
+                              <span className="text-sm font-medium text-gray-700">
+                                {lang === 'lo' ? 'ຈຳເປັນຕ້ອງຕອບ (Required)' : 'Required question'}
+                              </span>
+                            </label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeStep === 3 && (
                 <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-8">
                   <h3 className="text-xl font-bold text-adv-slate mb-2">{t.step2}</h3>
                   
@@ -2940,14 +3523,14 @@ export default function CreateEvent() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-[11px] font-bold text-gray-400 mb-1">{t.startDate}</label>
-                                <input 
-                                  type="date" 
+                                <CalendarPicker 
                                   value={startDate}
-                                  onChange={(e) => {
-                                    setStartDate(e.target.value);
+                                  onChange={(date) => {
+                                    setStartDate(date);
                                     setValidationError(null);
                                   }}
-                                  className="w-full bg-white border border-gray-200 text-adv-slate rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all"
+                                  lang={lang}
+                                  theme="light"
                                 />
                               </div>
                               <div>
@@ -2970,11 +3553,11 @@ export default function CreateEvent() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-[11px] font-bold text-gray-400 mb-1">{t.endDate}</label>
-                                <input 
-                                  type="date" 
+                                <CalendarPicker 
                                   value={endDate}
-                                  onChange={(e) => setEndDate(e.target.value)}
-                                  className="w-full bg-white border border-gray-200 text-adv-slate rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all"
+                                  onChange={(date) => setEndDate(date)}
+                                  lang={lang}
+                                  theme="light"
                                 />
                               </div>
                               <div>
@@ -2992,90 +3575,20 @@ export default function CreateEvent() {
                     )}
 
                     {/* Operating Time Slots Configuration for Flexible Date */}
-                    {dateType === 'flexible' && (
+                    {dateType === "flexible" && (
                       <motion.div 
                         initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-4"
                       >
-                        <div className="p-5 bg-orange-50/40 rounded-2xl border border-orange-100 space-y-3">
-                          <div className="flex flex-wrap items-end gap-3">
-                              <div className="flex-1 min-w-[120px]">
-                                <span className="text-[11px] font-bold text-gray-500 mb-1 block">
-                                  {lang === 'lo' ? 'ເວລາເລີ່ມ' : 'Start Time'}
-                                </span>
-                                <ScrollTimePicker 
-                                  value={flexTimeStart}
-                                  onChange={(val) => setFlexTimeStart(val)}
-                                  placeholder="09:00"
-                                />
-                              </div>
-
-                              <span className="text-gray-400 font-bold self-center pb-2 text-sm">-</span>
-
-                              <div className="flex-1 min-w-[120px]">
-                                <span className="text-[11px] font-bold text-gray-500 mb-1 block">
-                                  {lang === 'lo' ? 'ເວລາສິ້ນສຸດ' : 'End Time'}
-                                </span>
-                                <ScrollTimePicker 
-                                  value={flexTimeEnd}
-                                  onChange={(val) => setFlexTimeEnd(val)}
-                                  placeholder="17:00"
-                                />
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const slotStr = flexTimeStart && flexTimeEnd ? `${flexTimeStart} - ${flexTimeEnd}` : flexTimeStart || flexTimeEnd;
-                                  if (slotStr && !timeSlots.includes(slotStr)) {
-                                    setTimeSlots([...timeSlots, slotStr]);
-                                  }
-                                }}
-                                className="bg-adv-orange hover:bg-orange-600 text-white px-5 py-3 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-orange-500/20 active:scale-95 cursor-pointer shrink-0"
-                              >
-                                <Plus className="w-4 h-4 stroke-[3]" />
-                                <span>{lang === 'lo' ? 'ເພີ່ມຊ່ວງເວລາ' : 'Add Time Slot'}</span>
-                              </button>
-                            </div>
-                          </div>
-
-                        {/* Time Slots List */}
-                        <div className="space-y-2">
-                          <span className="text-xs font-extrabold text-adv-slate uppercase tracking-wider flex items-center gap-1.5">
-                            <Clock className="w-4 h-4 text-adv-orange" />
-                            {t.addedTimeSlots} ({timeSlots.length})
-                          </span>
-                          
-                          {timeSlots.length === 0 ? (
-                            <p className="text-xs text-gray-400 italic bg-gray-50/60 p-3.5 rounded-xl border border-gray-150 text-center">
-                              {t.noTimeSlots}
-                            </p>
-                          ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                              {timeSlots.map((slot, index) => (
-                                <div 
-                                  key={index} 
-                                  className="flex items-center justify-between bg-white border border-gray-200/80 px-3.5 py-2.5 rounded-xl shadow-xs hover:border-adv-orange/40 transition-all"
-                                >
-                                  <span className="text-xs font-bold text-adv-slate">{slot}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setTimeSlots(timeSlots.filter((_, i) => i !== index));
-                                    }}
-                                    className="text-gray-400 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 transition-colors"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                        <FlexibleDatePicker 
+                          availableDates={availableDates}
+                          onChange={setAvailableDates}
+                          lang={lang}
+                          theme="light"
+                        />
                       </motion.div>
                     )}
-
                     {/* Zone Seating feature */}
                     {dateType !== 'flexible' && (
                       <div className="pt-6 border-t border-gray-100">
@@ -3249,105 +3762,6 @@ export default function CreateEvent() {
                         ))}
                       </div>
                     </div>
-                  </div>
-                </div>
-              )}
-
-              {activeStep === 3 && (
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-8">
-                  <h3 className="text-xl font-bold text-adv-slate mb-2">{t.step3}</h3>
-                  
-                  <div className="space-y-4">
-                    {/* Event Privacy Option Card */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 gap-4">
-                      <div>
-                        <h4 className="text-adv-slate font-bold mb-1">{t.eventPrivacy}</h4>
-                        <p className="text-sm text-gray-500">
-                          {eventPrivacy === 'public' ? t.publicEventDesc : t.privateEventDesc}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1.5 p-1 bg-gray-200/60 rounded-xl shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setEventPrivacy('public')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                            eventPrivacy === 'public'
-                              ? 'bg-white text-adv-slate shadow-xs'
-                              : 'text-gray-600 hover:text-gray-900'
-                          }`}
-                        >
-                          <Globe className="w-3.5 h-3.5 text-adv-orange" />
-                          {t.publicEvent}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEventPrivacy('private')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                            eventPrivacy === 'private'
-                              ? 'bg-white text-adv-slate shadow-xs'
-                              : 'text-gray-600 hover:text-gray-900'
-                          }`}
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                          {t.privateEvent}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
-                      <div>
-                        <h4 className="text-adv-slate font-bold mb-1">{t.showRemainingTickets}</h4>
-                        <p className="text-sm text-gray-500">{t.showRemainingTicketsDesc}</p>
-                      </div>
-                      <button 
-                        onClick={() => setShowRemainingTickets(!showRemainingTickets)}
-                        className={`w-11 h-6 rounded-full transition-colors relative ${showRemainingTickets ? 'bg-adv-orange' : 'bg-gray-300'}`}
-                      >
-                        <div className={`w-5 h-5 rounded-full bg-white absolute top-[2px] transition-transform ${showRemainingTickets ? 'translate-x-5 left-[2px]' : 'translate-x-0 left-[2px]'}`} />
-                      </button>
-                    </div>
-
-
-
-                    {dateType !== 'flexible' && (
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
-                        <div>
-                          <h4 className="text-adv-slate font-bold mb-1">{t.enableCountdown}</h4>
-                          <p className="text-sm text-gray-500">{t.enableCountdownDesc}</p>
-                        </div>
-                        <button 
-                          onClick={() => setEnableCountdown(!enableCountdown)}
-                          className={`w-11 h-6 rounded-full transition-colors relative ${enableCountdown ? 'bg-adv-orange' : 'bg-gray-300'}`}
-                          type="button"
-                        >
-                          <div className={`w-5 h-5 rounded-full bg-white absolute top-[2px] transition-transform ${enableCountdown ? 'translate-x-5 left-[2px]' : 'translate-x-0 left-[2px]'}`} />
-                        </button>
-                      </div>
-                    )}
-
-
-
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
-                      <div>
-                        <h4 className="text-adv-slate font-bold mb-1">{t.maxTicketsPerUser}</h4>
-                        <p className="text-sm text-gray-500">{t.maxTicketsPerUserDesc}</p>
-                      </div>
-                      <select 
-                        value={maxTickets}
-                        onChange={(e) => setMaxTickets(e.target.value)}
-                        className="bg-white border border-gray-200 text-adv-slate rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-adv-orange font-medium"
-                      >
-                        <option value="1">1 {t.ticketUnit}</option>
-                        <option value="2">2 {t.ticketsUnit}</option>
-                        <option value="4">4 {t.ticketsUnit}</option>
-                        <option value="8">8 {t.ticketsUnit}</option>
-                        <option value="10">10 {t.ticketsUnit}</option>
-                        <option value="unlimited">{t.unlimited}</option>
-                      </select>
-                    </div>
-
-
-
                     <div className="pt-6 border-t border-gray-100">
                       <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100 mb-6 shadow-sm">
                         <div>
@@ -3552,6 +3966,82 @@ export default function CreateEvent() {
 
               {activeStep === 4 && (
                 <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-8">
+                  <h3 className="text-xl font-bold text-adv-slate mb-2">{t.step3}</h3>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
+                      <div>
+                        <h4 className="text-adv-slate font-bold mb-1">{t.showRemainingTickets}</h4>
+                        <p className="text-sm text-gray-500">{t.showRemainingTicketsDesc}</p>
+                      </div>
+                      <button 
+                        onClick={() => setShowRemainingTickets(!showRemainingTickets)}
+                        className={`w-11 h-6 rounded-full transition-colors relative ${showRemainingTickets ? 'bg-adv-orange' : 'bg-gray-300'}`}
+                      >
+                        <div className={`w-5 h-5 rounded-full bg-white absolute top-[2px] transition-transform ${showRemainingTickets ? 'translate-x-5 left-[2px]' : 'translate-x-0 left-[2px]'}`} />
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
+                      <div>
+                        <h4 className="text-adv-slate font-bold mb-1">{t.requireEveryTicketInfo}</h4>
+                        <p className="text-sm text-gray-500">{t.requireEveryTicketInfoDesc}</p>
+                      </div>
+                      <button 
+                        onClick={() => setRequireEveryTicketInfo(!requireEveryTicketInfo)}
+                        className={`w-11 h-6 rounded-full transition-colors relative ${requireEveryTicketInfo ? 'bg-adv-orange' : 'bg-gray-300'}`}
+                        type="button"
+                      >
+                        <div className={`w-5 h-5 rounded-full bg-white absolute top-[2px] transition-transform ${requireEveryTicketInfo ? 'translate-x-5 left-[2px]' : 'translate-x-0 left-[2px]'}`} />
+                      </button>
+                    </div>
+
+
+
+                    {dateType !== 'flexible' && (
+                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
+                        <div>
+                          <h4 className="text-adv-slate font-bold mb-1">{t.enableCountdown}</h4>
+                          <p className="text-sm text-gray-500">{t.enableCountdownDesc}</p>
+                        </div>
+                        <button 
+                          onClick={() => setEnableCountdown(!enableCountdown)}
+                          className={`w-11 h-6 rounded-full transition-colors relative ${enableCountdown ? 'bg-adv-orange' : 'bg-gray-300'}`}
+                          type="button"
+                        >
+                          <div className={`w-5 h-5 rounded-full bg-white absolute top-[2px] transition-transform ${enableCountdown ? 'translate-x-5 left-[2px]' : 'translate-x-0 left-[2px]'}`} />
+                        </button>
+                      </div>
+                    )}
+
+
+
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
+                      <div>
+                        <h4 className="text-adv-slate font-bold mb-1">{t.maxTicketsPerUser}</h4>
+                        <p className="text-sm text-gray-500">{t.maxTicketsPerUserDesc}</p>
+                      </div>
+                      <select 
+                        value={maxTickets}
+                        onChange={(e) => setMaxTickets(e.target.value)}
+                        className="bg-white border border-gray-200 text-adv-slate rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-adv-orange font-medium"
+                      >
+                        <option value="1">1 {t.ticketUnit}</option>
+                        <option value="2">2 {t.ticketsUnit}</option>
+                        <option value="4">4 {t.ticketsUnit}</option>
+                        <option value="8">8 {t.ticketsUnit}</option>
+                        <option value="10">10 {t.ticketsUnit}</option>
+                        <option value="unlimited">{t.unlimited}</option>
+                      </select>
+                    </div>
+
+
+
+                  </div>
+                </div>
+              )}
+
+              {activeStep === 5 && (
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-8">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xl font-bold text-adv-slate">{t.paymentInfo}</h3>
                     {(localEvents.length > 0 || !!safeStorage.getItem('organizer_payment_info')) && (
@@ -3641,7 +4131,7 @@ export default function CreateEvent() {
                     onClick={handleContinue}
                     className="px-10 py-3.5 bg-adv-orange hover:bg-orange-600 text-white font-bold rounded-2xl transition-all shadow-xl shadow-orange-100 flex items-center gap-2"
                   >
-                    {activeStep === 4 ? t.createEvent : t.continue}
+                    {activeStep === 5 ? t.createEvent : t.continue}
                     <ArrowRight className="w-5 h-5" />
                   </button>
                 </div>
@@ -3782,6 +4272,7 @@ export default function CreateEvent() {
                 </motion.div>
               </motion.div>
             )}
+
 
             {/* Image Locations Modal */}
             {showImageLocationsModal && (
@@ -3963,6 +4454,23 @@ export default function CreateEvent() {
                               </td>
                               <td className="p-4 text-right">
                                 <div className="flex items-center justify-end gap-2">
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); handleToggleDateTypeInOrganizer(event); }}
+                                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all text-xs font-extrabold border shadow-2xs cursor-pointer ${
+                                      event.dateType === 'flexible'
+                                        ? 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200'
+                                        : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
+                                    }`}
+                                    title={event.dateType === 'flexible' ? 'Switch to Fixed Date' : 'Switch to Flexible Date'}
+                                  >
+                                    <RefreshCcw className="w-3.5 h-3.5 shrink-0" />
+                                    <span className="whitespace-nowrap">
+                                      {event.dateType === 'flexible'
+                                        ? (lang === 'lo' ? 'ປ່ຽນເປັນ Fixed Date' : 'Switch to Fixed Date')
+                                        : (lang === 'lo' ? 'ປ່ຽນເປັນ Flexible Date' : 'Switch to Flexible Date')
+                                      }
+                                    </span>
+                                  </button>
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); setSelectedEvent(event); }}
                                     className="flex items-center gap-1.5 px-3.5 py-2 bg-gray-50 hover:bg-adv-orange/10 hover:text-adv-orange text-gray-600 rounded-xl transition-all text-xs font-bold border border-gray-100/50 shadow-sm" 
@@ -4296,7 +4804,6 @@ export default function CreateEvent() {
                   </div>
 
                   {/* Event Features Configuration (Countdown Timer Toggle) */}
-                  {selectedEvent.dateType !== 'flexible' && (
                     <div className="bg-gray-50 p-6 rounded-[24px] border border-gray-100 space-y-4 shadow-sm">
                       <div className="flex items-center justify-between">
                         <h4 className="text-sm font-bold text-adv-slate flex items-center gap-2">
@@ -4307,50 +4814,105 @@ export default function CreateEvent() {
                           {lang === 'lo' ? 'ຈັດການ' : 'Manage'}
                         </span>
                       </div>
+                      
+                      {selectedEvent.dateType !== 'flexible' && (
+                        <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-150/50 shadow-sm">
+                          <div>
+                            <h5 className="text-sm font-bold text-adv-slate flex items-center gap-1.5">
+                              ⏱️ {t.enableCountdown}
+                            </h5>
+                            <p className="text-xs text-gray-400 font-semibold mt-1 max-w-xl">
+                              {t.enableCountdownDesc}
+                            </p>
+                          </div>
+                          <button 
+                            onClick={() => {
+                              const updated = localEvents.map(evt => {
+                                if (evt.id === selectedEvent.id) {
+                                  const newEnable = evt.enableCountdown === undefined ? false : !evt.enableCountdown;
+                                  return { ...evt, enableCountdown: newEnable };
+                                }
+                                return evt;
+                              });
+                              setLocalEvents(updated);
+                              safeStorage.setItem('organizer_events', JSON.stringify(updated));
+                              setSelectedEvent({ ...selectedEvent, enableCountdown: selectedEvent.enableCountdown === undefined ? false : !selectedEvent.enableCountdown });
+                            }}
+                            className={`w-11 h-6 rounded-full transition-colors relative ${selectedEvent.enableCountdown !== false ? 'bg-adv-orange' : 'bg-gray-300'}`}
+                          >
+                            <div className={`w-5 h-5 rounded-full bg-white absolute top-[2px] transition-transform ${selectedEvent.enableCountdown !== false ? 'translate-x-5 left-[2px]' : 'translate-x-0 left-[2px]'}`} />
+                          </button>
+                        </div>
+                      )}
+
                       <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-150/50 shadow-sm">
                         <div>
                           <h5 className="text-sm font-bold text-adv-slate flex items-center gap-1.5">
-                            ⏱️ {t.enableCountdown}
+                            👥 {t.requireEveryTicketInfo}
                           </h5>
                           <p className="text-xs text-gray-400 font-semibold mt-1 max-w-xl">
-                            {t.enableCountdownDesc}
+                            {t.requireEveryTicketInfoDesc}
                           </p>
                         </div>
                         <button 
                           onClick={() => {
                             const updated = localEvents.map(evt => {
                               if (evt.id === selectedEvent.id) {
-                                const newEnable = evt.enableCountdown === undefined ? false : !evt.enableCountdown;
-                                return { ...evt, enableCountdown: newEnable };
+                                const newReq = evt.requireEveryTicketInfo === undefined ? false : !evt.requireEveryTicketInfo;
+                                return { ...evt, requireEveryTicketInfo: newReq };
                               }
                               return evt;
                             });
                             setLocalEvents(updated);
                             safeStorage.setItem('organizer_events', JSON.stringify(updated));
-                            setSelectedEvent({ ...selectedEvent, enableCountdown: selectedEvent.enableCountdown === undefined ? false : !selectedEvent.enableCountdown });
+                            setSelectedEvent({ ...selectedEvent, requireEveryTicketInfo: selectedEvent.requireEveryTicketInfo === undefined ? false : !selectedEvent.requireEveryTicketInfo });
                           }}
-                          className={`w-11 h-6 rounded-full transition-colors relative ${selectedEvent.enableCountdown !== false ? 'bg-adv-orange' : 'bg-gray-300'}`}
+                          className={`w-11 h-6 rounded-full transition-colors relative ${selectedEvent.requireEveryTicketInfo !== false ? 'bg-adv-orange' : 'bg-gray-300'}`}
                         >
-                          <div className={`w-5 h-5 rounded-full bg-white absolute top-[2px] transition-transform ${selectedEvent.enableCountdown !== false ? 'translate-x-5 left-[2px]' : 'translate-x-0 left-[2px]'}`} />
+                          <div className={`w-5 h-5 rounded-full bg-white absolute top-[2px] transition-transform ${selectedEvent.requireEveryTicketInfo !== false ? 'translate-x-5 left-[2px]' : 'translate-x-0 left-[2px]'}`} />
                         </button>
                       </div>
                     </div>
-                  )}
 
                   {/* Schedule and Location */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50/50 p-6 rounded-[24px] border border-gray-100">
                     <div className="space-y-4">
-                      <h4 className="text-sm font-bold text-adv-slate flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-adv-orange" />
-                        Date & Time
-                      </h4>
-                      <div className="space-y-2 pl-6">
-                        {selectedEvent.dateType === 'flexible' && (
-                          <span className="inline-block text-[10px] font-extrabold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100 uppercase tracking-wider">
-                            {t.flexibleDate}
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="text-sm font-bold text-adv-slate flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-adv-orange" />
+                          Date & Schedule Mode
+                        </h4>
+                        <button
+                          onClick={() => handleToggleDateTypeInOrganizer(selectedEvent)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 hover:bg-adv-orange text-adv-orange hover:text-white rounded-xl text-xs font-black transition-all border border-orange-200/80 shadow-2xs cursor-pointer"
+                          title="Switch between Fixed Date and Flexible Date"
+                        >
+                          <RefreshCcw className="w-3.5 h-3.5 shrink-0" />
+                          <span>
+                            {selectedEvent.dateType === 'flexible'
+                              ? (lang === 'lo' ? 'ປ່ຽນເປັນ Fixed Date' : 'Switch to Fixed Date')
+                              : (lang === 'lo' ? 'ປ່ຽນເປັນ Flexible Date' : 'Switch to Flexible Date')
+                            }
                           </span>
-                        )}
-                        <p className="text-sm text-gray-700 font-semibold">
+                        </button>
+                      </div>
+
+                      <div className="space-y-2 bg-white p-3.5 rounded-2xl border border-gray-200/80 shadow-2xs">
+                        <div className="flex items-center gap-2">
+                          {selectedEvent.dateType === 'flexible' ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-200 uppercase tracking-wider">
+                              <Sparkles className="w-3 h-3 text-amber-500" />
+                              {t.flexibleDate} (Open Visit Booking)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-200 uppercase tracking-wider">
+                              <Calendar className="w-3 h-3 text-blue-500" />
+                              Fixed Date Event
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-sm text-gray-700 font-extrabold mt-1">
                           {new Date(selectedEvent.date).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
                           {selectedEvent.endDate && selectedEvent.endDate !== selectedEvent.date && (
                             <>
@@ -4360,9 +4922,14 @@ export default function CreateEvent() {
                           )}
                         </p>
                         {(selectedEvent.time || selectedEvent.endTime) && (
-                          <p className="text-sm text-gray-500 font-bold flex items-center gap-1.5">
-                            <Clock className="w-4 h-4 text-gray-400" />
+                          <p className="text-xs text-gray-500 font-bold flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-adv-orange" />
                             {selectedEvent.time || '00:00'} - {selectedEvent.endTime || '23:59'}
+                          </p>
+                        )}
+                        {selectedEvent.dateType === 'flexible' && selectedEvent.flexibleDateDesc && (
+                          <p className="text-xs text-amber-800 bg-amber-50/70 p-2 rounded-lg border border-amber-100 font-medium mt-1">
+                            💬 {selectedEvent.flexibleDateDesc}
                           </p>
                         )}
                       </div>
@@ -4529,7 +5096,7 @@ export default function CreateEvent() {
                 <button
                   onClick={() => {
                     setShowPreviewModal(false);
-                    if (activeStep !== 4) setActiveStep(4);
+                    if (activeStep !== 5) setActiveStep(5);
                     handleContinue();
                   }}
                   className="flex-1 md:flex-none px-5 py-2 bg-adv-orange hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-orange-500/20 flex justify-center items-center gap-1.5"

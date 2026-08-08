@@ -5,6 +5,7 @@ import {
   ArrowLeft, 
   ArrowRight,
   Share2, 
+  Flag,
   Plus, 
   Minus, 
   Zap,
@@ -26,6 +27,10 @@ import {
   Send,
   Languages,
   Globe,
+  Instagram,
+  Youtube,
+  Facebook,
+  Linkedin,
   Sliders,
   Settings,
   Save,
@@ -41,17 +46,32 @@ import {
   Image as ImageIcon,
   Copy,
   Ticket,
-  ExternalLink
+  ExternalLink,
+  CheckCircle2,
+  Sparkles
 } from 'lucide-react';
 import { events, LaoEvent, TicketTier } from '../data/events';
 import { useLanguage } from '../LanguageContext';
 import { EventMapPicker } from '../components/EventMapPicker';
 import { CountdownTimer } from '../components/CountdownTimer';
+import DotsLoader from '../components/DotsLoader';
 import { safeStorage } from '../lib/storage';
 import { getReviewsForEvent, getAverageRatingForEvent, saveReview } from '../data/reviews';
 import { useAuth } from '../AuthContext';
 import { collection, query, where, onSnapshot, doc, setDoc, getDocs } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
+
+const XIcon = ({ className = "w-3.5 h-3.5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+  </svg>
+);
+
+const TikTokIcon = ({ className = "w-3.5 h-3.5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19.589 6.686a4.793 4.793 0 0 1-3.77-4.245V2h-3.445v13.672a2.896 2.896 0 0 1-2.901 2.879 2.896 2.896 0 0 1-2.895-2.879 2.896 2.896 0 0 1 2.895-2.879c.307 0 .605.05.882.144V9.458a6.326 6.326 0 0 0-.882-.062c-3.528 0-6.388 2.839-6.388 6.335 0 3.497 2.86 6.336 6.388 6.336 3.527 0 6.387-2.839 6.387-6.336V8.927a8.21 8.21 0 0 0 4.739 1.488V6.97a4.847 4.847 0 0 1-1.008-.284z"/>
+  </svg>
+);
 
 const translations = {
   en: {
@@ -102,6 +122,13 @@ const translations = {
     verifiedOrganizer: 'Verified Partner',
     contactOrganizer: 'Contact Organizer',
     aboutOrganizer: 'About the Host',
+    reportEvent: 'Report Event',
+    reportTitle: 'Report Event Issues',
+    reportReason: 'Reason for reporting',
+    reportDetails: 'Additional Details',
+    reportDetailsPlaceholder: 'Please describe the issue in detail...',
+    submitReport: 'Submit Report',
+    reportSubmitted: 'Report submitted successfully. Thank you for keeping Pasopkan safe!',
   },
   lo: {
     backToEvents: 'ກັບຄືນສູ່ກິດຈະກຳທັງໝົດ',
@@ -126,6 +153,13 @@ const translations = {
     invalidCode: 'ລະຫັດບໍ່ຖືກຕ້ອງ',
     linkCopied: 'ຄັດລອກລິ້ງແລ້ວ!',
     share: 'ແຊຣ໌',
+    reportEvent: 'ລາຍງານກິດຈະກຳ',
+    reportTitle: 'ລາຍງານບັນຫາກ່ຽວກັບກິດຈະກຳ',
+    reportReason: 'ເຫດຜົນໃນການລາຍງານ',
+    reportDetails: 'ລາຍລະອຽດເພີ່ມເຕີມ',
+    reportDetailsPlaceholder: 'ກະລຸນາອະທິບາຍບັນຫາຢ່າງລະອຽດ...',
+    submitReport: 'ສົ່ງການລາຍງານ',
+    reportSubmitted: 'ສົ່ງການລາຍງານສຳເລັດແລ້ວ! ທີມງານຈະກວດສອບກິດຈະກຳນີ້.',
     startTime: 'ກິດຈະກຳເລີ່ມເວລາ',
     ratingsAndReviews: 'ຄະແນນ ແລະ ການຣີວິວ',
     avgRating: 'ຄະແນນສະເລ່ຍ',
@@ -676,6 +710,25 @@ export default function EventDetails() {
   const [hoverRating, setHoverRating] = useState<number | null>(null);
   const [userComment, setUserComment] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
+
+  // Report Event States
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('Inappropriate or misleading content');
+  const [reportDetails, setReportDetails] = useState('');
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [reportSubmittedToast, setReportSubmittedToast] = useState(false);
+
+  const handleSendReport = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingReport(true);
+    setTimeout(() => {
+      setIsSubmittingReport(false);
+      setShowReportModal(false);
+      setReportDetails('');
+      setReportSubmittedToast(true);
+      setTimeout(() => setReportSubmittedToast(false), 4000);
+    }, 800);
+  };
   
   const getAccountUserName = () => {
     try {
@@ -1010,7 +1063,7 @@ export default function EventDetails() {
   if (!event) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <Activity className="w-12 h-12 text-adv-orange animate-spin" />
+        <DotsLoader />
       </div>
     );
   }
@@ -1191,13 +1244,23 @@ export default function EventDetails() {
             <ArrowLeft className="w-3.5 h-3.5" />
             {t.backToEvents}
           </button>
-          <button 
-            onClick={handleShare}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200/80 rounded-xl text-adv-slate text-xs font-bold shadow-sm hover:shadow-md transition-all active:scale-95 shrink-0"
-          >
-            <Share2 className="w-3.5 h-3.5 text-adv-orange" />
-            <span>{t.share}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={handleShare}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200/80 rounded-xl text-adv-slate text-xs font-bold shadow-sm hover:shadow-md transition-all active:scale-95 shrink-0 cursor-pointer"
+            >
+              <Share2 className="w-3.5 h-3.5 text-adv-orange" />
+              <span>{t.share}</span>
+            </button>
+            <button 
+              onClick={() => setShowReportModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200/80 rounded-xl text-red-600 hover:text-red-700 hover:bg-red-50/80 text-xs font-bold shadow-sm hover:shadow-md transition-all active:scale-95 shrink-0 cursor-pointer"
+              title={t.reportEvent}
+            >
+              <Flag className="w-3.5 h-3.5 text-red-500" />
+              <span>{t.reportEvent}</span>
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -1225,12 +1288,19 @@ export default function EventDetails() {
                      </div>
 
                      <div className="flex items-center gap-2 shrink-0">
-                       
                        <button 
                          onClick={handleShare} 
                          className="w-10 h-10 rounded-full bg-gray-50 border border-gray-150 flex items-center justify-center text-gray-700 active:scale-95 transition-all cursor-pointer"
+                         title={t.share}
                        >
                          <Share2 className="w-5 h-5 text-gray-600" />
+                       </button>
+                       <button 
+                         onClick={() => setShowReportModal(true)} 
+                         className="w-10 h-10 rounded-full bg-gray-50 border border-gray-150 flex items-center justify-center text-red-600 active:scale-95 transition-all cursor-pointer"
+                         title={t.reportEvent}
+                       >
+                         <Flag className="w-5 h-5 text-red-500" />
                        </button>
                      </div>
                    </div>
@@ -1263,12 +1333,19 @@ export default function EventDetails() {
 
                      {/* Round White Action Buttons: Favorite + Share */}
                      <div className="absolute top-4 right-4 flex items-center gap-2.5 z-20">
-                       
                        <button 
                          onClick={handleShare} 
                          className="w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center text-adv-slate hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
+                         title={t.share}
                        >
                          <Share2 className="w-5 h-5 text-gray-800" />
+                       </button>
+                       <button 
+                         onClick={() => setShowReportModal(true)} 
+                         className="w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center text-red-600 hover:bg-red-50 active:scale-95 transition-all cursor-pointer"
+                         title={t.reportEvent}
+                       >
+                         <Flag className="w-5 h-5 text-red-500" />
                        </button>
                      </div>
 
@@ -1505,28 +1582,7 @@ export default function EventDetails() {
                       {event.title}
                     </h1>
 
-                    {avgRating > 0 && (
-                      <div className="flex items-center gap-2 mb-4 bg-amber-50 text-amber-800 px-3 py-1.5 rounded-xl border border-amber-100/60 w-fit shadow-sm">
-                        <div className="flex items-center gap-0.5">
-                          {[1, 2, 3, 4, 5].map((star) => {
-                            const isFilled = star <= Math.round(avgRating);
-                            return (
-                              <Star
-                                key={star}
-                                className={`w-3.5 h-3.5 ${
-                                  isFilled ? 'fill-amber-400 text-amber-400' : 'text-gray-300'
-                                }`}
-                              />
-                            );
-                          })}
-                        </div>
-                        <span className="text-xs font-black">{avgRating.toFixed(1)} / 5.0</span>
-                        <span className="text-gray-300 text-[10px] font-bold">|</span>
-                        <span className="text-[10px] font-extrabold text-amber-600 uppercase tracking-wider">
-                          {reviews.length} {reviews.length === 1 ? 'Review' : 'Reviews'}
-                        </span>
-                      </div>
-                    )}
+
                     <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
                        <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-sm text-gray-600">
                          <Calendar className="w-3.5 h-3.5 text-adv-orange" />
@@ -1607,7 +1663,7 @@ export default function EventDetails() {
                     <div className="flex items-center gap-1.5 mb-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-adv-orange" />
                       <h2 className="text-[11px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-400">
-                        {lang === 'lo' ? 'ສະຖານທີ່ຈັດງານ' : 'Location & Venue'}
+                        {lang === 'lo' ? 'ສະຖານທີ່' : 'Location'}
                       </h2>
                     </div>
                     <h3 className="text-base sm:text-lg font-bold text-black dark:text-white">
@@ -1935,6 +1991,100 @@ export default function EventDetails() {
                         <span className="truncate">{lang === 'en' ? 'Call' : 'ໂທຫາ'}</span>
                       </a>
                     </div>
+
+                    {event.organizerSocialLinks && Object.values(event.organizerSocialLinks).some(Boolean) && (
+                      <div className="pt-2 border-t border-gray-100 mt-2">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1.5">
+                          {lang === 'en' ? 'Social Links' : 'ສື່ສັງຄົມອອນໄລນ໌'}
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {event.organizerSocialLinks.instagram && (
+                            <a
+                              href={`https://instagram.com/${event.organizerSocialLinks.instagram.replace(/^@/, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 bg-pink-50 hover:bg-pink-100 text-pink-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
+                              title="Instagram"
+                            >
+                              <Instagram className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">{event.organizerSocialLinks.instagram}</span>
+                            </a>
+                          )}
+                          {event.organizerSocialLinks.x && (
+                            <a
+                              href={`https://x.com/${event.organizerSocialLinks.x.replace(/^@/, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
+                              title="X"
+                            >
+                              <XIcon className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">{event.organizerSocialLinks.x}</span>
+                            </a>
+                          )}
+                          {event.organizerSocialLinks.youtube && (
+                            <a
+                              href={`https://youtube.com/@${event.organizerSocialLinks.youtube.replace(/^@/, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
+                              title="YouTube"
+                            >
+                              <Youtube className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">{event.organizerSocialLinks.youtube}</span>
+                            </a>
+                          )}
+                          {event.organizerSocialLinks.tiktok && (
+                            <a
+                              href={`https://tiktok.com/@${event.organizerSocialLinks.tiktok.replace(/^@/, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
+                              title="TikTok"
+                            >
+                              <TikTokIcon className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">{event.organizerSocialLinks.tiktok}</span>
+                            </a>
+                          )}
+                          {event.organizerSocialLinks.facebook && (
+                            <a
+                              href={`https://facebook.com/${event.organizerSocialLinks.facebook.replace(/^\//, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
+                              title="Facebook"
+                            >
+                              <Facebook className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">{event.organizerSocialLinks.facebook}</span>
+                            </a>
+                          )}
+                          {event.organizerSocialLinks.linkedin && (
+                            <a
+                              href={`https://linkedin.com/${event.organizerSocialLinks.linkedin.startsWith('in/') ? event.organizerSocialLinks.linkedin : `in/${event.organizerSocialLinks.linkedin}`}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
+                              title="LinkedIn"
+                            >
+                              <Linkedin className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">{event.organizerSocialLinks.linkedin}</span>
+                            </a>
+                          )}
+                          {event.organizerSocialLinks.website && (
+                            <a
+                              href={event.organizerSocialLinks.website.startsWith('http') ? event.organizerSocialLinks.website : `https://${event.organizerSocialLinks.website}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
+                              title="Website"
+                            >
+                              <Globe className="w-3.5 h-3.5" />
+                              <span className="text-[11px] truncate max-w-[120px]">{event.organizerSocialLinks.website}</span>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1976,13 +2126,40 @@ export default function EventDetails() {
                {/* Decorative top accent line */}
                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-adv-orange via-amber-500 to-adv-orange" />
 
+               {/* Pre-Arrival Booking Banner for Flexible Date Events */}
+               {event.dateType === 'flexible' && (
+                 <div className="p-3.5 bg-gradient-to-br from-amber-50 via-orange-50/70 to-amber-50/50 border border-orange-200/90 rounded-2xl flex items-start gap-3 shadow-2xs">
+                   <div className="w-9 h-9 rounded-xl bg-adv-orange text-white flex items-center justify-center shrink-0 shadow-xs">
+                     <Calendar className="w-5 h-5" />
+                   </div>
+                   <div className="text-xs space-y-1">
+                     <div className="font-extrabold text-adv-slate flex items-center gap-2">
+                       <span>{lang === 'lo' ? 'ຈອງວັນທີເຂົ້າຮ່ວມກ່ອນມາຮ່ວມງານ' : 'Pre-Arrival Visit Booking'}</span>
+                       <span className="text-[9px] bg-emerald-600 text-white font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                         {lang === 'lo' ? 'ຈອງລ່ວງໜ້າ' : 'Booking Mode'}
+                       </span>
+                     </div>
+                     <p className="text-gray-600 text-[11px] font-medium leading-relaxed">
+                       {lang === 'lo' 
+                         ? 'ກະລຸນາເລືອກວັນທີ ແລະ ຊ່ວງເວລາເຂົ້າຮ່ວມຂອງທ່ານລ່ວງໜ້າ ເພື່ອສຳຮອງບ່ອນ ແລະ ຮັບບັດເຂົ້າງານ'
+                         : 'Choose your visit date & arrival session below to reserve your entry pass prior to attending.'
+                       }
+                     </p>
+                   </div>
+                 </div>
+               )}
+
                {/* Calendar Selector */}
                <div className="space-y-2">
                  <label className="text-xs font-black uppercase tracking-wider text-adv-slate block flex items-center justify-between">
-                   <span>{event.dateType === 'flexible' ? t.selectVisitDate : (lang === 'en' ? 'Activity Date' : 'ວັນທີກິດຈະກຳ')}</span>
-                   {event.dateType === 'fixed' && (
+                   <span>{event.dateType === 'flexible' ? (lang === 'lo' ? '1. ເລືອກວັນທີເຂົ້າຮ່ວມ' : '1. Select Visit Date') : (lang === 'en' ? 'Activity Date' : 'ວັນທີກິດຈະກຳ')}</span>
+                   {event.dateType === 'fixed' ? (
                      <span className="text-[10px] font-bold text-adv-orange bg-orange-50 px-2 py-0.5 rounded-md">
                        {lang === 'en' ? 'Fixed Event Date' : 'ວັນທີກຳນົດ'}
+                     </span>
+                   ) : (
+                     <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                       ● {lang === 'lo' ? 'ພ້ອມຈອງ' : 'Open for Booking'}
                      </span>
                    )}
                  </label>
@@ -1993,6 +2170,24 @@ export default function EventDetails() {
                    eventDate={event.date}
                    lang={lang}
                  />
+                 {event.dateType === 'flexible' && selectedVisitDate && (
+                   <div className="p-3 bg-gradient-to-r from-emerald-50 to-teal-50/60 border border-emerald-200/80 rounded-xl flex items-center justify-between text-xs shadow-2xs">
+                     <div className="flex items-center gap-2">
+                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                       <div>
+                         <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider block">
+                           {lang === 'lo' ? 'ວັນທີເຂົ້າຮ່ວມທີ່ເລືອກ' : 'Selected Visit Date'}
+                         </span>
+                         <span className="font-extrabold text-emerald-950 text-xs">
+                           {new Date(selectedVisitDate).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                         </span>
+                       </div>
+                     </div>
+                     <span className="px-2.5 py-1 bg-emerald-600 text-white text-[10px] font-black rounded-lg shadow-2xs uppercase tracking-wider">
+                       {lang === 'lo' ? 'ສຳຮອງແລ້ວ' : 'Reserved'}
+                     </span>
+                   </div>
+                 )}
                  {event.dateType !== 'flexible' && event.time && (
                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-orange-50/70 to-amber-50/40 border border-orange-100 rounded-xl text-xs shadow-xs">
                      <div className="flex items-center gap-2">
@@ -2004,39 +2199,55 @@ export default function EventDetails() {
                  )}
                </div>
 
-               {/* Time Slot Selector */}
-               {event.hasTimeSelection && event.timeSlots && event.timeSlots.length > 0 && (
-                 <div className="space-y-2.5">
-                   <label className="text-xs font-black uppercase tracking-wider text-adv-slate block flex items-center gap-1.5">
-                     <Clock className="w-3.5 h-3.5 text-adv-orange" />
-                     {t.selectTimeSlot}
-                   </label>
-                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
-                     {event.timeSlots.map((slot) => {
-                       const isSelected = selectedTimeSlot === slot;
-                       return (
-                         <button
-                           key={slot}
-                           onClick={() => setSelectedTimeSlot(slot)}
-                           className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all duration-200 flex flex-col items-center justify-center gap-0.5 relative ${
-                             isSelected
-                               ? 'border-adv-orange bg-orange-50/90 text-adv-orange ring-2 ring-adv-orange/30 shadow-xs'
-                               : 'border-gray-200 bg-white text-adv-slate hover:border-gray-300 hover:bg-gray-50/60'
-                           }`}
-                         >
-                           <span className="font-mono font-black text-xs">{slot}</span>
-                           <span className="text-[9px] text-gray-400 font-extrabold uppercase tracking-wider">
-                             {parseInt(slot.split(':')[0], 10) < 12 
-                               ? (lang === 'en' ? 'Morning' : 'ຕອນເຊົ້າ') 
-                               : parseInt(slot.split(':')[0], 10) < 17 
-                                 ? (lang === 'en' ? 'Afternoon' : 'ຕອນບ່າຍ') 
-                                 : (lang === 'en' ? 'Evening' : 'ຕອນແລງ')
-                             }
-                           </span>
-                         </button>
-                       );
-                     })}
+               {/* Time Slot / Arrival Session Selector */}
+               {(event.dateType === 'flexible' || (event.hasTimeSelection && event.timeSlots && event.timeSlots.length > 0)) && (
+                 <div className="space-y-2.5 bg-gray-50/60 p-3.5 rounded-2xl border border-gray-150/80">
+                   <div className="flex items-center justify-between">
+                     <label className="text-xs font-black uppercase tracking-wider text-adv-slate block flex items-center gap-1.5">
+                       <Clock className="w-3.5 h-3.5 text-adv-orange" />
+                       {event.dateType === 'flexible' 
+                         ? (lang === 'lo' ? '2. ເລືອກຊ່ວງເວລາເຂົ້າຮ່ວມ' : '2. Select Arrival Time Slot') 
+                         : t.selectTimeSlot
+                       }
+                     </label>
+                     <span className="text-[9px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                       ⚡ Instant Pass
+                     </span>
                    </div>
+                   {(() => {
+                     const slots = (event.timeSlots && event.timeSlots.length > 0) 
+                       ? event.timeSlots 
+                       : ['09:00 - 12:00', '13:00 - 16:00', '16:30 - 19:30'];
+                     return (
+                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                         {slots.map((slot) => {
+                           const isSelected = selectedTimeSlot === slot;
+                           return (
+                             <button
+                               key={slot}
+                               type="button"
+                               onClick={() => setSelectedTimeSlot(slot)}
+                               className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition-all duration-200 flex flex-col items-center justify-center gap-0.5 relative cursor-pointer ${
+                                 isSelected
+                                   ? 'border-adv-orange bg-orange-50/90 text-adv-orange ring-2 ring-adv-orange/30 shadow-2xs font-extrabold'
+                                   : 'border-gray-200 bg-white text-adv-slate hover:border-gray-300 hover:bg-gray-50/60'
+                               }`}
+                             >
+                               <span className="font-mono font-black text-xs">{slot}</span>
+                               <span className="text-[9px] text-gray-400 font-extrabold uppercase tracking-wider">
+                                 {slot.includes('09:00') || slot.includes('10:00') || parseInt(slot.split(':')[0], 10) < 12 
+                                   ? (lang === 'lo' ? 'ຕອນເຊົ້າ' : 'Morning') 
+                                   : slot.includes('13:00') || slot.includes('14:00') || parseInt(slot.split(':')[0], 10) < 17 
+                                     ? (lang === 'lo' ? 'ຕອນບ່າຍ' : 'Afternoon') 
+                                     : (lang === 'lo' ? 'ຕອນແລງ' : 'Evening')
+                                 }
+                               </span>
+                             </button>
+                           );
+                         })}
+                       </div>
+                     );
+                   })()}
                  </div>
                )}
 
@@ -2161,6 +2372,32 @@ export default function EventDetails() {
                      {totalQuantity} {lang === 'en' ? (totalQuantity === 1 ? 'Ticket' : 'Tickets') : 'ໃບ'}
                    </span>
                  </div>
+
+                 {event.dateType === 'flexible' && (
+                   <div className="p-2.5 bg-amber-50/90 border border-amber-200/80 rounded-xl space-y-1 text-xs mb-2 shadow-2xs">
+                     <div className="flex items-center justify-between text-[11px] font-extrabold text-amber-950">
+                       <span className="flex items-center gap-1 text-amber-800">
+                         <Calendar className="w-3.5 h-3.5 text-adv-orange" />
+                         {lang === 'lo' ? 'ວັນທີເຂົ້າຮ່ວມ:' : 'Visit Date:'}
+                       </span>
+                       <span className="font-bold text-adv-slate">
+                         {selectedVisitDate 
+                           ? new Date(selectedVisitDate).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                           : (lang === 'lo' ? 'ຍັງບໍ່ໄດ້ເລືອກ' : 'Not Selected')
+                         }
+                       </span>
+                     </div>
+                     {selectedTimeSlot && (
+                       <div className="flex items-center justify-between text-[11px] font-extrabold text-amber-950">
+                         <span className="flex items-center gap-1 text-amber-800">
+                           <Clock className="w-3.5 h-3.5 text-adv-orange" />
+                           {lang === 'lo' ? 'ຊ່ວງເວລາ:' : 'Time Slot:'}
+                         </span>
+                         <span className="font-mono font-bold text-adv-slate">{selectedTimeSlot}</span>
+                       </div>
+                     )}
+                   </div>
+                 )}
 
                  {selectedTiersList.length > 0 ? (
                    <div className="space-y-1 text-xs">
@@ -2332,234 +2569,110 @@ export default function EventDetails() {
                       <span className="truncate">{lang === 'en' ? 'Call' : 'ໂທຫາ'}</span>
                     </a>
                   </div>
+
+                  {event.organizerSocialLinks && Object.values(event.organizerSocialLinks).some(Boolean) && (
+                    <div className="pt-2 border-t border-gray-100 mt-2">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1.5">
+                        {lang === 'en' ? 'Social Links' : 'ສື່ສັງຄົມອອນໄລນ໌'}
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {event.organizerSocialLinks.instagram && (
+                          <a
+                            href={`https://instagram.com/${event.organizerSocialLinks.instagram.replace(/^@/, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 bg-pink-50 hover:bg-pink-100 text-pink-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
+                            title="Instagram"
+                          >
+                            <Instagram className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">{event.organizerSocialLinks.instagram}</span>
+                          </a>
+                        )}
+                        {event.organizerSocialLinks.x && (
+                          <a
+                            href={`https://x.com/${event.organizerSocialLinks.x.replace(/^@/, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
+                            title="X"
+                          >
+                            <XIcon className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">{event.organizerSocialLinks.x}</span>
+                          </a>
+                        )}
+                        {event.organizerSocialLinks.youtube && (
+                          <a
+                            href={`https://youtube.com/@${event.organizerSocialLinks.youtube.replace(/^@/, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
+                            title="YouTube"
+                          >
+                            <Youtube className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">{event.organizerSocialLinks.youtube}</span>
+                          </a>
+                        )}
+                        {event.organizerSocialLinks.tiktok && (
+                          <a
+                            href={`https://tiktok.com/@${event.organizerSocialLinks.tiktok.replace(/^@/, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
+                            title="TikTok"
+                          >
+                            <TikTokIcon className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">{event.organizerSocialLinks.tiktok}</span>
+                          </a>
+                        )}
+                        {event.organizerSocialLinks.facebook && (
+                          <a
+                            href={`https://facebook.com/${event.organizerSocialLinks.facebook.replace(/^\//, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
+                            title="Facebook"
+                          >
+                            <Facebook className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">{event.organizerSocialLinks.facebook}</span>
+                          </a>
+                        )}
+                        {event.organizerSocialLinks.linkedin && (
+                          <a
+                            href={`https://linkedin.com/${event.organizerSocialLinks.linkedin.startsWith('in/') ? event.organizerSocialLinks.linkedin : `in/${event.organizerSocialLinks.linkedin}`}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
+                            title="LinkedIn"
+                          >
+                            <Linkedin className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">{event.organizerSocialLinks.linkedin}</span>
+                          </a>
+                        )}
+                        {event.organizerSocialLinks.website && (
+                          <a
+                            href={event.organizerSocialLinks.website.startsWith('http') ? event.organizerSocialLinks.website : `https://${event.organizerSocialLinks.website}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
+                            title="Website"
+                          >
+                            <Globe className="w-3.5 h-3.5" />
+                            <span className="text-[11px] truncate max-w-[120px]">{event.organizerSocialLinks.website}</span>
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
           </div>
-
-          {/* Ratings & Reviews Card */}
-          {event.allowReviews !== false && (
-            <div className="hidden lg:block lg:col-span-7 space-y-4" id="reviews-section-desktop">
-              <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-100 space-y-4">
-                <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
-                  <h2 className="text-[11px] font-black uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-adv-orange"></span>
-                    {t.ratingsAndReviews}
-                  </h2>
-                  {reviews.length > 0 && (
-                    <span className="text-[11px] font-bold text-adv-orange bg-orange-50/80 px-2 py-0.5 rounded-full border border-orange-100/40">
-                      {reviews.length} {reviews.length === 1 ? 'rating' : 'ratings'}
-                    </span>
-                  )}
-                </div>
-
-                {/* Interactive Write Review Form */}
-                {isAuthenticated && hasPurchasedTicket && (
-                  <div className="p-3 bg-orange-50/15 border border-orange-100/30 rounded-xl space-y-2.5">
-                    <h3 className="text-[11px] font-bold text-adv-orange uppercase tracking-wider flex items-center gap-1.5">
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      {t.writeComment}
-                    </h3>
-
-                    <form onSubmit={handleSubmitComment} className="space-y-2.5">
-                      {/* Star Rating Selector */}
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-xs font-medium text-gray-500">
-                          {t.yourRating}
-                        </span>
-                        <div className="flex items-center gap-0.5">
-                          {[1, 2, 3, 4, 5].map((star) => {
-                            const isFilled = hoverRating !== null ? star <= hoverRating : star <= userRating;
-                            return (
-                              <button
-                                type="button"
-                                key={star}
-                                onClick={() => setUserRating(star)}
-                                onMouseEnter={() => setHoverRating(star)}
-                                onMouseLeave={() => setHoverRating(null)}
-                                className="p-0.5 hover:scale-110 transition-transform focus:outline-none cursor-pointer"
-                              >
-                                <Star
-                                  className={`w-3.5 h-3.5 transition-colors duration-150 ${
-                                    isFilled 
-                                      ? 'fill-adv-orange text-adv-orange' 
-                                      : 'text-gray-300'
-                                  }`}
-                                />
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Comment Input block */}
-                      <div>
-                        <textarea
-                          value={userComment}
-                          onChange={(e) => setUserComment(e.target.value)}
-                          placeholder={t.commentPlaceholder}
-                          rows={2}
-                          className="w-full bg-white text-xs text-gray-700 p-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-1 focus:ring-adv-orange focus:border-adv-orange transition-all leading-relaxed resize-none"
-                        />
-                      </div>
-
-                      {/* Action Button & Status Feedback */}
-                      <div className="flex items-center justify-between gap-3 pt-0.5">
-                        <div>
-                          {commentStatus.type !== 'idle' && (
-                            <div className={`text-[11px] font-medium ${
-                              commentStatus.type === 'success' 
-                                ? 'text-emerald-600' 
-                                : commentStatus.type === 'error' 
-                                ? 'text-red-500' 
-                                : 'text-gray-400'
-                            }`}>
-                              <span>{commentStatus.message || (commentStatus.type === 'submitting' ? t.submitting : '')}</span>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <button
-                          type="submit"
-                          disabled={commentStatus.type === 'submitting'}
-                          className="bg-adv-orange hover:bg-orange-600 disabled:bg-orange-300 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 shadow-sm shadow-orange-500/10"
-                        >
-                          <Send className="w-3 h-3" />
-                          {t.submitComment}
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                )}
-
-                {reviews.length === 0 ? (
-                  <div className="py-5 text-center space-y-2">
-                    <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center mx-auto text-adv-orange border border-orange-100/30">
-                      <Star className="w-4 h-4 text-adv-orange fill-adv-orange" />
-                    </div>
-                    <div className="space-y-0.5">
-                      <p className="text-xs font-bold text-gray-700">{t.noReviewsYet}</p>
-                      <p className="text-[11px] text-gray-400 font-medium">{t.beFirstReview}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-3.5">
-                    {/* Summary block */}
-                    <div className="flex items-center justify-between p-3 bg-orange-50/15 border border-orange-100/20 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl font-extrabold text-adv-orange tracking-tight">{avgRating.toFixed(1)}</span>
-                        <div>
-                          <div className="flex items-center gap-0.5">
-                            {[1, 2, 3, 4, 5].map((star) => {
-                              const isFilled = star <= Math.round(avgRating);
-                              return (
-                                <Star
-                                  key={star}
-                                  className={`w-3 h-3 ${
-                                    isFilled ? 'fill-adv-orange text-adv-orange' : 'text-gray-200'
-                                  }`}
-                                />
-                              );
-                            })}
-                          </div>
-                          <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
-                            {t.basedOnReviews.replace('{count}', reviews.length.toString())}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="hidden sm:block text-right">
-                        <span className="inline-block text-[9px] font-bold text-adv-orange uppercase tracking-wider px-2 py-0.5 bg-orange-50/80 border border-orange-100/40 rounded-full">
-                          {lang === 'en' ? 'Verified' : 'ຢືນຢັນແລ້ວ'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Review Filter */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-                      <button
-                        onClick={() => setReviewFilter('all')}
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all ${
-                          reviewFilter === 'all' 
-                            ? 'bg-adv-orange text-white' 
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
-                      >
-                        {lang === 'en' ? 'All Reviews' : 'ລີວິວທັງໝົດ'}
-                      </button>
-                      {[5, 4, 3, 2, 1].map(rating => (
-                        <button
-                          key={rating}
-                          onClick={() => setReviewFilter(rating)}
-                          className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all ${
-                            reviewFilter === rating 
-                              ? 'bg-adv-orange text-white' 
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          }`}
-                        >
-                          {rating} <Star className={`w-2.5 h-2.5 ${reviewFilter === rating ? 'fill-white text-white' : 'fill-adv-orange text-adv-orange'}`} />
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Reviews List */}
-                    <div className="space-y-3 divide-y divide-gray-100">
-                      {filteredReviews.length === 0 ? (
-                        <p className="text-xs text-gray-500 py-3 text-center">
-                          {lang === 'en' ? 'No reviews found for this rating.' : 'ບໍ່ພົບລີວິວສຳລັບຄະແນນນີ້.'}
-                        </p>
-                      ) : (
-                        filteredReviews.map((rev, idx) => (
-                          <div key={rev.id || idx} className={`${idx > 0 ? 'pt-3' : ''} space-y-1.5`}>
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-orange-50/80 text-adv-orange font-bold text-[10px] border border-orange-100/60 flex items-center justify-center shrink-0">
-                                {rev.userName ? rev.userName.charAt(0).toUpperCase() : 'A'}
-                              </div>
-                              <div>
-                                <span className="text-xs font-semibold text-gray-800 block leading-tight">{rev.userName || t.verifiedAttendee}</span>
-                                <span className="text-[9px] text-gray-400 block font-medium">
-                                  {new Date(rev.createdAt || rev.date).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', {
-                                    year: 'numeric',
-                                    month: 'short',
-                                    day: 'numeric'
-                                  })}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-0.5">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <Star
-                                  key={star}
-                                  className={`w-2.5 h-2.5 ${
-                                    star <= rev.rating ? 'fill-adv-orange text-adv-orange' : 'text-gray-200'
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                          </div>
-
-                          {rev.comment && (
-                            <p className="text-xs text-gray-500 leading-relaxed pl-8 font-normal">
-                              {typeof rev.comment === 'object' 
-                                ? (rev.comment[lang as 'en' | 'lo'] || rev.comment['en'] || '') 
-                                : rev.comment}
-                            </p>
-                          )}
-                        </div>
-                      )))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
       {/* Mobile Floating booking CTA bar */}
       <AnimatePresence>
-        {!isPast && !isSidebarVisible && mobileActiveTab !== 'reviews' && (
+        {!isPast && !isSidebarVisible && (
           <motion.div 
             initial={{ opacity: 0, y: 100 }}
             animate={{ opacity: 1, y: 0 }}
@@ -2597,6 +2710,124 @@ export default function EventDetails() {
                 {event.status !== 'paused' && <ArrowRight className="w-4 h-4" />}
               </div>
             </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Report Submitted Toast */}
+      <AnimatePresence>
+        {reportSubmittedToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 100, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: 100, x: '-50%' }}
+            className="fixed bottom-12 left-1/2 z-[260] bg-zinc-900 text-white px-6 py-3.5 rounded-2xl font-bold shadow-2xl flex items-center gap-3 border border-white/10 max-w-md text-xs sm:text-sm text-center"
+          >
+            <Flag className="w-4 h-4 text-red-400 shrink-0" />
+            <span>{t.reportSubmitted}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Report Event Modal */}
+      <AnimatePresence>
+        {showReportModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[250] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+            onClick={() => setShowReportModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-gray-100 relative text-adv-slate"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => setShowReportModal(false)}
+                className="absolute top-5 right-5 p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                  <Flag className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-adv-slate">
+                    {t.reportTitle}
+                  </h3>
+                  <p className="text-xs text-gray-400 font-medium truncate max-w-[240px]">
+                    {event.title}
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleSendReport} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                    {t.reportReason}
+                  </label>
+                  <select
+                    value={reportReason}
+                    onChange={(e) => setReportReason(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    <option value="Inappropriate or misleading content">
+                      {lang === 'lo' ? 'ເນື້ອຫາບໍ່ເໝາະສົມ ຫຼື ເຮັດໃຫ້ເຂົ້າໃຈຜິດ' : 'Inappropriate or misleading content'}
+                    </option>
+                    <option value="Fraud, Scam, or Fake event">
+                      {lang === 'lo' ? 'ການຫຼອກລວງ ຫຼື ກິດຈະກຳປອມ' : 'Fraud, Scam, or Fake event'}
+                    </option>
+                    <option value="Ticket price or policy violation">
+                      {lang === 'lo' ? 'ການລະເມີດນະໂຍບາຍ ຫຼື ລາຄາປີ້' : 'Ticket price or policy violation'}
+                    </option>
+                    <option value="Copyright infringement">
+                      {lang === 'lo' ? 'ການລະເມີດລິຂະສິດ' : 'Copyright or Trademark infringement'}
+                    </option>
+                    <option value="Other issues">
+                      {lang === 'lo' ? 'ບັນຫາອື່ນໆ' : 'Other issues'}
+                    </option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                    {t.reportDetails}
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={reportDetails}
+                    onChange={(e) => setReportDetails(e.target.value)}
+                    placeholder={t.reportDetailsPlaceholder}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                  />
+                </div>
+
+                <div className="pt-2 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowReportModal(false)}
+                    className="flex-1 py-3 rounded-2xl border border-gray-200 text-gray-600 font-bold text-xs hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
+                    {lang === 'lo' ? 'ຍົກເລີກ' : 'Cancel'}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingReport}
+                    className="flex-1 py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-xs shadow-md transition-all cursor-pointer active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isSubmittingReport ? <Activity className="w-4 h-4 animate-spin text-white" /> : <Flag className="w-4 h-4" />}
+                    <span>{t.submitReport}</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

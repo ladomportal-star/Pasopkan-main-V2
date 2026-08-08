@@ -20,6 +20,8 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
   province = '',
   district = '',
   isReadOnly = false,
+  latitude,
+  longitude,
   lang = 'en',
   googleMapUrl = '',
   onChangeGoogleMapUrl
@@ -42,7 +44,6 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
       return;
     }
 
-    // Check if it's a shortlink or google maps link that needs resolution
     if (url.includes('goo.gl') || url.includes('maps.app.goo.gl') || url.includes('google.com/maps')) {
       setIsResolving(true);
       setResolvedSuccess(false);
@@ -103,37 +104,57 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
   };
 
   const getIframeSrc = () => {
+    // 1. If explicit coordinates are provided
+    if (typeof latitude === 'number' && typeof longitude === 'number' && !isNaN(latitude) && !isNaN(longitude) && latitude !== 0 && longitude !== 0) {
+      return `https://maps.google.com/maps?q=${latitude},${longitude}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
+    }
+
+    // 2. If resolved shortlink embed URL is available
     if (resolvedEmbedSrc) return resolvedEmbedSrc;
 
-    if (url) {
-      if (url.includes('output=embed')) return url;
-      
-      // Handle place links
-      if (url.includes('/maps/place/')) {
-        const urlParts = url.split('?')[0].split('/maps/place/')[1];
-        if (urlParts) {
-          const placeName = urlParts.split('/')[0];
-          return `https://maps.google.com/maps?q=${placeName}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
-        }
+    // 3. Parse map URL string if available
+    const activeUrl = (url || googleMapUrl || '').trim();
+    if (activeUrl) {
+      if (activeUrl.includes('output=embed')) return activeUrl;
+
+      // Extract coordinates from @lat,lng
+      const coordMatch = activeUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (coordMatch) {
+        return `https://maps.google.com/maps?q=${coordMatch[1]},${coordMatch[2]}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
       }
-      
-      // Handle search links
-      if (url.includes('/maps/search/')) {
-        const urlParts = url.split('?')[0].split('/maps/search/')[1];
-        if (urlParts) {
-          const placeName = urlParts.split('/')[0];
-          return `https://maps.google.com/maps?q=${placeName}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
+
+      // Handle place links
+      if (activeUrl.includes('/maps/place/')) {
+        const placePart = activeUrl.split('/maps/place/')[1]?.split('/')[0];
+        if (placePart) {
+          const cleanPlace = decodeURIComponent(placePart).replace(/\+/g, ' ');
+          return `https://maps.google.com/maps?q=${encodeURIComponent(cleanPlace)}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
         }
       }
 
-      return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
+      // Handle search links
+      if (activeUrl.includes('/maps/search/')) {
+        const searchPart = activeUrl.split('/maps/search/')[1]?.split('/')[0];
+        if (searchPart) {
+          const cleanSearch = decodeURIComponent(searchPart).replace(/\+/g, ' ');
+          return `https://maps.google.com/maps?q=${encodeURIComponent(cleanSearch)}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
+        }
+      }
+
+      return `https://maps.google.com/maps?q=${encodeURIComponent(activeUrl)}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
     }
-    return `https://maps.google.com/maps?q=${encodeURIComponent(address || 'Vientiane')}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
+
+    // 4. Fallback search query based on address / location
+    const searchQuery = [address, district, province].filter(Boolean).join(', ') || 'Vientiane, Laos';
+    return `https://maps.google.com/maps?q=${encodeURIComponent(searchQuery)}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
   };
 
   const iframeSrc = getIframeSrc();
 
   const getMapTargetUrl = () => {
+    if (typeof latitude === 'number' && typeof longitude === 'number' && !isNaN(latitude) && !isNaN(longitude) && latitude !== 0 && longitude !== 0) {
+      return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+    }
     if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
       return url;
     }
@@ -146,17 +167,17 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
 
   if (isReadOnly) {
     return (
-      <div className="rounded-2xl sm:rounded-3xl h-[240px] sm:h-[300px] overflow-hidden border border-gray-200/80 dark:border-zinc-800 shadow-sm relative bg-gray-100 dark:bg-zinc-900 group">
-        {/* Open Map button overlay replacing top-left iframe box */}
+      <div className="rounded-2xl overflow-hidden border border-gray-200/90 dark:border-zinc-800 shadow-sm relative bg-gray-100 dark:bg-zinc-900 h-[210px] sm:h-[270px] lg:h-[310px] w-full group">
+        {/* Open Map overlay button */}
         <a
           href={getMapTargetUrl()}
           target="_blank"
           rel="noopener noreferrer"
-          className="absolute top-3 left-3 z-10 inline-flex items-center gap-2 px-3.5 py-2 bg-white/95 dark:bg-zinc-900/95 hover:bg-white dark:hover:bg-zinc-800 text-adv-slate dark:text-white rounded-xl text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all border border-gray-200/80 dark:border-zinc-700 backdrop-blur-md cursor-pointer group/mapbtn"
+          className="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/95 dark:bg-zinc-900/95 hover:bg-white dark:hover:bg-zinc-800 text-adv-slate dark:text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all border border-gray-200/80 dark:border-zinc-700 backdrop-blur-md cursor-pointer group/mapbtn"
         >
-          <MapPin className="w-4 h-4 text-adv-orange group-hover/mapbtn:scale-110 transition-transform" />
+          <MapPin className="w-3.5 h-3.5 text-adv-orange group-hover/mapbtn:scale-110 transition-transform" />
           <span>{lang === 'lo' ? 'ເປີດແຜນທີ່' : 'Open map'}</span>
-          <ExternalLink className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 group-hover/mapbtn:text-adv-orange transition-colors" />
+          <ExternalLink className="w-3 h-3 text-gray-400 dark:text-gray-500 group-hover/mapbtn:text-adv-orange transition-colors" />
         </a>
 
         <iframe 
@@ -165,7 +186,8 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
           loading="lazy" 
           allowFullScreen 
           src={iframeSrc}
-          className="w-[calc(100%+60px)] h-[calc(100%+120px)] -mt-[62px] -ml-[15px] -mb-[45px] -mr-[45px]"
+          title="Location Map"
+          className="w-full h-full object-cover"
         />
       </div>
     );
@@ -201,17 +223,17 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
         </p>
       </div>
 
-      <div className="rounded-[16px] h-[300px] overflow-hidden border border-gray-200 shadow-sm relative bg-gray-100 group mt-4">
-        {/* Open Map button overlay replacing top-left iframe box */}
+      <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm relative bg-gray-100 dark:bg-zinc-900 h-[260px] sm:h-[300px] w-full group mt-4">
+        {/* Open Map overlay button */}
         <a
           href={getMapTargetUrl()}
           target="_blank"
           rel="noopener noreferrer"
-          className="absolute top-3 left-3 z-10 inline-flex items-center gap-2 px-3.5 py-2 bg-white/95 hover:bg-white text-adv-slate rounded-xl text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all border border-gray-200 backdrop-blur-md cursor-pointer group/mapbtn"
+          className="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/95 hover:bg-white text-adv-slate rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all border border-gray-200 backdrop-blur-md cursor-pointer group/mapbtn"
         >
-          <MapPin className="w-4 h-4 text-adv-orange group-hover/mapbtn:scale-110 transition-transform" />
+          <MapPin className="w-3.5 h-3.5 text-adv-orange group-hover/mapbtn:scale-110 transition-transform" />
           <span>{lang === 'lo' ? 'ເປີດແຜນທີ່' : 'Open map'}</span>
-          <ExternalLink className="w-3.5 h-3.5 text-gray-400 group-hover/mapbtn:text-adv-orange transition-colors" />
+          <ExternalLink className="w-3 h-3 text-gray-400 group-hover/mapbtn:text-adv-orange transition-colors" />
         </a>
 
         <iframe 
@@ -220,7 +242,8 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
           loading="lazy" 
           allowFullScreen 
           src={iframeSrc}
-          className="w-[calc(100%+60px)] h-[calc(100%+120px)] -mt-[62px] -ml-[15px] -mb-[45px] -mr-[45px]"
+          title="Location Map"
+          className="w-full h-full object-cover"
         />
       </div>
     </div>

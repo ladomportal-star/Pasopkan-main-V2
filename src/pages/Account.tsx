@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, Settings, CreditCard, Bell, Shield, HelpCircle, LogOut, ChevronLeft, ChevronRight, Camera, Calendar as CalendarIcon, MapPin, Plus, CheckCircle2, XCircle, X, AlertCircle, AlertTriangle, Loader2, Image as ImageIcon, Ticket, Download, Link2, Copy, ExternalLink, QrCode, Trash2, ShieldCheck , Building, Hash, Save, Edit2, ChevronDown, DollarSign, Info } from 'lucide-react';
+import { User, Settings, CreditCard, Bell, Shield, HelpCircle, LogOut, ChevronLeft, ChevronRight, Camera, Calendar as CalendarIcon, MapPin, Plus, CheckCircle2, XCircle, X, AlertCircle, AlertTriangle, Loader2, Image as ImageIcon, Ticket, Download, Link2, Copy, ExternalLink, QrCode, Trash2, ShieldCheck , Building, Hash, Save, Edit2, ChevronDown, DollarSign, Info, Smartphone, Lock } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { safeStorage } from '../lib/storage';
 import { motion, AnimatePresence } from 'motion/react';
@@ -244,6 +244,57 @@ export default function Account() {
   const [isEditingBank, setIsEditingBank] = useState(false);
   const [showBankConfirmModal, setShowBankConfirmModal] = useState(false);
   const [bankFormData, setBankFormData] = useState(bankAccount || { bankName: '', accountName: '', accountNumber: '' });
+  
+  const [unclaimedRevenue, setUnclaimedRevenue] = useState(3500000);
+  const [showClaimModal, setShowClaimModal] = useState(false);
+  const [claimCode2FA, setClaimCode2FA] = useState('');
+  const [bank2FACode, setBank2FACode] = useState('');
+  const [isClaiming, setIsClaiming] = useState(false);
+  const is2FAEnabled = safeStorage.getItem('user_2fa_enabled') === 'true';
+
+  const handleConfirmClaimPayout = () => {
+    if (is2FAEnabled) {
+      if (!claimCode2FA || claimCode2FA.trim().length < 6) {
+        setToastQueue(prev => [...prev, { 
+          id: Date.now().toString(), 
+          text: lang === 'lo' ? 'ກະລຸນາປ້ອນລະຫັດ 2FA Authenticator 6 ຫຼັກ' : 'Please enter the 6-digit 2FA Authenticator code', 
+          type: 'error' 
+        }]);
+        return;
+      }
+    }
+
+    setIsClaiming(true);
+    setTimeout(() => {
+      setIsClaiming(false);
+      setShowClaimModal(false);
+      const claimedAmt = unclaimedRevenue;
+      setUnclaimedRevenue(0);
+      setClaimCode2FA('');
+
+      const newPayout = {
+        id: `PAY-${Date.now().toString().slice(-6)}`,
+        date: new Date().toISOString().split('T')[0],
+        event: 'Vientiane Music Festival 2026',
+        grossAmount: claimedAmt,
+        platformFee: claimedAmt * 0.05,
+        amount: claimedAmt * 0.95,
+        status: 'Completed',
+        account: bankAccount ? `${bankAccount.bankName} *${bankAccount.accountNumber.slice(-4)}` : 'BCEL Bank *8899',
+        receiptUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=800'
+      };
+
+      setMyPayouts(prev => [newPayout, ...prev]);
+
+      setToastQueue(prev => [...prev, {
+        id: Date.now().toString(),
+        text: lang === 'lo'
+          ? 'ສົ່ງຄຳຂໍເບີກຈ່າຍເງິນສຳເລັດ! ເງິນຖືກໂອນເຂົ້າບັນຊີຂອງທ່ານແລ້ວ'
+          : 'Payout claim submitted successfully with 2FA authorization!',
+        type: 'success'
+      }]);
+    }, 1000);
+  };
 
   const getDaysSinceBankUpdate = () => {
     if (!bankAccount?.updatedAt) return 999;
@@ -286,6 +337,17 @@ export default function Account() {
   };
 
   const confirmSaveBankDetails = () => {
+    if (is2FAEnabled) {
+      if (!bank2FACode || bank2FACode.trim().length < 6) {
+        setToastQueue(prev => [...prev, { 
+          id: Date.now().toString(), 
+          text: lang === 'lo' ? 'ກະລຸນາປ້ອນລະຫັດ 2FA Authenticator 6 ຫຼັກ' : 'Please enter the 6-digit 2FA Authenticator code', 
+          type: 'error' 
+        }]);
+        return;
+      }
+    }
+
     const newBankInfo = {
       ...bankFormData,
       updatedAt: new Date().toISOString()
@@ -295,6 +357,7 @@ export default function Account() {
     setBankAccount(newBankInfo);
     setIsEditingBank(false);
     setShowBankConfirmModal(false);
+    setBank2FACode('');
     
     setToastQueue(prev => [...prev, { id: Date.now().toString(), text: lang === 'lo' ? 'ບັນທຶກຂໍ້ມູນທະນາຄານສຳເລັດ! (ສາມາດແກ້ໄຂໄດ້ອີກຫຼັງ 30 ວັນ)' : 'Bank details saved! (Next edit allowed after 30 days)', type: 'success' }]);
   };
@@ -696,7 +759,7 @@ export default function Account() {
     { 
       icon: Shield, 
       label: t.privacySecurity, 
-      desc: lang === 'en' ? 'Manage password and account security' : 'ຈັດການລະຫັດຜ່ານ ແລະ ຄວາມປອດໄພຂອງບັນຊີ',
+      desc: lang === 'en' ? 'Manage 2FA authenticator and account security' : 'ຈັດການ 2FA Authenticator ແລະ ຄວາມປອດໄພຂອງບັນຊີ',
       path: '/security',
       color: 'text-emerald-500 dark:text-emerald-450',
       bg: 'bg-emerald-50 dark:bg-emerald-500/10'
@@ -1018,16 +1081,14 @@ export default function Account() {
               </div>
 
               {/* Action Buttons */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="w-full">
                 <button 
                   onClick={() => setShowScanner(true)}
-                  className="flex items-center justify-center gap-3 p-4 sm:p-5 rounded-2xl sm:rounded-[1.5rem] bg-adv-slate dark:bg-white text-white dark:text-adv-slate font-bold hover:opacity-95 transition-all shadow-md active:scale-[0.98] transform cursor-pointer"
+                  className="w-full flex items-center justify-center gap-3 p-4 sm:p-5 rounded-2xl sm:rounded-[1.5rem] bg-adv-slate dark:bg-white text-white dark:text-adv-slate font-bold hover:opacity-95 transition-all shadow-md active:scale-[0.98] transform cursor-pointer"
                 >
                   <Camera className="w-5 h-5 text-adv-orange animate-pulse" />
                   <span className="text-sm sm:text-base">{t.scanQr}</span>
                 </button>
-
-                
               </div>
 
               {/* Staff Scanner Access Links Card */}
@@ -1041,9 +1102,6 @@ export default function Account() {
                         <Link2 className="w-4 h-4" />
                       </div>
                       <h4 className="text-base sm:text-lg font-bold">{t.staffScannerLinks}</h4>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[10px] font-black uppercase tracking-wider hidden sm:inline-block">
-                        ⚡ Direct Access • No Login Required
-                      </span>
                     </div>
                     <p className="text-xs text-gray-400 font-medium max-w-xl">
                       {t.staffScannerDesc}
@@ -1076,9 +1134,6 @@ export default function Account() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-black truncate">{link.staffLabel}</span>
-                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[9px] font-black uppercase tracking-wider">
-                              {t.active}
-                            </span>
                           </div>
                           <div className="text-xs font-mono text-gray-400 truncate mt-1 flex items-center gap-1.5">
                             <span className="truncate max-w-[220px] xs:max-w-[300px]">{link.url}</span>
@@ -1143,7 +1198,6 @@ export default function Account() {
                   <div className="mb-4 sm:mb-6">
                     <div className="flex items-center justify-between mb-1.5">
                        <h4 className="text-base sm:text-lg font-bold">{t.seatingConfig}</h4>
-                       <span className="px-2 py-0.5 bg-green-500/10 text-green-500 rounded-lg text-[9px] font-black uppercase tracking-wider">{t.activeMap}</span>
                     </div>
                     <p className="text-xs sm:text-sm text-gray-400 font-medium tracking-tight">{t.seatingDesc}</p>
                   </div>
@@ -1327,6 +1381,41 @@ export default function Account() {
                     {new Intl.NumberFormat('lo-LA').format(myPayouts.reduce((sum, p) => sum + p.amount, 0))} ₭
                   </p>
                 </div>
+              </div>
+            </div>
+
+            {/* Claimable Event Revenue Card */}
+            <div className={`p-5 sm:p-7 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border transition-all ${
+              theme === 'dark' ? 'bg-zinc-900/80 border-zinc-800' : 'bg-white border-gray-100'
+            }`}>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 border border-emerald-500/20 shadow-xs">
+                    <DollarSign className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className={`text-base sm:text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>
+                        {lang === 'lo' ? 'ລາຍຮັບກິດຈະກຳທີ່ສາມາດເບີກໄດ້' : 'Claimable Event Revenue'}
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase tracking-wider">
+                        {lang === 'lo' ? 'ພ້ອມເບີກ' : 'Ready'}
+                      </span>
+                    </div>
+                    <p className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                      {new Intl.NumberFormat('lo-LA').format(unclaimedRevenue)} ₭
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowClaimModal(true)}
+                  disabled={unclaimedRevenue <= 0}
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-md transition-all cursor-pointer active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <Smartphone className="w-4 h-4 text-emerald-200" />
+                  <span>{lang === 'lo' ? 'ຂໍເບີກຈ່າຍເງິນ (Claim Money)' : 'Claim Event Money'}</span>
+                </button>
               </div>
             </div>
 
@@ -2183,6 +2272,34 @@ export default function Account() {
                 </div>
               </div>
 
+              {/* 2FA Authenticator Field if 2FA Enabled */}
+              {is2FAEnabled && (
+                <div className="mb-6 p-4 rounded-2xl bg-orange-500/10 border border-orange-500/20 space-y-2">
+                  <div className="flex items-center gap-2 text-adv-orange font-bold text-xs">
+                    <Smartphone className="w-4 h-4" />
+                    <span>{lang === 'lo' ? 'ຕ້ອງການ 2FA Authenticator' : '2FA Authenticator Required'}</span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-300 font-medium leading-relaxed">
+                    {lang === 'lo'
+                      ? 'ກະລຸນາປ້ອນລະຫັດ 6 ຫຼັກຈາກແອັບ Authenticator ຂອງທ່ານເພື່ອອັບເດດຂໍ້ມູນທະນາຄານ.'
+                      : 'Please enter the 6-digit code from your Authenticator app to update bank details.'}
+                  </p>
+                  <div className="relative pt-1">
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={bank2FACode}
+                      onChange={(e) => setBank2FACode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="123456"
+                      className={`w-full border rounded-xl px-4 py-3 font-mono font-black text-center text-base tracking-widest focus:outline-none focus:ring-2 focus:ring-adv-orange ${
+                        theme === 'dark' ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-white border-gray-200 text-adv-slate'
+                      }`}
+                    />
+                    <Lock className="w-4 h-4 text-gray-300 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -2195,10 +2312,115 @@ export default function Account() {
                 </button>
                 <button
                   type="button"
+                  disabled={is2FAEnabled && bank2FACode.length < 6}
                   onClick={confirmSaveBankDetails}
-                  className="flex-1 py-3.5 rounded-xl bg-adv-orange hover:bg-orange-600 text-white font-black text-xs shadow-md transition-all cursor-pointer active:scale-[0.98]"
+                  className="flex-1 py-3.5 rounded-xl bg-adv-orange hover:bg-orange-600 text-white font-black text-xs shadow-md transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {lang === 'lo' ? 'ຢືນຢັນ ແລະ ບັນທຶກ' : 'Confirm & Save'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Claim Event Money Modal */}
+      <AnimatePresence>
+        {showClaimModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[260] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+            onClick={() => setShowClaimModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className={`max-w-md w-full rounded-[2rem] p-6 sm:p-8 shadow-2xl border ${
+                theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
+              }`}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-4 border border-emerald-500/20 shadow-xs">
+                <DollarSign className="w-7 h-7" />
+              </div>
+
+              <h3 className="text-lg font-black text-center mb-1">
+                {lang === 'lo' ? 'ຢືນຢັນການເບີກຈ່າຍເງິນກິດຈະກຳ' : 'Confirm Claim Event Money'}
+              </h3>
+              <p className="text-xs text-gray-400 font-medium text-center mb-5">
+                {lang === 'lo' ? 'ຂໍເບີກຈ່າຍເງິນລາຍຮັບຈາກການຂາຍປີ້ກິດຈະກຳຂອງທ່ານ' : 'Request payout for your event ticket sales revenue.'}
+              </p>
+
+              <div className={`p-4 rounded-2xl mb-5 space-y-2.5 text-xs border ${
+                theme === 'dark' ? 'bg-zinc-950/60 border-zinc-800' : 'bg-gray-50 border-gray-150'
+              }`}>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ຈຳນວນເງິນ:' : 'Amount to Claim:'}</span>
+                  <span className="font-black text-base text-emerald-600 dark:text-emerald-400">
+                    {new Intl.NumberFormat('lo-LA').format(unclaimedRevenue)} ₭
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ຄ່າທຳນຽມ (5%):' : 'Platform Fee (5%):'}</span>
+                  <span className="font-bold text-red-500">
+                    -{new Intl.NumberFormat('lo-LA').format(unclaimedRevenue * 0.05)} ₭
+                  </span>
+                </div>
+                <div className="pt-2 border-t border-gray-200 dark:border-zinc-800 flex justify-between items-center">
+                  <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ທະນາຄານຮັບເງິນ:' : 'Payout Bank:'}</span>
+                  <span className="font-extrabold">{bankAccount?.bankName || 'BCEL Bank'} ({bankAccount?.accountNumber ? `*${bankAccount.accountNumber.slice(-4)}` : '*8899'})</span>
+                </div>
+              </div>
+
+              {/* 2FA Authenticator Field if 2FA Enabled */}
+              {is2FAEnabled && (
+                <div className="mb-6 p-4 rounded-2xl bg-orange-500/10 border border-orange-500/20 space-y-2">
+                  <div className="flex items-center gap-2 text-adv-orange font-bold text-xs">
+                    <Smartphone className="w-4 h-4" />
+                    <span>{lang === 'lo' ? 'ຕ້ອງການ 2FA Authenticator' : '2FA Authenticator Required'}</span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-300 font-medium leading-relaxed">
+                    {lang === 'lo'
+                      ? 'ກະລຸນາປ້ອນລະຫັດ 6 ຫຼັກຈາກແອັບ Authenticator ຂອງທ່ານເພື່ອຢືນຢັນການເບີກຈ່າຍເງິນ.'
+                      : 'Please enter the 6-digit code from your Authenticator app to authorize payout.'}
+                  </p>
+                  <div className="relative pt-1">
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={claimCode2FA}
+                      onChange={(e) => setClaimCode2FA(e.target.value.replace(/\D/g, ''))}
+                      placeholder="123456"
+                      className={`w-full border rounded-xl px-4 py-3 font-mono font-black text-center text-base tracking-widest focus:outline-none focus:ring-2 focus:ring-adv-orange ${
+                        theme === 'dark' ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-white border-gray-200 text-adv-slate'
+                      }`}
+                    />
+                    <Lock className="w-4 h-4 text-gray-300 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowClaimModal(false)}
+                  className={`flex-1 py-3.5 rounded-xl font-bold text-xs border transition-colors cursor-pointer ${
+                    theme === 'dark' ? 'border-zinc-800 hover:bg-zinc-800 text-gray-300' : 'border-gray-200 hover:bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  {t.cancel || (lang === 'lo' ? 'ຍົກເລີກ' : 'Cancel')}
+                </button>
+                <button
+                  type="button"
+                  disabled={isClaiming || (is2FAEnabled && claimCode2FA.length < 6)}
+                  onClick={handleConfirmClaimPayout}
+                  className="flex-1 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isClaiming ? <Loader2 className="w-4 h-4 animate-spin" /> : <DollarSign className="w-4 h-4" />}
+                  <span>{lang === 'lo' ? 'ຢືນຢັນເບີກຈ່າຍເງິນ' : 'Confirm & Claim'}</span>
                 </button>
               </div>
             </motion.div>

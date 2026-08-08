@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -112,6 +112,81 @@ const LAOS_BANKS = [
   { id: 'stb', name: 'ST Bank', color: 'bg-emerald-600' },
 ];
 
+const MultiSelectDropdown = ({ options, selectedValues, onChange, lang }: { options: string[], selectedValues: string[], onChange: (values: string[]) => void, lang: 'lo' | 'en' }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const toggleOption = (opt: string) => {
+    if (selectedValues.includes(opt)) {
+      onChange(selectedValues.filter(v => v !== opt));
+    } else {
+      onChange([...selectedValues, opt]);
+    }
+  };
+
+  const removeOption = (e: React.MouseEvent, opt: string) => {
+    e.stopPropagation();
+    onChange(selectedValues.filter(v => v !== opt));
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full bg-white border border-gray-200 rounded-lg p-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all cursor-pointer flex justify-between items-center min-h-[38px]"
+      >
+        <div className="flex flex-wrap gap-1 pr-4 font-normal">
+          {selectedValues.length > 0 
+            ? selectedValues.map(val => (
+                <span key={val} className="inline-flex items-center gap-1 border border-adv-orange text-adv-orange bg-orange-50 px-2 py-1.5 rounded-md shadow-sm">
+                  {val}
+                  <button onClick={(e) => removeOption(e, val)} className="hover:bg-orange-100 rounded-sm p-0.5 transition-colors">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </button>
+                </span>
+              ))
+            : <span className="text-gray-400 pl-1">{lang === 'lo' ? 'ເລືອກໄດ້ຫຼາຍຂໍ້...' : 'Select multiple...'}</span>
+          }
+        </div>
+        <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+      </div>
+      
+      {isOpen && (
+        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+          <div className="p-1.5 space-y-0.5">
+            {options.map((opt, i) => (
+              <label key={i} className="flex items-center px-2.5 py-1.5 hover:bg-gray-50 rounded cursor-pointer group m-0">
+                <input 
+                  type="checkbox" 
+                  className="hidden" 
+                  checked={selectedValues.includes(opt)}
+                  onChange={() => toggleOption(opt)}
+                />
+                <div className={`flex items-center justify-center w-3.5 h-3.5 border rounded-sm mr-2 flex-shrink-0 transition-colors ${selectedValues.includes(opt) ? 'border-adv-orange bg-adv-orange' : 'border-gray-300 group-hover:border-adv-orange'}`}>
+                  {selectedValues.includes(opt) && (
+                    <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                  )}
+                </div>
+                <span className="text-xs text-adv-slate">{opt}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function Checkout() {
   const { lang } = useLanguage();
   const t = translations[lang === 'en' ? 'en' : 'lo'];
@@ -148,7 +223,7 @@ export default function Checkout() {
     return (tier?.price || 0) * (quantity || 1);
   }, [zone, selectedTiersList, tier, quantity]);
 
-  const [step, setStep] = useState<'details' | 'selection' | 'qr' | 'success'>('details');
+  const [step, setStep] = useState<'details' | 'payment' | 'qr' | 'success'>('details');
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedBank, setSelectedBank] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(900);
@@ -158,8 +233,9 @@ export default function Checkout() {
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   
+  const ownersCount = event?.requireEveryTicketInfo === false ? 1 : totalQuantity;
   const [ticketOwners, setTicketOwners] = useState(
-    Array.from({ length: totalQuantity }, () => ({ firstName: '', lastName: '', phone: '', email: '' }))
+    Array.from({ length: ownersCount }, () => ({ firstName: '', lastName: '', phone: '', email: '', customAnswers: {} as Record<string, string | string[]> }))
   );
 
   const handleTicketOwnerChange = (index: number, field: 'firstName' | 'lastName' | 'phone' | 'email', value: string) => {
@@ -180,12 +256,24 @@ export default function Checkout() {
     setTicketOwners(newOwners);
   };
 
+  const handleCustomAnswerChange = (ownerIndex: number, questionId: string, value: string | string[]) => {
+    const newOwners = [...ticketOwners];
+    newOwners[ownerIndex].customAnswers[questionId] = value;
+    setTicketOwners(newOwners);
+  };
+
   const isDetailsValid = ticketOwners.every(owner => 
     owner.firstName.trim() !== '' && 
     owner.lastName.trim() !== '' && 
     owner.phone.trim() !== '' && 
     owner.email.trim() !== '' &&
-    owner.email.includes('@')
+    owner.email.includes('@') &&
+    (event?.attendeeQuestions?.every(q => {
+      if (!q.required) return true;
+      const answer = owner.customAnswers[q.id];
+      if (Array.isArray(answer)) return answer.length > 0;
+      return answer && answer.trim() !== '';
+    }) ?? true)
   );
 
   const calculateDiscount = () => {
@@ -546,20 +634,22 @@ export default function Checkout() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
           {/* Payment Terminal / Guest Information */}
           <div className="lg:col-span-7 order-2 lg:order-1">
-            <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-150/60">
-               <AnimatePresence mode="wait">
-                  {step === 'details' ? (
-                    <motion.div key="details" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+             <AnimatePresence mode="wait">
+                {step === 'details' ? (
+                  <motion.div key="details" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                    <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-150/60">
                       <div className="mb-4">
                         <h3 className="text-lg sm:text-xl font-bold text-adv-slate mb-0.5">{t.ticketOwnerInfo}</h3>
                         <p className="text-xs text-gray-500">{t.ticketOwnerDesc}</p>
                       </div>
 
-                      <div className="space-y-3 mb-4 max-h-[280px] sm:max-h-[360px] overflow-y-auto pr-1.5 custom-scrollbar">
+                      <div className="space-y-3">
                         {ticketOwners.map((owner, idx) => (
                           <div key={idx} className="p-3 sm:p-4 bg-gray-50/80 rounded-xl border border-gray-100 space-y-2.5">
                             <div className="flex items-center justify-between">
-                               <span className="text-[10px] font-black text-adv-orange uppercase tracking-widest">{t.guest} {idx + 1}</span>
+                               <span className="text-[10px] font-black text-adv-orange uppercase tracking-widest">
+                                 {event?.requireEveryTicketInfo === false ? (lang === 'en' ? 'Buyer Information' : 'ຂໍ້ມູນຜູ້ຊື້') : `${t.guest} ${idx + 1}`}
+                               </span>
                             </div>
                             <div className="grid grid-cols-2 gap-2.5">
                               <div>
@@ -612,12 +702,90 @@ export default function Checkout() {
                                 />
                               </div>
                             </div>
+                            
+                            {event?.attendeeQuestions && event.attendeeQuestions.length > 0 && (
+                              <div className="pt-3 mt-3 border-t border-gray-200/50 space-y-3">
+                                {event.attendeeQuestions.map((q) => (
+                                  <div key={q.id}>
+                                    <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-0.5">
+                                      {q.label} {q.required && <span className="text-adv-orange">*</span>}
+                                    </label>
+                                    
+                                    {q.type === 'text' && (
+                                      <input 
+                                        type="text"
+                                        value={(owner.customAnswers?.[q.id] as string) || ""}
+                                        onChange={(e) => handleCustomAnswerChange(idx, q.id, e.target.value)}
+                                        className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                                        placeholder={lang === 'lo' ? 'ຄຳຕອບຂອງທ່ານ...' : 'Your answer...'}
+                                      />
+                                    )}
+                                    
+                                    {q.type === 'long_text' && (
+                                      <textarea 
+                                        value={(owner.customAnswers?.[q.id] as string) || ""}
+                                        onChange={(e) => handleCustomAnswerChange(idx, q.id, e.target.value)}
+                                        rows={4}
+                                        className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-2 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all resize-y"
+                                        placeholder={lang === 'lo' ? 'ຄຳຕອບຂອງທ່ານ...' : 'Your answer...'}
+                                      />
+                                    )}
+                                    
+                                    {q.type === 'url' && (
+                                      <input 
+                                        type="url"
+                                        value={(owner.customAnswers?.[q.id] as string) || ""}
+                                        onChange={(e) => handleCustomAnswerChange(idx, q.id, e.target.value)}
+                                        className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                                        placeholder={lang === 'lo' ? 'ລິ້ງ (URL)' : 'Link (URL)'}
+                                      />
+                                    )}
+                                    
+                                    {q.type === 'single_choice' && (
+                                      <select
+                                        value={(owner.customAnswers?.[q.id] as string) || ""}
+                                        onChange={(e) => handleCustomAnswerChange(idx, q.id, e.target.value)}
+                                        className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                                      >
+                                        <option value="" disabled>{lang === 'lo' ? 'ເລືອກ...' : 'Select...'}</option>
+                                        {q.options?.map((opt, i) => (
+                                          <option key={i} value={opt}>{opt}</option>
+                                        ))}
+                                      </select>
+                                    )}
+                                    
+                                    {q.type === 'options' && (
+                                      <MultiSelectDropdown
+                                        options={q.options || []}
+                                        selectedValues={(owner.customAnswers?.[q.id] as string[]) || []}
+                                        onChange={(values) => handleCustomAnswerChange(idx, q.id, values)}
+                                        lang={lang as 'lo' | 'en'}
+                                      />
+                                    )}
+                                    
+                                    {q.type === 'checkbox' && (
+                                      <label className="flex items-center gap-2 cursor-pointer mt-1">
+                                        <input
+                                          type="checkbox"
+                                          checked={((owner.customAnswers?.[q.id] as string) === 'true')}
+                                          onChange={(e) => handleCustomAnswerChange(idx, q.id, e.target.checked ? 'true' : 'false')}
+                                          className="w-3.5 h-3.5 text-adv-orange border-gray-300 rounded focus:ring-adv-orange"
+                                        />
+                                        <span className="text-xs text-gray-700">{lang === 'lo' ? 'ຢືນຢັນ' : 'Confirm'}</span>
+                                      </label>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
                           </div>
                         ))}
                       </div>
+                    </div>
 
-                      <div className="pt-2 sm:pt-4 border-t border-gray-100">
-                        <h3 className="text-lg sm:text-xl font-bold text-adv-slate mb-3 sm:mb-4">Payment Method</h3>
+                    <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-150/60">
+                      <h3 className="text-lg sm:text-xl font-bold text-adv-slate mb-3 sm:mb-4">Payment Method</h3>
                         <div className="space-y-2 mb-4">
                           {LAOS_BANKS.map((bank) => (
                             <button
@@ -668,7 +836,7 @@ export default function Checkout() {
                       </button>
                    </motion.div>
                  ) : (
-                   <motion.div key="qr" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col items-center">
+                   <motion.div key="qr" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-150/60 flex flex-col items-center">
                       {selectedBank === 'credit_card' ? (
                         <>
                           <div className="text-center mb-8">
@@ -751,7 +919,6 @@ export default function Checkout() {
                    </motion.div>
                  )}
                </AnimatePresence>
-            </div>
           </div>
 
           {/* Manifest Summary (Sticky Sidebar) */}

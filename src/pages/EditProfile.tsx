@@ -4,6 +4,7 @@ import { Camera, ArrowLeft, Save, User, CheckCircle2, ChevronDown } from 'lucide
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { useAuth } from '../AuthContext';
+import SocialLinksForm, { SocialLinks } from '../components/SocialLinksForm';
 
 const translations = {
   en: {
@@ -273,6 +274,14 @@ export default function EditProfile() {
               </div>
             </div>
           </div>
+
+          {/* Social Links Form Section */}
+          <SocialLinksForm
+            value={formData.socialLinks || {}}
+            onChange={(links) => setFormData(prev => ({ ...prev, socialLinks: links }))}
+            lang={lang}
+            theme="light"
+          />
 
           <div className="flex flex-col sm:flex-row justify-end gap-4">
             <button
