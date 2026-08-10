@@ -4,7 +4,6 @@ import { Camera, ArrowLeft, Save, User, CheckCircle2, ChevronDown } from 'lucide
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { useAuth } from '../AuthContext';
-import SocialLinksForm, { SocialLinks } from '../components/SocialLinksForm';
 
 const translations = {
   en: {
@@ -168,13 +167,13 @@ export default function EditProfile() {
 
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Profile Picture */}
-          <div className="bg-white border border-gray-100 rounded-[2.5rem] p-8 flex flex-col items-center sm:flex-row gap-8 shadow-sm">
+          <div className="bg-white border border-gray-100 rounded-3xl p-6 flex flex-col items-center sm:flex-row gap-6 shadow-sm">
             <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-              <div className="w-28 h-28 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-300 shrink-0 overflow-hidden">
+              <div className="w-24 h-24 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-300 shrink-0 overflow-hidden">
                 {profilePic ? (
                   <img src={profilePic} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
-                  <User className="w-12 h-12" />
+                  <User className="w-10 h-10" />
                 )}
               </div>
               <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -189,55 +188,55 @@ export default function EditProfile() {
               />
             </div>
             <div className="text-center sm:text-left">
-              <h3 className="text-lg font-bold text-adv-slate mb-1">{t.profilePicture}</h3>
-              <p className="text-sm text-gray-400 font-medium mb-3">{t.clickToUpdate}</p>
+              <h3 className="text-base font-bold text-adv-slate mb-1">{t.profilePicture}</h3>
+              <p className="text-xs text-gray-400 font-medium mb-2">{t.clickToUpdate}</p>
             </div>
           </div>
 
           {/* Personal Information */}
-          <div className="bg-white border border-gray-100 rounded-[2.5rem] p-8 space-y-8 shadow-sm">
-            <h2 className="text-xl font-bold text-adv-slate mb-4">{t.personalInfo}</h2>
+          <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 space-y-5 shadow-sm">
+            <h2 className="text-lg font-bold text-adv-slate mb-2">{t.personalInfo}</h2>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              <div className="space-y-3">
-                <label htmlFor="firstName" className="block text-xs font-bold text-gray-400 uppercase tracking-widest">{t.firstName}</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+              <div className="space-y-1.5">
+                <label htmlFor="firstName" className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.firstName}</label>
                 <input
                   type="text"
                   id="firstName"
                   name="firstName"
                   value={formData.firstName || ""}
                   onChange={handleChange}
-                  className="w-full bg-[#F9FAFB] border border-gray-100 rounded-2xl px-6 py-4 text-adv-slate font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                  className="w-full bg-[#F9FAFB] border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-adv-slate font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
                 />
               </div>
-              <div className="space-y-3">
-                <label htmlFor="lastName" className="block text-xs font-bold text-gray-400 uppercase tracking-widest">{t.lastName}</label>
+              <div className="space-y-1.5">
+                <label htmlFor="lastName" className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.lastName}</label>
                 <input
                   type="text"
                   id="lastName"
                   name="lastName"
                   value={formData.lastName || ""}
                   onChange={handleChange}
-                  className="w-full bg-[#F9FAFB] border border-gray-100 rounded-2xl px-6 py-4 text-adv-slate font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                  className="w-full bg-[#F9FAFB] border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-adv-slate font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
                 />
               </div>
             </div>
 
-            <div className="space-y-3">
-              <label htmlFor="email" className="block text-xs font-bold text-gray-400 uppercase tracking-widest">{t.email}</label>
+            <div className="space-y-1.5">
+              <label htmlFor="email" className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.email}</label>
               <input
                 type="email"
                 id="email"
                 name="email"
                 value={formData.email || ""}
                 onChange={handleChange}
-                className="w-full bg-[#F9FAFB] border border-gray-100 rounded-2xl px-6 py-4 text-adv-slate font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                className="w-full bg-[#F9FAFB] border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-adv-slate font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              <div className="space-y-3">
-                <label htmlFor="phone" className="block text-xs font-bold text-gray-400 uppercase tracking-widest">{t.phone}</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+              <div className="space-y-1.5">
+                <label htmlFor="phone" className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.phone}</label>
                 <input
                   type="tel"
                   id="phone"
@@ -251,57 +250,49 @@ export default function EditProfile() {
                   value={formData.phone || ""}
                   onChange={handleChange}
                   placeholder="+856 20 ..."
-                  className="w-full bg-[#F9FAFB] border border-gray-100 rounded-2xl px-6 py-4 text-adv-slate font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                  className="w-full bg-[#F9FAFB] border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-adv-slate font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
                 />
               </div>
-              <div className="space-y-3">
-                <label htmlFor="gender" className="block text-xs font-bold text-gray-400 uppercase tracking-widest">{t.gender}</label>
+              <div className="space-y-1.5">
+                <label htmlFor="gender" className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.gender}</label>
                 <div className="relative">
                   <select
                     id="gender"
                     name="gender"
                     value={formData.gender || ""}
                     onChange={handleChange}
-                    className="w-full bg-[#F9FAFB] border border-gray-100 rounded-2xl px-6 py-4 text-adv-slate font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all appearance-none cursor-pointer"
+                    className="w-full bg-[#F9FAFB] border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-adv-slate font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all appearance-none cursor-pointer"
                   >
                     <option value="" disabled>{t.selectGender}</option>
                     <option value="male">{t.male}</option>
                     <option value="female">{t.female}</option>
                     <option value="other">{t.other}</option>
                   </select>
-                  <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Social Links Form Section */}
-          <SocialLinksForm
-            value={formData.socialLinks || {}}
-            onChange={(links) => setFormData(prev => ({ ...prev, socialLinks: links }))}
-            lang={lang}
-            theme="light"
-          />
-
-          <div className="flex flex-col sm:flex-row justify-end gap-4">
+          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-2">
             <button
               type="button"
               onClick={() => navigate('/account')}
-              className="px-8 py-4 rounded-2xl bg-white border border-gray-100 text-adv-slate font-bold hover:bg-gray-50 transition-colors order-2 sm:order-1"
+              className="px-6 py-2.5 rounded-xl bg-white border border-gray-100 text-adv-slate font-bold text-sm hover:bg-gray-50 transition-colors order-2 sm:order-1"
             >
               {t.cancel}
             </button>
             <button
               type="submit"
               disabled={isSaving || showSuccess}
-              className="flex items-center justify-center gap-3 px-10 py-4 rounded-2xl bg-adv-slate text-white font-bold hover:bg-black transition-all disabled:opacity-70 shadow-xl shadow-gray-200 order-1 sm:order-2"
+              className="flex items-center justify-center gap-2 px-8 py-2.5 rounded-xl bg-adv-slate text-white font-bold text-sm hover:bg-black transition-all disabled:opacity-70 shadow-lg shadow-gray-200 order-1 sm:order-2"
             >
               {isSaving ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : showSuccess ? (
-                <CheckCircle2 className="w-5 h-5 text-adv-orange" />
+                <CheckCircle2 className="w-4 h-4 text-adv-orange" />
               ) : (
-                <Save className="w-5 h-5 text-adv-orange" />
+                <Save className="w-4 h-4 text-adv-orange" />
               )}
               {isSaving ? t.saving : showSuccess ? t.saved : t.saveChanges}
             </button>

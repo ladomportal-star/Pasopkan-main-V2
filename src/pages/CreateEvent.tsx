@@ -111,8 +111,8 @@ const translations = {
     revenue: 'Revenue',
     actions: 'Actions',
     edit: 'Edit',
-    editBlocked: 'Editing Locked',
-    editBlockedDesc: 'This event starts in less than 7 days. To protect buyers and maintain platform reliability, editing is locked during the final 7 days before an event starts.',
+    editBlocked: 'Cannot Edit Event',
+    editBlockedDesc: 'Organizers cannot edit events or configurations after submission. If you need to make changes or configure this event, please contact system admin.',
     close: 'Close',
     updateEventSuccessTitle: 'Event Updated Successfully!',
     updateEventSuccessDesc: 'Your event changes have been saved successfully and are pending review.',
@@ -350,8 +350,8 @@ const translations = {
     revenue: 'ລາຍຮັບ',
     actions: 'ການກະທຳ',
     edit: 'ແກ້ໄຂ',
-    editBlocked: 'ການແກ້ໄຂຖືກລັອກ',
-    editBlockedDesc: 'event ນີ້ມີກຳນົດຈະເລີ່ມຕົ້ນພາຍໃນບໍ່ຮອດ 7 ວັນ. ເພື່ອປົກປ້ອງຜູ້ຊື້ ແລະ ຮັກສາຄວາມໜ້າເຊື່ອຖືຂອງແພລດຟອມ, ການແກ້ໄຂຈຶ່ງຖືກລັອກໃນຊ່ວງ 7 ວັນສຸດທ້າຍກ່ອນມື້ເລີ່ມຕົ້ນ.',
+    editBlocked: 'ບໍ່ສາມາດແກ້ໄຂ Event ໄດ້',
+    editBlockedDesc: 'ຜູ້ຈັດງານບໍ່ສາມາດແກ້ໄຂຂໍ້ມູນ ຫຼື ຕັ້ງຄ່າ Event ໄດ້ຫຼັງຈາກສົ່ງແລ້ວ. ຖ້າທ່ານຕ້ອງການແກ້ໄຂ ຫຼື ປ່ຽນແປງຂໍ້ມູນ Event, ກະລຸນາຕິດຕໍ່ Admin system.',
     close: 'ປິດ',
     updateEventSuccessTitle: 'ອັບເດດ event ສຳເລັດແລ້ວ!',
     updateEventSuccessDesc: 'ການປ່ຽນແປງຂອງ event ໄດ້ຮັບການບັນທຶກສຳເລັດແລ້ວ ແລະ ກຳລັງລໍຖ້າການກວດສອບ.',
@@ -554,10 +554,10 @@ const ONLINE_PLATFORMS_LIST = [
 
 export interface AttendeeQuestion {
   id: string;
-  type: 'text' | 'options' | 'single_choice' | 'url' | 'checkbox';
+  type: 'text' | 'long_text' | 'single_choice' | 'multi_choice' | 'options' | 'checkbox' | 'url';
   label: string;
   required: boolean;
-  options?: string[]; // for type 'options' or 'single_choice'
+  options?: string[];
 }
 
 export default function CreateEvent() {
@@ -594,8 +594,13 @@ export default function CreateEvent() {
   const [onlinePasscode, setOnlinePasscode] = useState('');
   const [onlineInstructions, setOnlineInstructions] = useState('');
   const [attendeeQuestions, setAttendeeQuestions] = useState<AttendeeQuestion[]>([]);
-  const [dateType, setDateType] = useState('fixed'); // 'fixed' or 'flexible'
+  const [dateType, setDateType] = useState('flexible'); // 'fixed' or 'flexible' or 'booking'
   const [flexibleDateDesc, setFlexibleDateDesc] = useState('');
+  
+  // Booking specific states
+  const [bookingAvailableDays, setBookingAvailableDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+  const [bookingTimeSlots, setBookingTimeSlots] = useState<string[]>(['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00']);
+  const [newBookingTimeSlot, setNewBookingTimeSlot] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [activeStep, setActiveStep] = useState(1);
   const [activeTab, setActiveTab] = useState('myEvents');
@@ -766,6 +771,8 @@ export default function CreateEvent() {
       onlineInstructions: onlineInstructions,
       dateType: dateType,
       flexibleDateDesc: flexibleDateDesc,
+      bookingAvailableDays: bookingAvailableDays,
+      bookingTimeSlots: bookingTimeSlots,
       date: startDate || new Date().toISOString().split('T')[0],
       time: startTime || '18:00',
       endDate: endDate || startDate,
@@ -831,8 +838,10 @@ export default function CreateEvent() {
     setOnlineMeetingUrl(event.onlineMeetingUrl || '');
     setOnlinePasscode(event.onlinePasscode || '');
     setOnlineInstructions(event.onlineInstructions || '');
-    setDateType(event.dateType || 'fixed');
+    setDateType(event.dateType || 'flexible');
     setFlexibleDateDesc(event.flexibleDateDesc || '');
+    setBookingAvailableDays(event.bookingAvailableDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+    setBookingTimeSlots(event.bookingTimeSlots || ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00']);
     setStartDate(event.date || '');
     setStartTime(event.time || '');
     setEndDate(event.endDate || '');
@@ -868,49 +877,13 @@ export default function CreateEvent() {
     setSelectedEvent(null); // Close details modal if open
   };
 
-  // Auto-edit event if navigated with search param ?editId= or location state
+  // Organizers cannot edit events after submission
   useEffect(() => {
     const editId = searchParams.get('editId') || location.state?.editEventId;
     if (editId && localEvents.length > 0) {
-      const foundEvent = localEvents.find((e: any) => String(e.id) === String(editId));
-      if (foundEvent) {
-        handleStartEdit(foundEvent);
-      }
+      setShowEditBlockedModal(true);
     }
-  }, [searchParams, location.state]);
-
-  const handleToggleDateTypeInOrganizer = (eventToToggle: any) => {
-    const currentType = eventToToggle.dateType || 'fixed';
-    const newType = currentType === 'flexible' ? 'fixed' : 'flexible';
-    
-    const updatedEvents = localEvents.map(evt => {
-      if (evt.id === eventToToggle.id) {
-        return {
-          ...evt,
-          dateType: newType,
-          date: evt.date || new Date().toISOString().split('T')[0],
-          endDate: evt.endDate || evt.date || new Date().toISOString().split('T')[0],
-          time: evt.time || '09:00',
-          endTime: evt.endTime || '17:00'
-        };
-      }
-      return evt;
-    });
-
-    setLocalEvents(updatedEvents);
-    safeStorage.setItem('organizer_events', JSON.stringify(updatedEvents));
-    
-    if (selectedEvent && selectedEvent.id === eventToToggle.id) {
-      setSelectedEvent({
-        ...selectedEvent,
-        dateType: newType,
-        date: selectedEvent.date || new Date().toISOString().split('T')[0],
-        endDate: selectedEvent.endDate || selectedEvent.date || new Date().toISOString().split('T')[0],
-        time: selectedEvent.time || '09:00',
-        endTime: selectedEvent.endTime || '17:00'
-      });
-    }
-  };
+  }, [searchParams, location.state, localEvents]);
   
   const [verticalImage, setVerticalImage] = useState<string | null>(null);
   const [horizontalImage, setHorizontalImage] = useState<string | null>(null);
@@ -1637,7 +1610,7 @@ export default function CreateEvent() {
     setOrganizerInfo('');
     setOrganizerContact('');
     setEventType('offline');
-    setDateType('fixed');
+    setDateType('flexible');
     setFlexibleDateDesc('');
     setStartDate('');
     setStartTime('');
@@ -1717,31 +1690,6 @@ export default function CreateEvent() {
     }
 
     // 14-day validation for Event creation
-    if ((activeStep === 3 || activeStep === 5) && dateType !== 'flexible') {
-      if (!startDate) {
-        setValidationError(lang === 'lo' ? 'ກະລຸນາເລືອກວັນທີເລີ່ມຕົ້ນ' : 'Please select a start date.');
-        setActiveStep(3);
-        return;
-      }
-      
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const eventDate = new Date(startDate);
-      eventDate.setHours(0, 0, 0, 0);
-      
-      const diffTime = eventDate.getTime() - today.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (diffDays < 14) {
-        setValidationError(t.dateValidationError);
-        setActiveStep(3);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-      } else {
-        setValidationError(null);
-      }
-    }
 
     let finalDescription = editorContent || '';
     if (activeStep === 1 && editorRef.current) {
@@ -1797,6 +1745,8 @@ export default function CreateEvent() {
               onlineInstructions,
               dateType,
               flexibleDateDesc,
+              bookingAvailableDays,
+              bookingTimeSlots,
               date: startDate,
               time: startTime,
               endDate,
@@ -1812,8 +1762,8 @@ export default function CreateEvent() {
                 description: tier.name + ' Access',
               })),
               coupons,
-              hasSeating: dateType === 'flexible' ? false : hasSeating,
-              zoneImage: dateType === 'flexible' ? null : zoneImage,
+              hasSeating: hasSeating,
+              zoneImage: zoneImage,
               hasTimeSelection: dateType === 'flexible',
               timeSlots: dateType === 'flexible' ? timeSlots : [],
               availableDates: dateType === 'flexible' ? availableDates : [],
@@ -1867,6 +1817,8 @@ export default function CreateEvent() {
           onlineInstructions,
           dateType,
           flexibleDateDesc,
+          bookingAvailableDays,
+          bookingTimeSlots,
           date: startDate,
           time: startTime,
           endDate,
@@ -1882,8 +1834,8 @@ export default function CreateEvent() {
             description: tier.name + ' Access',
           })),
           coupons,
-          hasSeating: dateType === 'flexible' ? false : hasSeating,
-          zoneImage: dateType === 'flexible' ? null : zoneImage,
+          hasSeating: hasSeating,
+          zoneImage: zoneImage,
           hasTimeSelection: dateType === 'flexible',
           timeSlots: dateType === 'flexible' ? timeSlots : [],
           availableDates: dateType === 'flexible' ? availableDates : [],
@@ -2024,14 +1976,14 @@ export default function CreateEvent() {
                       className={`flex-1 pb-4 flex items-center justify-center gap-2 transition-colors ${activeStep === 2 ? 'border-b-2 border-adv-orange translate-y-[1px]' : 'hover:bg-gray-50'}`}
                     >
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === 2 ? 'bg-adv-orange text-white' : 'bg-gray-100 text-gray-500'}`}>2</div>
-                      <span className={`text-sm font-bold ${activeStep === 2 ? 'text-adv-slate' : 'text-gray-400'}`}>{lang === 'lo' ? 'ຄຳຖາມ' : 'Questions'}</span>
+                      <span className={`text-sm font-bold ${activeStep === 2 ? 'text-adv-slate' : 'text-gray-400'}`}>{t.step2}</span>
                     </button>
                     <button 
                       onClick={() => setActiveStep(3)}
                       className={`flex-1 pb-4 flex items-center justify-center gap-2 transition-colors ${activeStep === 3 ? 'border-b-2 border-adv-orange translate-y-[1px]' : 'hover:bg-gray-50'}`}
                     >
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === 3 ? 'bg-adv-orange text-white' : 'bg-gray-100 text-gray-500'}`}>3</div>
-                      <span className={`text-sm font-bold ${activeStep === 3 ? 'text-adv-slate' : 'text-gray-400'}`}>{t.step2}</span>
+                      <span className={`text-sm font-bold ${activeStep === 3 ? 'text-adv-slate' : 'text-gray-400'}`}>{lang === 'lo' ? 'ຄຳຖາມ' : 'Questions'}</span>
                     </button>
                     <button 
                       onClick={() => setActiveStep(4)}
@@ -2530,7 +2482,7 @@ export default function CreateEvent() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
                       <div>
                         <div className="flex items-center gap-2 mb-3">
                           <span className="text-adv-orange font-bold">*</span>
@@ -2721,7 +2673,7 @@ export default function CreateEvent() {
 
               {/* Event Category & Duration */}
               {eventType !== 'online' && (
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-1 gap-6">
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-adv-orange font-bold">*</span>
@@ -2734,65 +2686,9 @@ export default function CreateEvent() {
                         className="w-full bg-white text-adv-slate border border-gray-200 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all appearance-none font-bold"
                       >
                         <option value="Festival">{t.festival}</option>
-                        <option value="Concert">{t.concert}</option>
                         <option value="Sports">{t.sports}</option>
                         <option value="Workshop">{t.workshop}</option>
                         <option value="Voucher">{t.voucher}</option>
-                      </select>
-                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Clock className="w-4 h-4 text-adv-orange" />
-                      <span className="text-adv-slate font-bold text-sm">
-                        {lang === 'lo' ? 'ໄລຍະເວລາຈັດງານ / Duration' : 'Event Duration'}
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <select
-                        value={durationEn}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setDurationEn(val);
-                          
-                          // Map to Lao equivalent for durationLo
-                          const loMapping: Record<string, string> = {
-                            '30 Minutes': '30 ນາທີ',
-                            '1 Hour': '1 ຊົ່ວໂມງ',
-                            '1.5 Hours': '1.5 ຊົ່ວໂມງ',
-                            '2 Hours': '2 ຊົ່ວໂມງ',
-                            '2.5 Hours': '2.5 ຊົ່ວໂມງ',
-                            '3 Hours': '3 ຊົ່ວໂມງ',
-                            '4 Hours': '4 ຊົ່ວໂມງ',
-                            '5 Hours': '5 ຊົ່ວໂມງ',
-                            '6 Hours': '6 ຊົ່ວໂມງ',
-                            'Half Day': 'ເຄິ່ງມື້',
-                            'Full Day': 'ເຕັມມື້',
-                            '2 Days': '2 ມື້',
-                            '3 Days': '3 ມື້',
-                            '1 Week': '1 ອາທິດ'
-                          };
-                          setDurationLo(loMapping[val] || val);
-                        }}
-                        className="w-full bg-white text-adv-slate border border-gray-200 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all appearance-none cursor-pointer font-medium"
-                      >
-                        <option value="" disabled>{lang === 'lo' ? 'ເລືອກໄລຍະເວລາ' : 'Select Duration'}</option>
-                        <option value="30 Minutes">{lang === 'lo' ? '30 ນາທີ' : '30 Minutes'}</option>
-                        <option value="1 Hour">{lang === 'lo' ? '1 ຊົ່ວໂມງ' : '1 Hour'}</option>
-                        <option value="1.5 Hours">{lang === 'lo' ? '1.5 ຊົ່ວໂມງ' : '1.5 Hours'}</option>
-                        <option value="2 Hours">{lang === 'lo' ? '2 ຊົ່ວໂມງ' : '2 Hours'}</option>
-                        <option value="2.5 Hours">{lang === 'lo' ? '2.5 ຊົ່ວໂມງ' : '2.5 Hours'}</option>
-                        <option value="3 Hours">{lang === 'lo' ? '3 ຊົ່ວໂມງ' : '3 Hours'}</option>
-                        <option value="4 Hours">{lang === 'lo' ? '4 ຊົ່ວໂມງ' : '4 Hours'}</option>
-                        <option value="5 Hours">{lang === 'lo' ? '5 ຊົ່ວໂມງ' : '5 Hours'}</option>
-                        <option value="6 Hours">{lang === 'lo' ? '6 ຊົ່ວໂມງ' : '6 Hours'}</option>
-                        <option value="Half Day">{lang === 'lo' ? 'ເຄິ່ງມື້' : 'Half Day'}</option>
-                        <option value="Full Day">{lang === 'lo' ? 'ເຕັມມື້' : 'Full Day'}</option>
-                        <option value="2 Days">{lang === 'lo' ? '2 ມື້' : '2 Days'}</option>
-                        <option value="3 Days">{lang === 'lo' ? '3 ມື້' : '3 Days'}</option>
-                        <option value="1 Week">{lang === 'lo' ? '1 ອາທິດ' : '1 Week'}</option>
                       </select>
                       <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                     </div>
@@ -3258,23 +3154,13 @@ export default function CreateEvent() {
                       />
                     </div>
 
-                    {/* Organizer Social Links */}
-                    <div className="pt-1">
-                      <SocialLinksForm
-                        value={organizerSocialLinks}
-                        onChange={(links) => setOrganizerSocialLinks(links)}
-                        lang={lang}
-                        theme="light"
-                        compact={true}
-                      />
-                    </div>
                   </div>
                 </div>
               </div>
               </>
               )}
 
-              {activeStep === 2 && (
+              {activeStep === 3 && (
                 <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-8">
                   <div className="flex items-center justify-between">
                     <div>
@@ -3351,9 +3237,12 @@ export default function CreateEvent() {
                                   value={q.type}
                                   onChange={(e) => {
                                     const next = [...attendeeQuestions];
-                                    next[idx].type = e.target.value as any;
-                                    if (e.target.value === 'dropdown' || e.target.value === 'radio') {
-                                      next[idx].options = ['Option 1'];
+                                    const newType = e.target.value as any;
+                                    next[idx].type = newType;
+                                    if (['single_choice', 'multi_choice', 'options'].includes(newType)) {
+                                      if (!next[idx].options || next[idx].options.length === 0) {
+                                        next[idx].options = ['Option 1', 'Option 2'];
+                                      }
                                     } else {
                                       delete next[idx].options;
                                     }
@@ -3361,9 +3250,12 @@ export default function CreateEvent() {
                                   }}
                                   className="w-full bg-gray-50 border border-gray-200 text-adv-slate rounded-xl px-4 py-2.5 text-sm font-semibold appearance-none focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all pr-10"
                                 >
-                                  <option value="text">{lang === 'lo' ? 'ຂໍ້ຄວາມສັ້ນ (Text)' : 'Short Text'}</option>
-                                  <option value="dropdown">{lang === 'lo' ? 'ເລືອກແບບເລື່ອນລົງ (Dropdown)' : 'Dropdown'}</option>
-                                  <option value="radio">{lang === 'lo' ? 'ເລືອກຂໍ້ດຽວ (Radio Options)' : 'Radio Options'}</option>
+                                  <option value="text">Short Text</option>
+                                  <option value="long_text">Long Text</option>
+                                  <option value="single_choice">Single Choice</option>
+                                  <option value="multi_choice">Multiple Choice</option>
+                                  <option value="checkbox">Checkbox</option>
+                                  <option value="url">URL / Link</option>
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                               </div>
@@ -3387,7 +3279,7 @@ export default function CreateEvent() {
                             </div>
                           </div>
                           
-                          {(q.type === 'dropdown' || q.type === 'radio') && (
+                          {(['single_choice', 'multi_choice', 'options'].includes(q.type)) && (
                             <div className="pt-2 border-t border-gray-100">
                               <label className="block text-[11px] font-bold text-gray-500 mb-2">
                                 {lang === 'lo' ? 'ຕົວເລືອກ (Options)' : 'Options'}
@@ -3464,7 +3356,7 @@ export default function CreateEvent() {
                 </div>
               )}
 
-              {activeStep === 3 && (
+              {activeStep === 2 && (
                 <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-8">
                   <h3 className="text-xl font-bold text-adv-slate mb-2">{t.step2}</h3>
                   
@@ -3487,17 +3379,6 @@ export default function CreateEvent() {
                     <div className="flex gap-2 p-1 bg-gray-100/80 rounded-2xl border border-gray-200/60 w-fit">
                       <button 
                         type="button"
-                        onClick={() => setDateType('fixed')}
-                        className={`px-5 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${
-                          dateType === 'fixed' 
-                            ? 'bg-white text-adv-orange shadow-sm' 
-                            : 'text-gray-500 hover:text-adv-slate'
-                        }`}
-                      >
-                        {t.fixedDate}
-                      </button>
-                      <button 
-                        type="button"
                         onClick={() => setDateType('flexible')}
                         className={`px-5 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${
                           dateType === 'flexible' 
@@ -3507,72 +3388,18 @@ export default function CreateEvent() {
                       >
                         {t.flexibleDate}
                       </button>
+                      <button 
+                        type="button"
+                        onClick={() => setDateType('booking')}
+                        className={`px-5 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${
+                          dateType === 'booking' 
+                            ? 'bg-white text-adv-orange shadow-sm' 
+                            : 'text-gray-500 hover:text-adv-slate'
+                        }`}
+                      >
+                        {lang === 'en' ? 'Booking' : 'ການຈອງ'}
+                      </button>
                     </div>
-
-                    {/* Fixed Date & Time Configuration */}
-                    {dateType !== 'flexible' && (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* Start Date & Start Time Box */}
-                          <div className="p-4 rounded-2xl bg-gray-50/60 border border-gray-200/80 space-y-3">
-                            <span className="text-xs font-extrabold text-adv-slate uppercase tracking-wider flex items-center gap-1.5">
-                              <Calendar className="w-4 h-4 text-adv-orange" />
-                              {lang === 'lo' ? 'ວັນທີ ແລະ ເວລາເລີ່ມ' : 'Start Date & Time'}
-                              <span className="text-adv-orange">*</span>
-                            </span>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-[11px] font-bold text-gray-400 mb-1">{t.startDate}</label>
-                                <CalendarPicker 
-                                  value={startDate}
-                                  onChange={(date) => {
-                                    setStartDate(date);
-                                    setValidationError(null);
-                                  }}
-                                  lang={lang}
-                                  theme="light"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[11px] font-bold text-gray-400 mb-1">{t.startTime}</label>
-                                <ScrollTimePicker 
-                                  value={startTime}
-                                  onChange={(val) => setStartTime(val)}
-                                  placeholder="09:00"
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* End Date & End Time Box */}
-                          <div className="p-4 rounded-2xl bg-gray-50/60 border border-gray-200/80 space-y-3">
-                            <span className="text-xs font-extrabold text-adv-slate uppercase tracking-wider flex items-center gap-1.5">
-                              <Clock className="w-4 h-4 text-adv-orange" />
-                              {lang === 'lo' ? 'ວັນທີ ແລະ ເວລາສິ້ນສຸດ' : 'End Date & Time'}
-                            </span>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-[11px] font-bold text-gray-400 mb-1">{t.endDate}</label>
-                                <CalendarPicker 
-                                  value={endDate}
-                                  onChange={(date) => setEndDate(date)}
-                                  lang={lang}
-                                  theme="light"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[11px] font-bold text-gray-400 mb-1">{t.endTime}</label>
-                                <ScrollTimePicker 
-                                  value={endTime}
-                                  onChange={(val) => setEndTime(val)}
-                                  placeholder="17:00"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
 
                     {/* Operating Time Slots Configuration for Flexible Date */}
                     {dateType === "flexible" && (
@@ -3589,14 +3416,121 @@ export default function CreateEvent() {
                         />
                       </motion.div>
                     )}
-                    {/* Zone Seating feature */}
-                    {dateType !== 'flexible' && (
-                      <div className="pt-6 border-t border-gray-100">
-                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 mb-6 shadow-sm">
-                          <div>
-                            <h4 className="text-lg font-bold text-adv-slate mb-1">{t.enableSeating}</h4>
-                            <p className="text-sm text-gray-500">{t.enableSeatingDesc}</p>
+
+                    {/* Booking Configuration */}
+                    {dateType === 'booking' && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-6"
+                      >
+                        <div className="p-5 rounded-2xl bg-amber-50/50 border border-amber-200/60 space-y-5">
+                          <h4 className="text-sm font-bold text-amber-900 flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-amber-600" />
+                            {lang === 'en' ? 'Booking Availability Settings' : 'ຕັ້ງຄ່າການຈອງ'}
+                          </h4>
+                          
+                          <div className="p-3 bg-amber-100/50 rounded-xl border border-amber-200">
+                            <p className="text-[11px] font-medium text-amber-800 flex items-start gap-2">
+                              <Calendar className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                              {lang === 'en' 
+                                ? 'Users can book dates up to 30 days in advance from the current date.' 
+                                : 'ຜູ້ໃຊ້ສາມາດຈອງລ່ວງໜ້າໄດ້ເຖິງ 30 ວັນ ນັບຈາກມື້ປັດຈຸບັນ.'}
+                            </p>
                           </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-gray-500 mb-2">{lang === 'en' ? 'Available Days' : 'ມື້ທີ່ເປີດໃຫ້ຈອງ'}</label>
+                            <div className="flex flex-wrap gap-2">
+                              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                                <button
+                                  key={day}
+                                  type="button"
+                                  onClick={() => {
+                                    if (bookingAvailableDays.includes(day)) {
+                                      setBookingAvailableDays(bookingAvailableDays.filter(d => d !== day));
+                                    } else {
+                                      setBookingAvailableDays([...bookingAvailableDays, day]);
+                                    }
+                                  }}
+                                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-200 ${
+                                    bookingAvailableDays.includes(day)
+                                      ? 'bg-amber-500 text-white shadow-sm'
+                                      : 'bg-white text-gray-500 border border-gray-200 hover:border-amber-300'
+                                  }`}
+                                >
+                                  {lang === 'en' ? day : 
+                                    day === 'Mon' ? 'ຈັນ' : 
+                                    day === 'Tue' ? 'ອັງຄານ' : 
+                                    day === 'Wed' ? 'ພຸດ' : 
+                                    day === 'Thu' ? 'ພະຫັດ' : 
+                                    day === 'Fri' ? 'ສຸກ' : 
+                                    day === 'Sat' ? 'ເສົາ' : 'ອາທິດ'
+                                  }
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4">
+                          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-4">
+                            <h4 className="text-xs font-bold text-adv-slate flex items-center gap-1.5 uppercase tracking-wide">
+                              <Calendar className="w-4 h-4 text-adv-orange" />
+                              {lang === 'en' ? 'Time Slots' : 'ຮອບເວລາ'}
+                            </h4>
+                            
+                            <div className="flex gap-2">
+                              <div className="flex-1">
+                                <ScrollTimePicker 
+                                  value={newBookingTimeSlot}
+                                  onChange={(val) => setNewBookingTimeSlot(val)}
+                                  placeholder="09:00"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (newBookingTimeSlot && !bookingTimeSlots.includes(newBookingTimeSlot)) {
+                                    setBookingTimeSlots([...bookingTimeSlots, newBookingTimeSlot].sort());
+                                    setNewBookingTimeSlot('');
+                                  }
+                                }}
+                                className="px-3 py-2 bg-adv-orange text-white rounded-lg hover:bg-orange-600 transition-colors shrink-0"
+                              >
+                                <Plus className="w-4 h-4" />
+                              </button>
+                            </div>
+                            
+                            <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto pt-1 pr-1 custom-scrollbar">
+                              {bookingTimeSlots.map((slot, index) => (
+                                <div key={index} className="flex items-center gap-1 bg-white border border-gray-200 pl-2 pr-1 py-1 rounded-md shadow-xs">
+                                  <span className="text-xs font-bold text-gray-700">{slot}</span>
+                                  <button 
+                                    type="button"
+                                    onClick={() => setBookingTimeSlots(bookingTimeSlots.filter((_, i) => i !== index))}
+                                    className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                              {bookingTimeSlots.length === 0 && (
+                                <span className="text-xs text-gray-400 italic">No slots added</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Zone Seating feature */}
+                    <div className="pt-6 border-t border-gray-100">
+                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 mb-6 shadow-sm">
+                        <div>
+                          <h4 className="text-lg font-bold text-adv-slate mb-1">{t.enableSeating}</h4>
+                          <p className="text-sm text-gray-500">{t.enableSeatingDesc}</p>
+                        </div>
                           <button 
                             type="button"
                             onClick={() => setHasSeating(!hasSeating)}
@@ -3663,8 +3597,6 @@ export default function CreateEvent() {
                           </div>
                         )}
                       </div>
-                    )}
-
                     <div className="pt-6 border-t border-gray-100">
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="text-lg font-bold text-adv-slate">{t.ticketTiers}</h4>
@@ -3997,7 +3929,7 @@ export default function CreateEvent() {
 
 
 
-                    {dateType !== 'flexible' && (
+                    {dateType === 'fixed' && (
                       <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
                         <div>
                           <h4 className="text-adv-slate font-bold mb-1">{t.enableCountdown}</h4>
@@ -4189,21 +4121,30 @@ export default function CreateEvent() {
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.9, opacity: 0 }}
-                  className="bg-white border border-gray-100 rounded-[32px] w-full max-w-md p-10 text-center shadow-2xl"
+                  className="bg-white border border-gray-100 rounded-[32px] w-full max-w-md p-8 text-center shadow-2xl relative"
                 >
-                  <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner border border-amber-100">
-                    <ShieldAlert className="w-10 h-10 text-amber-600" />
+                  <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-amber-100">
+                    <Lock className="w-8 h-8 text-amber-600" />
                   </div>
-                  <h3 className="text-2xl font-extrabold text-adv-slate mb-4 tracking-tight">{t.editBlocked}</h3>
-                  <p className="text-gray-500 mb-8 leading-relaxed font-medium">
+                  <h3 className="text-xl font-extrabold text-adv-slate mb-3 tracking-tight">{t.editBlocked}</h3>
+                  <p className="text-gray-500 mb-6 leading-relaxed font-medium text-sm">
                     {t.editBlockedDesc}
                   </p>
-                  <button
-                    onClick={() => setShowEditBlockedModal(false)}
-                    className="w-full py-4 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold transition-all border border-amber-100 text-lg"
-                  >
-                    {t.close}
-                  </button>
+                  <div className="space-y-2.5">
+                    <a
+                      href="mailto:admin@ticketlao.com?subject=Request%20Event%20Edit%20/ %20Configuration"
+                      className="w-full py-3.5 px-4 rounded-xl bg-adv-orange hover:bg-orange-600 text-white font-bold transition-all shadow-md flex items-center justify-center gap-2 text-sm"
+                    >
+                      <Mail className="w-4 h-4" />
+                      <span>{lang === 'lo' ? 'ຕິດຕໍ່ Admin ເພື່ອແກ້ໄຂ' : 'Contact System Admin'}</span>
+                    </a>
+                    <button
+                      onClick={() => setShowEditBlockedModal(false)}
+                      className="w-full py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold transition-all text-sm"
+                    >
+                      {t.close}
+                    </button>
+                  </div>
                 </motion.div>
               </motion.div>
             )}
@@ -4455,23 +4396,6 @@ export default function CreateEvent() {
                               <td className="p-4 text-right">
                                 <div className="flex items-center justify-end gap-2">
                                   <button 
-                                    onClick={(e) => { e.stopPropagation(); handleToggleDateTypeInOrganizer(event); }}
-                                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all text-xs font-extrabold border shadow-2xs cursor-pointer ${
-                                      event.dateType === 'flexible'
-                                        ? 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200'
-                                        : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
-                                    }`}
-                                    title={event.dateType === 'flexible' ? 'Switch to Fixed Date' : 'Switch to Flexible Date'}
-                                  >
-                                    <RefreshCcw className="w-3.5 h-3.5 shrink-0" />
-                                    <span className="whitespace-nowrap">
-                                      {event.dateType === 'flexible'
-                                        ? (lang === 'lo' ? 'ປ່ຽນເປັນ Fixed Date' : 'Switch to Fixed Date')
-                                        : (lang === 'lo' ? 'ປ່ຽນເປັນ Flexible Date' : 'Switch to Flexible Date')
-                                      }
-                                    </span>
-                                  </button>
-                                  <button 
                                     onClick={(e) => { e.stopPropagation(); setSelectedEvent(event); }}
                                     className="flex items-center gap-1.5 px-3.5 py-2 bg-gray-50 hover:bg-adv-orange/10 hover:text-adv-orange text-gray-600 rounded-xl transition-all text-xs font-bold border border-gray-100/50 shadow-sm" 
                                     title={t.view}
@@ -4647,27 +4571,15 @@ export default function CreateEvent() {
                     <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mt-0.5">Event Details & Statistics</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    {canEditModal ? (
-                      <button 
-                        onClick={() => {
-                          handleStartEdit(selectedEvent);
-                        }}
-                        className="flex items-center gap-1.5 px-4 py-2.5 bg-orange-50 hover:bg-adv-orange hover:text-white text-adv-orange rounded-2xl transition-all text-xs font-black border border-orange-100/60 shadow-sm uppercase tracking-wider"
-                      >
-                        <Edit className="w-4 h-4" />
-                        <span>{t.edit}</span>
-                      </button>
-                    ) : (
-                      <button 
-                        onClick={() => {
-                          setShowEditBlockedModal(true);
-                        }}
-                        className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 text-gray-400 rounded-2xl transition-all text-xs font-black border border-gray-200/40 shadow-sm cursor-not-allowed uppercase tracking-wider"
-                      >
-                        <Lock className="w-4 h-4" />
-                        <span>{t.editBlocked}</span>
-                      </button>
-                    )}
+                    <button 
+                      onClick={() => {
+                        setShowEditBlockedModal(true);
+                      }}
+                      className="flex items-center gap-1.5 px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-2xl transition-all text-xs font-black border border-amber-200/60 shadow-sm uppercase tracking-wider"
+                    >
+                      <Lock className="w-4 h-4 text-amber-600" />
+                      <span>{lang === 'lo' ? 'ຕິດຕໍ່ Admin ເພື່ອແກ້ໄຂ' : 'Contact Admin to Edit'}</span>
+                    </button>
                     <button 
                       onClick={() => setSelectedEvent(null)}
                       className="p-2.5 rounded-2xl bg-gray-50 hover:bg-gray-100 text-gray-400 hover:text-adv-slate transition-all shadow-sm border border-gray-100"
@@ -4803,19 +4715,29 @@ export default function CreateEvent() {
                     </div>
                   </div>
 
-                  {/* Event Features Configuration (Countdown Timer Toggle) */}
+                  {/* Event Features Configuration (Read-Only for Organizers) */}
                     <div className="bg-gray-50 p-6 rounded-[24px] border border-gray-100 space-y-4 shadow-sm">
                       <div className="flex items-center justify-between">
                         <h4 className="text-sm font-bold text-adv-slate flex items-center gap-2">
                           <Settings className="w-4 h-4 text-adv-orange" />
                           {lang === 'lo' ? 'ການຕັ້ງຄ່າຄຸນສົມບັດ Event' : 'Event Features Configuration'}
                         </h4>
-                        <span className="text-[10px] bg-adv-orange/10 text-adv-orange font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                          {lang === 'lo' ? 'ຈັດການ' : 'Manage'}
+                        <span className="text-[10px] bg-amber-50 text-amber-700 font-extrabold px-2.5 py-1 rounded-full border border-amber-200 uppercase tracking-wider flex items-center gap-1">
+                          <Lock className="w-3 h-3 text-amber-600" />
+                          {lang === 'lo' ? 'ເບິ່ງຢ່າງດຽວ' : 'Read-Only'}
+                        </span>
+                      </div>
+
+                      <div className="p-3 bg-amber-50/80 border border-amber-100 rounded-xl flex items-center gap-2 text-xs text-amber-800 font-semibold">
+                        <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>
+                          {lang === 'lo'
+                            ? 'ການຕັ້ງຄ່າ Event ຖືກລັອກຫຼັງຈາກສົ່ງ. ຕິດຕໍ່ Admin ຖ້າຕ້ອງການປ່ຽນແປງ.'
+                            : 'Event settings are read-only after submission. Contact admin to reconfigure.'}
                         </span>
                       </div>
                       
-                      {selectedEvent.dateType !== 'flexible' && (
+                      {selectedEvent.dateType === 'fixed' && (
                         <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-150/50 shadow-sm">
                           <div>
                             <h5 className="text-sm font-bold text-adv-slate flex items-center gap-1.5">
@@ -4826,21 +4748,12 @@ export default function CreateEvent() {
                             </p>
                           </div>
                           <button 
-                            onClick={() => {
-                              const updated = localEvents.map(evt => {
-                                if (evt.id === selectedEvent.id) {
-                                  const newEnable = evt.enableCountdown === undefined ? false : !evt.enableCountdown;
-                                  return { ...evt, enableCountdown: newEnable };
-                                }
-                                return evt;
-                              });
-                              setLocalEvents(updated);
-                              safeStorage.setItem('organizer_events', JSON.stringify(updated));
-                              setSelectedEvent({ ...selectedEvent, enableCountdown: selectedEvent.enableCountdown === undefined ? false : !selectedEvent.enableCountdown });
-                            }}
-                            className={`w-11 h-6 rounded-full transition-colors relative ${selectedEvent.enableCountdown !== false ? 'bg-adv-orange' : 'bg-gray-300'}`}
+                            onClick={() => setShowEditBlockedModal(true)}
+                            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors text-xs font-bold border border-gray-200 flex items-center gap-1.5 shrink-0"
+                            title={lang === 'lo' ? 'ຕິດຕໍ່ Admin ເພື່ອແກ້ໄຂ' : 'Contact Admin to Edit'}
                           >
-                            <div className={`w-5 h-5 rounded-full bg-white absolute top-[2px] transition-transform ${selectedEvent.enableCountdown !== false ? 'translate-x-5 left-[2px]' : 'translate-x-0 left-[2px]'}`} />
+                            <Lock className="w-3.5 h-3.5 text-amber-600" />
+                            <span>{selectedEvent.enableCountdown !== false ? (lang === 'lo' ? 'ເປີດ' : 'Enabled') : (lang === 'lo' ? 'ປິດ' : 'Disabled')}</span>
                           </button>
                         </div>
                       )}
@@ -4855,64 +4768,30 @@ export default function CreateEvent() {
                           </p>
                         </div>
                         <button 
-                          onClick={() => {
-                            const updated = localEvents.map(evt => {
-                              if (evt.id === selectedEvent.id) {
-                                const newReq = evt.requireEveryTicketInfo === undefined ? false : !evt.requireEveryTicketInfo;
-                                return { ...evt, requireEveryTicketInfo: newReq };
-                              }
-                              return evt;
-                            });
-                            setLocalEvents(updated);
-                            safeStorage.setItem('organizer_events', JSON.stringify(updated));
-                            setSelectedEvent({ ...selectedEvent, requireEveryTicketInfo: selectedEvent.requireEveryTicketInfo === undefined ? false : !selectedEvent.requireEveryTicketInfo });
-                          }}
-                          className={`w-11 h-6 rounded-full transition-colors relative ${selectedEvent.requireEveryTicketInfo !== false ? 'bg-adv-orange' : 'bg-gray-300'}`}
+                          onClick={() => setShowEditBlockedModal(true)}
+                          className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors text-xs font-bold border border-gray-200 flex items-center gap-1.5 shrink-0"
+                          title={lang === 'lo' ? 'ຕິດຕໍ່ Admin ເພື່ອແກ້ໄຂ' : 'Contact Admin to Edit'}
                         >
-                          <div className={`w-5 h-5 rounded-full bg-white absolute top-[2px] transition-transform ${selectedEvent.requireEveryTicketInfo !== false ? 'translate-x-5 left-[2px]' : 'translate-x-0 left-[2px]'}`} />
+                          <Lock className="w-3.5 h-3.5 text-amber-600" />
+                          <span>{selectedEvent.requireEveryTicketInfo !== false ? (lang === 'lo' ? 'ເປີດ' : 'Enabled') : (lang === 'lo' ? 'ປິດ' : 'Disabled')}</span>
                         </button>
                       </div>
                     </div>
 
                   {/* Schedule and Location */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50/50 p-6 rounded-[24px] border border-gray-100">
+                  <div className="grid grid-cols-1 md:grid-cols-1 gap-6 bg-gray-50/50 p-6 rounded-[24px] border border-gray-100">
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between gap-2">
-                        <h4 className="text-sm font-bold text-adv-slate flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-adv-orange" />
-                          Date & Schedule Mode
-                        </h4>
-                        <button
-                          onClick={() => handleToggleDateTypeInOrganizer(selectedEvent)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 hover:bg-adv-orange text-adv-orange hover:text-white rounded-xl text-xs font-black transition-all border border-orange-200/80 shadow-2xs cursor-pointer"
-                          title="Switch between Fixed Date and Flexible Date"
-                        >
-                          <RefreshCcw className="w-3.5 h-3.5 shrink-0" />
-                          <span>
-                            {selectedEvent.dateType === 'flexible'
-                              ? (lang === 'lo' ? 'ປ່ຽນເປັນ Fixed Date' : 'Switch to Fixed Date')
-                              : (lang === 'lo' ? 'ປ່ຽນເປັນ Flexible Date' : 'Switch to Flexible Date')
-                            }
+                      <h4 className="text-sm font-bold text-adv-slate flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-adv-orange" />
+                        Date & Time
+                      </h4>
+                      <div className="space-y-2 pl-6">
+                        {selectedEvent.dateType === 'flexible' && (
+                          <span className="inline-block text-[10px] font-extrabold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100 uppercase tracking-wider">
+                            {t.flexibleDate}
                           </span>
-                        </button>
-                      </div>
-
-                      <div className="space-y-2 bg-white p-3.5 rounded-2xl border border-gray-200/80 shadow-2xs">
-                        <div className="flex items-center gap-2">
-                          {selectedEvent.dateType === 'flexible' ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-200 uppercase tracking-wider">
-                              <Sparkles className="w-3 h-3 text-amber-500" />
-                              {t.flexibleDate} (Open Visit Booking)
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-200 uppercase tracking-wider">
-                              <Calendar className="w-3 h-3 text-blue-500" />
-                              Fixed Date Event
-                            </span>
-                          )}
-                        </div>
-
-                        <p className="text-sm text-gray-700 font-extrabold mt-1">
+                        )}
+                        <p className="text-sm text-gray-700 font-semibold">
                           {new Date(selectedEvent.date).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
                           {selectedEvent.endDate && selectedEvent.endDate !== selectedEvent.date && (
                             <>
@@ -4922,14 +4801,9 @@ export default function CreateEvent() {
                           )}
                         </p>
                         {(selectedEvent.time || selectedEvent.endTime) && (
-                          <p className="text-xs text-gray-500 font-bold flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5 text-adv-orange" />
+                          <p className="text-sm text-gray-500 font-bold flex items-center gap-1.5">
+                            <Clock className="w-4 h-4 text-gray-400" />
                             {selectedEvent.time || '00:00'} - {selectedEvent.endTime || '23:59'}
-                          </p>
-                        )}
-                        {selectedEvent.dateType === 'flexible' && selectedEvent.flexibleDateDesc && (
-                          <p className="text-xs text-amber-800 bg-amber-50/70 p-2 rounded-lg border border-amber-100 font-medium mt-1">
-                            💬 {selectedEvent.flexibleDateDesc}
                           </p>
                         )}
                       </div>

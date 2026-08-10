@@ -726,7 +726,7 @@ export default function Checkout() {
                                         value={(owner.customAnswers?.[q.id] as string) || ""}
                                         onChange={(e) => handleCustomAnswerChange(idx, q.id, e.target.value)}
                                         rows={4}
-                                        className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-2 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all resize-y"
+                                        className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-2 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all resize-none"
                                         placeholder={lang === 'lo' ? 'ຄຳຕອບຂອງທ່ານ...' : 'Your answer...'}
                                       />
                                     )}
@@ -754,7 +754,7 @@ export default function Checkout() {
                                       </select>
                                     )}
                                     
-                                    {q.type === 'options' && (
+                                    {(q.type === 'options' || q.type === 'multi_choice') && (
                                       <MultiSelectDropdown
                                         options={q.options || []}
                                         selectedValues={(owner.customAnswers?.[q.id] as string[]) || []}

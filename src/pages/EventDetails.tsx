@@ -5,7 +5,6 @@ import {
   ArrowLeft, 
   ArrowRight,
   Share2, 
-  Flag,
   Plus, 
   Minus, 
   Zap,
@@ -46,9 +45,7 @@ import {
   Image as ImageIcon,
   Copy,
   Ticket,
-  ExternalLink,
-  CheckCircle2,
-  Sparkles
+  ExternalLink
 } from 'lucide-react';
 import { events, LaoEvent, TicketTier } from '../data/events';
 import { useLanguage } from '../LanguageContext';
@@ -219,7 +216,7 @@ function InlineCalendar({
 }: { 
   selectedDate: string; 
   onDateChange: (date: string) => void; 
-  dateType: 'fixed' | 'flexible'; 
+  dateType: 'fixed' | 'flexible' | 'booking'; 
   eventDate?: string; 
   lang: 'en' | 'lo'; 
 }) {
@@ -229,7 +226,7 @@ function InlineCalendar({
   const todayDateStr = formatDateString(todayYear, todayMonth, today.getDate());
 
   const maxDate = new Date();
-  maxDate.setFullYear(maxDate.getFullYear() + 1);
+  maxDate.setDate(maxDate.getDate() + 30);
   const maxYear = maxDate.getFullYear();
   const maxMonth = maxDate.getMonth();
   const maxDateStr = formatDateString(maxYear, maxMonth, maxDate.getDate());
@@ -264,12 +261,13 @@ function InlineCalendar({
 
   const handleNextMonth = () => {
     if (dateType === 'fixed') return;
-    if (currentYear > maxYear || (currentYear === maxYear && currentMonth >= maxMonth)) return;
-    if (currentMonth === 11) {
-      setCurrentMonth(0);
-      setCurrentYear(prev => prev + 1);
-    } else {
-      setCurrentMonth(prev => prev + 1);
+    if (currentYear < maxYear || (currentYear === maxYear && currentMonth < maxMonth)) {
+      if (currentMonth === 11) {
+        setCurrentMonth(0);
+        setCurrentYear(prev => prev + 1);
+      } else {
+        setCurrentMonth(prev => prev + 1);
+      }
     }
   };
 
@@ -291,7 +289,7 @@ function InlineCalendar({
         <span className="font-bold text-sm text-adv-slate">
           {calendarMonths[lang][currentMonth]} {currentYear}
         </span>
-        {dateType === 'flexible' && (
+        {(dateType === 'flexible' || dateType === 'booking') && (
           <div className="flex items-center gap-1.5">
             <button
               onClick={handlePrevMonth}
@@ -333,7 +331,7 @@ function InlineCalendar({
           let isSelected = false;
           let isToday = dateStr === todayDateStr;
 
-          if (dateType === 'flexible') {
+          if (dateType === 'flexible' || dateType === 'booking') {
             isSelectable = dateStr >= todayDateStr && dateStr <= maxDateStr;
             isSelected = dateStr === selectedDate;
           } else {
@@ -372,7 +370,7 @@ function InlineCalendar({
           <div className="w-2.5 h-2.5 rounded-full bg-adv-orange" />
           <span>{dateType === 'fixed' ? (lang === 'en' ? 'Event Day' : 'ວັນທີກິດຈະກຳ') : (lang === 'en' ? 'Selected' : 'ເລືອກແລ້ວ')}</span>
         </div>
-        {dateType === 'flexible' && (
+        {(dateType === 'flexible' || dateType === 'booking') && (
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full border border-adv-orange/40 bg-orange-50/10" />
             <span>{lang === 'en' ? 'Today' : 'ມື້ນີ້'}</span>
@@ -508,6 +506,34 @@ export default function EventDetails() {
   const [promoError, setPromoError] = useState('');
   const [fullscreenImageIndex, setFullscreenImageIndex] = useState<number | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  // Mobile Touch Swipe States for Gallery Image Preview
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
+
+  const handleMobileTouchStart = (e: React.TouchEvent) => {
+    setTouchEndX(null);
+    setTouchStartX(e.targetTouches[0].clientX);
+  };
+
+  const handleMobileTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleMobileTouchEnd = () => {
+    if (touchStartX === null || touchEndX === null) return;
+    const distance = touchStartX - touchEndX;
+    const minSwipeDistance = 35;
+    if (distance > minSwipeDistance && galleryImages.length > 1) {
+      // Swiped left -> Next Image
+      setActiveImageIndex(prev => (prev === galleryImages.length - 1 ? 0 : prev + 1));
+    } else if (distance < -minSwipeDistance && galleryImages.length > 1) {
+      // Swiped right -> Previous Image
+      setActiveImageIndex(prev => (prev === 0 ? galleryImages.length - 1 : prev - 1));
+    }
+    setTouchStartX(null);
+    setTouchEndX(null);
+  };
   const [shareSuccess, setShareSuccess] = useState(false);
   const [copiedMapAddress, setCopiedMapAddress] = useState(false);
   const [showOrganizerDetails, setShowOrganizerDetails] = useState(false);
@@ -710,25 +736,6 @@ export default function EventDetails() {
   const [hoverRating, setHoverRating] = useState<number | null>(null);
   const [userComment, setUserComment] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
-
-  // Report Event States
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [reportReason, setReportReason] = useState('Inappropriate or misleading content');
-  const [reportDetails, setReportDetails] = useState('');
-  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
-  const [reportSubmittedToast, setReportSubmittedToast] = useState(false);
-
-  const handleSendReport = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmittingReport(true);
-    setTimeout(() => {
-      setIsSubmittingReport(false);
-      setShowReportModal(false);
-      setReportDetails('');
-      setReportSubmittedToast(true);
-      setTimeout(() => setReportSubmittedToast(false), 4000);
-    }, 800);
-  };
   
   const getAccountUserName = () => {
     try {
@@ -1149,7 +1156,7 @@ export default function EventDetails() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] pb-32">
+    <div className="min-h-screen bg-[#F9FAFB] pb-6 lg:pb-8">
       <AnimatePresence>
         {fullscreenImageIndex !== null && (
           <motion.div 
@@ -1199,7 +1206,24 @@ export default function EventDetails() {
             )}
 
             {/* Main image container */}
-            <div className="relative max-w-full max-h-full flex flex-col items-center gap-4" onClick={(e) => e.stopPropagation()}>
+            <div 
+              className="relative max-w-full max-h-full flex flex-col items-center gap-4 touch-pan-y select-none" 
+              onClick={(e) => e.stopPropagation()}
+              onTouchStart={handleMobileTouchStart}
+              onTouchMove={handleMobileTouchMove}
+              onTouchEnd={() => {
+                if (touchStartX === null || touchEndX === null) return;
+                const distance = touchStartX - touchEndX;
+                const minSwipeDistance = 35;
+                if (distance > minSwipeDistance && galleryImages.length > 1) {
+                  setFullscreenImageIndex(prev => (prev === galleryImages.length - 1 || prev === null ? 0 : prev + 1));
+                } else if (distance < -minSwipeDistance && galleryImages.length > 1) {
+                  setFullscreenImageIndex(prev => (prev === 0 || prev === null ? galleryImages.length - 1 : prev - 1));
+                }
+                setTouchStartX(null);
+                setTouchEndX(null);
+              }}
+            >
               <motion.img 
                 key={fullscreenImageIndex}
                 initial={{ scale: 0.95, opacity: 0 }}
@@ -1252,14 +1276,6 @@ export default function EventDetails() {
               <Share2 className="w-3.5 h-3.5 text-adv-orange" />
               <span>{t.share}</span>
             </button>
-            <button 
-              onClick={() => setShowReportModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200/80 rounded-xl text-red-600 hover:text-red-700 hover:bg-red-50/80 text-xs font-bold shadow-sm hover:shadow-md transition-all active:scale-95 shrink-0 cursor-pointer"
-              title={t.reportEvent}
-            >
-              <Flag className="w-3.5 h-3.5 text-red-500" />
-              <span>{t.reportEvent}</span>
-            </button>
           </div>
         </div>
 
@@ -1267,58 +1283,23 @@ export default function EventDetails() {
           {/* Main Content */}
           <div className="lg:col-span-7 space-y-6">
             <div className="bg-white rounded-3xl overflow-hidden shadow-md border border-gray-100 relative group/hero">
-               {/* Compact Mobile Header when in Reviews tab */}
-               {event.allowReviews !== false && mobileActiveTab === 'reviews' && (
-                 <div className="block lg:hidden px-6 py-4 border-b border-gray-100 bg-white">
-                   <div className="flex items-center justify-between gap-4">
-                     <button 
-                       onClick={handleBack} 
-                       className="w-10 h-10 rounded-full bg-gray-50 border border-gray-150 flex items-center justify-center text-gray-700 active:scale-95 transition-all cursor-pointer shrink-0"
-                     >
-                       <ArrowLeft className="w-5 h-5 text-gray-600" />
-                     </button>
-                     
-                     <div className="flex-1 min-w-0">
-                       <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider truncate">
-                         {event.category || 'Event'} • {lang === 'en' ? 'Reviews' : 'ຣີວິວ'}
-                       </p>
-                       <h2 className="text-sm font-bold text-adv-slate truncate">
-                         {event.title}
-                       </h2>
-                     </div>
-
-                     <div className="flex items-center gap-2 shrink-0">
-                       <button 
-                         onClick={handleShare} 
-                         className="w-10 h-10 rounded-full bg-gray-50 border border-gray-150 flex items-center justify-center text-gray-700 active:scale-95 transition-all cursor-pointer"
-                         title={t.share}
-                       >
-                         <Share2 className="w-5 h-5 text-gray-600" />
-                       </button>
-                       <button 
-                         onClick={() => setShowReportModal(true)} 
-                         className="w-10 h-10 rounded-full bg-gray-50 border border-gray-150 flex items-center justify-center text-red-600 active:scale-95 transition-all cursor-pointer"
-                         title={t.reportEvent}
-                       >
-                         <Flag className="w-5 h-5 text-red-500" />
-                       </button>
-                     </div>
-                   </div>
-                 </div>
-               )}
-
                {/* Mobile Cover Image & Centered Title */}
                {event.image && (
-                 <div className={`block lg:hidden w-full relative ${event.allowReviews !== false && mobileActiveTab === 'reviews' ? 'hidden' : ''}`}>
-                   <div className="relative w-full aspect-square sm:aspect-[4/3] overflow-hidden rounded-t-3xl">
+                 <div className="block lg:hidden w-full relative">
+                   <div 
+                     className="relative w-full aspect-square sm:aspect-[4/3] overflow-hidden rounded-t-3xl touch-pan-y select-none cursor-grab active:cursor-grabbing"
+                     onTouchStart={handleMobileTouchStart}
+                     onTouchMove={handleMobileTouchMove}
+                     onTouchEnd={handleMobileTouchEnd}
+                   >
                      <motion.img 
                        key={activeImageIndex}
-                       initial={{ opacity: 0.8 }}
-                       animate={{ opacity: 1 }}
-                       transition={{ duration: 0.3 }}
+                       initial={{ opacity: 0.8, scale: 0.98 }}
+                       animate={{ opacity: 1, scale: 1 }}
+                       transition={{ duration: 0.25 }}
                        src={galleryImages[activeImageIndex]} 
                        alt={event.title} 
-                       className="w-full h-full object-cover"
+                       className="w-full h-full object-cover pointer-events-none"
                      />
                      {/* Subtle dark gradient overlay at top and bottom */}
                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/30 pointer-events-none" />
@@ -1331,7 +1312,7 @@ export default function EventDetails() {
                        <ArrowLeft className="w-5 h-5 text-gray-800" />
                      </button>
 
-                     {/* Round White Action Buttons: Favorite + Share */}
+                     {/* Round White Action Buttons: Share */}
                      <div className="absolute top-4 right-4 flex items-center gap-2.5 z-20">
                        <button 
                          onClick={handleShare} 
@@ -1340,23 +1321,42 @@ export default function EventDetails() {
                        >
                          <Share2 className="w-5 h-5 text-gray-800" />
                        </button>
-                       <button 
-                         onClick={() => setShowReportModal(true)} 
-                         className="w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center text-red-600 hover:bg-red-50 active:scale-95 transition-all cursor-pointer"
-                         title={t.reportEvent}
-                       >
-                         <Flag className="w-5 h-5 text-red-500" />
-                       </button>
                      </div>
+
+                     {/* Mobile Left / Right Chevron Controls */}
+                     {galleryImages.length > 1 && (
+                       <>
+                         <button 
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             setActiveImageIndex(prev => (prev === 0 ? galleryImages.length - 1 : prev - 1));
+                           }}
+                           className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/35 hover:bg-black/50 backdrop-blur-xs flex items-center justify-center text-white z-20 active:scale-90 transition-all cursor-pointer shadow-md"
+                           aria-label="Previous image"
+                         >
+                           <ChevronLeft className="w-5 h-5" />
+                         </button>
+                         <button 
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             setActiveImageIndex(prev => (prev === galleryImages.length - 1 ? 0 : prev + 1));
+                           }}
+                           className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/35 hover:bg-black/50 backdrop-blur-xs flex items-center justify-center text-white z-20 active:scale-90 transition-all cursor-pointer shadow-md"
+                           aria-label="Next image"
+                         >
+                           <ChevronRight className="w-5 h-5" />
+                         </button>
+                       </>
+                     )}
 
                      {/* Bottom Center Dots Carousel Indicators */}
                      {galleryImages.length > 1 && (
-                       <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20 bg-black/20 px-3 py-1.5 rounded-full backdrop-blur-xs">
+                       <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20 bg-black/25 px-3 py-1.5 rounded-full backdrop-blur-xs">
                          {galleryImages.map((_, idx) => (
                            <button
                              key={idx}
                              onClick={() => setActiveImageIndex(idx)}
-                             className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === activeImageIndex ? 'bg-white w-4' : 'bg-white/50'}`}
+                             className={`h-2 rounded-full transition-all duration-300 ${idx === activeImageIndex ? 'bg-white w-4' : 'bg-white/50 w-2'}`}
                            />
                          ))}
                        </div>
@@ -1374,6 +1374,28 @@ export default function EventDetails() {
                      )}
                    </div>
 
+                   {/* Mobile Horizontal Thumbnail Strip for quick tap/slide */}
+                   {galleryImages.length > 1 && (
+                     <div className="flex gap-2 overflow-x-auto px-4 py-3 bg-gray-50/70 border-b border-gray-100 scrollbar-none">
+                       {galleryImages.map((img, idx) => {
+                         const isActive = idx === activeImageIndex;
+                         return (
+                           <button
+                             key={idx}
+                             onClick={() => setActiveImageIndex(idx)}
+                             className={`relative w-16 h-12 rounded-xl overflow-hidden flex-shrink-0 transition-all duration-200 border-2 cursor-pointer ${
+                               isActive 
+                                 ? 'border-adv-orange ring-1 ring-orange-200 scale-95 shadow-xs' 
+                                 : 'border-transparent opacity-60 hover:opacity-100'
+                             }`}
+                           >
+                             <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                           </button>
+                         );
+                       })}
+                     </div>
+                   )}
+
                    {/* Title & Metadata Centered Section */}
                    <div className="text-center space-y-4 px-4 py-6 border-b border-gray-100 bg-gray-50/20">
                      <div className="space-y-1.5">
@@ -1385,32 +1407,13 @@ export default function EventDetails() {
                        </h1>
                      </div>
 
-                     {avgRating > 0 && (
-                       <div className="flex items-center justify-center gap-2 text-amber-500 font-bold text-xs bg-white/80 py-1.5 px-3.5 rounded-full border border-gray-150/60 w-fit mx-auto shadow-2xs">
-                         <div className="flex items-center gap-0.5">
-                           {[1, 2, 3, 4, 5].map((star) => {
-                             const isFilled = star <= Math.round(avgRating);
-                             return (
-                               <Star
-                                 key={star}
-                                 className={`w-3.5 h-3.5 ${isFilled ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`}
-                               />
-                             );
-                           })}
-                         </div>
-                         <span className="text-gray-700 font-black">{avgRating.toFixed(1)}</span>
-                         <span className="text-gray-300">|</span>
-                         <span className="text-gray-500 font-extrabold uppercase tracking-wider text-[9px]">
-                           {reviews.length} {reviews.length === 1 ? 'Review' : 'Reviews'}
-                         </span>
-                       </div>
-                     )}
-
                      <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-bold text-gray-500">
-                       <span className="inline-flex items-center gap-1.5 bg-white px-3 py-2 rounded-xl border border-gray-150/60 shadow-3xs">
-                         <Calendar className="w-3.5 h-3.5 text-adv-orange" />
-                         {event.dateType === 'flexible' ? 'Flexible' : new Date(event.date).toLocaleDateString()}
-                       </span>
+                       {event.dateType !== 'flexible' && (
+                         <span className="inline-flex items-center gap-1.5 bg-white px-3 py-2 rounded-xl border border-gray-150/60 shadow-3xs">
+                           <Calendar className="w-3.5 h-3.5 text-adv-orange" />
+                           {new Date(event.date).toLocaleDateString()}
+                         </span>
+                       )}
                        {event.dateType !== 'flexible' && event.time && (
                          <span className="inline-flex items-center gap-1.5 bg-white px-3 py-2 rounded-xl border border-gray-150/60 shadow-3xs">
                            <Clock className="w-3.5 h-3.5 text-adv-orange" />
@@ -1512,10 +1515,12 @@ export default function EventDetails() {
                        )}
                        
                        <div className="flex flex-wrap items-center gap-2.5 text-xs font-semibold font-sans">
-                          <span className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/10 shadow-lg text-white transition-all hover:bg-white/20">
-                            <Calendar className="w-3.5 h-3.5 text-white" />
-                            {event.dateType === 'flexible' ? 'Flexible' : new Date(event.date).toLocaleDateString()}
-                          </span>
+                          {event.dateType !== 'flexible' && (
+                            <span className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/10 shadow-lg text-white transition-all hover:bg-white/20">
+                              <Calendar className="w-3.5 h-3.5 text-white" />
+                              {new Date(event.date).toLocaleDateString()}
+                            </span>
+                          )}
                           {event.dateType !== 'flexible' && event.time && (
                             <span className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/10 shadow-lg text-white transition-all hover:bg-white/20">
                               <Clock className="w-3.5 h-3.5 text-white animate-pulse" />
@@ -1564,11 +1569,7 @@ export default function EventDetails() {
                                alt={`Event thumbnail ${idx + 1}`} 
                                className="w-full h-full object-cover"
                              />
-                             {isActive && (
-                               <div className="absolute inset-0 bg-black/5 flex items-center justify-center">
-                                 <div className="w-1.5 h-1.5 rounded-full bg-adv-orange animate-ping" />
-                               </div>
-                             )}
+
                            </button>
                          );
                        })}
@@ -1584,10 +1585,12 @@ export default function EventDetails() {
 
 
                     <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-                       <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-sm text-gray-600">
-                         <Calendar className="w-3.5 h-3.5 text-adv-orange" />
-                         {event.dateType === 'flexible' ? 'Flexible' : new Date(event.date).toLocaleDateString()}
-                       </span>
+                       {event.dateType !== 'flexible' && (
+                         <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-sm text-gray-600">
+                           <Calendar className="w-3.5 h-3.5 text-adv-orange" />
+                           {new Date(event.date).toLocaleDateString()}
+                         </span>
+                       )}
                        {event.dateType !== 'flexible' && event.time && (
                          <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-sm text-gray-600">
                            <Clock className="w-3.5 h-3.5 text-adv-orange animate-pulse" />
@@ -1607,45 +1610,8 @@ export default function EventDetails() {
                )}
                </div>
                  
-               {/* Mobile Navigation Tab Bar */}
-               {event.allowReviews !== false && (
-                 <div className="block lg:hidden border-b border-gray-100 px-6 py-3 bg-gray-50/20">
-                   <div className="flex bg-gray-100/60 p-1 rounded-2xl border border-gray-150/40">
-                     <button
-                       type="button"
-                       onClick={() => setMobileActiveTab('details')}
-                       className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                         mobileActiveTab === 'details'
-                           ? 'bg-white text-adv-slate shadow-xs border border-gray-200/10'
-                           : 'text-gray-400 hover:text-gray-600'
-                       }`}
-                     >
-                       <Info className="w-3.5 h-3.5" />
-                       <span>{lang === 'en' ? 'Details' : 'ລາຍລະອຽດ'}</span>
-                     </button>
-                     <button
-                       type="button"
-                       onClick={() => setMobileActiveTab('reviews')}
-                       className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                         mobileActiveTab === 'reviews'
-                           ? 'bg-white text-adv-slate shadow-xs border border-gray-200/10'
-                           : 'text-gray-400 hover:text-gray-600'
-                       }`}
-                     >
-                       <Star className={`w-3.5 h-3.5 ${mobileActiveTab === 'reviews' ? 'fill-amber-400 text-amber-400' : 'text-gray-400'}`} />
-                       <span>{lang === 'en' ? 'Reviews' : 'ຣີວິວ'}</span>
-                       {reviews.length > 0 && (
-                         <span className="text-[10px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
-                           {reviews.length}
-                         </span>
-                       )}
-                     </button>
-                   </div>
-                 </div>
-               )}
-
-               {/* Event Details Sections (Visible on desktop, and on mobile only when Details tab is active) */}
-               <div className={event.allowReviews !== false && mobileActiveTab === 'reviews' ? 'hidden lg:block' : 'block'}>
+               {/* Event Details Sections */}
+               <div className="block">
 
               <div className="px-6 pt-3 sm:pt-4 pb-2">
                  <div className="prose prose-orange max-w-none">
@@ -1658,255 +1624,26 @@ export default function EventDetails() {
 
              {/* Public Map Venue Section */}
              {event.eventType !== 'online' && (
-               <div className="px-4 sm:px-6 pt-5 pb-6 border-t border-gray-150/60 dark:border-zinc-800/60" id="event-map-venue">
-                  <div className="mb-3.5">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-adv-orange" />
-                      <h2 className="text-[11px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-400">
-                        {lang === 'lo' ? 'ສະຖານທີ່' : 'Location'}
-                      </h2>
-                    </div>
-                    <h3 className="text-base sm:text-lg font-bold text-black dark:text-white">
-                      {event.location}
-                    </h3>
-                    {(event.district || event.province) && (
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium mt-0.5">
-                        {[event.district, event.province].filter(Boolean).join(', ')}
-                      </p>
-                    )}
-                  </div>
-                  
-                  {/* Redesigned interactive map container */}
-                  <EventMapPicker 
-                    isReadOnly={true}
-                    address={event.location}
-                    googleMapUrl={event.googleMapUrl}
-                    province={event.province}
-                    district={event.district}
-                    latitude={event.latitude}
-                    longitude={event.longitude}
-                    lang={lang as 'en' | 'lo'}
-                  />
+               <div className="my-4 bg-white p-4 text-sm space-y-2 border-t border-gray-150/60 dark:border-zinc-800/60" id="event-map-venue">
+                 <h3 className="font-bold text-black dark:text-black">
+                   {lang === 'lo' ? 'ສະຖານທີ່' : 'Location'}
+                 </h3>
+                 <div className="text-black dark:text-black font-medium">
+                   {event.location}
+                 </div>
+                 <EventMapPicker 
+                   isReadOnly={true}
+                   address={event.location}
+                   googleMapUrl={event.googleMapUrl}
+                   province={event.province}
+                   district={event.district}
+                   latitude={event.latitude}
+                   longitude={event.longitude}
+                   lang={lang as 'en' | 'lo'}
+                 />
                </div>
              )}
                </div>
-
-               {/* Mobile Reviews Section (Rendered inside main card on mobile when reviews tab is active) */}
-               {event.allowReviews !== false && mobileActiveTab === 'reviews' && (
-                 <div className="block lg:hidden px-4 py-4 space-y-4" id="reviews-section-mobile">
-                    {/* Header */}
-                    <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
-                      <h2 className="text-[11px] font-black uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-adv-orange"></span>
-                        {t.ratingsAndReviews}
-                      </h2>
-                      {reviews.length > 0 && (
-                        <span className="text-[11px] font-bold text-adv-orange bg-orange-50/80 px-2 py-0.5 rounded-full border border-orange-100/40">
-                          {reviews.length} {reviews.length === 1 ? 'rating' : 'ratings'}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Write Review Form */}
-                    {isAuthenticated && hasPurchasedTicket && (
-                      <div className="p-3 bg-orange-50/15 border border-orange-100/30 rounded-xl space-y-2.5">
-                        <h3 className="text-[11px] font-bold text-adv-orange uppercase tracking-wider flex items-center gap-1.5">
-                          <MessageSquare className="w-3.5 h-3.5" />
-                          {t.writeComment}
-                        </h3>
-
-                        <form onSubmit={handleSubmitComment} className="space-y-2.5">
-                          {/* Star Rating Selector */}
-                          <div className="flex items-center gap-2.5">
-                            <span className="text-xs font-medium text-gray-500">
-                              {t.yourRating}
-                            </span>
-                            <div className="flex items-center gap-0.5">
-                              {[1, 2, 3, 4, 5].map((star) => {
-                                const isFilled = hoverRating !== null ? star <= hoverRating : star <= userRating;
-                                return (
-                                  <button
-                                    type="button"
-                                    key={star}
-                                    onClick={() => setUserRating(star)}
-                                    onMouseEnter={() => setHoverRating(star)}
-                                    onMouseLeave={() => setHoverRating(null)}
-                                    className="p-0.5 hover:scale-110 transition-transform focus:outline-none cursor-pointer"
-                                  >
-                                    <Star
-                                      className={`w-3.5 h-3.5 transition-colors duration-150 ${
-                                        isFilled 
-                                          ? 'fill-adv-orange text-adv-orange' 
-                                          : 'text-gray-300'
-                                      }`}
-                                    />
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-
-                          {/* Comment Input block */}
-                          <div>
-                            <textarea
-                              value={userComment}
-                              onChange={(e) => setUserComment(e.target.value)}
-                              placeholder={t.commentPlaceholder}
-                              rows={2}
-                              className="w-full bg-white text-xs text-gray-700 p-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-1 focus:ring-adv-orange focus:border-adv-orange transition-all leading-relaxed resize-none"
-                            />
-                          </div>
-
-                          {/* Action Button & Status Feedback */}
-                          <div className="flex items-center justify-between gap-3 pt-0.5">
-                            <div>
-                              {commentStatus.type !== 'idle' && (
-                                <div className={`text-[11px] font-medium ${
-                                  commentStatus.type === 'success' 
-                                    ? 'text-emerald-600' 
-                                    : commentStatus.type === 'error' 
-                                    ? 'text-red-500' 
-                                    : 'text-gray-400'
-                                }`}>
-                                  <span>{commentStatus.message || (commentStatus.type === 'submitting' ? t.submitting : '')}</span>
-                                </div>
-                              )}
-                            </div>
-                            
-                            <button
-                              type="submit"
-                              disabled={commentStatus.type === 'submitting'}
-                              className="bg-adv-orange hover:bg-orange-600 disabled:bg-orange-300 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 shadow-sm shadow-orange-500/10"
-                            >
-                              <Send className="w-3 h-3" />
-                              {t.submitComment}
-                            </button>
-                          </div>
-                        </form>
-                      </div>
-                    )}
-
-                    {reviews.length === 0 ? (
-                      <div className="py-5 text-center space-y-2">
-                        <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center mx-auto text-adv-orange border border-orange-100/30">
-                          <Star className="w-4 h-4 text-adv-orange fill-adv-orange" />
-                        </div>
-                        <div className="space-y-0.5">
-                          <p className="text-xs font-bold text-gray-700">{t.noReviewsYet}</p>
-                          <p className="text-[11px] text-gray-400 font-medium">{t.beFirstReview}</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-3.5">
-                        {/* Summary block */}
-                        <div className="flex items-center justify-between p-3 bg-orange-50/15 border border-orange-100/20 rounded-xl">
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl font-extrabold text-adv-orange tracking-tight">{avgRating.toFixed(1)}</span>
-                            <div>
-                              <div className="flex items-center gap-0.5">
-                                {[1, 2, 3, 4, 5].map((star) => {
-                                  const isFilled = star <= Math.round(avgRating);
-                                  return (
-                                    <Star
-                                      key={star}
-                                      className={`w-3 h-3 ${
-                                        isFilled ? 'fill-adv-orange text-adv-orange' : 'text-gray-200'
-                                      }`}
-                                    />
-                                  );
-                                })}
-                              </div>
-                              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
-                                {t.basedOnReviews.replace('{count}', reviews.length.toString())}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <span className="inline-block text-[9px] font-bold text-adv-orange uppercase tracking-wider px-2 py-0.5 bg-orange-50/80 border border-orange-100/40 rounded-full">
-                              {lang === 'en' ? 'Verified' : 'ຢືນຢັນແລ້ວ'}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Review Filter */}
-                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-                          <button
-                            onClick={() => setReviewFilter('all')}
-                            className={`px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all ${
-                              reviewFilter === 'all' 
-                                ? 'bg-adv-orange text-white' 
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            }`}
-                          >
-                            {lang === 'en' ? 'All Reviews' : 'ລີວິວທັງໝົດ'}
-                          </button>
-                          {[5, 4, 3, 2, 1].map(rating => (
-                            <button
-                              key={rating}
-                              onClick={() => setReviewFilter(rating)}
-                              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all ${
-                                reviewFilter === rating 
-                                  ? 'bg-adv-orange text-white' 
-                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                              }`}
-                            >
-                              {rating} <Star className={`w-2.5 h-2.5 ${reviewFilter === rating ? 'fill-white text-white' : 'fill-adv-orange text-adv-orange'}`} />
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Reviews List */}
-                        <div className="space-y-3 divide-y divide-gray-100">
-                          {filteredReviews.length === 0 ? (
-                            <p className="text-xs text-gray-500 py-3 text-center">
-                              {lang === 'en' ? 'No reviews found for this rating.' : 'ບໍ່ພົບລີວິວສຳລັບຄະແນນນີ້.'}
-                            </p>
-                          ) : (
-                            filteredReviews.map((rev, idx) => (
-                              <div key={rev.id || idx} className={`${idx > 0 ? 'pt-3' : ''} space-y-1.5`}>
-                              <div className="flex items-start justify-between">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded-full bg-orange-50/80 text-adv-orange font-bold text-[10px] border border-orange-100/60 flex items-center justify-center shrink-0">
-                                    {rev.userName ? rev.userName.charAt(0).toUpperCase() : 'A'}
-                                  </div>
-                                  <div>
-                                    <span className="text-xs font-semibold text-gray-800 block leading-tight">{rev.userName || t.verifiedAttendee}</span>
-                                    <span className="text-[9px] text-gray-400 block font-medium">
-                                      {new Date(rev.createdAt || rev.date).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', {
-                                        year: 'numeric',
-                                        month: 'short',
-                                        day: 'numeric'
-                                      })}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-0.5">
-                                  {[1, 2, 3, 4, 5].map((star) => (
-                                    <Star
-                                      key={star}
-                                      className={`w-2.5 h-2.5 ${
-                                        star <= rev.rating ? 'fill-adv-orange text-adv-orange' : 'text-gray-200'
-                                      }`}
-                                    />
-                                  ))}
-                                </div>
-                              </div>
-
-                              {rev.comment && (
-                                <p className="text-xs text-gray-500 leading-relaxed pl-8 font-normal">
-                                  {typeof rev.comment === 'object' 
-                                    ? (rev.comment[lang as 'en' | 'lo'] || rev.comment['en'] || '') 
-                                    : rev.comment}
-                                </p>
-                              )}
-                            </div>
-                          )))}
-                        </div>
-                      </div>
-                    )}
-                 </div>
-               )}
             </div>
 
             {/* Event Organizer Details Section (Desktop Only - Hidden on Mobile) */}
@@ -1992,99 +1729,6 @@ export default function EventDetails() {
                       </a>
                     </div>
 
-                    {event.organizerSocialLinks && Object.values(event.organizerSocialLinks).some(Boolean) && (
-                      <div className="pt-2 border-t border-gray-100 mt-2">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1.5">
-                          {lang === 'en' ? 'Social Links' : 'ສື່ສັງຄົມອອນໄລນ໌'}
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {event.organizerSocialLinks.instagram && (
-                            <a
-                              href={`https://instagram.com/${event.organizerSocialLinks.instagram.replace(/^@/, '')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-2 bg-pink-50 hover:bg-pink-100 text-pink-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
-                              title="Instagram"
-                            >
-                              <Instagram className="w-3.5 h-3.5" />
-                              <span className="text-[11px]">{event.organizerSocialLinks.instagram}</span>
-                            </a>
-                          )}
-                          {event.organizerSocialLinks.x && (
-                            <a
-                              href={`https://x.com/${event.organizerSocialLinks.x.replace(/^@/, '')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
-                              title="X"
-                            >
-                              <XIcon className="w-3.5 h-3.5" />
-                              <span className="text-[11px]">{event.organizerSocialLinks.x}</span>
-                            </a>
-                          )}
-                          {event.organizerSocialLinks.youtube && (
-                            <a
-                              href={`https://youtube.com/@${event.organizerSocialLinks.youtube.replace(/^@/, '')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
-                              title="YouTube"
-                            >
-                              <Youtube className="w-3.5 h-3.5" />
-                              <span className="text-[11px]">{event.organizerSocialLinks.youtube}</span>
-                            </a>
-                          )}
-                          {event.organizerSocialLinks.tiktok && (
-                            <a
-                              href={`https://tiktok.com/@${event.organizerSocialLinks.tiktok.replace(/^@/, '')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
-                              title="TikTok"
-                            >
-                              <TikTokIcon className="w-3.5 h-3.5" />
-                              <span className="text-[11px]">{event.organizerSocialLinks.tiktok}</span>
-                            </a>
-                          )}
-                          {event.organizerSocialLinks.facebook && (
-                            <a
-                              href={`https://facebook.com/${event.organizerSocialLinks.facebook.replace(/^\//, '')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
-                              title="Facebook"
-                            >
-                              <Facebook className="w-3.5 h-3.5" />
-                              <span className="text-[11px]">{event.organizerSocialLinks.facebook}</span>
-                            </a>
-                          )}
-                          {event.organizerSocialLinks.linkedin && (
-                            <a
-                              href={`https://linkedin.com/${event.organizerSocialLinks.linkedin.startsWith('in/') ? event.organizerSocialLinks.linkedin : `in/${event.organizerSocialLinks.linkedin}`}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
-                              title="LinkedIn"
-                            >
-                              <Linkedin className="w-3.5 h-3.5" />
-                              <span className="text-[11px]">{event.organizerSocialLinks.linkedin}</span>
-                            </a>
-                          )}
-                          {event.organizerSocialLinks.website && (
-                            <a
-                              href={event.organizerSocialLinks.website.startsWith('http') ? event.organizerSocialLinks.website : `https://${event.organizerSocialLinks.website}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
-                              title="Website"
-                            >
-                              <Globe className="w-3.5 h-3.5" />
-                              <span className="text-[11px] truncate max-w-[120px]">{event.organizerSocialLinks.website}</span>
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
@@ -2096,7 +1740,7 @@ export default function EventDetails() {
           </div>
 
           {/* Ticket Sidebar */}
-          <div className={`lg:col-span-5 ${event.allowReviews !== false && mobileActiveTab === 'reviews' ? 'hidden lg:block' : 'block'}`} ref={ticketSidebarRef}>
+          <div className="lg:col-span-5 block" ref={ticketSidebarRef}>
             {isPast ? (
               <div className="sticky top-24 bg-white rounded-3xl p-6 shadow-sm border border-gray-150/80 space-y-4 text-center">
                 <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto text-slate-700 border border-slate-200/60 shadow-xs">
@@ -2126,40 +1770,18 @@ export default function EventDetails() {
                {/* Decorative top accent line */}
                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-adv-orange via-amber-500 to-adv-orange" />
 
-               {/* Pre-Arrival Booking Banner for Flexible Date Events */}
-               {event.dateType === 'flexible' && (
-                 <div className="p-3.5 bg-gradient-to-br from-amber-50 via-orange-50/70 to-amber-50/50 border border-orange-200/90 rounded-2xl flex items-start gap-3 shadow-2xs">
-                   <div className="w-9 h-9 rounded-xl bg-adv-orange text-white flex items-center justify-center shrink-0 shadow-xs">
-                     <Calendar className="w-5 h-5" />
-                   </div>
-                   <div className="text-xs space-y-1">
-                     <div className="font-extrabold text-adv-slate flex items-center gap-2">
-                       <span>{lang === 'lo' ? 'ຈອງວັນທີເຂົ້າຮ່ວມກ່ອນມາຮ່ວມງານ' : 'Pre-Arrival Visit Booking'}</span>
-                       <span className="text-[9px] bg-emerald-600 text-white font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                         {lang === 'lo' ? 'ຈອງລ່ວງໜ້າ' : 'Booking Mode'}
-                       </span>
-                     </div>
-                     <p className="text-gray-600 text-[11px] font-medium leading-relaxed">
-                       {lang === 'lo' 
-                         ? 'ກະລຸນາເລືອກວັນທີ ແລະ ຊ່ວງເວລາເຂົ້າຮ່ວມຂອງທ່ານລ່ວງໜ້າ ເພື່ອສຳຮອງບ່ອນ ແລະ ຮັບບັດເຂົ້າງານ'
-                         : 'Choose your visit date & arrival session below to reserve your entry pass prior to attending.'
-                       }
-                     </p>
-                   </div>
-                 </div>
-               )}
-
                {/* Calendar Selector */}
                <div className="space-y-2">
                  <label className="text-xs font-black uppercase tracking-wider text-adv-slate block flex items-center justify-between">
-                   <span>{event.dateType === 'flexible' ? (lang === 'lo' ? '1. ເລືອກວັນທີເຂົ້າຮ່ວມ' : '1. Select Visit Date') : (lang === 'en' ? 'Activity Date' : 'ວັນທີກິດຈະກຳ')}</span>
-                   {event.dateType === 'fixed' ? (
+                   <span>{event.dateType === 'flexible' ? t.selectVisitDate : event.dateType === 'booking' ? (lang === 'en' ? 'Select Booking Date' : 'ເລືອກວັນທີຈອງ') : (lang === 'en' ? 'Activity Date' : 'ວັນທີກິດຈະກຳ')}</span>
+                   {event.dateType === 'fixed' && (
                      <span className="text-[10px] font-bold text-adv-orange bg-orange-50 px-2 py-0.5 rounded-md">
                        {lang === 'en' ? 'Fixed Event Date' : 'ວັນທີກຳນົດ'}
                      </span>
-                   ) : (
-                     <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                       ● {lang === 'lo' ? 'ພ້ອມຈອງ' : 'Open for Booking'}
+                   )}
+                   {event.dateType === 'booking' && (
+                     <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
+                       {lang === 'en' ? 'Slot Booking' : 'ເປີດໃຫ້ຈອງ'}
                      </span>
                    )}
                  </label>
@@ -2170,25 +1792,7 @@ export default function EventDetails() {
                    eventDate={event.date}
                    lang={lang}
                  />
-                 {event.dateType === 'flexible' && selectedVisitDate && (
-                   <div className="p-3 bg-gradient-to-r from-emerald-50 to-teal-50/60 border border-emerald-200/80 rounded-xl flex items-center justify-between text-xs shadow-2xs">
-                     <div className="flex items-center gap-2">
-                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                       <div>
-                         <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider block">
-                           {lang === 'lo' ? 'ວັນທີເຂົ້າຮ່ວມທີ່ເລືອກ' : 'Selected Visit Date'}
-                         </span>
-                         <span className="font-extrabold text-emerald-950 text-xs">
-                           {new Date(selectedVisitDate).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                         </span>
-                       </div>
-                     </div>
-                     <span className="px-2.5 py-1 bg-emerald-600 text-white text-[10px] font-black rounded-lg shadow-2xs uppercase tracking-wider">
-                       {lang === 'lo' ? 'ສຳຮອງແລ້ວ' : 'Reserved'}
-                     </span>
-                   </div>
-                 )}
-                 {event.dateType !== 'flexible' && event.time && (
+                 {event.dateType === 'fixed' && event.time && (
                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-orange-50/70 to-amber-50/40 border border-orange-100 rounded-xl text-xs shadow-xs">
                      <div className="flex items-center gap-2">
                        <Clock className="w-4 h-4 text-adv-orange shrink-0" />
@@ -2197,57 +1801,57 @@ export default function EventDetails() {
                      <span className="font-black text-adv-orange bg-white px-2.5 py-0.5 rounded-md border border-orange-200/60 shadow-xs">{event.time}</span>
                    </div>
                  )}
+                 {event.dateType === 'booking' && (
+                   <div className="p-3 bg-amber-50/60 border border-amber-200/60 rounded-xl text-xs space-y-2">
+                     {event.bookingCapacity && (
+                       <div className="flex items-center justify-between text-amber-800 text-[11px]">
+                         <span>{lang === 'en' ? 'Max Capacity / Slot' : 'ຈຳນວນສູງສຸດ/ຮອບ'}:</span>
+                         <span className="font-bold">{event.bookingCapacity} {lang === 'en' ? 'guests' : 'ຄົນ'}</span>
+                       </div>
+                     )}
+                     {event.bookingApprovalMode && (
+                       <div className="flex items-center justify-between text-amber-800 text-[11px]">
+                         <span>{lang === 'en' ? 'Confirmation' : 'ການຢືນຢັນ'}:</span>
+                         <span className="font-bold">{event.bookingApprovalMode === 'manual' ? (lang === 'en' ? 'Requires Approval' : 'ຕ້ອງໄດ້ຮັບການອະນຸມັດ') : (lang === 'en' ? 'Instant Confirmation' : 'ຢືນຢັນທັນທີ')}</span>
+                       </div>
+                     )}
+                   </div>
+                 )}
                </div>
 
-               {/* Time Slot / Arrival Session Selector */}
-               {(event.dateType === 'flexible' || (event.hasTimeSelection && event.timeSlots && event.timeSlots.length > 0)) && (
-                 <div className="space-y-2.5 bg-gray-50/60 p-3.5 rounded-2xl border border-gray-150/80">
-                   <div className="flex items-center justify-between">
-                     <label className="text-xs font-black uppercase tracking-wider text-adv-slate block flex items-center gap-1.5">
-                       <Clock className="w-3.5 h-3.5 text-adv-orange" />
-                       {event.dateType === 'flexible' 
-                         ? (lang === 'lo' ? '2. ເລືອກຊ່ວງເວລາເຂົ້າຮ່ວມ' : '2. Select Arrival Time Slot') 
-                         : t.selectTimeSlot
-                       }
-                     </label>
-                     <span className="text-[9px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                       ⚡ Instant Pass
-                     </span>
+               {/* Time Slot Selector */}
+               {event.hasTimeSelection && event.timeSlots && event.timeSlots.length > 0 && (
+                 <div className="space-y-2.5">
+                   <label className="text-xs font-black uppercase tracking-wider text-adv-slate block flex items-center gap-1.5">
+                     <Clock className="w-3.5 h-3.5 text-adv-orange" />
+                     {t.selectTimeSlot}
+                   </label>
+                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
+                     {event.timeSlots.map((slot) => {
+                       const isSelected = selectedTimeSlot === slot;
+                       return (
+                         <button
+                           key={slot}
+                           onClick={() => setSelectedTimeSlot(slot)}
+                           className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all duration-200 flex flex-col items-center justify-center gap-0.5 relative ${
+                             isSelected
+                               ? 'border-adv-orange bg-orange-50/90 text-adv-orange ring-2 ring-adv-orange/30 shadow-xs'
+                               : 'border-gray-200 bg-white text-adv-slate hover:border-gray-300 hover:bg-gray-50/60'
+                           }`}
+                         >
+                           <span className="font-mono font-black text-xs">{slot}</span>
+                           <span className="text-[9px] text-gray-400 font-extrabold uppercase tracking-wider">
+                             {parseInt(slot.split(':')[0], 10) < 12 
+                               ? (lang === 'en' ? 'Morning' : 'ຕອນເຊົ້າ') 
+                               : parseInt(slot.split(':')[0], 10) < 17 
+                                 ? (lang === 'en' ? 'Afternoon' : 'ຕອນບ່າຍ') 
+                                 : (lang === 'en' ? 'Evening' : 'ຕອນແລງ')
+                             }
+                           </span>
+                         </button>
+                       );
+                     })}
                    </div>
-                   {(() => {
-                     const slots = (event.timeSlots && event.timeSlots.length > 0) 
-                       ? event.timeSlots 
-                       : ['09:00 - 12:00', '13:00 - 16:00', '16:30 - 19:30'];
-                     return (
-                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                         {slots.map((slot) => {
-                           const isSelected = selectedTimeSlot === slot;
-                           return (
-                             <button
-                               key={slot}
-                               type="button"
-                               onClick={() => setSelectedTimeSlot(slot)}
-                               className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition-all duration-200 flex flex-col items-center justify-center gap-0.5 relative cursor-pointer ${
-                                 isSelected
-                                   ? 'border-adv-orange bg-orange-50/90 text-adv-orange ring-2 ring-adv-orange/30 shadow-2xs font-extrabold'
-                                   : 'border-gray-200 bg-white text-adv-slate hover:border-gray-300 hover:bg-gray-50/60'
-                               }`}
-                             >
-                               <span className="font-mono font-black text-xs">{slot}</span>
-                               <span className="text-[9px] text-gray-400 font-extrabold uppercase tracking-wider">
-                                 {slot.includes('09:00') || slot.includes('10:00') || parseInt(slot.split(':')[0], 10) < 12 
-                                   ? (lang === 'lo' ? 'ຕອນເຊົ້າ' : 'Morning') 
-                                   : slot.includes('13:00') || slot.includes('14:00') || parseInt(slot.split(':')[0], 10) < 17 
-                                     ? (lang === 'lo' ? 'ຕອນບ່າຍ' : 'Afternoon') 
-                                     : (lang === 'lo' ? 'ຕອນແລງ' : 'Evening')
-                                 }
-                               </span>
-                             </button>
-                           );
-                         })}
-                       </div>
-                     );
-                   })()}
                  </div>
                )}
 
@@ -2373,32 +1977,6 @@ export default function EventDetails() {
                    </span>
                  </div>
 
-                 {event.dateType === 'flexible' && (
-                   <div className="p-2.5 bg-amber-50/90 border border-amber-200/80 rounded-xl space-y-1 text-xs mb-2 shadow-2xs">
-                     <div className="flex items-center justify-between text-[11px] font-extrabold text-amber-950">
-                       <span className="flex items-center gap-1 text-amber-800">
-                         <Calendar className="w-3.5 h-3.5 text-adv-orange" />
-                         {lang === 'lo' ? 'ວັນທີເຂົ້າຮ່ວມ:' : 'Visit Date:'}
-                       </span>
-                       <span className="font-bold text-adv-slate">
-                         {selectedVisitDate 
-                           ? new Date(selectedVisitDate).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                           : (lang === 'lo' ? 'ຍັງບໍ່ໄດ້ເລືອກ' : 'Not Selected')
-                         }
-                       </span>
-                     </div>
-                     {selectedTimeSlot && (
-                       <div className="flex items-center justify-between text-[11px] font-extrabold text-amber-950">
-                         <span className="flex items-center gap-1 text-amber-800">
-                           <Clock className="w-3.5 h-3.5 text-adv-orange" />
-                           {lang === 'lo' ? 'ຊ່ວງເວລາ:' : 'Time Slot:'}
-                         </span>
-                         <span className="font-mono font-bold text-adv-slate">{selectedTimeSlot}</span>
-                       </div>
-                     )}
-                   </div>
-                 )}
-
                  {selectedTiersList.length > 0 ? (
                    <div className="space-y-1 text-xs">
                      {selectedTiersList.map(({ tier, quantity: qty }) => (
@@ -2487,8 +2065,8 @@ export default function EventDetails() {
             )}
           </div>
 
-          {/* Mobile Event Organizer (Visible on Mobile Only, Placed between Ticket Pricing & Reviews) */}
-          <div className={`col-span-1 block lg:hidden w-full bg-white rounded-2xl p-5 shadow-sm border border-gray-150/60 ${event.allowReviews !== false && mobileActiveTab === 'reviews' ? 'hidden' : ''}`}>
+          {/* Mobile Event Organizer (Visible on Mobile Only) */}
+          <div className="col-span-1 block lg:hidden w-full bg-white rounded-2xl p-5 shadow-sm border border-gray-150/60">
             <div 
               onClick={() => setShowOrganizerDetails(!showOrganizerDetails)}
               className="flex items-center justify-between gap-4 cursor-pointer select-none"
@@ -2570,99 +2148,6 @@ export default function EventDetails() {
                     </a>
                   </div>
 
-                  {event.organizerSocialLinks && Object.values(event.organizerSocialLinks).some(Boolean) && (
-                    <div className="pt-2 border-t border-gray-100 mt-2">
-                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 block mb-1.5">
-                        {lang === 'en' ? 'Social Links' : 'ສື່ສັງຄົມອອນໄລນ໌'}
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {event.organizerSocialLinks.instagram && (
-                          <a
-                            href={`https://instagram.com/${event.organizerSocialLinks.instagram.replace(/^@/, '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 bg-pink-50 hover:bg-pink-100 text-pink-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
-                            title="Instagram"
-                          >
-                            <Instagram className="w-3.5 h-3.5" />
-                            <span className="text-[11px]">{event.organizerSocialLinks.instagram}</span>
-                          </a>
-                        )}
-                        {event.organizerSocialLinks.x && (
-                          <a
-                            href={`https://x.com/${event.organizerSocialLinks.x.replace(/^@/, '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
-                            title="X"
-                          >
-                            <XIcon className="w-3.5 h-3.5" />
-                            <span className="text-[11px]">{event.organizerSocialLinks.x}</span>
-                          </a>
-                        )}
-                        {event.organizerSocialLinks.youtube && (
-                          <a
-                            href={`https://youtube.com/@${event.organizerSocialLinks.youtube.replace(/^@/, '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
-                            title="YouTube"
-                          >
-                            <Youtube className="w-3.5 h-3.5" />
-                            <span className="text-[11px]">{event.organizerSocialLinks.youtube}</span>
-                          </a>
-                        )}
-                        {event.organizerSocialLinks.tiktok && (
-                          <a
-                            href={`https://tiktok.com/@${event.organizerSocialLinks.tiktok.replace(/^@/, '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
-                            title="TikTok"
-                          >
-                            <TikTokIcon className="w-3.5 h-3.5" />
-                            <span className="text-[11px]">{event.organizerSocialLinks.tiktok}</span>
-                          </a>
-                        )}
-                        {event.organizerSocialLinks.facebook && (
-                          <a
-                            href={`https://facebook.com/${event.organizerSocialLinks.facebook.replace(/^\//, '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
-                            title="Facebook"
-                          >
-                            <Facebook className="w-3.5 h-3.5" />
-                            <span className="text-[11px]">{event.organizerSocialLinks.facebook}</span>
-                          </a>
-                        )}
-                        {event.organizerSocialLinks.linkedin && (
-                          <a
-                            href={`https://linkedin.com/${event.organizerSocialLinks.linkedin.startsWith('in/') ? event.organizerSocialLinks.linkedin : `in/${event.organizerSocialLinks.linkedin}`}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
-                            title="LinkedIn"
-                          >
-                            <Linkedin className="w-3.5 h-3.5" />
-                            <span className="text-[11px]">{event.organizerSocialLinks.linkedin}</span>
-                          </a>
-                        )}
-                        {event.organizerSocialLinks.website && (
-                          <a
-                            href={event.organizerSocialLinks.website.startsWith('http') ? event.organizerSocialLinks.website : `https://${event.organizerSocialLinks.website}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-xl flex items-center gap-1 text-xs font-bold transition-all"
-                            title="Website"
-                          >
-                            <Globe className="w-3.5 h-3.5" />
-                            <span className="text-[11px] truncate max-w-[120px]">{event.organizerSocialLinks.website}</span>
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
@@ -2710,124 +2195,6 @@ export default function EventDetails() {
                 {event.status !== 'paused' && <ArrowRight className="w-4 h-4" />}
               </div>
             </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Report Submitted Toast */}
-      <AnimatePresence>
-        {reportSubmittedToast && (
-          <motion.div
-            initial={{ opacity: 0, y: 100, x: '-50%' }}
-            animate={{ opacity: 1, y: 0, x: '-50%' }}
-            exit={{ opacity: 0, y: 100, x: '-50%' }}
-            className="fixed bottom-12 left-1/2 z-[260] bg-zinc-900 text-white px-6 py-3.5 rounded-2xl font-bold shadow-2xl flex items-center gap-3 border border-white/10 max-w-md text-xs sm:text-sm text-center"
-          >
-            <Flag className="w-4 h-4 text-red-400 shrink-0" />
-            <span>{t.reportSubmitted}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Report Event Modal */}
-      <AnimatePresence>
-        {showReportModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[250] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
-            onClick={() => setShowReportModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-gray-100 relative text-adv-slate"
-              onClick={e => e.stopPropagation()}
-            >
-              <button
-                type="button"
-                onClick={() => setShowReportModal(false)}
-                className="absolute top-5 right-5 p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-                  <Flag className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base sm:text-lg font-bold text-adv-slate">
-                    {t.reportTitle}
-                  </h3>
-                  <p className="text-xs text-gray-400 font-medium truncate max-w-[240px]">
-                    {event.title}
-                  </p>
-                </div>
-              </div>
-
-              <form onSubmit={handleSendReport} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                    {t.reportReason}
-                  </label>
-                  <select
-                    value={reportReason}
-                    onChange={(e) => setReportReason(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-red-500"
-                  >
-                    <option value="Inappropriate or misleading content">
-                      {lang === 'lo' ? 'ເນື້ອຫາບໍ່ເໝາະສົມ ຫຼື ເຮັດໃຫ້ເຂົ້າໃຈຜິດ' : 'Inappropriate or misleading content'}
-                    </option>
-                    <option value="Fraud, Scam, or Fake event">
-                      {lang === 'lo' ? 'ການຫຼອກລວງ ຫຼື ກິດຈະກຳປອມ' : 'Fraud, Scam, or Fake event'}
-                    </option>
-                    <option value="Ticket price or policy violation">
-                      {lang === 'lo' ? 'ການລະເມີດນະໂຍບາຍ ຫຼື ລາຄາປີ້' : 'Ticket price or policy violation'}
-                    </option>
-                    <option value="Copyright infringement">
-                      {lang === 'lo' ? 'ການລະເມີດລິຂະສິດ' : 'Copyright or Trademark infringement'}
-                    </option>
-                    <option value="Other issues">
-                      {lang === 'lo' ? 'ບັນຫາອື່ນໆ' : 'Other issues'}
-                    </option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                    {t.reportDetails}
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={reportDetails}
-                    onChange={(e) => setReportDetails(e.target.value)}
-                    placeholder={t.reportDetailsPlaceholder}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
-                  />
-                </div>
-
-                <div className="pt-2 flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowReportModal(false)}
-                    className="flex-1 py-3 rounded-2xl border border-gray-200 text-gray-600 font-bold text-xs hover:bg-gray-50 transition-colors cursor-pointer"
-                  >
-                    {lang === 'lo' ? 'ຍົກເລີກ' : 'Cancel'}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmittingReport}
-                    className="flex-1 py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-xs shadow-md transition-all cursor-pointer active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {isSubmittingReport ? <Activity className="w-4 h-4 animate-spin text-white" /> : <Flag className="w-4 h-4" />}
-                    <span>{t.submitReport}</span>
-                  </button>
-                </div>
-              </form>
-            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

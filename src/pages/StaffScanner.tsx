@@ -25,7 +25,9 @@ import {
   Building2,
   Mail,
   Phone,
-  Globe
+  Globe,
+  Plus,
+  Users
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { events, LaoEvent } from '../data/events';
@@ -199,7 +201,7 @@ export default function StaffScanner() {
         seat: 'Seat 4',
         price: '450,000 LAK',
         time: '18:30:12',
-        timestamp: Date.now() - 1000 * 60 * 15,
+        timestamp: Date.now() - 1000 * 60 * 35,
         staffLabel: staffLabel
       },
       {
@@ -214,11 +216,253 @@ export default function StaffScanner() {
         seat: 'Seat 18',
         price: '250,000 LAK',
         time: '18:42:05',
-        timestamp: Date.now() - 1000 * 60 * 5,
+        timestamp: Date.now() - 1000 * 60 * 30,
+        staffLabel: staffLabel
+      },
+      {
+        id: 'chk_3',
+        ticketId: 'tk_452819',
+        eventId: selectedEvent.id,
+        attendeeName: 'Khamla Phomvihane',
+        email: 'khamla.p@example.com',
+        phone: '+856 20 5589 1234',
+        ticketType: 'General Admission',
+        zone: 'General Standing',
+        seat: 'N/A',
+        price: '150,000 LAK',
+        time: '18:50:40',
+        timestamp: Date.now() - 1000 * 60 * 25,
+        staffLabel: staffLabel
+      },
+      {
+        id: 'chk_4',
+        ticketId: 'tk_512903',
+        eventId: selectedEvent.id,
+        attendeeName: 'Soukprasith Vong',
+        email: 'souk.vong@example.com',
+        phone: '+856 20 9945 3321',
+        ticketType: 'VIP Front Stage Pass',
+        zone: 'VIP Row 2',
+        seat: 'Seat 11',
+        price: '450,000 LAK',
+        time: '18:55:10',
+        timestamp: Date.now() - 1000 * 60 * 20,
+        staffLabel: staffLabel
+      },
+      {
+        id: 'chk_5',
+        ticketId: 'tk_601234',
+        eventId: selectedEvent.id,
+        attendeeName: 'Noy Bounnhang',
+        email: 'noy.boun@example.com',
+        phone: '+856 20 7712 9081',
+        ticketType: 'Standard Zone A Pass',
+        zone: 'Zone A Row 5',
+        seat: 'Seat 08',
+        price: '250,000 LAK',
+        time: '19:01:22',
+        timestamp: Date.now() - 1000 * 60 * 18,
+        staffLabel: staffLabel
+      },
+      {
+        id: 'chk_6',
+        ticketId: 'tk_721890',
+        eventId: selectedEvent.id,
+        attendeeName: 'Phonepadith Chanthalangsy',
+        email: 'phone.chanth@example.com',
+        phone: '+856 20 5411 0092',
+        ticketType: 'General Admission',
+        zone: 'General Standing',
+        seat: 'N/A',
+        price: '150,000 LAK',
+        time: '19:05:45',
+        timestamp: Date.now() - 1000 * 60 * 15,
+        staffLabel: staffLabel
+      },
+      {
+        id: 'chk_7',
+        ticketId: 'tk_812304',
+        eventId: selectedEvent.id,
+        attendeeName: 'Anousone Sysavath',
+        email: 'anousone.s@example.com',
+        phone: '+856 20 2200 4455',
+        ticketType: 'Standard Zone B Pass',
+        zone: 'Zone B Row 3',
+        seat: 'Seat 14',
+        price: '200,000 LAK',
+        time: '19:10:00',
+        timestamp: Date.now() - 1000 * 60 * 12,
+        staffLabel: staffLabel
+      },
+      {
+        id: 'chk_8',
+        ticketId: 'tk_904512',
+        eventId: selectedEvent.id,
+        attendeeName: 'Vilaylack Inthavong',
+        email: 'vilay.intha@example.com',
+        phone: '+856 20 9876 5432',
+        ticketType: 'VIP Front Stage Pass',
+        zone: 'VIP Row 1',
+        seat: 'Seat 05',
+        price: '450,000 LAK',
+        time: '19:12:18',
+        timestamp: Date.now() - 1000 * 60 * 10,
+        staffLabel: staffLabel
+      },
+      {
+        id: 'chk_9',
+        ticketId: 'tk_110293',
+        eventId: selectedEvent.id,
+        attendeeName: 'Somchai Thammavong',
+        email: 'somchai.t@example.com',
+        phone: '+856 20 5678 1234',
+        ticketType: 'Standard Zone A Pass',
+        zone: 'Zone A Row 12',
+        seat: 'Seat 02',
+        price: '250,000 LAK',
+        time: '19:15:30',
+        timestamp: Date.now() - 1000 * 60 * 8,
+        staffLabel: staffLabel
+      },
+      {
+        id: 'chk_10',
+        ticketId: 'tk_223849',
+        eventId: selectedEvent.id,
+        attendeeName: 'Maly Rattana',
+        email: 'maly.r@example.com',
+        phone: '+856 20 3344 5566',
+        ticketType: 'General Admission',
+        zone: 'General Standing',
+        seat: 'N/A',
+        price: '150,000 LAK',
+        time: '19:18:02',
+        timestamp: Date.now() - 1000 * 60 * 6,
+        staffLabel: staffLabel
+      },
+      {
+        id: 'chk_11',
+        ticketId: 'tk_334920',
+        eventId: selectedEvent.id,
+        attendeeName: 'Davone Soukhaseum',
+        email: 'davone.s@example.com',
+        phone: '+856 20 7788 9900',
+        ticketType: 'Standard Zone B Pass',
+        zone: 'Zone B Row 8',
+        seat: 'Seat 22',
+        price: '200,000 LAK',
+        time: '19:21:15',
+        timestamp: Date.now() - 1000 * 60 * 4,
+        staffLabel: staffLabel
+      },
+      {
+        id: 'chk_12',
+        ticketId: 'tk_445019',
+        eventId: selectedEvent.id,
+        attendeeName: 'Phetmany Luangrath',
+        email: 'phetmany.l@example.com',
+        phone: '+856 20 1122 3344',
+        ticketType: 'VIP Front Stage Pass',
+        zone: 'VIP Row 3',
+        seat: 'Seat 01',
+        price: '450,000 LAK',
+        time: '19:24:50',
+        timestamp: Date.now() - 1000 * 60 * 2,
+        staffLabel: staffLabel
+      },
+      {
+        id: 'chk_13',
+        ticketId: 'tk_556128',
+        eventId: selectedEvent.id,
+        attendeeName: 'Bounmy Panyanouvong',
+        email: 'bounmy.p@example.com',
+        phone: '+856 20 6655 4433',
+        ticketType: 'General Admission',
+        zone: 'General Standing',
+        seat: 'N/A',
+        price: '150,000 LAK',
+        time: '19:26:05',
+        timestamp: Date.now() - 1000 * 60 * 1,
+        staffLabel: staffLabel
+      },
+      {
+        id: 'chk_14',
+        ticketId: 'tk_667239',
+        eventId: selectedEvent.id,
+        attendeeName: 'Khamphoune Xayalath',
+        email: 'khamphoune.x@example.com',
+        phone: '+856 20 4433 2211',
+        ticketType: 'Standard Zone A Pass',
+        zone: 'Zone A Row 2',
+        seat: 'Seat 15',
+        price: '250,000 LAK',
+        time: '19:28:40',
+        timestamp: Date.now() - 1000 * 30,
+        staffLabel: staffLabel
+      },
+      {
+        id: 'chk_15',
+        ticketId: 'tk_881920',
+        eventId: selectedEvent.id,
+        attendeeName: 'Soukanya Inthavong',
+        email: 'soukanya.i@example.com',
+        phone: '+856 20 8899 0011',
+        ticketType: 'VIP Front Stage Pass',
+        zone: 'VIP Row 1',
+        seat: 'Seat 10',
+        price: '450,000 LAK',
+        time: '19:30:00',
+        timestamp: Date.now(),
         staffLabel: staffLabel
       }
     ];
   });
+
+  const generateMockAttendees = () => {
+    const laosNames = [
+      'Marcus Aurelius', 'Sengdeuan Keo', 'Khamla Phomvihane', 'Soukprasith Vong',
+      'Noy Bounnhang', 'Phonepadith Chanthalangsy', 'Anousone Sysavath', 'Vilaylack Inthavong',
+      'Somchai Thammavong', 'Maly Rattana', 'Davone Soukhaseum', 'Phetmany Luangrath',
+      'Bounmy Panyanouvong', 'Khamphoune Xayalath', 'Soukanya Inthavong'
+    ];
+    
+    const ticketConfigs = [
+      { ticketType: 'VIP Front Stage Pass', zone: 'VIP Row 1', price: '450,000 LAK' },
+      { ticketType: 'Standard Zone A Pass', zone: 'Zone A Row 5', price: '250,000 LAK' },
+      { ticketType: 'Standard Zone B Pass', zone: 'Zone B Row 8', price: '200,000 LAK' },
+      { ticketType: 'General Admission', zone: 'General Standing', price: '150,000 LAK' }
+    ];
+
+    const newMocks: CheckinRecord[] = laosNames.map((name, index) => {
+      const cfg = ticketConfigs[index % ticketConfigs.length];
+      const tkNum = 100000 + Math.floor(Math.random() * 899999);
+      const minsAgo = (15 - index) * 2;
+      const d = new Date(Date.now() - minsAgo * 60000);
+      const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+      
+      return {
+        id: `chk_mock_${Date.now()}_${index + 1}`,
+        ticketId: `tk_${tkNum}`,
+        eventId: selectedEvent.id,
+        attendeeName: name,
+        email: `${name.toLowerCase().replace(/[^a-z]/g, '')}@example.com`,
+        phone: `+856 20 ${Math.floor(20000000 + Math.random() * 70000000)}`,
+        ticketType: cfg.ticketType,
+        zone: cfg.zone,
+        seat: cfg.zone.includes('VIP') ? `Seat ${index + 1}` : cfg.zone.includes('Zone') ? `Seat ${index + 5}` : 'N/A',
+        price: cfg.price,
+        time: timeStr,
+        timestamp: d.getTime(),
+        staffLabel: staffLabel
+      };
+    });
+
+    setCheckins(newMocks);
+    try {
+      localStorage.setItem('pasopkan_checkins', JSON.stringify(newMocks));
+    } catch (e) {}
+    setScannerPage(1);
+    showToast(lang === 'lo' ? 'ສ້າງຂໍ້ມູນຜູ້ເຂົ້າຮ່ວມຕົວຢ່າງ 15 ຄົນສຳເລັດ!' : 'Generated 15 mockup attendees successfully!', 'success');
+  };
 
   // Currently scanned ticket result state
   const [scannedTicket, setScannedTicket] = useState<{
@@ -408,7 +652,7 @@ export default function StaffScanner() {
               <img 
                 src="/pasopkan_logo.png" 
                 alt="Pasopkan Logo" 
-                className="h-9 sm:h-11 w-auto object-contain"
+                className="h-14 sm:h-18 md:h-20 w-auto object-contain"
                 referrerPolicy="no-referrer"
               />
             </Link>
@@ -431,7 +675,7 @@ export default function StaffScanner() {
       </header>
 
       {/* Main Body */}
-      <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-6xl mx-auto px-4 pt-4 pb-2 sm:pb-3 space-y-6">
         
         {/* Event Info Header Banner */}
         <div className={`p-5 sm:p-6 rounded-3xl border shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 transition-colors ${
@@ -460,43 +704,49 @@ export default function StaffScanner() {
           </div>
         </div>
 
-        {/* Dashboard Quick Metrics Bar */}
-        <div className="grid grid-cols-2 gap-3.5">
-          <div className={`p-4 rounded-2xl border transition-colors ${
-            theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'
-          }`}>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total Checked In</span>
-            <div className="text-xl font-black text-adv-orange font-mono mt-0.5">{checkins.length}</div>
+        {/* Compact Metrics Bar */}
+        <div className={`p-3 sm:p-3.5 rounded-2xl border transition-colors flex items-center justify-start gap-4 sm:gap-6 ${
+          theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'
+        }`}>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold shrink-0">
+              <Users className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-zinc-400">Total Checked In</div>
+              <div className="text-sm sm:text-base font-black text-emerald-500 font-mono leading-tight">{checkins.length}</div>
+            </div>
           </div>
 
-          <div className={`p-4 rounded-2xl border transition-colors ${
-            theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'
-          }`}>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total Capacity</span>
-            <div className="text-xl font-black text-adv-orange font-mono mt-0.5">{totalCapacity.toLocaleString()}</div>
+          <div className="h-6 w-px bg-gray-200 dark:bg-zinc-800" />
+
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-adv-orange/10 text-adv-orange flex items-center justify-center font-bold shrink-0">
+              <Building2 className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-zinc-400">Total Capacity</div>
+              <div className="text-sm sm:text-base font-black text-adv-orange font-mono leading-tight">{totalCapacity.toLocaleString()}</div>
+            </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
           {/* Left Column: QR Scanner & Manual Input */}
-          <div className="lg:col-span-5 space-y-6">
+          <div className="lg:col-span-5 space-y-4">
             
             {/* QR Scanner Container */}
-            <div className={`p-5 rounded-3xl border shadow-sm transition-colors ${
+            <div className={`p-4 sm:p-5 rounded-3xl border shadow-sm transition-colors ${
               theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'
             }`}>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-adv-orange/10 text-adv-orange flex items-center justify-center">
-                    <Camera className="w-4 h-4" />
+                  <div className="w-7 h-7 rounded-lg bg-adv-orange/10 text-adv-orange flex items-center justify-center">
+                    <Camera className="w-3.5 h-3.5" />
                   </div>
-                  <h3 className="text-sm font-black uppercase tracking-wider">{t.scanTitle}</h3>
+                  <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider">{t.scanTitle}</h3>
                 </div>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Camera Active
-                </span>
               </div>
 
               <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-800 flex items-center justify-center">
@@ -523,68 +773,66 @@ export default function StaffScanner() {
                   <div className="w-full h-0.5 bg-adv-orange/80 shadow-[0_0_15px_#ff6b00] animate-pulse" />
                 </div>
               </div>
-
-              <p className="text-center text-xs text-gray-400 dark:text-zinc-500 font-medium mt-3">
-                {t.scanDesc}
-              </p>
             </div>
 
-            {/* Manual Code Input */}
-            <div className={`p-5 rounded-3xl border shadow-sm transition-colors ${
+            {/* Compact Manual Ticket Verification Card */}
+            <div className={`p-3.5 sm:p-4 rounded-2xl border shadow-sm transition-colors ${
               theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'
             }`}>
-              <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 dark:text-zinc-400 mb-3">
-                {t.manualTitle}
-              </h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-[11px] font-black uppercase tracking-wider text-gray-400 dark:text-zinc-400">
+                  {t.manualTitle}
+                </h3>
+              </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 min-w-0">
                 <input 
                   type="text" 
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && lookupTicket(manualCode)}
                   placeholder={t.enterCodePlaceholder}
-                  className={`flex-1 px-4 py-3 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-all ${
-                    theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-gray-50 border-gray-200 text-adv-slate'
+                  className={`flex-1 min-w-0 px-3 py-2 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-all ${
+                    theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white placeholder-zinc-600' : 'bg-gray-50 border-gray-200 text-adv-slate'
                   }`}
                 />
                 <button 
                   onClick={() => lookupTicket(manualCode)}
-                  className="px-4 py-3 bg-adv-orange hover:bg-orange-600 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
+                  className="px-3.5 py-2 bg-adv-orange hover:bg-orange-600 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer shrink-0 whitespace-nowrap"
                 >
                   {t.verifyBtn}
                 </button>
               </div>
 
-              {/* Demo Ticket Quick Buttons for Easy Testing */}
-              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-zinc-800">
-                <span className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider block mb-2">
-                  {t.simulatedScans}
-                </span>
-                <div className="grid grid-cols-2 gap-2">
+              {/* Compact Demo Ticket Quick Buttons */}
+              <div className="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-zinc-800/80">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[9px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mr-0.5">
+                    {t.simulatedScans}:
+                  </span>
                   <button 
                     onClick={() => lookupTicket('tk_981245')}
-                    className="p-2 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-adv-orange font-mono font-bold text-[10px] text-left border border-adv-orange/20 transition-all cursor-pointer truncate"
+                    className="px-2 py-1 rounded-lg bg-orange-500/10 hover:bg-orange-500/20 text-adv-orange font-mono font-bold text-[10px] border border-adv-orange/20 transition-all cursor-pointer"
                   >
-                    VIP: tk_981245
+                    VIP
                   </button>
                   <button 
                     onClick={() => lookupTicket('tk_301984')}
-                    className="p-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 font-mono font-bold text-[10px] text-left border border-blue-500/20 transition-all cursor-pointer truncate"
+                    className="px-2 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 font-mono font-bold text-[10px] border border-blue-500/20 transition-all cursor-pointer"
                   >
-                    Zone A: tk_301984
+                    Zone A
                   </button>
                   <button 
                     onClick={() => lookupTicket('tk_452819')}
-                    className="p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 font-mono font-bold text-[10px] text-left border border-emerald-500/20 transition-all cursor-pointer truncate"
+                    className="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 font-mono font-bold text-[10px] border border-emerald-500/20 transition-all cursor-pointer"
                   >
-                    General: tk_452819
+                    General
                   </button>
                   <button 
                     onClick={() => lookupTicket(`tk_demo_${Math.floor(Math.random() * 89999 + 10000)}`)}
-                    className="p-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 font-mono font-bold text-[10px] text-left border border-purple-500/20 transition-all cursor-pointer truncate"
+                    className="px-2 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 font-mono font-bold text-[10px] border border-purple-500/20 transition-all cursor-pointer"
                   >
-                    + Random Demo Pass
+                    + Demo Pass
                   </button>
                 </div>
               </div>
@@ -717,25 +965,24 @@ export default function StaffScanner() {
                   <div className="flex items-center gap-2">
                     <h4 className="text-base sm:text-lg font-bold">{t.recentCheckins}</h4>
                   </div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
-                    {filteredCheckins.length} {t.attended} • Recorded by {staffLabel}
-                  </p>
                 </div>
 
-                <div className="relative">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input 
-                    type="text" 
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setScannerPage(1);
-                    }}
-                    placeholder={t.searchAttendee}
-                    className={`w-full sm:w-64 pl-9 pr-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-all ${
-                      theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white placeholder-zinc-500' : 'bg-gray-50 border-gray-200 text-adv-slate placeholder-gray-400'
-                    }`}
-                  />
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input 
+                      type="text" 
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setScannerPage(1);
+                      }}
+                      placeholder={t.searchAttendee}
+                      className={`w-full sm:w-56 pl-9 pr-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-all ${
+                        theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white placeholder-zinc-500' : 'bg-gray-50 border-gray-200 text-adv-slate placeholder-gray-400'
+                      }`}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -753,108 +1000,120 @@ export default function StaffScanner() {
 
                     return (
                       <>
-                        {currentCheckins.map((checkin) => (
-                          <div 
-                            key={checkin.id}
-                            className={`p-4 rounded-2xl border flex flex-col md:flex-row justify-between gap-3 transition-all group ${
-                              theme === 'dark' 
-                                ? 'bg-zinc-950/45 border-zinc-850 hover:border-orange-500/20 hover:bg-orange-500/5' 
-                                : 'bg-[#F9FAFB] border-gray-50 hover:border-orange-100 hover:bg-orange-50/10'
-                            }`}
-                          >
-                            <div className="flex items-start gap-3 min-w-0">
-                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 border transition-all ${
-                                theme === 'dark'
-                                  ? 'bg-green-500/10 text-green-400 border-green-500/20 group-hover:bg-green-500/20'
-                                  : 'bg-green-50 text-green-500 border-green-100 group-hover:bg-green-100'
-                              }`}>
-                                <CheckCircle2 className="w-5 h-5" />
+                        {currentCheckins.map((checkin) => {
+                          const checkinDateStr = checkin.timestamp
+                            ? new Date(checkin.timestamp).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric'
+                              })
+                            : new Date().toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric'
+                              });
+
+                          return (
+                            <div 
+                              key={checkin.id}
+                              className={`p-4 rounded-2xl border flex flex-col md:flex-row justify-between gap-3 transition-all group ${
+                                theme === 'dark' 
+                                  ? 'bg-zinc-950/45 border-zinc-850 hover:border-orange-500/20 hover:bg-orange-500/5' 
+                                  : 'bg-[#F9FAFB] border-gray-50 hover:border-orange-100 hover:bg-orange-50/10'
+                              }`}
+                            >
+                              <div className="flex items-start gap-3 min-w-0">
+                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 border transition-all ${
+                                  theme === 'dark'
+                                    ? 'bg-green-500/10 text-green-400 border-green-500/20 group-hover:bg-green-500/20'
+                                    : 'bg-green-50 text-green-500 border-green-100 group-hover:bg-green-100'
+                                }`}>
+                                  <CheckCircle2 className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="text-xs sm:text-sm font-black truncate max-w-[150px] sm:max-w-none">{checkin.attendeeName}</span>
+                                    <span className="px-2 py-0.5 bg-adv-slate dark:bg-zinc-800 text-white rounded text-[8px] font-black uppercase tracking-widest">{checkin.ticketType}</span>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 mt-0.5 text-[10px] sm:text-xs font-semibold text-gray-400 dark:text-zinc-400">
+                                    {checkin.email && (
+                                      <span className="flex items-center gap-1 truncate">
+                                        <Mail className="w-3 h-3 text-adv-orange shrink-0" />
+                                        {checkin.email}
+                                      </span>
+                                    )}
+                                    {checkin.phone && (
+                                      <span className="flex items-center gap-1 truncate text-emerald-600 dark:text-emerald-400 font-bold">
+                                        <Phone className="w-3 h-3 text-emerald-500 shrink-0" />
+                                        {checkin.phone}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5 text-[9px] sm:text-[10px] text-gray-400 dark:text-zinc-400 font-bold uppercase tracking-wider">
+                                    {checkin.zone && (
+                                      <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-adv-orange" /> {checkin.zone}</span>
+                                    )}
+                                    {checkin.seat && (
+                                      <>
+                                        <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />
+                                        <span className="flex items-center gap-1"><TicketIcon className="w-3 h-3 text-blue-400" /> {checkin.seat}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <span className="text-xs sm:text-sm font-black truncate max-w-[150px] sm:max-w-none">{checkin.attendeeName}</span>
-                                  <span className="px-2 py-0.5 bg-adv-slate dark:bg-zinc-800 text-white rounded text-[8px] font-black uppercase tracking-widest">{checkin.ticketType}</span>
+
+                              <div className="flex md:flex-col items-center md:items-end justify-between md:justify-center gap-1.5 border-t md:border-t-0 pt-2.5 md:pt-0 border-gray-100 dark:border-zinc-850">
+                                <div className="text-[10px] font-bold text-gray-500 dark:text-zinc-400 flex items-center gap-1 bg-gray-100 dark:bg-zinc-900 px-2 py-0.5 rounded-md border border-gray-200/60 dark:border-zinc-800">
+                                  <Calendar className="w-3 h-3 text-adv-orange shrink-0" />
+                                  <span>{checkinDateStr}</span>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 mt-0.5 text-[10px] sm:text-xs font-semibold text-gray-400 dark:text-zinc-400">
-                                  {checkin.email && (
-                                    <span className="flex items-center gap-1 truncate">
-                                      <Mail className="w-3 h-3 text-adv-orange shrink-0" />
-                                      {checkin.email}
-                                    </span>
-                                  )}
-                                  {checkin.phone && (
-                                    <span className="flex items-center gap-1 truncate text-emerald-600 dark:text-emerald-400 font-bold">
-                                      <Phone className="w-3 h-3 text-emerald-500 shrink-0" />
-                                      {checkin.phone}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5 text-[9px] sm:text-[10px] text-gray-400 dark:text-zinc-400 font-bold uppercase tracking-wider">
-                                  {checkin.zone && (
-                                    <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-adv-orange" /> {checkin.zone}</span>
-                                  )}
-                                  {checkin.seat && (
-                                    <>
-                                      <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />
-                                      <span className="flex items-center gap-1"><TicketIcon className="w-3 h-3 text-blue-400" /> {checkin.seat}</span>
-                                    </>
-                                  )}
+                                <div className="text-[9px] text-emerald-500 font-black uppercase tracking-wider flex items-center gap-1.5 bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                  {checkin.time}
                                 </div>
                               </div>
                             </div>
+                          );
+                        })}
 
-                            <div className="flex md:flex-col items-center md:items-end justify-between md:justify-center border-t md:border-t-0 pt-2.5 md:pt-0 border-gray-100 dark:border-zinc-850">
-                              <div className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest">
-                                ID: {checkin.ticketId || checkin.id}
-                              </div>
-                              <div className="text-[9px] text-emerald-500 font-black uppercase tracking-wider md:mt-1 flex items-center gap-1.5 bg-emerald-500/10 px-2 py-0.5 rounded-md">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                {checkin.time}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-
-                        {totalScannerPages > 1 && (
-                          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-5 mt-4 border-t border-gray-100 dark:border-zinc-800/80">
-                            <div className="text-xs font-bold text-gray-400">
-                              Page {safePage} of {totalScannerPages} ({filteredCheckins.length} total)
+                        {totalScannerPages >= 1 && (
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3.5 mt-3 border-t border-gray-100 dark:border-zinc-800/80">
+                            <div className="text-xs font-bold text-gray-400 dark:text-zinc-400 flex items-center gap-2">
+                              <span>
+                                {lang === 'lo'
+                                  ? `ສະແດງ ${(safePage - 1) * CHECKINS_PER_PAGE + 1}-${Math.min(safePage * CHECKINS_PER_PAGE, filteredCheckins.length)} ຈາກທັງໝົດ ${filteredCheckins.length} ຄົນ`
+                                  : `Showing ${(safePage - 1) * CHECKINS_PER_PAGE + 1}-${Math.min(safePage * CHECKINS_PER_PAGE, filteredCheckins.length)} of ${filteredCheckins.length} attendees`}
+                              </span>
                             </div>
 
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => setScannerPage(prev => Math.max(prev - 1, 1))}
-                                disabled={safePage === 1}
-                                className="p-2 rounded-xl border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer disabled:cursor-not-allowed"
-                              >
-                                <ChevronLeft className="w-4 h-4" />
-                              </button>
-
-                              {Array.from({ length: totalScannerPages }, (_, i) => i + 1).map(p => (
+                            {totalScannerPages > 1 && (
+                              <div className="flex items-center gap-1.5">
                                 <button
-                                  key={p}
                                   type="button"
-                                  onClick={() => setScannerPage(p)}
-                                  className={`w-8 h-8 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                                    safePage === p
-                                      ? 'bg-adv-orange text-white shadow-sm'
-                                      : 'border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800'
-                                  }`}
+                                  onClick={() => setScannerPage(prev => Math.max(prev - 1, 1))}
+                                  disabled={safePage === 1}
+                                  className="p-2 rounded-xl border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer disabled:cursor-not-allowed"
+                                  title={lang === 'lo' ? 'ໜ້າກ່ອນໜ້າ' : 'Previous Page'}
                                 >
-                                  {p}
+                                  <ChevronLeft className="w-4 h-4" />
                                 </button>
-                              ))}
 
-                              <button
-                                type="button"
-                                onClick={() => setScannerPage(prev => Math.min(prev + 1, totalScannerPages))}
-                                disabled={safePage === totalScannerPages}
-                                className="p-2 rounded-xl border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer disabled:cursor-not-allowed"
-                              >
-                                <ChevronRight className="w-4 h-4" />
-                              </button>
-                            </div>
+                                <span className="w-8 h-8 flex items-center justify-center rounded-xl text-xs font-black bg-adv-orange text-white shadow-sm">
+                                  {safePage}
+                                </span>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setScannerPage(prev => Math.min(prev + 1, totalScannerPages))}
+                                  disabled={safePage === totalScannerPages}
+                                  className="p-2 rounded-xl border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer disabled:cursor-not-allowed"
+                                  title={lang === 'lo' ? 'ໜ້າຖັດໄປ' : 'Next Page'}
+                                >
+                                  <ChevronRight className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </>

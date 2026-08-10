@@ -72,37 +72,15 @@ export default function Notifications() {
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white border border-gray-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 space-y-6 md:space-y-8 shadow-sm"
+          className="bg-white border border-gray-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 shadow-sm"
         >
-          <div className="flex items-center justify-between gap-4 md:gap-6 pb-6 border-b border-gray-50">
+          <div className="flex items-center justify-between gap-4 md:gap-6">
             <div>
               <h3 className="text-base md:text-lg font-bold text-adv-slate">{t.emailNotif}</h3>
               <p className="text-xs md:text-sm text-gray-400 font-medium">{t.emailNotifDesc}</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer shrink-0">
               <input type="checkbox" className="sr-only peer" defaultChecked onChange={handleToggleSetting} />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-adv-orange"></div>
-            </label>
-          </div>
-          
-          <div className="flex items-center justify-between gap-4 md:gap-6 pb-6 border-b border-gray-50">
-            <div>
-              <h3 className="text-base md:text-lg font-bold text-adv-slate">{t.pushNotif}</h3>
-              <p className="text-xs md:text-sm text-gray-400 font-medium">{t.pushNotifDesc}</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer shrink-0">
-              <input type="checkbox" className="sr-only peer" onChange={handleToggleSetting} />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-adv-orange"></div>
-            </label>
-          </div>
-
-          <div className="flex items-center justify-between gap-4 md:gap-6">
-            <div>
-              <h3 className="text-base md:text-lg font-bold text-adv-slate">{t.marketingNotif}</h3>
-              <p className="text-xs md:text-sm text-gray-400 font-medium">{t.marketingNotifDesc}</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer shrink-0">
-              <input type="checkbox" className="sr-only peer" onChange={handleToggleSetting} />
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-adv-orange"></div>
             </label>
           </div>

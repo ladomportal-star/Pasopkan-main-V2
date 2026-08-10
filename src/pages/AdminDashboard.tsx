@@ -1742,7 +1742,7 @@ export default function AdminDashboard() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                        <div className="bg-gray-50/50 p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
                           <h3 className="text-lg font-black text-adv-slate uppercase tracking-tight mb-6 flex items-center gap-3">
-                             <Plus className="w-5 h-5 text-adv-orange" />
+                             <Bell className="w-5 h-5 text-adv-orange" />
                              {t.sendNotification}
                           </h3>
                           <div className="space-y-6">
@@ -2596,7 +2596,6 @@ export default function AdminDashboard() {
                               className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-adv-slate font-bold focus:outline-none focus:border-adv-orange/30 focus:bg-white appearance-none transition-all shadow-inner"
                             >
                               <option value="" disabled>{t.selectCategory}</option>
-                              <option value="Concert">Concert</option>
                               <option value="Sports">Sports</option>
                               <option value="Workshop">Workshop</option>
                               <option value="Festival">Festival</option>

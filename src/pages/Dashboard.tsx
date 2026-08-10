@@ -14,8 +14,8 @@ const translations = {
       myTickets: 'My Tickets',
       upcoming: 'Upcoming',
       past: 'Past',
-      upcomingEvents: 'Upcoming Activities',
-      pastEvents: 'Past Activities',
+      upcomingEvents: 'Upcoming',
+      pastEvents: 'Past',
       noTickets: 'No tickets found',
       noTicketsDesc: "You don't have any {tab} activities.",
       browseEvents: 'Explore Activities',
@@ -81,8 +81,8 @@ const translations = {
       myTickets: 'ປີ້ຂອງຂ້ອຍ',
       upcoming: 'ກຳລັງຈະມາເຖິງ',
       past: 'ຜ່ານມາແລ້ວ',
-      upcomingEvents: 'ກິດຈະກຳກຳລັງຈະມາເຖິງ',
-      pastEvents: 'ກິດຈະກຳຜ່ານມາແລ້ວ',
+      upcomingEvents: 'ກຳລັງຈະມາເຖິງ',
+      pastEvents: 'ຜ່ານມາແລ້ວ',
       noTickets: 'ບໍ່ພົບປີ້',
       noTicketsDesc: 'ທ່ານບໍ່ມີກິດຈະກຳ {tab}.',
       browseEvents: 'ຄົ້ນຫາກິດຈະກຳ',
@@ -481,20 +481,20 @@ export default function Dashboard() {
                         </div>
 
                         <div className={`flex items-center justify-between pt-2 border-t ${theme === 'dark' ? 'border-zinc-800/80' : 'border-gray-100'}`}>
-                          <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
-                            <button 
-                              onClick={() => setShowQrTicket(ticket)}
-                              className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                                theme === 'dark' 
-                                  ? 'bg-adv-orange/15 text-adv-orange border border-adv-orange/30 hover:bg-adv-orange hover:text-white' 
-                                  : 'bg-adv-orange/10 text-adv-orange border border-adv-orange/20 hover:bg-adv-orange hover:text-white hover:shadow-xs'
-                              }`}
-                            >
-                              <QrCode className="w-3.5 h-3.5" />
-                              <span>{t.viewTicket}</span>
-                            </button>
-                            
-                            {ticket.status === 'upcoming' && (
+                          {ticket.status === 'upcoming' ? (
+                            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+                              <button 
+                                onClick={() => setShowQrTicket(ticket)}
+                                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                                  theme === 'dark' 
+                                    ? 'bg-adv-orange/15 text-adv-orange border border-adv-orange/30 hover:bg-adv-orange hover:text-white' 
+                                    : 'bg-adv-orange/10 text-adv-orange border border-adv-orange/20 hover:bg-adv-orange hover:text-white hover:shadow-xs'
+                                }`}
+                              >
+                                <QrCode className="w-3.5 h-3.5" />
+                                <span>{t.viewTicket}</span>
+                              </button>
+                              
                               <button 
                                 onClick={() => handleRefundTicket(ticket)}
                                 className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
@@ -506,22 +506,15 @@ export default function Dashboard() {
                                 <RefreshCcw className="w-3 h-3" />
                                 <span>{t.refund}</span>
                               </button>
-                            )}
-
-                            {ticket.status === 'past' && (
-                              <Link 
-                                to="/past-events"
-                                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all duration-200 ${
-                                  theme === 'dark' 
-                                    ? 'bg-orange-950/20 text-orange-400 border border-orange-900/30 hover:bg-orange-900/30' 
-                                    : 'bg-orange-50 text-adv-orange border border-orange-100 hover:bg-orange-100'
-                                }`}
-                              >
-                                <Star className="w-3 h-3 fill-current" />
-                                <span>{lang === 'en' ? 'Rate & Review' : 'ໃຫ້ຄະແນນ & ຣີວິວ'}</span>
-                              </Link>
-                            )}
-                          </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between w-full">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-zinc-500 flex items-center gap-1.5">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                <span>{lang === 'lo' ? 'ກິດຈະກຳສຳເລັດແລ້ວ' : 'Event Completed'}</span>
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

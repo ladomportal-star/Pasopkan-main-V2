@@ -31,7 +31,7 @@ export interface Coupon {
 
 export interface AttendeeQuestion {
   id: string;
-  type: 'text' | 'long_text' | 'options' | 'single_choice' | 'url' | 'checkbox';
+  type: 'text' | 'long_text' | 'single_choice' | 'multi_choice' | 'options' | 'checkbox' | 'url';
   label: string;
   required: boolean;
   options?: string[];
@@ -45,9 +45,18 @@ export interface LaoEvent {
   location: string;
   venue: string;
   image: string;
-  dateType?: 'fixed' | 'flexible';
+  dateType?: 'fixed' | 'flexible' | 'booking';
   flexibleDateDesc?: string;
-  category: 'Sports' | 'Workshop' | 'Festival' | 'Voucher' | 'Concert';
+  bookingDuration?: string;
+  bookingCapacity?: string;
+  bookingNotice?: string;
+  bookingApprovalMode?: 'auto' | 'manual';
+  bookingTimeSlots?: string[];
+  bookingAvailableDays?: string[];
+  bookingNotes?: string;
+  bookingStartDate?: string;
+  bookingEndDate?: string;
+  category: 'Sports' | 'Workshop' | 'Festival' | 'Voucher';
   description: string;
   ticketTiers: TicketTier[];
   exampleImages?: string[];
@@ -572,7 +581,7 @@ export const events: LaoEvent[] = [
     location: 'Vientiane',
     venue: 'National Stadium Vientiane',
     image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=2000&auto=format&fit=crop',
-    category: 'Concert',
+    category: 'Festival',
     status: 'popular',
     description: 'The biggest pop and indie concert event in Vientiane featuring popular Lao singers, band performances, and top guest artists from across Southeast Asia.',
     organizer: 'Lao Concert Productions',
@@ -589,7 +598,7 @@ export const events: LaoEvent[] = [
     location: 'Vientiane',
     venue: 'Mekong Riverfront Outdoor Stage',
     image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=2000&auto=format&fit=crop',
-    category: 'Concert',
+    category: 'Festival',
     status: 'popular',
     description: 'An intimate evening of live acoustic melodies and classic Lao ballads overlooking the sunset on the Mekong River.',
     organizer: 'Mekong Sounds',
@@ -605,7 +614,7 @@ export const events: LaoEvent[] = [
     location: 'Luang Prabang',
     venue: 'Old Town Square Cultural Stage',
     image: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=2000&auto=format&fit=crop',
-    category: 'Concert',
+    category: 'Festival',
     description: 'Smooth jazz saxophone, acoustic blues, and traditional Lao instrument fusion in the heart of Luang Prabang Old Town.',
     organizer: 'Luang Prabang Jazz Club',
     ticketTiers: [

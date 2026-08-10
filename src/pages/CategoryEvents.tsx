@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Filter, Calendar, Tag, MapPin, History } from 'lucide-react';
+import { ArrowLeft, Filter, Calendar, Tag, MapPin, History, ChevronDown, X } from 'lucide-react';
 import { events, LaoEvent } from '../data/events';
 import EventCard from '../components/EventCard';
 import { useLanguage } from '../LanguageContext';
@@ -25,6 +25,7 @@ const translations = {
     locationAll: 'All Locations',
     activeUpcomingTitle: 'Active & Upcoming Events',
     pastEventsTitle: 'Past Events',
+    allCategories: 'Categories',
   },
   lo: {
     allEventsIn: 'ກິດຈະກຳທັງໝົດໃນ',
@@ -44,6 +45,7 @@ const translations = {
     locationAll: 'ທຸກສະຖານທີ່',
     activeUpcomingTitle: 'ກິດຈະກຳທີ່ກຳລັງດຳເນີນ / ຈະມາເຖິງ',
     pastEventsTitle: 'ກິດຈະກຳທີ່ຜ່ານມາແລ້ວ',
+    allCategories: 'ໝວດໝູ່',
   }
 };
 
@@ -105,8 +107,8 @@ export default function CategoryEvents() {
 
   const getTranslatedCategory = (cat: string) => {
     const catTranslations: Record<string, any> = {
-      en: { Concert: 'Concerts', Sports: 'Adventure & Sports', Workshop: 'Workshops', Festival: 'Festivals', Voucher: 'Vouchers' },
-      lo: { Concert: 'ຄອນເສີດ', Sports: 'ການຜະຈົນໄພ ແລະ ທ່ອງທ່ຽວ', Workshop: 'ເວີກຊອບ', Festival: 'ເທດສະການ', Voucher: 'Voucher' }
+      en: { Sports: 'Adventure & Sports', Workshop: 'Workshops', Festival: 'Festivals', Voucher: 'Vouchers' },
+      lo: { Sports: 'ການຜະຈົນໄພ ແລະ ທ່ອງທ່ຽວ', Workshop: 'ເວີກຊອບ', Festival: 'ເທດສະການ', Voucher: 'Voucher' }
     };
     return catTranslations[lang][cat] || cat;
   };
@@ -225,81 +227,79 @@ export default function CategoryEvents() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] pt-4 sm:pt-6 pb-8 sm:pb-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 animate-fade-in">
-        <Link to="/" className="inline-flex items-center gap-1.5 text-gray-400 hover:text-adv-orange transition-colors mb-5 sm:mb-8 text-xs sm:text-sm font-bold">
-          <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          {t.backToHome}
-        </Link>
+    <div className="min-h-screen bg-[#F9FAFB] pt-3 sm:pt-6 pb-8 sm:pb-12">
+      <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 animate-fade-in">
+        
+        {/* Top Header Row with Back link */}
+        <div className="flex items-center justify-between mb-3 sm:mb-5">
+          <Link to="/" className="inline-flex items-center gap-1.5 text-gray-400 hover:text-adv-orange transition-colors text-xs sm:text-sm font-bold">
+            <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            {t.backToHome}
+          </Link>
+        </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 sm:mb-8">
-          <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-adv-slate uppercase tracking-tight">
-            {getTranslatedCategory(categoryName)}
-          </h1>
+        {/* Simplified Category Header & Filters */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 sm:mb-8 pb-4 border-b border-gray-200/70">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-adv-slate tracking-tight">
+              {getTranslatedCategory(categoryName)}
+            </h1>
+            <span className="text-xs font-extrabold text-adv-orange bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-100/60">
+              {displayedEvents.length}
+            </span>
+          </div>
 
-          {/* Filter Controls - Mobile Scrollable & Extremely Compact */}
-          <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 py-1 sm:flex-wrap shrink-0 select-none">
-            <div className="flex items-center gap-1.5 text-gray-400 mr-1 shrink-0">
-              <Filter className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span className="text-[10px] sm:text-sm font-black uppercase tracking-widest">{t.filters}</span>
-            </div>
-            
+          {/* Simple Inline Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar py-0.5">
+            {/* Price Filter Pill */}
             <div className="relative shrink-0">
-              <div className="absolute inset-y-0 left-2.5 sm:left-3 flex items-center pointer-events-none">
-                <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" />
-              </div>
-              <select 
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value as DateFilter)}
-                className="appearance-none bg-white border border-gray-200 text-adv-slate rounded-full pl-8 pr-9 py-2 sm:pl-9 sm:pr-10 sm:py-2.5 outline-none focus:ring-2 focus:ring-adv-orange text-xs sm:text-sm font-bold cursor-pointer hover:bg-gray-50 transition-colors"
-              >
-                <option value="all">{t.dateAll}</option>
-                <option value="upcoming">{t.dateUpcoming}</option>
-                <option value="past">{t.datePast}</option>
-              </select>
-              <div className="absolute inset-y-0 right-2.5 sm:right-3 flex items-center pointer-events-none">
-                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-              </div>
-            </div>
-
-            <div className="relative shrink-0">
-              <div className="absolute inset-y-0 left-2.5 sm:left-3 flex items-center pointer-events-none">
-                <Tag className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" />
-              </div>
               <select 
                 value={priceFilter}
                 onChange={(e) => setPriceFilter(e.target.value as PriceFilter)}
-                className="appearance-none bg-white border border-gray-200 text-adv-slate rounded-full pl-8 pr-9 py-2 sm:pl-9 sm:pr-10 sm:py-2.5 outline-none focus:ring-2 focus:ring-adv-orange text-xs sm:text-sm font-bold cursor-pointer hover:bg-gray-50 transition-colors"
+                className={`appearance-none rounded-full pl-3.5 pr-7 py-1.5 text-xs font-bold outline-none cursor-pointer transition-all ${
+                  priceFilter !== 'all' 
+                    ? 'bg-adv-orange text-white shadow-xs font-black' 
+                    : 'bg-white text-gray-700 hover:bg-gray-100/80 border border-gray-200'
+                }`}
               >
-                <option value="all">{t.priceAll}</option>
-                <option value="free">{t.priceFree}</option>
-                <option value="under100k">{t.priceUnder100k}</option>
-                <option value="100k-500k">{t.price100k_500k}</option>
-                <option value="over500k">{t.priceOver500k}</option>
+                <option value="all" className="text-gray-900 bg-white">{t.priceAll}</option>
+                <option value="free" className="text-gray-900 bg-white">{t.priceFree}</option>
+                <option value="under100k" className="text-gray-900 bg-white">{t.priceUnder100k}</option>
+                <option value="100k-500k" className="text-gray-900 bg-white">{t.price100k_500k}</option>
+                <option value="over500k" className="text-gray-900 bg-white">{t.priceOver500k}</option>
               </select>
-              <div className="absolute inset-y-0 right-2.5 sm:right-3 flex items-center pointer-events-none">
-                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-              </div>
+              <ChevronDown className={`w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${priceFilter !== 'all' ? 'text-white' : 'text-gray-400'}`} />
             </div>
 
+            {/* Location Filter Pill */}
             <div className="relative shrink-0">
-              <div className="absolute inset-y-0 left-2.5 sm:left-3 flex items-center pointer-events-none">
-                <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" />
-              </div>
               <select 
                 value={locationFilter}
                 onChange={(e) => setLocationFilter(e.target.value)}
-                className="appearance-none bg-white border border-gray-200 text-adv-slate rounded-full pl-8 pr-9 py-2 sm:pl-9 sm:pr-10 sm:py-2.5 outline-none focus:ring-2 focus:ring-adv-orange text-xs sm:text-sm font-bold cursor-pointer hover:bg-gray-50 transition-colors"
+                className={`appearance-none rounded-full pl-3.5 pr-7 py-1.5 text-xs font-bold outline-none cursor-pointer transition-all ${
+                  locationFilter !== 'all' 
+                    ? 'bg-adv-orange text-white shadow-xs font-black' 
+                    : 'bg-white text-gray-700 hover:bg-gray-100/80 border border-gray-200'
+                }`}
               >
-                <option value="all">{t.locationAll}</option>
+                <option value="all" className="text-gray-900 bg-white">{t.locationAll}</option>
                 {locations.map(loc => (
-                  <option key={loc} value={loc}>{loc}</option>
+                  <option key={loc} value={loc} className="text-gray-900 bg-white">{loc}</option>
                 ))}
               </select>
-              <div className="absolute inset-y-0 right-2.5 sm:right-3 flex items-center pointer-events-none">
-                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-              </div>
+              <ChevronDown className={`w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${locationFilter !== 'all' ? 'text-white' : 'text-gray-400'}`} />
             </div>
+
+            {/* Clear Filters Button */}
+            {(priceFilter !== 'all' || locationFilter !== 'all') && (
+              <button
+                onClick={() => { setPriceFilter('all'); setLocationFilter('all'); }}
+                className="flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-adv-orange bg-white hover:bg-gray-50 px-2.5 py-1.5 rounded-full border border-gray-200 transition-colors cursor-pointer shrink-0"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>{t.clearFilters}</span>
+              </button>
+            )}
           </div>
         </div>
 

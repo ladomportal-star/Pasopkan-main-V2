@@ -161,19 +161,6 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
             <div className="overflow-y-auto p-4 custom-scrollbar">
               {query.trim() === '' ? (
                 <div className="p-2">
-                  <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 px-2">{t.popular}</h3>
-                  <div className="flex flex-wrap gap-2 mb-8 px-2">
-                    {['Vientiane', 'Luang Prabang', 'Pakse', 'Vang Vieng'].map(loc => (
-                      <button
-                        key={loc}
-                        onClick={() => setQuery(loc)}
-                        className="px-4 py-2 rounded-full bg-gray-50 text-gray-600 text-xs font-bold hover:bg-orange-50 hover:text-adv-orange transition-all border border-gray-100/50"
-                      >
-                        {loc}
-                      </button>
-                    ))}
-                  </div>
-                  
                   <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 px-2">{t.trending}</h3>
                   <div className="space-y-2">
                     {events.slice(0, 3).map(event => (
