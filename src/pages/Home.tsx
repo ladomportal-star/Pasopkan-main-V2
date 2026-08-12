@@ -39,7 +39,7 @@ const translations = {
     workshops: 'Workshops',
     adventure: 'Adventure and Tour',
     festivals: 'Festivals',
-    vouchers: 'Vouchers'
+    vouchers: 'Voucher and Booking'
   },
   lo: {
     heroSub: 'ຄົ້ນພົບປະສົບການທີ່ດີເລີດ',
@@ -52,7 +52,7 @@ const translations = {
     workshops: 'ເວີກຊັອບ',
     adventure: 'ການຜະຈົນໄພ ແລະ ທ່ອງທ່ຽວ',
     festivals: 'ເທດສະການ',
-    vouchers: 'ບັດສ່ວນຫຼຸດ'
+    vouchers: 'ບັດສ່ວນຫຼຸດ ແລະ ການຈອງ'
   }
 };
 
@@ -175,7 +175,7 @@ const CategoryRow: React.FC<{ category: string, events: LaoEvent[], title: strin
       
       <div 
         ref={scrollRef}
-        className="flex overflow-x-auto pb-3 sm:pb-6 -mx-4 px-4 sm:-mx-8 sm:px-8 hide-scrollbar gap-6 snap-x snap-mandatory scroll-smooth"
+        className="flex overflow-x-auto overflow-y-hidden pb-3 sm:pb-6 -mx-4 px-4 sm:-mx-8 sm:px-8 hide-scrollbar gap-6 snap-x snap-mandatory scroll-smooth"
       >
         {events.map((event, index) => (
           <LandscapeEventCard 
@@ -246,7 +246,7 @@ export default function Home() {
     'Sports': { en: 'Adventure and Tour', lo: 'ການຜະຈົນໄພ ແລະ ທ່ອງທ່ຽວ' },
     'Festival': { en: 'Festivals', lo: 'ເທດສະການ' },
     'Workshop': { en: 'Workshops', lo: 'ເວີກຊັອບ' },
-    'Voucher': { en: 'Vouchers', lo: 'ບັດສ່ວນຫຼຸດ' }
+    'Voucher': { en: 'Voucher and Booking', lo: 'ບັດສ່ວນຫຼຸດ ແລະ ການຈອງ' }
   };
 
   const categories = ['Workshop', 'Sports', 'Festival', 'Voucher'];

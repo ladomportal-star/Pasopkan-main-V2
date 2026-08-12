@@ -160,41 +160,13 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
             <div className="overflow-y-auto p-4 custom-scrollbar">
               {query.trim() === '' ? (
-                <div className="p-2">
-                  <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 px-2">{t.trending}</h3>
-                  <div className="space-y-2">
-                    {events.slice(0, 3).map(event => (
-                      <button
-                        key={event.id}
-                        onClick={() => handleSelect(event.id)}
-                        className="w-full flex items-center gap-4 p-4 rounded-3xl hover:bg-orange-50/50 transition-all text-left group border border-transparent hover:border-orange-100"
-                      >
-                        <div className="w-14 h-14 rounded-2xl overflow-hidden shrink-0 shadow-sm">
-                          <img 
-                            src={event.image} 
-                            alt={event.title} 
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                            referrerPolicy="no-referrer"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-adv-slate font-extrabold truncate group-hover:text-adv-orange transition-colors text-base leading-tight">
-                            {event.title}
-                          </h4>
-                          <div className="flex items-center gap-4 text-xs text-gray-400 mt-1.5 font-medium">
-                            <span className="flex items-center gap-1.5">
-                              <Calendar className="w-3.5 h-3.5 text-adv-orange" />
-                              {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                            </span>
-                            <span className="flex items-center gap-1.5 truncate">
-                              <MapPin className="w-3.5 h-3.5 text-adv-orange" />
-                              {event.location}
-                            </span>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
+                <div className="p-12 text-center">
+                  <div className="w-14 h-14 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Search className="w-6 h-6 text-adv-orange" />
                   </div>
+                  <p className="text-gray-400 font-medium text-sm">
+                    {lang === 'lo' ? 'ພິມເພື່ອຄົ້ນຫາກິດຈະກຳ ຫຼື ສະຖານທີ່' : 'Type to search events or cities'}
+                  </p>
                 </div>
               ) : filteredEvents.length > 0 ? (
                 <div className="space-y-2">

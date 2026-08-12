@@ -107,8 +107,8 @@ export default function CategoryEvents() {
 
   const getTranslatedCategory = (cat: string) => {
     const catTranslations: Record<string, any> = {
-      en: { Sports: 'Adventure & Sports', Workshop: 'Workshops', Festival: 'Festivals', Voucher: 'Vouchers' },
-      lo: { Sports: 'ການຜະຈົນໄພ ແລະ ທ່ອງທ່ຽວ', Workshop: 'ເວີກຊອບ', Festival: 'ເທດສະການ', Voucher: 'Voucher' }
+      en: { Sports: 'Adventure & Sports', Workshop: 'Workshops', Festival: 'Festivals', Voucher: 'Voucher and Booking' },
+      lo: { Sports: 'ການຜະຈົນໄພ ແລະ ທ່ອງທ່ຽວ', Workshop: 'ເວີກຊອບ', Festival: 'ເທດສະການ', Voucher: 'ບັດສ່ວນຫຼຸດ ແລະ ການຈອງ' }
     };
     return catTranslations[lang][cat] || cat;
   };
@@ -244,9 +244,6 @@ export default function CategoryEvents() {
             <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-adv-slate tracking-tight">
               {getTranslatedCategory(categoryName)}
             </h1>
-            <span className="text-xs font-extrabold text-adv-orange bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-100/60">
-              {displayedEvents.length}
-            </span>
           </div>
 
           {/* Simple Inline Filter Pills */}
@@ -315,7 +312,7 @@ export default function CategoryEvents() {
                     </h2>
                   </div>
                 )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-6 md:gap-8">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 md:gap-5">
                   {upcomingEvents.map((event, index) => (
                     <EventCard key={event.id} event={event} index={index} />
                   ))}
@@ -349,7 +346,7 @@ export default function CategoryEvents() {
                     </h2>
                   </div>
                 )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-6 md:gap-8 opacity-90">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 md:gap-5 opacity-90">
                   {pastEvents.map((event, index) => (
                     <EventCard key={event.id} event={event} index={index + upcomingEvents.length} />
                   ))}

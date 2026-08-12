@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, Users, Calendar, CheckCircle2, XCircle, Trash2, Edit, ExternalLink, Search, Filter, X, MessageSquare, ChevronDown, MapPin, Save, LayoutDashboard, TrendingUp, DollarSign, Activity, Loader2, AlertCircle, Menu, Globe, User, Bell, Plus, Info, Upload, Image as ImageIcon, Printer, CreditCard, Lock, Eye, EyeOff, LogIn, LogOut, Settings, UploadCloud } from 'lucide-react';
+import { Shield, Users, Calendar, CheckCircle2, XCircle, Trash2, Edit, ExternalLink, Search, Filter, X, MessageSquare, ChevronDown, MapPin, Save, LayoutDashboard, TrendingUp, DollarSign, Activity, Loader2, AlertCircle, Menu, Globe, User, Bell, Plus, Info, Upload, Image as ImageIcon, Printer, CreditCard, Lock, Eye, EyeOff, LogIn, LogOut, Settings, UploadCloud, Clock, Ticket, Monitor, Smartphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { events } from '../data/events';
 import { useLanguage } from '../LanguageContext';
@@ -491,8 +491,76 @@ export default function AdminDashboard() {
   const [editError, setEditError] = useState<string | null>(null);
   const [comment, setComment] = useState('');
   
-  const [usersList, setUsersList] = useState(initialMockUsers);
-  const [payoutsList, setPayoutsList] = useState(mockPayoutsData);
+  const [usersList, setUsersList] = useState(() => {
+    const list = [...initialMockUsers];
+    try {
+      const savedUserStr = safeStorage.getItem('pasopkan_user_profile');
+      if (savedUserStr) {
+        const savedUser = JSON.parse(savedUserStr);
+        if (savedUser && savedUser.firstName) {
+          const isDup = list.some(u => u.email === savedUser.email);
+          if (!isDup) {
+            list.unshift({
+              id: 'u-live',
+              name: `${savedUser.firstName} ${savedUser.lastName}`,
+              email: savedUser.email || 'user@example.com',
+              role: savedUser.role || 'user',
+              status: 'active',
+              joined: new Date().toISOString().split('T')[0]
+            });
+          }
+        }
+      }
+    } catch(e) {}
+    return list;
+  });
+  
+  const [realTickets, setRealTickets] = useState<any[]>(() => {
+    try {
+      const tickets = safeStorage.getItem('pasopkan_user_tickets');
+      return tickets ? JSON.parse(tickets) : [];
+    } catch(e) { return []; }
+  });
+
+  const [payoutsList, setPayoutsList] = useState(() => {
+    try {
+      const txnsRaw = safeStorage.getItem('pasopkan_user_transactions');
+      if (txnsRaw) {
+        const txns = JSON.parse(txnsRaw);
+        // Create a fake payout summary from real transactions
+        if (Array.isArray(txns) && txns.length > 0) {
+          const livePayout = {
+            id: 'pay-live',
+            eventId: 'evt-real',
+            eventTitle: txns[0].event?.title || 'Live Ticket Sales',
+            organizer: 'Live Platform User',
+            revenue: txns.reduce((sum: number, tx: any) => {
+              const amount = parseInt(tx.amount.replace(/[^0-9]/g, '')) || 0;
+              return sum + amount;
+            }, 0),
+            platformFeePercent: 10,
+            platformFeeAmount: txns.reduce((sum: number, tx: any) => {
+              const amount = parseInt(tx.amount.replace(/[^0-9]/g, '')) || 0;
+              return sum + amount;
+            }, 0) * 0.1,
+            payoutAmount: txns.reduce((sum: number, tx: any) => {
+              const amount = parseInt(tx.amount.replace(/[^0-9]/g, '')) || 0;
+              return sum + amount;
+            }, 0) * 0.9,
+            status: 'pending',
+            bankInfo: {
+              bankName: 'BCEL',
+              accountName: 'Platform Vendor',
+              accountNumber: 'XXXXX1234'
+            },
+            completedDate: ''
+          };
+          return [livePayout, ...mockPayoutsData];
+        }
+      }
+    } catch(e) {}
+    return mockPayoutsData;
+  });
   const [eventsList, setEventsList] = useState(() => {
     try {
       const saved = safeStorage.getItem('organizer_events');
@@ -538,10 +606,28 @@ export default function AdminDashboard() {
     { id: 'sn2', title: 'Indie Fest Flash Sale', category: 'upcomingEvent', target: 'all', timestamp: '2026-04-04T15:30:00Z', status: 'sent', readCount: 450 },
   ]);
 
-  const [activityLogs, setActivityLogs] = useState<any[]>([
-    { id: 'log1', action: 'User role changed', details: 'Jane Doe changed to organizer', admin: 'Admin User', timestamp: '2026-04-01T08:00:00Z' },
-    { id: 'log2', action: 'Event approved', details: 'Music Festival 2026', admin: 'Admin User', timestamp: '2026-04-01T07:30:00Z' },
-  ]);
+  const [activityLogs, setActivityLogs] = useState<any[]>(() => {
+    const logs = [
+      { id: 'log1', action: 'User role changed', details: 'Jane Doe changed to organizer', admin: 'Admin User', timestamp: '2026-04-01T08:00:00Z' },
+      { id: 'log2', action: 'Event approved', details: 'Music Festival 2026', admin: 'Admin User', timestamp: '2026-04-01T07:30:00Z' },
+    ];
+    try {
+      const txnsRaw = safeStorage.getItem('pasopkan_user_transactions');
+      if (txnsRaw) {
+        const txns = JSON.parse(txnsRaw);
+        txns.forEach((tx: any) => {
+          logs.unshift({
+            id: `log-${tx.id}`,
+            action: 'Ticket purchased',
+            details: `${tx.quantity}x ${tx.event?.title || 'Event Ticket'}`,
+            admin: 'System',
+            timestamp: tx.date || new Date().toISOString()
+          });
+        });
+      }
+    } catch(e) {}
+    return logs;
+  });
 
   const addActivityLog = (action: string, details: string) => {
     const newLog = {
@@ -717,7 +803,48 @@ export default function AdminDashboard() {
     }
 
     addActivityLog('Event edited', `Edited details for ${editingEvent.title}`);
-    setEventsList(eventsList.map(ev => ev.id === editingEvent.id ? editingEvent : ev));
+    
+    // Update active and pending events lists based on status
+    if (editingEvent.status === 'pending') {
+      setPendingEventsList(prev => prev.some(e => e.id === editingEvent.id) 
+        ? prev.map(e => e.id === editingEvent.id ? editingEvent : e) 
+        : [editingEvent, ...prev]);
+      setEventsList(prev => prev.filter(e => e.id !== editingEvent.id));
+    } else if (editingEvent.status === 'rejected') {
+      setPendingEventsList(prev => prev.filter(e => e.id !== editingEvent.id));
+      setEventsList(prev => prev.filter(e => e.id !== editingEvent.id));
+    } else {
+      setEventsList(prev => prev.some(e => e.id === editingEvent.id) 
+        ? prev.map(e => e.id === editingEvent.id ? editingEvent : e) 
+        : [editingEvent, ...prev]);
+      setPendingEventsList(prev => prev.filter(e => e.id !== editingEvent.id));
+    }
+
+    // Update selected event if it's the one we're editing
+    if (selectedEvent?.id === editingEvent.id) {
+      setSelectedEvent(editingEvent);
+    }
+    
+    // Persist to storage
+    try {
+      const saved = safeStorage.getItem('organizer_events');
+      if (saved) {
+        const allEvents = JSON.parse(saved);
+        const exists = allEvents.some((ev: any) => String(ev.id) === String(editingEvent.id));
+        let newStorageEvents;
+        if (exists) {
+          newStorageEvents = allEvents.map((ev: any) => String(ev.id) === String(editingEvent.id) ? editingEvent : ev);
+        } else {
+          newStorageEvents = [editingEvent, ...allEvents];
+        }
+        safeStorage.setItem('organizer_events', JSON.stringify(newStorageEvents));
+      } else {
+        safeStorage.setItem('organizer_events', JSON.stringify([editingEvent]));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    
     setEditingEvent(null);
   };
 
@@ -1279,7 +1406,7 @@ export default function AdminDashboard() {
                       </div>
                       <h3 className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mb-2">{t.activeUsers}</h3>
                       <div className="text-3xl font-black text-adv-slate mb-1">
-                        {(filteredOverviewEvents.length * 474 + (filteredOverviewEvents.length > 0 ? 1 : 0)).toLocaleString('en-US')}
+                        {(usersList.length).toLocaleString('en-US')}
                       </div>
                       <div className="text-adv-orange text-xs font-bold flex items-center gap-1">
                         <TrendingUp className="w-3 h-3" /> +5.2% from last month
@@ -1303,7 +1430,7 @@ export default function AdminDashboard() {
                       </div>
                       <h3 className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mb-2">{t.ticketsSold}</h3>
                       <div className="text-3xl font-black text-adv-slate mb-1">
-                        {(filteredOverviewEvents.length * 2067 + (filteredOverviewEvents.length > 0 ? 1 : 0)).toLocaleString('en-US')}
+                        {(realTickets.reduce((sum, t) => sum + (Number(t.quantity) || 1), 0)).toLocaleString('en-US')}
                       </div>
                       <div className="text-adv-orange text-xs font-bold flex items-center gap-1">
                         <TrendingUp className="w-3 h-3" /> +18.1% from last month
@@ -2339,116 +2466,270 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
-              <div className="p-8 overflow-y-auto flex-1 custom-scrollbar">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <div className="p-8 overflow-y-auto flex-1 custom-scrollbar bg-gray-50">
+                {/* Hero Banner Cover */}
+                <div className="relative rounded-[2.5rem] overflow-hidden bg-slate-800 aspect-[21/9] min-h-[260px] shadow-2xl border border-gray-200 mb-8 mx-auto max-w-6xl">
+                  <img 
+                    src={selectedEvent.horizontalImage || selectedEvent.image} 
+                    alt={selectedEvent.title} 
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent flex flex-col justify-end p-10">
+                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                      <span className="px-3 py-1 bg-adv-orange text-white text-xs font-black uppercase tracking-wider rounded-lg shadow-md">
+                        {selectedEvent.category}
+                      </span>
+                      <span className="px-3 py-1 bg-white/20 backdrop-blur-md text-white text-xs font-bold rounded-lg border border-white/30">
+                        {selectedEvent.eventType === 'online' ? 'Online Event' : (selectedEvent.province || 'Offline Event')}
+                      </span>
+                      {selectedEvent.dateType === 'flexible' && (
+                        <span className="px-3 py-1 bg-amber-400 text-slate-950 text-xs font-black rounded-lg uppercase tracking-wider">
+                          Flexible Date
+                        </span>
+                      )}
+                    </div>
+                    <h1 className="font-extrabold text-white tracking-tight mb-2 text-4xl">
+                      {selectedEvent.title}
+                    </h1>
+                    <p className="text-slate-300 text-sm font-medium flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-adv-orange shrink-0" />
+                      {selectedEvent.venue} • {selectedEvent.district}, {selectedEvent.province}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                  
+                  {/* Left Column: Details */}
                   <div className="lg:col-span-2 space-y-8">
-                    <div>
-                      <div className="flex items-center gap-3 mb-4">
-                        {new Date(`${selectedEvent.date}T23:59:59`) < new Date() && (
-                          <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-400 text-[10px] font-black uppercase tracking-widest border border-gray-200">
-                            {t.finished}
-                          </span>
-                        )}
-                      </div>
-                      <h3 className="text-4xl font-black text-adv-slate leading-tight mb-6 tracking-tighter">{selectedEvent.title}</h3>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-                          <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
-                            <Calendar className="w-3.5 h-3.5 text-adv-orange" />
-                            {t.date}
-                          </div>
+                    
+                    {/* Event Quick Info Bar */}
+                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-adv-orange shrink-0">
+                          <Calendar className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{lang === 'lo' ? 'ວັນທີ' : 'Date'}</div>
                           <div className="text-sm font-bold text-adv-slate">
-                            {new Date(selectedEvent.date).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                            {selectedEvent.dateType === 'flexible' ? (
+                              'Flexible Date'
+                            ) : selectedEvent.date ? (
+                              new Date(selectedEvent.date).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+                            ) : 'TBA'}
+                            {selectedEvent.endDate && selectedEvent.endDate !== selectedEvent.date && ` - ${new Date(selectedEvent.endDate).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { month: 'short', day: 'numeric' })}`}
                           </div>
                         </div>
-                        <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-                          <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
-                            <MapPin className="w-3.5 h-3.5 text-adv-orange" />
-                            {t.location}
+                      </div>
+                      
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-adv-orange shrink-0">
+                          <Clock className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{lang === 'lo' ? 'ເວລາ' : 'Time'}</div>
+                          <div className="text-sm font-bold text-adv-slate">
+                            {selectedEvent.time || 'TBA'} {selectedEvent.endTime && ` - ${selectedEvent.endTime}`}
                           </div>
-                          <div className="text-sm font-bold text-adv-slate truncate">{selectedEvent.location}</div>
                         </div>
                       </div>
                     </div>
 
-                    {selectedEvent.image && (
-                      <div className="relative rounded-3xl overflow-hidden border border-gray-100 shadow-lg group">
-                        <img 
-                          src={selectedEvent.image} 
-                          alt={selectedEvent.title} 
-                          className="w-full h-72 object-cover group-hover:scale-105 transition-transform duration-700"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-gray-900/40 to-transparent"></div>
+                    {/* Description */}
+                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                      <h3 className="text-lg font-bold text-adv-slate mb-4 flex items-center gap-2">
+                        <Info className="w-5 h-5 text-adv-orange" />
+                        {lang === 'lo' ? 'ລາຍລະອຽດ event' : 'Event Description'}
+                      </h3>
+                      <div 
+                        className="prose max-w-none text-gray-600 text-sm leading-relaxed"
+                        dangerouslySetInnerHTML={{ __html: selectedEvent.description || '<p>No description provided.</p>' }}
+                      />
+                    </div>
+
+                    {/* Gallery Images */}
+                    {selectedEvent.exampleImages && selectedEvent.exampleImages.length > 0 && (
+                      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+                        <h3 className="text-lg font-bold text-adv-slate flex items-center gap-2">
+                          <ImageIcon className="w-5 h-5 text-adv-orange" />
+                          {lang === 'lo' ? 'ຮູບພາບປະກອບ' : 'Event Gallery'}
+                        </h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {selectedEvent.exampleImages.map((img, idx) => (
+                            <img key={idx} src={img} alt={`Gallery ${idx}`} className="w-full h-32 object-cover rounded-xl border border-gray-100 shadow-sm" />
+                          ))}
+                        </div>
                       </div>
                     )}
 
-                    <div className="space-y-4">
-                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                        <Menu className="w-4 h-4 text-adv-orange" />
-                        {t.description}
-                      </h4>
-                      <div className="bg-orange-50/10 p-6 rounded-3xl border border-orange-100/50">
-                        <p className="text-gray-500 leading-relaxed font-medium">
-                          {selectedEvent.description || 'No description provided for this event.'}
-                        </p>
+                    {/* Seating Zone Map */}
+                    {selectedEvent.hasSeating && selectedEvent.zoneImage && (
+                      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+                        <h3 className="text-lg font-bold text-adv-slate flex items-center gap-2">
+                          <MapPin className="w-5 h-5 text-adv-orange" />
+                          {lang === 'lo' ? 'ແຜນຜັງໂຊນບ່ອນນັ່ງ' : 'Zone Seating Map'}
+                        </h3>
+                        <div className="rounded-xl overflow-hidden border border-gray-200 max-h-[400px] flex justify-center bg-gray-50">
+                          <img src={selectedEvent.zoneImage} alt="Seating Map" className="w-full object-contain" />
+                        </div>
                       </div>
-                    </div>
+                    )}
 
-                    {selectedEvent.status === 'pending' && selectedEvent.organizerInfo && (
-                      <div className="space-y-6 pt-6 border-t border-gray-100">
-                        <h4 className="text-lg font-black text-adv-slate flex items-center gap-2 tracking-tight">
-                          <CheckCircle2 className="w-5 h-5 text-adv-orange" />
-                          {t.organizerKyc}
-                        </h4>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="bg-gray-50/50 p-6 rounded-3xl border border-gray-100 space-y-4 shadow-sm hover:bg-white transition-colors">
-                            <div className="flex items-center gap-4">
-                              {selectedEvent.organizerInfo.logoUrl ? (
-                                <img src={selectedEvent.organizerInfo.logoUrl} alt="Logo" className="w-16 h-16 rounded-2xl object-cover border border-orange-50 shadow-sm" />
-                              ) : (
-                                <div className="w-16 h-16 rounded-2xl bg-orange-50 flex items-center justify-center border border-orange-100">
-                                  <Users className="w-8 h-8 text-adv-orange" />
-                                </div>
-                              )}
+                    {/* Time Slots */}
+                    {selectedEvent.hasTimeSelection && selectedEvent.timeSlots && selectedEvent.timeSlots.length > 0 && (
+                      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+                        <h3 className="text-lg font-bold text-adv-slate flex items-center gap-2">
+                          <Clock className="w-5 h-5 text-adv-orange" />
+                          {lang === 'lo' ? 'ເລືອກຊ່ວງເວລາ' : 'Operating Time Slots'}
+                        </h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {selectedEvent.timeSlots.map((slot, idx) => (
+                            <div key={idx} className="p-3 bg-orange-50/50 border border-orange-100 rounded-xl text-center text-xs font-bold text-adv-slate">
+                              {slot}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Event Settings & Policies */}
+                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+                      <h3 className="text-lg font-bold text-adv-slate flex items-center gap-2">
+                        <Settings className="w-5 h-5 text-adv-orange" />
+                        {lang === 'lo' ? 'ການຕັ້ງຄ່າກິດຈະກຳ ແລະ ນະໂຍບາຍ' : 'Event Settings & Policies'}
+                      </h3>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{lang === 'lo' ? 'ຄວາມເປັນສ່ວນຕົວ' : 'Event Privacy'}</div>
+                          <div className="text-xs font-black text-adv-slate capitalize">{selectedEvent.eventPrivacy || 'Public'}</div>
+                        </div>
+                        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{lang === 'lo' ? 'ປະເພດກິດຈະກຳ' : 'Event Type'}</div>
+                          <div className="text-xs font-black text-adv-slate capitalize">{selectedEvent.eventType || 'Offline'}</div>
+                        </div>
+                        {selectedEvent.eventType === 'online' && (
+                          <div className="p-3 bg-blue-50 rounded-xl border border-blue-100 col-span-2 md:col-span-3">
+                            <div className="text-[10px] text-blue-500 font-bold uppercase tracking-wider mb-2">{lang === 'lo' ? 'ຂໍ້ມູນອອນລາຍ' : 'Online Event Details'}</div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                               <div>
-                                <h5 className="font-black text-adv-slate text-lg leading-tight uppercase tracking-tight">{selectedEvent.organizerInfo.name}</h5>
-                                <div className="text-gray-400 text-[10px] font-black uppercase tracking-widest mt-1">{t.contact}: {selectedEvent.organizerInfo.contact}</div>
+                                <span className="block text-[10px] font-bold text-gray-400">Platform</span>
+                                <span className="text-xs font-black text-adv-slate capitalize">{selectedEvent.onlinePlatform}</span>
+                              </div>
+                              <div className="md:col-span-2">
+                                <span className="block text-[10px] font-bold text-gray-400">Link</span>
+                                <span className="text-xs font-medium text-blue-600 break-all">{selectedEvent.onlineMeetingUrl}</span>
                               </div>
                             </div>
-                            <p className="text-xs text-gray-500 leading-relaxed font-medium bg-gray-100/50 p-4 rounded-xl">
-                              {selectedEvent.organizerInfo.description}
-                            </p>
-                          </div>
-
-                          <div className="bg-gray-50/50 p-6 rounded-3xl border border-gray-100 shadow-sm">
-                            <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                              <Shield className="w-4 h-4 text-adv-orange" /> {t.idCard}
-                            </h5>
-                            {selectedEvent.organizerInfo.idCardUrl ? (
-                              <div 
-                                className="relative group cursor-pointer overflow-hidden rounded-2xl border border-gray-200 shadow-sm aspect-video"
-                                onClick={() => setViewingIdCardUrl(selectedEvent.organizerInfo.idCardUrl)}
-                              >
-                                <img src={selectedEvent.organizerInfo.idCardUrl} alt="ID Card" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                                <div className="absolute inset-0 bg-adv-orange/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                  <ExternalLink className="w-6 h-6 text-white" />
-                                </div>
+                            {selectedEvent.onlinePasscode && (
+                              <div className="mt-2 pt-2 border-t border-blue-100">
+                                <span className="block text-[10px] font-bold text-gray-400">Passcode</span>
+                                <span className="text-xs font-medium text-adv-slate">{selectedEvent.onlinePasscode}</span>
                               </div>
-                            ) : (
-                               <div className="aspect-video rounded-2xl bg-gray-100 flex items-center justify-center text-[10px] font-black text-gray-400 uppercase tracking-widest border border-dashed border-gray-200">No document provided</div>
+                            )}
+                            {selectedEvent.onlineInstructions && (
+                              <div className="mt-2 pt-2 border-t border-blue-100">
+                                <span className="block text-[10px] font-bold text-gray-400">Instructions</span>
+                                <span className="text-xs font-medium text-adv-slate">{selectedEvent.onlineInstructions}</span>
+                              </div>
                             )}
                           </div>
+                        )}
+                        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{lang === 'lo' ? 'ປະເພດວັນທີ' : 'Date Type'}</div>
+                          <div className="text-xs font-black text-adv-slate capitalize">{selectedEvent.dateType || 'Fixed'}</div>
                         </div>
-                      {selectedEvent.status === 'pending' && selectedEvent.paymentInfo && (
-                        <div className="space-y-6 pt-6 border-t border-gray-100">
-                          <h4 className="text-lg font-black text-adv-slate flex items-center gap-2 tracking-tight">
+                        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{lang === 'lo' ? 'ອະນຸຍາດໃຫ້ຄືນເງິນ' : 'Allow Refunds'}</div>
+                          <div className="text-xs font-black text-adv-slate">{selectedEvent.allowRefunds ? 'Yes' : 'No'}</div>
+                        </div>
+                        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{lang === 'lo' ? 'ອະນຸຍາດໃຫ້ຣີວິວ' : 'Allow Reviews'}</div>
+                          <div className="text-xs font-black text-adv-slate">{selectedEvent.allowReviews !== false ? 'Yes' : 'No'}</div>
+                        </div>
+                        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{lang === 'lo' ? 'ສະແດງຈຳນວນປີ້' : 'Show Remaining Tickets'}</div>
+                          <div className="text-xs font-black text-adv-slate">{selectedEvent.showRemainingTickets !== false ? 'Yes' : 'No'}</div>
+                        </div>
+                        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{lang === 'lo' ? 'ບັງຄັບໃຫ້ໃສ່ຂໍ້ມູນທຸກປີ້' : 'Require Every Ticket Info'}</div>
+                          <div className="text-xs font-black text-adv-slate">{selectedEvent.requireEveryTicketInfo !== false ? 'Yes' : 'No'}</div>
+                        </div>
+                        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{lang === 'lo' ? 'ເປີດໃຊ້ນັບຖອຍຫຼັງ' : 'Enable Countdown'}</div>
+                          <div className="text-xs font-black text-adv-slate">{selectedEvent.enableCountdown !== false ? 'Yes' : 'No'}</div>
+                        </div>
+                        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{lang === 'lo' ? 'ຈຳກັດຈຳນວນປີ້ຕໍ່ການຊື້' : 'Max Tickets per Transaction'}</div>
+                          <div className="text-xs font-black text-adv-slate">{selectedEvent.maxTickets || '4'}</div>
+                        </div>
+                      </div>
+                      
+                      {selectedEvent.cancellationPolicy && (
+                        <div className="p-4 bg-orange-50 border border-orange-100 rounded-xl mt-4">
+                          <div className="text-[10px] text-adv-orange font-bold uppercase tracking-wider mb-1">{lang === 'lo' ? 'ນະໂຍບາຍການຍົກເລີກ' : 'Cancellation Policy'}</div>
+                          <div className="text-sm font-medium text-adv-slate">{selectedEvent.cancellationPolicy}</div>
+                        </div>
+                      )}
+                      {selectedEvent.attendeeQuestions && selectedEvent.attendeeQuestions.length > 0 && (
+                        <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl mt-4">
+                          <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-2">{lang === 'lo' ? 'ຄຳຖາມສຳລັບຜູ້ເຂົ້າຮ່ວມ' : 'Custom Attendee Questions'}</div>
+                          <div className="space-y-2">
+                            {selectedEvent.attendeeQuestions.map((q: any, idx: number) => (
+                              <div key={idx} className="p-3 bg-white border border-gray-100 rounded-lg">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-sm font-bold text-adv-slate">{q.label}</span>
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-adv-orange bg-orange-50 px-2 py-0.5 rounded-md">
+                                    {q.type}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-gray-400 font-medium">
+                                  {q.required ? 'Required' : 'Optional'}
+                                  {q.options && q.options.length > 0 && (
+                                    <span className="ml-2 block mt-1 text-gray-500">Options: {q.options.join(', ')}</span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {selectedEvent.attendeeMessage && (
+                        <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl mt-4">
+                          <div className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider mb-1">{lang === 'lo' ? 'ຂໍ້ຄວາມເຖິງຜູ້ເຂົ້າຮ່ວມ' : 'Attendee Message'}</div>
+                          <div className="text-sm font-medium text-emerald-900">{selectedEvent.attendeeMessage}</div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Organizer Card */}
+                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4">
+                      {selectedEvent.organizerLogo || (selectedEvent.organizerInfo && selectedEvent.organizerInfo.logoUrl) ? (
+                        <img src={selectedEvent.organizerLogo || selectedEvent.organizerInfo?.logoUrl} alt={selectedEvent.organizer || 'Organizer'} className="w-14 h-14 rounded-2xl object-cover border border-gray-100 shadow-sm shrink-0" />
+                      ) : (
+                        <div className="w-14 h-14 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center text-adv-orange font-black text-xl shrink-0">
+                          {(selectedEvent.organizerInfo?.name || selectedEvent.organizer || 'O').charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-xs text-gray-400 font-bold uppercase">{lang === 'lo' ? 'ຜູ້ຈັດງານ' : 'Organized by'}</div>
+                        <div className="text-base font-extrabold text-adv-slate">{selectedEvent.organizerInfo?.name || selectedEvent.organizer || 'Organizer Name'}</div>
+                        {(selectedEvent.organizerInfo?.contact || selectedEvent.organizerContact) && (
+                          <div className="text-xs text-gray-500 font-medium mt-0.5">{selectedEvent.organizerInfo?.contact || selectedEvent.organizerContact}</div>
+                        )}
+                      </div>
+                    </div>
+                    
+
+                    
+                    {selectedEvent.status === 'pending' && selectedEvent.paymentInfo && (
+                        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+                          <h3 className="text-lg font-bold text-adv-slate flex items-center gap-2">
                             <CreditCard className="w-5 h-5 text-adv-orange" />
                             {t.payoutInfo}
-                          </h4>
-                          
-                          <div className="bg-gray-50/50 p-6 rounded-3xl border border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-6 shadow-sm">
+                          </h3>
+                            
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                               <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{t.bankAccount}</div>
                               <div className="font-bold text-adv-slate">{selectedEvent.paymentInfo.accountName}</div>
@@ -2460,13 +2741,58 @@ export default function AdminDashboard() {
                             </div>
                           </div>
                         </div>
+                    )}
+
+                  </div>
+
+                  {/* Right Column: Ticket Purchase Box & Admin Actions */}
+                  <div className="space-y-6">
+                    {/* Ticket Box */}
+                    <div className="bg-white rounded-2xl p-6 shadow-xl border border-gray-100 space-y-6">
+                      <div className="border-b border-gray-100 pb-4">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                          {lang === 'lo' ? 'ລາຄາປີ້ເລີ່ມຕົ້ນ' : 'Starting Ticket Price'}
+                        </span>
+                        <div className="text-2xl font-black text-adv-orange">
+                          {selectedEvent.price || `0 ₭`}
+                        </div>
+                      </div>
+
+                      {/* Ticket Tiers list */}
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">
+                          {lang === 'lo' ? 'ປະເພດປີ້' : 'Ticket Tiers'}
+                        </h4>
+                        {selectedEvent.ticketTiers && selectedEvent.ticketTiers.length > 0 ? (
+                          selectedEvent.ticketTiers.map((tier, idx) => (
+                            <div key={idx} className="p-3 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-between">
+                              <div>
+                                <div className="font-bold text-xs text-adv-slate">{tier.name || `Tier ${idx + 1}`}</div>
+                                <div className="text-[10px] text-gray-400 font-medium">Qty: {tier.quantity || 'Unlimited'}</div>
+                              </div>
+                              <div className="font-extrabold text-xs text-adv-orange">
+                                {tier.price ? `${(Number(String(tier.price).replace(/,/g, '')) || 0).toLocaleString()} ₭` : `0 ₭`}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl text-center text-xs text-gray-400 font-medium">
+                            General Admission
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Coupons Badge */}
+                      {selectedEvent.coupons && selectedEvent.coupons.length > 0 && (
+                        <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-2 text-emerald-700 text-xs font-bold">
+                          <Ticket className="w-4 h-4 shrink-0" />
+                          <span>{selectedEvent.coupons.length} {lang === 'lo' ? 'ຄູປອງສ່ວນຫຼຸດພິເສດ' : 'Special Coupons Available'}</span>
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-
-                  <div className="space-y-8">
-                    <div className="bg-gray-50/50 p-6 rounded-[2rem] border border-gray-100 shadow-sm sticky top-0">
+                    
+                    {/* Admin Actions Panel */}
+                    <div className="bg-gray-50/50 p-6 rounded-[2rem] border border-gray-100 shadow-sm sticky top-6">
                       <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
                         <MessageSquare className="w-4 h-4 text-adv-orange" />
                         {t.adminActions}
@@ -2508,27 +2834,8 @@ export default function AdminDashboard() {
                           </>
                         )}
                       </div>
-
-                      <div className="space-y-4">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">{t.internalNote}</label>
-                        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-inner focus-within:border-adv-orange/30 transition-colors">
-                          <textarea
-                            value={comment}
-                            onChange={(e) => setComment(e.target.value)}
-                            placeholder={t.addComment}
-                            className="w-full bg-transparent border-none text-sm text-adv-slate font-medium placeholder:text-gray-300 focus:outline-none focus:ring-0 resize-none min-h-[120px]"
-                          />
-                        </div>
-                        <button 
-                          onClick={handleAddComment}
-                          disabled={!comment.trim()}
-                          className="w-full px-6 py-4 rounded-2xl bg-gray-900 text-white font-black text-[10px] uppercase tracking-widest disabled:opacity-30 disabled:grayscale hover:bg-adv-slate transition-all flex items-center justify-center gap-2 shadow-lg"
-                        >
-                          <Save className="w-4 h-4" />
-                          {t.postComment}
-                        </button>
-                      </div>
                     </div>
+
                   </div>
                 </div>
               </div>
@@ -2604,7 +2911,7 @@ export default function AdminDashboard() {
                             <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                           </div>
                         </div>
-                        <div className="grid grid-cols-1 gap-4">
+                        <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-1">{t.date}</label>
                             <input 
@@ -2613,6 +2920,34 @@ export default function AdminDashboard() {
                               onChange={(e) => setEditingEvent({...editingEvent, date: e.target.value})}
                               className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-adv-slate font-bold focus:outline-none focus:border-adv-orange/30 focus:bg-white transition-all shadow-inner"
                             />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-1">Time</label>
+                            <input 
+                              type="time" 
+                              value={editingEvent.time || ""}
+                              onChange={(e) => setEditingEvent({...editingEvent, time: e.target.value})}
+                              className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-adv-slate font-bold focus:outline-none focus:border-adv-orange/30 focus:bg-white transition-all shadow-inner"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="relative">
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-1">Status</label>
+                          <div className="relative">
+                            <select 
+                              value={editingEvent.status || "active"}
+                              onChange={(e) => setEditingEvent({...editingEvent, status: e.target.value})}
+                              className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-adv-slate font-bold focus:outline-none focus:border-adv-orange/30 focus:bg-white appearance-none transition-all shadow-inner"
+                            >
+                              <option value="active">Active</option>
+                              <option value="pending">Pending</option>
+                              <option value="rejected">Rejected</option>
+                              <option value="paused">Paused</option>
+                            </select>
+                            <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                           </div>
                         </div>
                       </div>

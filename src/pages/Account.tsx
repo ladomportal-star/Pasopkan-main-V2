@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, Settings, CreditCard, Bell, Shield, HelpCircle, LogOut, ChevronLeft, ChevronRight, Camera, Calendar as CalendarIcon, MapPin, Plus, CheckCircle2, XCircle, X, AlertCircle, AlertTriangle, Loader2, Image as ImageIcon, Ticket, Download, Link2, Copy, ExternalLink, QrCode, Trash2, ShieldCheck , Building, Hash, Save, Edit2, ChevronDown, DollarSign, Info, Smartphone, Lock } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { User, Settings, CreditCard, Bell, Shield, HelpCircle, LogOut, ChevronLeft, ChevronRight, Camera, Calendar as CalendarIcon, MapPin, Plus, CheckCircle2, XCircle, X, AlertCircle, AlertTriangle, Loader2, Image as ImageIcon, Ticket, Download, Link2, Copy, ExternalLink, QrCode, Trash2, ShieldCheck , Building, Hash, Save, Edit2, ChevronDown, DollarSign, Info, Smartphone, Lock, Search, Phone, Mail } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { safeStorage } from '../lib/storage';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -8,6 +8,7 @@ import { events, SeatingZone } from '../data/events';
 import { useAuth } from '../AuthContext';
 import { useLanguage } from '../LanguageContext';
 import { useTheme } from '../ThemeContext';
+import { CheckinRecord, useCheckins } from '../lib/checkinsStore';
 
 const LazyScanner = React.lazy(() => 
   import('@yudiel/react-qr-scanner')
@@ -387,6 +388,37 @@ export default function Account() {
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [myEvents, setMyEvents] = useState(() => {
+    const defaultEvents = [
+      { 
+        ...events[0], 
+        registered: 124, 
+        scanned: 45, 
+        hasSeating: true,
+        zoneImage: '/src/assets/images/seating_map_layout_1782798956470.jpg'
+      },
+      { ...events[1], registered: 85, scanned: 80, hasSeating: false }
+    ];
+
+    try {
+      const savedOrganizerEventsStr = safeStorage.getItem('organizer_events');
+      if (savedOrganizerEventsStr) {
+        const savedOrganizerEvents = JSON.parse(savedOrganizerEventsStr);
+        if (Array.isArray(savedOrganizerEvents) && savedOrganizerEvents.length > 0) {
+          // Merge custom created events, ensuring we don't duplicate by ID
+          const existingIds = new Set(savedOrganizerEvents.map(e => e.id));
+          return [...savedOrganizerEvents, ...defaultEvents.filter(e => !existingIds.has(e.id))];
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load organizer events:', e);
+    }
+    
+    return defaultEvents;
+  });
+  const [selectedEventId, setSelectedEventId] = useState<string>(myEvents[0]?.id || '1');
+  const selectedEvent = myEvents.find(e => e.id === selectedEventId) || myEvents[0];
+
   const [showScanner, setShowScanner] = useState(false);
   const [scannedIds, setScannedIds] = useState<string[]>([]);
   const [scanResult, setScanResult] = useState<{ 
@@ -402,128 +434,32 @@ export default function Account() {
   } | null>(null);
 
   const [checkinPage, setCheckinPage] = useState(1);
-  const [recentCheckins, setRecentCheckins] = useState<{
-    id: string;
-    attendeeName: string;
-    ticketType: string;
-    zone: string;
-    seat: string;
-    email: string;
-    time: string;
-  }[]>([
-    {
-      id: 'tk_981245',
-      attendeeName: 'Marcus Aurelius',
-      ticketType: 'VIP Front Stage',
-      zone: 'VIP Row 1',
-      seat: 'Seat 4',
-      email: 'marcus.a@example.com',
-      time: '2 mins ago'
-    },
-    {
-      id: 'tk_301984',
-      attendeeName: 'Sengdeuan Keo',
-      ticketType: 'Standard Zone A',
-      zone: 'Zone A Row 10',
-      seat: 'Seat 18',
-      email: 'sengdeuan.k@example.com',
-      time: '15 mins ago'
-    },
-    {
-      id: 'tk_452819',
-      attendeeName: 'Liam Neeson',
-      ticketType: 'General Access Zone B',
-      zone: 'Zone B Row 22',
-      seat: 'Seat 11',
-      email: 'liam.n@example.com',
-      time: '45 mins ago'
-    },
-    {
-      id: 'tk_712903',
-      attendeeName: 'Khamphoune Vong',
-      ticketType: 'VIP Front Stage',
-      zone: 'VIP Row 2',
-      seat: 'Seat 8',
-      email: 'khamphoune.v@example.com',
-      time: '1 hour ago'
-    },
-    {
-      id: 'tk_558120',
-      attendeeName: 'Elena Rostova',
-      ticketType: 'Standard Zone A',
-      zone: 'Zone A Row 5',
-      seat: 'Seat 12',
-      email: 'elena.r@example.com',
-      time: '1 hour ago'
-    },
-    {
-      id: 'tk_883109',
-      attendeeName: 'Phoupha Xaiyasing',
-      ticketType: 'General Access Zone B',
-      zone: 'Zone B Row 14',
-      seat: 'Seat 05',
-      email: 'phoupha.x@example.com',
-      time: '2 hours ago'
-    },
-    {
-      id: 'tk_129481',
-      attendeeName: 'David Chen',
-      ticketType: 'VIP Front Stage',
-      zone: 'VIP Row 1',
-      seat: 'Seat 1',
-      email: 'david.c@example.com',
-      time: '2 hours ago'
-    },
-    {
-      id: 'tk_604928',
-      attendeeName: 'Noy Bounnhang',
-      ticketType: 'Standard Zone A',
-      zone: 'Zone A Row 12',
-      seat: 'Seat 20',
-      email: 'noy.b@example.com',
-      time: '3 hours ago'
-    },
-    {
-      id: 'tk_339102',
-      attendeeName: 'Sarah Jenkins',
-      ticketType: 'General Access Zone B',
-      zone: 'Zone B Row 18',
-      seat: 'Seat 09',
-      email: 'sarah.j@example.com',
-      time: '3 hours ago'
-    },
-    {
-      id: 'tk_771029',
-      attendeeName: 'Bounmy Souk',
-      ticketType: 'Standard Zone A',
-      zone: 'Zone A Row 08',
-      seat: 'Seat 03',
-      email: 'bounmy.s@example.com',
-      time: '4 hours ago'
-    },
-    {
-      id: 'tk_210934',
-      attendeeName: 'Michael Chang',
-      ticketType: 'VIP Front Stage',
-      zone: 'VIP Row 3',
-      seat: 'Seat 15',
-      email: 'michael.c@example.com',
-      time: '5 hours ago'
-    },
-    {
-      id: 'tk_849201',
-      attendeeName: 'Anousone Phomvihane',
-      ticketType: 'General Access Zone B',
-      zone: 'Zone B Row 30',
-      seat: 'Seat 02',
-      email: 'anousone.p@example.com',
-      time: '6 hours ago'
-    }
-  ]);
+  const [recentCheckinSearch, setRecentCheckinSearch] = useState('');
+
+  // Real-time checkins store automatically filtered for selected event
+  const { eventCheckins: recentCheckins, addCheckin: addOrganizerCheckin } = useCheckins(selectedEventId);
+
+
+  const filteredRecentCheckins = recentCheckins.filter(c => {
+    const q = recentCheckinSearch.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      (c.attendeeName && c.attendeeName.toLowerCase().includes(q)) ||
+      (c.id && c.id.toLowerCase().includes(q)) ||
+      (c.email && c.email.toLowerCase().includes(q)) ||
+      (c.phone && c.phone.toLowerCase().includes(q)) ||
+      (c.ticketType && c.ticketType.toLowerCase().includes(q)) ||
+      (c.zone && c.zone.toLowerCase().includes(q)) ||
+      (c.seat && c.seat.toLowerCase().includes(q))
+    );
+  });
 
   const [scannerError, setScannerError] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState('');
-  const [activeTab, setActiveTab] = useState<'profile' | 'my-event'>('profile');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState<'profile' | 'my-event' | 'payouts'>(
+    (location.state as any)?.targetTab || 'profile'
+  );
   
   // Staff Scanner Links State
   interface StaffLink {
@@ -568,12 +504,13 @@ export default function Account() {
 
   const handleCreateStaffLink = () => {
     const label = newStaffLabel.trim() || 'Gate Staff';
-    const token = `stf_${Date.now()}`;
-    const url = `${window.location.origin}/staff-scanner?eventId=${selectedEventId}&staffLabel=${encodeURIComponent(label)}&key=${token}`;
+    const targetEventId = String(selectedEvent?.id || selectedEventId || '1');
+    const token = `stf_${targetEventId}_${Date.now()}`;
+    const url = `${window.location.origin}/staff-scanner?eventId=${targetEventId}&staffLabel=${encodeURIComponent(label)}&key=${token}`;
 
     const newLink: StaffLink = {
       id: `link_${Date.now()}`,
-      eventId: selectedEventId,
+      eventId: targetEventId,
       staffLabel: label,
       token: token,
       createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
@@ -677,16 +614,21 @@ export default function Account() {
       return;
     }
 
-    const newCheckin = {
+    const newCheckin: CheckinRecord = {
       id: scanResult.id,
+      ticketId: scanResult.id,
+      eventId: selectedEventId,
       attendeeName: scanResult.attendeeName || 'Unknown Attendee',
       ticketType: scanResult.ticketType || 'Standard',
       zone: scanResult.zone || 'General',
       seat: scanResult.seat || 'N/A',
       email: scanResult.email || '',
-      time: 'Just now'
+      phone: scanResult.phone || '',
+      time: new Date().toLocaleTimeString(lang === 'lo' ? 'lo-LA' : 'en-GB', { hour: '2-digit', minute: '2-digit' }),
+      timestamp: Date.now(),
+      staffLabel: 'Organizer Desk'
     };
-    setRecentCheckins(prev => [newCheckin, ...prev]);
+    addOrganizerCheckin(newCheckin);
     setMyEvents(prev => prev.map(e => e.id === selectedEventId ? { ...e, scanned: e.scanned + 1 } : e));
     addToast(lang === 'en' ? `Successfully checked in ${scanResult.attendeeName}` : `ເຊັກອິນ ${scanResult.attendeeName} ສຳເລັດແລ້ວ`, 'success');
     setScanResult(null);
@@ -776,19 +718,7 @@ export default function Account() {
 
   const pastEvents = events.slice(0, 3);
 
-  const [myEvents, setMyEvents] = useState([
-    { 
-      ...events[0], 
-      registered: 124, 
-      scanned: 45, 
-      hasSeating: true,
-      zoneImage: '/src/assets/images/seating_map_layout_1782798956470.jpg'
-    },
-    { ...events[1], registered: 85, scanned: 80, hasSeating: false }
-  ]);
-  const [selectedEventId, setSelectedEventId] = useState<string>(myEvents[0].id);
   const [showFullMap, setShowFullMap] = useState(false);
-  const selectedEvent = myEvents.find(e => e.id === selectedEventId) || myEvents[0];
   const [isSavingZone, setIsSavingZone] = useState(false);
   const [showZoneSuccess, setShowZoneSuccess] = useState(false);
   const [showProfilePicSuccess, setShowProfilePicSuccess] = useState(false);
@@ -1038,7 +968,9 @@ export default function Account() {
                 }`}
               >
                 {myEvents.map(event => (
-                  <option key={event.id} value={event.id} className={theme === 'dark' ? 'bg-zinc-900 text-white' : 'bg-white text-adv-slate'}>{event.title}</option>
+                  <option key={event.id} value={event.id} className={theme === 'dark' ? 'bg-zinc-900 text-white' : 'bg-white text-adv-slate'}>
+                    {event.title}{event.status === 'pending' ? ' (Pending Approval)' : ''}
+                  </option>
                 ))}
               </select>
               <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-450 dark:text-zinc-500">
@@ -1056,7 +988,14 @@ export default function Account() {
                 <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 mb-6 pb-6 border-b border-gray-100/50 dark:border-zinc-800/50">
                    <img src={selectedEvent.image} alt={selectedEvent.title} className="w-16 h-16 sm:w-24 sm:h-24 rounded-2xl object-cover shrink-0 shadow-sm" />
                    <div className="flex-1 text-center sm:text-left min-w-0">
-                      <h3 className="text-base sm:text-lg font-bold mb-1 sm:mb-1.5 truncate">{selectedEvent.title}</h3>
+                      <div className="flex items-center gap-3 justify-center sm:justify-start mb-1 sm:mb-1.5">
+                        <h3 className="text-base sm:text-lg font-bold truncate">{selectedEvent.title}</h3>
+                        {selectedEvent.status === 'pending' && (
+                          <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-widest shrink-0">
+                            Pending Approval
+                          </span>
+                        )}
+                      </div>
                       <div className="flex flex-wrap justify-center sm:justify-start gap-x-3.5 gap-y-1.5 text-[11px] sm:text-sm text-gray-400 font-medium">
                          <span className="flex items-center gap-1.5"><CalendarIcon className="w-4 h-4 text-adv-orange shrink-0" /> {selectedEvent.date}</span>
                          <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-adv-orange shrink-0" /> {selectedEvent.location}</span>
@@ -1074,7 +1013,7 @@ export default function Account() {
                   <div className={`rounded-2xl p-4 sm:p-5 text-center border transition-all ${
                     theme === 'dark' ? 'bg-orange-950/20 border-orange-900/25' : 'bg-orange-50/30 border-orange-50'
                   }`}>
-                    <div className="text-2xl sm:text-3xl font-bold text-adv-orange mb-0.5">{selectedEvent.scanned}</div>
+                    <div className="text-2xl sm:text-3xl font-bold text-adv-orange mb-0.5">{recentCheckins.length}</div>
                     <div className="text-[10px] text-adv-orange/60 dark:text-orange-450/60 font-bold uppercase tracking-widest">{t.attended}</div>
                   </div>
                 </div>
@@ -1092,78 +1031,81 @@ export default function Account() {
               </div>
 
               {/* Staff Scanner Access Links Card */}
-              <div className={`rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-8 shadow-sm border transition-all ${
+              <div className={`rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-sm border transition-all ${
                 theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
               }`}>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100/50 dark:border-zinc-800/50">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3.5 pb-3 border-b border-gray-100/50 dark:border-zinc-800/50">
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-7 h-7 rounded-lg bg-adv-orange/10 text-adv-orange flex items-center justify-center">
-                        <Link2 className="w-4 h-4" />
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <div className="w-6 h-6 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                        <Link2 className="w-3.5 h-3.5" />
                       </div>
-                      <h4 className="text-base sm:text-lg font-bold">{t.staffScannerLinks}</h4>
+                      <h4 className="text-sm sm:text-base font-bold">{t.staffScannerLinks}</h4>
                     </div>
-                    <p className="text-xs text-gray-400 font-medium max-w-xl">
+                    <p className="text-[11px] text-gray-400 font-medium max-w-xl">
                       {t.staffScannerDesc}
                     </p>
                   </div>
 
                   <button
                     onClick={() => setShowCreateStaffModal(true)}
-                    className="px-4 py-2.5 rounded-2xl bg-adv-orange hover:bg-orange-600 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 shrink-0 cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-3.5 h-3.5" />
                     <span>{t.createStaffLink}</span>
                   </button>
                 </div>
 
                 {/* Staff Link Items List */}
-                <div className="space-y-3">
-                  {staffLinks.filter(l => l.eventId === selectedEvent.id || l.eventId === '1').length === 0 ? (
-                    <div className="py-8 text-center text-xs text-gray-400 font-medium">
+                <div className="space-y-2">
+                  {staffLinks.filter(l => String(l.eventId) === String(selectedEvent.id)).length === 0 ? (
+                    <div className="py-6 text-center text-xs text-gray-400 font-medium">
                       {t.noStaffLinks}
                     </div>
                   ) : (
-                    staffLinks.filter(l => l.eventId === selectedEvent.id || l.eventId === '1').map((link) => (
+                    staffLinks.filter(l => String(l.eventId) === String(selectedEvent.id)).map((link) => (
                       <div
                         key={link.id}
-                        className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-colors ${
+                        className={`p-2 sm:p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-colors ${
                           theme === 'dark' ? 'bg-zinc-950/50 border-zinc-800' : 'bg-gray-50/80 border-gray-100'
                         }`}
                       >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-black truncate">{link.staffLabel}</span>
-                          </div>
-                          <div className="text-xs font-mono text-gray-400 truncate mt-1 flex items-center gap-1.5">
-                            <span className="truncate max-w-[220px] xs:max-w-[300px]">{link.url}</span>
-                          </div>
+                        <div className="min-w-0 flex-1 flex items-center gap-2">
+                          <span className="text-xs sm:text-sm font-black truncate">{link.staffLabel}</span>
+                          <span className="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-bold rounded-full border border-emerald-500/20 shrink-0">
+                            {lang === 'lo' ? 'ໃຊ້ງານໄດ້' : 'Active'}
+                          </span>
+                          {link.createdAt && (
+                            <span className="text-[10px] text-gray-400 font-medium hidden md:inline-block shrink-0">
+                              • {lang === 'lo' ? 'ສ້າງເມື່ອ' : 'Created'}: {link.createdAt}
+                            </span>
+                          )}
                         </div>
 
-                        <div className="flex items-center gap-2 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-zinc-850">
+                        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                           <button
                             onClick={() => handleCopyStaffLink(link.url)}
                             title={t.copyLink}
-                            className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                            className={`px-2 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
                               theme === 'dark' 
                                 ? 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:text-white' 
                                 : 'bg-white border-gray-200 text-gray-700 hover:text-adv-slate'
                             }`}
                           >
-                            <Copy className="w-3.5 h-3.5 text-adv-orange" />
-                            <span className="text-[11px]">{t.copyLink}</span>
+                            <Copy className="w-3 h-3 text-emerald-500" />
+                            <span className="text-[10px] hidden sm:inline">{t.copyLink}</span>
                           </button>
 
                           <button
                             onClick={() => setActiveStaffQrModal(link)}
                             title={t.showQrCode}
-                            className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                            className={`p-1.5 rounded-lg border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
                               theme === 'dark' 
                                 ? 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:text-white' 
                                 : 'bg-white border-gray-200 text-gray-700 hover:text-adv-slate'
                             }`}
                           >
-                            <QrCode className="w-3.5 h-3.5 text-blue-400" />
+                            <QrCode className="w-3.5 h-3.5 text-emerald-500" />
                           </button>
 
                           <a
@@ -1171,7 +1113,7 @@ export default function Account() {
                             target="_blank"
                             rel="noopener noreferrer"
                             title={t.openScanner}
-                            className="p-2.5 rounded-xl bg-adv-orange/10 hover:bg-adv-orange/20 text-adv-orange border border-adv-orange/20 text-xs font-bold transition-all flex items-center gap-1.5"
+                            className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 text-xs font-bold transition-all flex items-center gap-1"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>
@@ -1179,7 +1121,7 @@ export default function Account() {
                           <button
                             onClick={() => handleRevokeStaffLink(link.id)}
                             title={t.revoke}
-                            className="p-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 text-xs font-bold transition-all cursor-pointer"
+                            className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 text-xs font-bold transition-all cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1230,17 +1172,32 @@ export default function Account() {
               <div className={`rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-8 shadow-sm border transition-all ${
                 theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
               }`}>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-gray-100/50 dark:border-zinc-800/50">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5 pb-4 border-b border-gray-100/50 dark:border-zinc-800/50">
                   <div>
                     <h4 className="text-base sm:text-lg font-bold">{t.recentCheckins}</h4>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
-                      {recentCheckins.length} {t.attended}
+                      {filteredRecentCheckins.length} {t.attended}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative flex-1 sm:w-64">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                      <input 
+                        type="text" 
+                        value={recentCheckinSearch}
+                        onChange={(e) => {
+                          setRecentCheckinSearch(e.target.value);
+                          setCheckinPage(1);
+                        }}
+                        placeholder={lang === 'lo' ? 'ຄົ້ນຫາຕາມຊື່, ເບີໂທ, ລະຫັດປີ້...' : 'Search Name, Phone, Ticket ID...'}
+                        className={`w-full pl-9 pr-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-all ${
+                          theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white placeholder-zinc-500' : 'bg-gray-50 border-gray-200 text-adv-slate placeholder-gray-400'
+                        }`}
+                      />
+                    </div>
                     <button
                       onClick={handleExportToExcel}
-                      className="px-3.5 py-1.5 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:scale-[1.02] active:scale-[0.98] font-black text-[10px] uppercase tracking-wider transition-all flex items-center gap-1.5 border border-emerald-500/20 shadow-sm shrink-0 cursor-pointer"
+                      className="px-3.5 py-2 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:scale-[1.02] active:scale-[0.98] font-black text-[10px] uppercase tracking-wider transition-all flex items-center gap-1.5 border border-emerald-500/20 shadow-sm shrink-0 cursor-pointer"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>{lang === 'en' ? 'Export Excel' : 'ສົ່ງອອກ Excel'}</span>
@@ -1249,16 +1206,16 @@ export default function Account() {
                 </div>
 
                 <div className="space-y-3.5">
-                  {recentCheckins.length === 0 ? (
+                  {filteredRecentCheckins.length === 0 ? (
                     <div className="py-10 text-center text-gray-400 font-bold text-xs sm:text-sm">
                       {t.noRecentCheckins}
                     </div>
                   ) : (
                     (() => {
                       const CHECKINS_PER_PAGE = 10;
-                      const totalCheckinPages = Math.ceil(recentCheckins.length / CHECKINS_PER_PAGE) || 1;
+                      const totalCheckinPages = Math.ceil(filteredRecentCheckins.length / CHECKINS_PER_PAGE) || 1;
                       const safePage = Math.min(checkinPage, totalCheckinPages);
-                      const currentCheckins = recentCheckins.slice((safePage - 1) * CHECKINS_PER_PAGE, safePage * CHECKINS_PER_PAGE);
+                      const currentCheckins = filteredRecentCheckins.slice((safePage - 1) * CHECKINS_PER_PAGE, safePage * CHECKINS_PER_PAGE);
 
                       return (
                         <>
@@ -1287,7 +1244,20 @@ export default function Account() {
                                     <span className="text-xs sm:text-sm font-black truncate max-w-[120px] xs:max-w-[150px] sm:max-w-none">{checkin.attendeeName}</span>
                                     <span className="px-1.5 py-0.5 bg-adv-slate dark:bg-zinc-800 text-white rounded text-[7px] font-black uppercase tracking-widest">{checkin.ticketType}</span>
                                   </div>
-                                  <span className="text-[10px] sm:text-xs text-gray-405 dark:text-zinc-500 font-bold block mt-0.5 truncate">{checkin.email}</span>
+                                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 mt-0.5 text-[10px] sm:text-xs font-semibold text-gray-400 dark:text-zinc-400">
+                                    {checkin.email && (
+                                      <span className="flex items-center gap-1 truncate">
+                                        <Mail className="w-3 h-3 text-adv-orange shrink-0" />
+                                        {checkin.email}
+                                      </span>
+                                    )}
+                                    {checkin.phone && (
+                                      <span className="flex items-center gap-1 truncate text-emerald-600 dark:text-emerald-400 font-bold">
+                                        <Phone className="w-3 h-3 text-emerald-500 shrink-0" />
+                                        {checkin.phone}
+                                      </span>
+                                    )}
+                                  </div>
                                   <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5 text-[9px] sm:text-[10px] text-gray-450 dark:text-zinc-400 font-bold uppercase tracking-wider">
                                     <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-adv-orange" /> {checkin.zone}</span>
                                     <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />
@@ -2016,24 +1986,24 @@ export default function Account() {
                 theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
               }`}
             >
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100 dark:border-zinc-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-adv-orange/10 text-adv-orange flex items-center justify-center">
-                    <ShieldCheck className="w-5 h-5" />
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100 dark:border-zinc-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                    <ShieldCheck className="w-4 h-4" />
                   </div>
-                  <h3 className="text-base sm:text-lg font-black">{t.createStaffLink}</h3>
+                  <h3 className="text-sm sm:text-base font-black">{t.createStaffLink}</h3>
                 </div>
                 <button
                   onClick={() => setShowCreateStaffModal(false)}
-                  className="p-2 rounded-xl bg-gray-100 dark:bg-zinc-800 hover:opacity-80 transition-opacity cursor-pointer"
+                  className="p-1.5 rounded-lg bg-gray-100 dark:bg-zinc-800 hover:opacity-80 transition-opacity cursor-pointer"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1.5">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
                     {t.staffNameLabel}
                   </label>
                   <input
@@ -2041,26 +2011,26 @@ export default function Account() {
                     value={newStaffLabel}
                     onChange={(e) => setNewStaffLabel(e.target.value)}
                     placeholder={t.staffNamePlaceholder}
-                    className={`w-full px-4 py-3.5 rounded-2xl border text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-all ${
+                    className={`w-full px-3 py-2 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all ${
                       theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-gray-50 border-gray-200 text-adv-slate'
                     }`}
                   />
                 </div>
 
-                <p className="text-xs text-gray-400 dark:text-zinc-500 leading-relaxed font-medium">
+                <p className="text-[11px] text-gray-400 dark:text-zinc-500 leading-normal font-medium">
                   {t.staffScannerDesc}
                 </p>
 
-                <div className="flex justify-end gap-3 pt-4">
+                <div className="flex justify-end gap-2 pt-2">
                   <button
                     onClick={() => setShowCreateStaffModal(false)}
-                    className="px-5 py-3 rounded-2xl font-bold text-xs border border-gray-200 dark:border-zinc-800 text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 cursor-pointer"
+                    className="px-3.5 py-2 rounded-xl font-bold text-xs border border-gray-200 dark:border-zinc-800 text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleCreateStaffLink}
-                    className="px-6 py-3 rounded-2xl bg-adv-orange hover:bg-orange-600 text-white font-black text-xs shadow-lg shadow-adv-orange/20 cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md shadow-emerald-500/20 cursor-pointer"
                   >
                     {t.generateLink}
                   </button>
@@ -2086,32 +2056,32 @@ export default function Account() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className={`w-full max-w-sm p-6 sm:p-8 rounded-3xl border shadow-2xl text-center transition-colors ${
+              className={`w-full max-w-xs p-4 sm:p-5 rounded-2xl border shadow-2xl text-center transition-colors ${
                 theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
               }`}
             >
-              <div className="flex justify-end mb-2">
+              <div className="flex justify-end mb-1">
                 <button
                   onClick={() => setActiveStaffQrModal(null)}
-                  className="p-2 rounded-xl bg-gray-100 dark:bg-zinc-800 hover:opacity-80 transition-opacity cursor-pointer"
+                  className="p-1.5 rounded-lg bg-gray-100 dark:bg-zinc-800 hover:opacity-80 transition-opacity cursor-pointer"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              <div className="w-12 h-12 rounded-2xl bg-adv-orange/10 text-adv-orange flex items-center justify-center mx-auto mb-3">
-                <QrCode className="w-6 h-6" />
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-2">
+                <QrCode className="w-4 h-4" />
               </div>
 
-              <h3 className="text-lg font-black">{activeStaffQrModal.staffLabel}</h3>
-              <p className="text-xs text-gray-400 font-medium mt-1 mb-6">
+              <h3 className="text-sm font-black truncate">{activeStaffQrModal.staffLabel}</h3>
+              <p className="text-[10px] text-gray-400 font-medium mt-0.5 mb-3">
                 {t.qrCodeModalDesc}
               </p>
 
-              <div className="p-4 bg-white rounded-2xl shadow-inner border border-gray-200 w-fit mx-auto mb-6">
+              <div className="p-2.5 bg-white rounded-xl shadow-inner border border-gray-200 w-fit mx-auto mb-3">
                 <QRCodeSVG
                   value={activeStaffQrModal.url}
-                  size={190}
+                  size={150}
                   level="H"
                   includeMargin={false}
                 />

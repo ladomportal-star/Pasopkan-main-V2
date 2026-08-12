@@ -30,7 +30,7 @@ const translations = {
     festivals: 'Festivals',
     workshops: 'Workshops',
     concerts: 'Concerts',
-    vouchers: 'Voucher',
+    vouchers: 'Voucher and Booking',
     admin: 'Admin Portal'
   },
   lo: {
@@ -49,7 +49,7 @@ const translations = {
     festivals: 'ເທດສະການ',
     workshops: 'ເວີກຊອບ',
     concerts: 'ຄອນເສີດ',
-    vouchers: 'Voucher',
+    vouchers: 'ບັດສ່ວນຫຼຸດ ແລະ ການຈອງ',
     admin: 'ລະບົບແອດມິນ'
   }
 };

@@ -1491,28 +1491,7 @@ export default function EventDetails() {
                          {event.title}
                        </h1>
 
-                       {avgRating > 0 && (
-                         <div className="flex items-center gap-2 mb-4 bg-black/40 backdrop-blur-md text-amber-300 px-3 py-1.5 rounded-xl border border-white/10 w-fit pointer-events-auto shadow-sm">
-                           <div className="flex items-center gap-0.5">
-                             {[1, 2, 3, 4, 5].map((star) => {
-                               const isFilled = star <= Math.round(avgRating);
-                               return (
-                                 <Star
-                                   key={star}
-                                   className={`w-3.5 h-3.5 ${
-                                     isFilled ? 'fill-amber-400 text-amber-400' : 'text-white/25'
-                                   }`}
-                                 />
-                               );
-                             })}
-                           </div>
-                           <span className="text-xs font-black">{avgRating.toFixed(1)} / 5.0</span>
-                           <span className="text-white/30 text-[10px] font-bold">|</span>
-                           <span className="text-[10px] font-extrabold text-amber-400 uppercase tracking-wider">
-                             {reviews.length} {reviews.length === 1 ? 'Review' : 'Reviews'}
-                           </span>
-                         </div>
-                       )}
+                       {/* Ratings feature removed */}
                        
                        <div className="flex flex-wrap items-center gap-2.5 text-xs font-semibold font-sans">
                           {event.dateType !== 'flexible' && (

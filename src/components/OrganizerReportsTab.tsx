@@ -160,7 +160,7 @@ export const OrganizerReportsTab: React.FC<OrganizerReportsTabProps> = ({
     
     // Create deterministic simple mock orders for the selected event
     const names = ['Sengaloun S.', 'Phanyadeth K.', 'Somphone D.', 'Anousone P.'];
-    const times = lang === 'lo' ? ['15 ນາທີກ່ອນ', '1 ຊົ່ວໂມງກ່ອນ', '3 ຊົ່ວໂມງກ່ອນ', 'Yesterday'] : ['15m ago', '1h ago', '3h ago', 'Yesterday'];
+    const times = ['19:28', '18:45', '17:15', '16:30'];
     
     return Array.from({ length: 4 }).map((_, i) => {
       const ticketsCount = (i % 2) + 1;

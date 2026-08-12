@@ -13,7 +13,7 @@ const translations = {
     sports: 'Adventure and Tour',
     workshop: 'Workshops',
     festivals: 'Festivals',
-    voucher: 'Vouchers',
+    voucher: 'Voucher and Booking',
     createEvent: 'Create Event',
     search: 'Search destinations...',
     myTickets: 'My Tickets',
@@ -34,7 +34,7 @@ const translations = {
     sports: 'ການຜະຈົນໄພ ແລະ ທ່ອງທ່ຽວ',
     workshop: 'ເວີກຊອບ',
     festivals: 'ເທດສະການ',
-    voucher: 'Voucher',
+    voucher: 'ບັດສ່ວນຫຼຸດ ແລະ ການຈອງ',
     createEvent: 'ສ້າງກິດຈະກຳ',
     search: 'ຄົ້ນຫາ...',
     myTickets: 'ປີ້ຂອງຂ້ອຍ',
@@ -342,6 +342,6 @@ const categories_list = [
   { id: 'workshop', label: 'Workshops', icon: Lightbulb },
   { id: 'sports', label: 'Adventure and Tour', icon: Mountain },
   { id: 'festival', label: 'Festivals', icon: PartyPopper },
-  { id: 'voucher', label: 'Vouchers', icon: Ticket },
+  { id: 'voucher', label: 'Voucher and Booking', icon: Ticket },
 ];
 

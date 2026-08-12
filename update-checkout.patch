@@ -1,0 +1,27 @@
+--- src/pages/Checkout.tsx
++++ src/pages/Checkout.tsx
+@@ -467,6 +467,23 @@
+           };
+           list.push(transactionRecord);
+           localStorage.setItem('pasopkan_user_transactions', JSON.stringify(list));
++          
++          // Also save to user tickets
++          const existingTicketsRaw = localStorage.getItem('pasopkan_user_tickets');
++          let userTickets = [];
++          try { if (existingTicketsRaw) userTickets = JSON.parse(existingTicketsRaw); } catch(e){}
++          const newTicketObj = {
++            id: transactionId,
++            event,
++            tier: selectedTiersList.length > 0 ? selectedTiersList[0].tier : tier,
++            quantity: totalQuantity,
++            selectedTiers: selectedTiersList,
++            selectedDate: state.selectedDate,
++            selectedTime: state.selectedTime,
++            status: 'upcoming',
++            purchaseDate: new Date().toISOString()
++          };
++          userTickets.push(newTicketObj);
++          localStorage.setItem('pasopkan_user_tickets', JSON.stringify(userTickets));
+           
+           // If user is logged in, also save to pasopkan_purchased_event_ids
+           if (currentUser) {

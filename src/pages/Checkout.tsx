@@ -474,6 +474,24 @@ export default function Checkout() {
           list.push(event.id);
           localStorage.setItem('pasopkan_purchased_event_ids', JSON.stringify(list));
         }
+
+        // Also save to user tickets for the Dashboard
+        const existingTicketsRaw = localStorage.getItem('pasopkan_user_tickets');
+        let userTickets = [];
+        try { if (existingTicketsRaw) userTickets = JSON.parse(existingTicketsRaw); } catch(e){}
+        const newTicketObj = {
+          id: transactionId || `tk_${Math.random().toString(36).substr(2, 9)}`,
+          event,
+          tier: selectedTiersList.length > 0 ? selectedTiersList[0].tier : tier,
+          quantity: totalQuantity,
+          selectedTiers: selectedTiersList,
+          selectedDate: state.selectedDate,
+          selectedTime: state.selectedTime,
+          status: 'upcoming',
+          purchaseDate: new Date().toISOString()
+        };
+        userTickets.push(newTicketObj);
+        localStorage.setItem('pasopkan_user_tickets', JSON.stringify(userTickets));
       } catch (e) {
         console.error('Error saving purchased event ID:', e);
       }

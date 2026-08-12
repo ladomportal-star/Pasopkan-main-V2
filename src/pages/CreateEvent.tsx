@@ -57,7 +57,7 @@ const translations = {
     sports: 'Adventure and Tour',
     workshop: 'Workshops',
     festival: 'Festivals',
-    voucher: 'Vouchers',
+    voucher: 'Voucher and Booking',
     eventInfo: 'Event Information',
     intro: 'Event Introduction:',
     introPlaceholder: '[Brief summary of the event: Main content, highlights, and reasons why attendees should not miss it]',
@@ -296,7 +296,7 @@ const translations = {
     sports: 'ການຜະຈົນໄພ ແລະ ທ່ອງທ່ຽວ',
     workshop: 'ເວີກຊອບ',
     festival: 'ເທດສະການ',
-    voucher: 'Vouchers',
+    voucher: 'ບັດສ່ວນຫຼຸດ ແລະ ການຈອງ',
     eventInfo: 'ຂໍ້ມູນ event',
     intro: 'ແນະນຳ event:',
     introPlaceholder: '[ສະຫຼຸບຫຍໍ້ຂອງ event: ເນື້ອໃນຫຼັກ, ຈຸດເດັ່ນ, ແລະ ເຫດຜົນທີ່ຜູ້ເຂົ້າຮ່ວມບໍ່ຄວນພາດ]',
@@ -735,7 +735,7 @@ export default function CreateEvent() {
   const [showRemainingTickets, setShowRemainingTickets] = useState(true);
   const [allowRefunds, setAllowRefunds] = useState(false);
   const [allowReviews, setAllowReviews] = useState(true);
-  const [eventStatus, setEventStatus] = useState<string>('active');
+  const [eventStatus, setEventStatus] = useState<string>('pending');
   const [maxTickets, setMaxTickets] = useState('4');
   const [requireEveryTicketInfo, setRequireEveryTicketInfo] = useState(true);
   const [enableCountdown, setEnableCountdown] = useState(true);
@@ -1778,7 +1778,7 @@ export default function CreateEvent() {
               enableCountdown,
               eventPrivacy,
               attendeeMessage,
-              status: eventStatus || 'active',
+              status: eventStatus || 'pending',
             };
           }
           return evt;
@@ -1850,7 +1850,7 @@ export default function CreateEvent() {
           enableCountdown,
           eventPrivacy,
           attendeeMessage,
-          status: eventStatus || 'active',
+          status: eventStatus || 'pending',
         };
         const updatedEvents = [newEvent, ...localEvents];
         setLocalEvents(updatedEvents);
@@ -4100,7 +4100,7 @@ export default function CreateEvent() {
                     {wasEditing ? t.updateEventSuccessDesc : t.successDesc}
                   </p>
                   <button
-                    onClick={() => { setShowSuccessModal(false); setActiveTab('myEvents'); }}
+                    onClick={() => { setShowSuccessModal(false); navigate('/account', { state: { targetTab: 'my-event' } }); }}
                     className="w-full py-4 rounded-2xl bg-adv-orange hover:bg-orange-600 text-white font-bold transition-all shadow-xl shadow-orange-100 text-lg"
                   >
                     {t.goToDashboard}
