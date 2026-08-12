@@ -413,6 +413,49 @@ const getGalleryImages = (evt: LaoEvent) => {
   return [evt.image, ...fallbacks];
 };
 
+const formatHtmlLinks = (html: string): string => {
+  if (!html) return html;
+  
+  // 1. Process existing <a> tags: ensure proper href prefix, target="_blank", rel, and styles
+  let formatted = html.replace(/<a\b([^>]*)>(.*?)<\/a>/gi, (match, attrs, content) => {
+    const hrefMatch = attrs.match(/href=["']([^"']+)["']/i);
+    let href = hrefMatch ? hrefMatch[1] : '';
+    if (href && !/^https?:\/\//i.test(href) && !href.startsWith('mailto:') && !href.startsWith('tel:')) {
+      href = `https://${href}`;
+    }
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-adv-orange underline hover:text-orange-600 font-semibold transition-colors cursor-pointer">${content}</a>`;
+  });
+
+  // 2. Automatically linkify standalone URLs (like https://... or www....) that aren't inside an HTML tag attribute or existing <a>
+  const rawUrlRegex = /(^|[\s>(])((?:https?:\/\/|www\.)[^\s<"']+)/gi;
+  formatted = formatted.replace(rawUrlRegex, (match, prefix, url) => {
+    if (prefix.includes('href=') || prefix.includes('src=')) return match;
+    let fullUrl = url;
+    if (url.toLowerCase().startsWith('www.')) {
+      fullUrl = `https://${url}`;
+    }
+    return `${prefix}<a href="${fullUrl}" target="_blank" rel="noopener noreferrer" class="text-adv-orange underline hover:text-orange-600 font-semibold transition-colors cursor-pointer">${url}</a>`;
+  });
+
+  return formatted;
+};
+
+const handleDescriptionClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const target = e.target as HTMLElement;
+  const anchor = target.closest('a');
+  if (anchor) {
+    let href = anchor.getAttribute('href');
+    if (href) {
+      if (!/^https?:\/\//i.test(href) && !href.startsWith('mailto:') && !href.startsWith('tel:')) {
+        href = `https://${href}`;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      window.open(href, '_blank', 'noopener,noreferrer');
+    }
+  }
+};
+
 const renderFormattedDescription = (desc: string) => {
   if (!desc) return null;
 
@@ -424,15 +467,15 @@ const renderFormattedDescription = (desc: string) => {
       .filter(p => p.length > 0);
 
     return (
-      <div className="space-y-5">
+      <div className="space-y-5" onClick={handleDescriptionClick}>
         {paragraphs.map((para, index) => (
           <div key={index} className="space-y-5">
             {index > 0 && (
               <div className="border-t border-gray-150/70 my-5" />
             )}
             <div 
-              className="text-gray-800 leading-relaxed text-sm sm:text-[15px]"
-              dangerouslySetInnerHTML={{ __html: para }}
+              className="text-gray-800 leading-relaxed text-sm sm:text-[15px] rich-text-content"
+              dangerouslySetInnerHTML={{ __html: formatHtmlLinks(para) }}
             />
           </div>
         ))}
@@ -447,7 +490,7 @@ const renderFormattedDescription = (desc: string) => {
     .filter(p => p.length > 0);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" onClick={handleDescriptionClick}>
       {paragraphs.map((para, index) => {
         const formattedPara = para.replace(/<br\s*\/?>/gi, '<br />');
         return (
@@ -456,8 +499,8 @@ const renderFormattedDescription = (desc: string) => {
               <div className="border-t border-gray-150/70 my-5" />
             )}
             <div 
-              className="text-gray-800 leading-relaxed text-sm sm:text-[15px]"
-              dangerouslySetInnerHTML={{ __html: formattedPara }}
+              className="text-gray-800 leading-relaxed text-sm sm:text-[15px] rich-text-content"
+              dangerouslySetInnerHTML={{ __html: formatHtmlLinks(formattedPara) }}
             />
           </div>
         );

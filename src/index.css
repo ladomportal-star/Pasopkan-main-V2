@@ -172,3 +172,14 @@
     list-style-type: decimal;
     padding-left: 1.5rem;
   }
+
+  .rich-text a, .rich-text-content a {
+    color: #F97316;
+    text-decoration: underline;
+    font-weight: 600;
+    transition: color 0.15s ease-in-out;
+  }
+
+  .rich-text a:hover, .rich-text-content a:hover {
+    color: #EA580C;
+  }

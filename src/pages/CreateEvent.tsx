@@ -631,6 +631,258 @@ export default function CreateEvent() {
   const [wasEditing, setWasEditing] = useState(false);
   const [showEditBlockedModal, setShowEditBlockedModal] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+
+
+  // Helper to extract missing required fields across steps
+  const getMissingFieldsList = () => {
+    const list: {
+      id: string;
+      step: number;
+      stepTitleEn: string;
+      stepTitleLo: string;
+      fieldEn: string;
+      fieldLo: string;
+      elementId: string;
+    }[] = [];
+
+    // --- Step 1: Basic Event Details & Organizer ---
+    if (!eventName || !eventName.trim()) {
+      list.push({
+        id: 'event-name',
+        step: 1,
+        stepTitleEn: 'Event Info',
+        stepTitleLo: 'ຂໍ້ມູນກິດຈະກຳ',
+        fieldEn: 'Event Name',
+        fieldLo: 'ຊື່ກິດຈະກຳ',
+        elementId: 'field-event-name',
+      });
+    }
+
+    if (!horizontalImage && !verticalImage) {
+      list.push({
+        id: 'cover-image',
+        step: 1,
+        stepTitleEn: 'Event Info',
+        stepTitleLo: 'ຂໍ້ມູນກິດຈະກຳ',
+        fieldEn: 'Main Event Cover Photo',
+        fieldLo: 'ຮູບໜ້າປົກກິດຈະກຳ',
+        elementId: 'field-cover-image',
+      });
+    }
+
+    if (eventType === 'offline') {
+      if (!venueName || !venueName.trim() || venueName === 'Online Event / ງານອອນລາຍ') {
+        list.push({
+          id: 'venue-name',
+          step: 1,
+          stepTitleEn: 'Event Info',
+          stepTitleLo: 'ຂໍ້ມູນກິດຈະກຳ',
+          fieldEn: 'Venue Name',
+          fieldLo: 'ຊື່ສະຖານທີ່ຈັດງານ',
+          elementId: 'field-venue-name',
+        });
+      }
+      if (!province || !province.trim() || province === 'Online') {
+        list.push({
+          id: 'province',
+          step: 1,
+          stepTitleEn: 'Event Info',
+          stepTitleLo: 'ຂໍ້ມູນກິດຈະກຳ',
+          fieldEn: 'Province',
+          fieldLo: 'ແຂວງ',
+          elementId: 'field-province',
+        });
+      }
+      if (!district || !district.trim() || district === 'Online') {
+        list.push({
+          id: 'district',
+          step: 1,
+          stepTitleEn: 'Event Info',
+          stepTitleLo: 'ຂໍ້ມູນກິດຈະກຳ',
+          fieldEn: 'District',
+          fieldLo: 'ເມືອງ',
+          elementId: 'field-district',
+        });
+      }
+    } else {
+      if (!onlineMeetingUrl || !onlineMeetingUrl.trim()) {
+        list.push({
+          id: 'online-url',
+          step: 1,
+          stepTitleEn: 'Event Info',
+          stepTitleLo: 'ຂໍ້ມູນກິດຈະກຳ',
+          fieldEn: 'Online Meeting URL',
+          fieldLo: 'ລິ້ງປະຊຸມອອນລາຍ',
+          elementId: 'field-online-url',
+        });
+      }
+    }
+
+    if (!organizerName || !organizerName.trim()) {
+      list.push({
+        id: 'organizer-name',
+        step: 1,
+        stepTitleEn: 'Event Info',
+        stepTitleLo: 'ຂໍ້ມູນກິດຈະກຳ',
+        fieldEn: 'Organizer Name',
+        fieldLo: 'ຊື່ຜູ້ຈັດງານ',
+        elementId: 'field-organizer-name',
+      });
+    }
+
+    if (!organizerPhone || !organizerPhone.trim()) {
+      list.push({
+        id: 'organizer-phone',
+        step: 1,
+        stepTitleEn: 'Event Info',
+        stepTitleLo: 'ຂໍ້ມູນກິດຈະກຳ',
+        fieldEn: 'Organizer Phone Number',
+        fieldLo: 'ເບີໂທຜູ້ຈັດງານ',
+        elementId: 'field-organizer-phone',
+      });
+    }
+
+    if (!organizerEmail || !organizerEmail.trim()) {
+      list.push({
+        id: 'organizer-email',
+        step: 1,
+        stepTitleEn: 'Event Info',
+        stepTitleLo: 'ຂໍ້ມູນກິດຈະກຳ',
+        fieldEn: 'Organizer Email',
+        fieldLo: 'ອີເມວຜູ້ຈັດງານ',
+        elementId: 'field-organizer-email',
+      });
+    }
+
+    if (!organizerInfo || !organizerInfo.trim()) {
+      list.push({
+        id: 'organizer-bio',
+        step: 1,
+        stepTitleEn: 'Event Info',
+        stepTitleLo: 'ຂໍ້ມູນກິດຈະກຳ',
+        fieldEn: 'About Organizer (Bio)',
+        fieldLo: 'ຂໍ້ມູນກ່ຽວກັບຜູ້ຈັດງານ',
+        elementId: 'field-organizer-bio',
+      });
+    }
+
+    // --- Step 2: Time & Tickets ---
+    if (dateType === 'fixed') {
+      if (!startDate) {
+        list.push({
+          id: 'start-date',
+          step: 2,
+          stepTitleEn: 'Time & Tickets',
+          stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+          fieldEn: 'Event Start Date',
+          fieldLo: 'ວັນທີເລີ່ມຕົ້ນກິດຈະກຳ',
+          elementId: 'field-start-date',
+        });
+      }
+      if (!startTime) {
+        list.push({
+          id: 'start-time',
+          step: 2,
+          stepTitleEn: 'Time & Tickets',
+          stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+          fieldEn: 'Event Start Time',
+          fieldLo: 'ເວລາເລີ່ມຕົ້ນກິດຈະກຳ',
+          elementId: 'field-start-time',
+        });
+      }
+    }
+
+    if (!ticketTiers || ticketTiers.length === 0) {
+      list.push({
+        id: 'ticket-tier-empty',
+        step: 2,
+        stepTitleEn: 'Time & Tickets',
+        stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+        fieldEn: 'At least 1 Ticket Tier',
+        fieldLo: 'ຢ່າງໜ້ອຍ 1 ປະເພດບັດ',
+        elementId: 'field-ticket-tiers',
+      });
+    } else {
+      if (ticketTiers.some(t => !t.name || !t.name.trim())) {
+        list.push({
+          id: 'ticket-tier-name',
+          step: 2,
+          stepTitleEn: 'Time & Tickets',
+          stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+          fieldEn: 'Ticket Tier Name',
+          fieldLo: 'ຊື່ປະເພດບັດ',
+          elementId: 'field-ticket-tiers',
+        });
+      }
+      if (ticketTiers.some(t => t.quantity === '' || t.quantity === null || t.quantity === undefined)) {
+        list.push({
+          id: 'ticket-tier-qty',
+          step: 2,
+          stepTitleEn: 'Time & Tickets',
+          stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+          fieldEn: 'Ticket Tier Quantity',
+          fieldLo: 'ຈຳນວນບັດ',
+          elementId: 'field-ticket-tiers',
+        });
+      }
+    }
+
+    // --- Step 5: Payment Info ---
+    if (!bankName || !bankName.trim()) {
+      list.push({
+        id: 'bank-name',
+        step: 5,
+        stepTitleEn: 'Payment Info',
+        stepTitleLo: 'ຂໍ້ມູນການຮັບເງິນ',
+        fieldEn: 'Bank Name',
+        fieldLo: 'ຊື່ທະນາຄານ',
+        elementId: 'field-bank-name',
+      });
+    }
+
+    if (!accountHolder || !accountHolder.trim()) {
+      list.push({
+        id: 'account-holder',
+        step: 5,
+        stepTitleEn: 'Payment Info',
+        stepTitleLo: 'ຂໍ້ມູນການຮັບເງິນ',
+        fieldEn: 'Account Holder Name',
+        fieldLo: 'ຊື່ເຈົ້າຂອງບັນຊີ',
+        elementId: 'field-account-holder',
+      });
+    }
+
+    if (!accountNumber || !accountNumber.trim()) {
+      list.push({
+        id: 'account-number',
+        step: 5,
+        stepTitleEn: 'Payment Info',
+        stepTitleLo: 'ຂໍ້ມູນການຮັບເງິນ',
+        fieldEn: 'Bank Account Number',
+        fieldLo: 'ເລກບັນຊີທະນາຄານ',
+        elementId: 'field-account-number',
+      });
+    }
+
+    return list;
+  };
+
+  const jumpToMissingField = (stepNum: number, elementId?: string) => {
+    setActiveStep(stepNum);
+    setTimeout(() => {
+      if (elementId) {
+        const el = document.getElementById(elementId);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const input = el.querySelector('input, textarea, select') as HTMLElement;
+          if (input) input.focus();
+          return;
+        }
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 180);
+  };
   
   // Additional event detail settings
   const [eventPrivacy, setEventPrivacy] = useState<'public' | 'private'>('public');
@@ -726,6 +978,22 @@ export default function CreateEvent() {
       case 'attachment':
         handleEditorAttachmentUpload();
         break;
+      case 'link': {
+        const urlPrompt = window.prompt(lang === 'lo' ? 'ກະລຸນາປ້ອນທີ່ຢູ່ລິ້ງ (URL):' : 'Enter link URL:');
+        if (urlPrompt && urlPrompt.trim()) {
+          let formattedUrl = urlPrompt.trim();
+          if (!/^https?:\/\//i.test(formattedUrl) && !formattedUrl.startsWith('mailto:') && !formattedUrl.startsWith('tel:')) {
+            formattedUrl = `https://${formattedUrl}`;
+          }
+          const textPrompt = window.prompt(lang === 'lo' ? 'ຂໍ້ຄວາມສະແດງ (ຫຼື ປະໄວ້ຫວ່າງ):' : 'Display text (optional):') || formattedUrl;
+          const linkHtml = `<a href="${formattedUrl}" target="_blank" rel="noopener noreferrer" class="text-adv-orange underline hover:text-orange-600 font-semibold transition-colors">${textPrompt.trim()}</a>&nbsp;`;
+          execCommand('insertHTML', linkHtml);
+          if (editorRef.current) {
+            setEditorContent(editorRef.current.innerHTML);
+          }
+        }
+        break;
+      }
       default:
         break;
     }
@@ -878,9 +1146,19 @@ export default function CreateEvent() {
   };
 
   // Organizers cannot edit events after submission
+  const hasLoadedAdminEdit = useRef(false);
   useEffect(() => {
     const editId = searchParams.get('editId') || location.state?.editEventId;
-    if (editId && localEvents.length > 0) {
+    const adminEditId = searchParams.get('adminEdit');
+    
+    if (adminEditId && localEvents.length > 0 && !hasLoadedAdminEdit.current) {
+      const evt = localEvents.find(e => e.id === adminEditId);
+      if (evt) {
+        handleStartEdit(evt);
+        setActiveTab('createEvent');
+        hasLoadedAdminEdit.current = true;
+      }
+    } else if (editId && localEvents.length > 0) {
       setShowEditBlockedModal(true);
     }
   }, [searchParams, location.state, localEvents]);
@@ -953,6 +1231,72 @@ export default function CreateEvent() {
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [savedSelectionRange, setSavedSelectionRange] = useState<Range | null>(null);
+
+  const applyFloatingLink = () => {
+    if (linkUrl.trim() && savedSelectionRange) {
+      let formattedUrl = linkUrl.trim();
+      if (!/^https?:\/\//i.test(formattedUrl) && !formattedUrl.startsWith('mailto:') && !formattedUrl.startsWith('tel:')) {
+        formattedUrl = `https://${formattedUrl}`;
+      }
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(savedSelectionRange);
+      document.execCommand('createLink', false, formattedUrl);
+
+      if (editorRef.current) {
+        const anchors = editorRef.current.querySelectorAll('a');
+        anchors.forEach(a => {
+          a.setAttribute('target', '_blank');
+          a.setAttribute('rel', 'noopener noreferrer');
+        });
+        setEditorContent(editorRef.current.innerHTML);
+      }
+    }
+    setShowLinkInput(false);
+    setLinkUrl('');
+    setSavedSelectionRange(null);
+  };
+
+  const handleEditorPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    const pasteText = e.clipboardData?.getData('text/plain')?.trim();
+    if (!pasteText) return;
+
+    // Check if pasted text is a URL
+    const isUrl = /^https?:\/\/[^\s]+$/i.test(pasteText) || /^www\.[^\s]+\.[^\s]+$/i.test(pasteText);
+
+    if (isUrl) {
+      let formattedUrl = pasteText;
+      if (!/^https?:\/\//i.test(formattedUrl)) {
+        formattedUrl = `https://${formattedUrl}`;
+      }
+
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0 && !sel.isCollapsed && editorRef.current?.contains(sel.anchorNode)) {
+        // Convert selected text into link
+        e.preventDefault();
+        document.execCommand('createLink', false, formattedUrl);
+
+        if (editorRef.current) {
+          const anchors = editorRef.current.querySelectorAll('a');
+          anchors.forEach(a => {
+            a.setAttribute('target', '_blank');
+            a.setAttribute('rel', 'noopener noreferrer');
+          });
+          setEditorContent(editorRef.current.innerHTML);
+        }
+        return;
+      } else if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.anchorNode)) {
+        // Insert link directly
+        e.preventDefault();
+        const linkHtml = `<a href="${formattedUrl}" target="_blank" rel="noopener noreferrer" class="text-adv-orange underline hover:text-orange-600 font-semibold transition-colors">${pasteText}</a>&nbsp;`;
+        document.execCommand('insertHTML', false, linkHtml);
+        if (editorRef.current) {
+          setEditorContent(editorRef.current.innerHTML);
+        }
+        return;
+      }
+    }
+  };
   
   const showLinkInputRef = useRef(false);
   useEffect(() => {
@@ -1088,9 +1432,40 @@ export default function CreateEvent() {
     return () => document.removeEventListener('mousedown', handleGlobalClick);
   }, [selectedImage]);
 
+  const handlePreviewLinkClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const anchor = target.closest('a');
+    if (anchor) {
+      let href = anchor.getAttribute('href');
+      if (href) {
+        if (!/^https?:\/\//i.test(href) && !href.startsWith('mailto:') && !href.startsWith('tel:')) {
+          href = `https://${href}`;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        window.open(href, '_blank', 'noopener,noreferrer');
+      }
+    }
+  };
+
   const handleEditorClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if ((e.target as HTMLElement).tagName === 'IMG') {
-      setSelectedImage(e.target as HTMLImageElement);
+    const targetEl = e.target as HTMLElement;
+    const anchor = targetEl.closest('a');
+    if (anchor) {
+      let href = anchor.getAttribute('href');
+      if (href) {
+        if (!/^https?:\/\//i.test(href) && !href.startsWith('mailto:') && !href.startsWith('tel:')) {
+          href = `https://${href}`;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        window.open(href, '_blank', 'noopener,noreferrer');
+        return;
+      }
+    }
+
+    if (targetEl.tagName === 'IMG') {
+      setSelectedImage(targetEl as HTMLImageElement);
       setTimeout(updateImageRect, 10);
     } else {
       setSelectedImage(null);
@@ -1653,43 +2028,41 @@ export default function CreateEvent() {
   };
 
   const handleContinue = async () => {
-    // Event name validation for Step 1
-    if (activeStep === 1 || activeStep === 5) {
-      if (!eventName.trim()) {
-        setValidationError(lang === 'lo' ? 'ກະລຸນາປ້ອນຊື່ກິດຈະກຳ' : 'Please enter the event name.');
-        setActiveStep(1);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-      }
+    setAttemptedSubmit(true);
+    const allMissing = getMissingFieldsList();
 
-      if (!organizerName.trim() || !organizerPhone.trim() || !organizerEmail.trim() || !organizerInfo.trim()) {
+    // If on Step 1..4, validate current step fields first
+    if (activeStep < 5) {
+      const currentStepMissing = allMissing.filter(m => m.step === activeStep);
+      if (currentStepMissing.length > 0) {
+        const first = currentStepMissing[0];
         setValidationError(
           lang === 'lo'
-            ? 'ກະລຸນາປ້ອນຂໍ້ມູນຜູ້ຈັດງານໃຫ້ຄົບຖ້ວນທຸກຊ່ອງ (ຊື່ຜູ້ຈັດງານ, ເບີໂທ, ອີເມວ, ແລະ ກ່ຽວກັບຜູ້ຈັດງານ)'
-            : 'Please fill in all organizer information fields (Organizer Name, Phone, Email, and Bio).'
+            ? `ກະລຸນາປ້ອນຂໍ້ມູນໃຫ້ຄົບຖ້ວນໃນຂັ້ນຕອນນີ້ (${currentStepMissing.map(m => m.fieldLo).join(', ')})`
+            : `Please fill in all required fields in this step: ${currentStepMissing.map(m => m.fieldEn).join(', ')}`
         );
-        setActiveStep(1);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        jumpToMissingField(activeStep, first.elementId);
         return;
       }
       setValidationError(null);
+      setActiveStep(activeStep + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
     }
 
-    // Payment Info validation for Step 5
-    if (activeStep === 5) {
-      if (!bankName.trim() || !accountNumber.trim() || !accountHolder.trim()) {
-        setValidationError(
-          lang === 'lo'
-            ? 'ກະລຸນາປ້ອນຂໍ້ມູນບັນຊີທະນາຄານໃຫ້ຄົບຖ້ວນທຸກຊ່ອງ (ຊື່ທະນາຄານ, ເລກບັນຊີ, ແລະ ຊື່ເຈົ້າຂອງບັນຊີ)'
-            : 'Please fill in all payment/bank details (Bank Name, Account Number, and Account Holder).'
-        );
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-      }
-      setValidationError(null);
+    // On Step 5 (Publish): validate all steps 1..5
+    if (allMissing.length > 0) {
+      const first = allMissing[0];
+      setValidationError(
+        lang === 'lo'
+          ? `ຂໍ້ມູນກິດຈະກຳຍັງບໍ່ຄົບຖ້ວນ. ຂາດຂໍ້ມູນຈຳເປັນ ${allMissing.length} ຢ່າງ:`
+          : `Event information incomplete. ${allMissing.length} required field(s) missing:`
+      );
+      jumpToMissingField(first.step, first.elementId);
+      return;
     }
 
-    // 14-day validation for Event creation
+    setValidationError(null);
 
     let finalDescription = editorContent || '';
     if (activeStep === 1 && editorRef.current) {
@@ -1698,7 +2071,6 @@ export default function CreateEvent() {
     }
 
     setIsLoading(true);
-    // Simulate API call / form submission
     await new Promise(resolve => setTimeout(resolve, 1500));
     setIsLoading(false);
     if (activeStep < 5) {
@@ -1970,6 +2342,9 @@ export default function CreateEvent() {
                     >
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === 1 ? 'bg-adv-orange text-white' : 'bg-gray-100 text-gray-500'}`}>1</div>
                       <span className={`text-sm font-bold ${activeStep === 1 ? 'text-adv-slate' : 'text-gray-400'}`}>{t.step1}</span>
+                      {attemptedSubmit && getMissingFieldsList().some(m => m.step === 1) && (
+                        <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0" title="Missing fields" />
+                      )}
                     </button>
                     <button 
                       onClick={() => setActiveStep(2)}
@@ -1977,6 +2352,9 @@ export default function CreateEvent() {
                     >
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === 2 ? 'bg-adv-orange text-white' : 'bg-gray-100 text-gray-500'}`}>2</div>
                       <span className={`text-sm font-bold ${activeStep === 2 ? 'text-adv-slate' : 'text-gray-400'}`}>{t.step2}</span>
+                      {attemptedSubmit && getMissingFieldsList().some(m => m.step === 2) && (
+                        <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0" title="Missing fields" />
+                      )}
                     </button>
                     <button 
                       onClick={() => setActiveStep(3)}
@@ -1998,6 +2376,9 @@ export default function CreateEvent() {
                     >
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === 5 ? 'bg-adv-orange text-white' : 'bg-gray-100 text-gray-500'}`}>5</div>
                       <span className={`text-sm font-bold ${activeStep === 5 ? 'text-adv-slate' : 'text-gray-400'}`}>{t.step4}</span>
+                      {attemptedSubmit && getMissingFieldsList().some(m => m.step === 5) && (
+                        <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0" title="Missing fields" />
+                      )}
                     </button>
                   </div>
 
@@ -2116,12 +2497,64 @@ export default function CreateEvent() {
                   </div>
                 </div>
 
+            
             {/* Form Container */}
             <div className="space-y-6">
+              {/* Missing Fields Banner */}
+              {attemptedSubmit && getMissingFieldsList().length > 0 && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.98, y: -10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  className="p-5 bg-gradient-to-r from-rose-50 via-amber-50/70 to-rose-50 border-2 border-rose-300/80 rounded-3xl shadow-md mb-6 space-y-3.5"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-md animate-pulse">
+                        <ShieldAlert className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-base font-extrabold text-rose-950 flex items-center gap-2">
+                          <span>{lang === 'lo' ? 'ຂໍ້ມູນຈຳເປັນຍັງບໍ່ຄົບຖ້ວນ' : 'Incomplete Required Information'}</span>
+                          <span className="bg-rose-500 text-white text-xs font-black px-2.5 py-0.5 rounded-full">
+                            {getMissingFieldsList().length} {lang === 'lo' ? 'ຢ່າງ' : 'Missing'}
+                          </span>
+                        </h4>
+                        <p className="text-xs font-medium text-rose-800/90 mt-0.5">
+                          {lang === 'lo'
+                            ? 'ກະລຸນາປ້ອນຂໍ້ມູນໃນຊ່ອງດັ່ງລຸ່ມນີ້ໃຫ້ຄົບຖ້ວນ. ຄລິກທີ່ລາຍການເພື່ອໄປທີ່ຊ່ອງນັ້ນໂດຍກົງ:'
+                            : 'Please fill in the required fields below before publishing. Click any item to jump directly to it:'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-rose-200/80">
+                    {getMissingFieldsList().map((item) => {
+                      const isActiveStep = activeStep === item.step;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => jumpToMissingField(item.step, item.elementId)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all border shadow-2xs cursor-pointer ${
+                            isActiveStep 
+                              ? 'bg-rose-600 text-white border-rose-600 ring-2 ring-rose-300' 
+                              : 'bg-white text-rose-800 border-rose-200 hover:bg-rose-100 hover:border-rose-300'
+                          }`}
+                        >
+                          <span className="opacity-80 font-bold">[{lang === 'lo' ? `ຂັ້ນຕອນ ${item.step}` : `Step ${item.step}`}]</span>
+                          <span>{lang === 'lo' ? item.fieldLo : item.fieldEn}</span>
+                          <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
               {activeStep === 1 && (
                 <>
                   {/* Event Name */}
-                  <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                  <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100" id="field-event-name">
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-adv-orange font-bold">*</span>
                       <span className="text-adv-slate font-bold text-sm">{t.eventName}</span>
@@ -2133,7 +2566,7 @@ export default function CreateEvent() {
                         onChange={(e) => setEventName(e.target.value)}
                         maxLength={100}
                         placeholder={lang === 'lo' ? 'ປ້ອນຊື່ກິດຈະກຳ...' : 'Enter event name...'}
-                        className="w-full bg-white text-adv-slate border border-gray-200 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all placeholder:text-gray-300 font-bold shadow-inner"
+                        className={`w-full bg-white text-adv-slate border border-gray-200 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all placeholder:text-gray-300 font-bold shadow-inner ${attemptedSubmit && !eventName.trim() ? 'border-rose-400 bg-rose-50/20 ring-2 ring-rose-200' : ''}`}
                       />
                     </div>
                   </div>
@@ -2166,7 +2599,13 @@ export default function CreateEvent() {
                     </div>
 
                     {/* 1. COVER EVENT IMAGE BOX */}
-                    <div className="space-y-3">
+  {attemptedSubmit && (!horizontalImage && !verticalImage) && (
+    <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-xs font-bold text-rose-700">
+      <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+      <span>{lang === 'lo' ? 'ກະລຸນາອັບໂຫຼດຮູບໜ້າປົກກິດຈະກຳ' : 'Main event cover photo is required'}</span>
+    </div>
+  )}
+                    <div className="space-y-3" id="field-cover-image">
                       <div className="flex items-center justify-between">
                         <label className="text-xs font-extrabold text-adv-slate uppercase tracking-wider flex items-center gap-2">
                           <Sparkles className="w-4 h-4 text-adv-orange" />
@@ -2465,7 +2904,7 @@ export default function CreateEvent() {
 
                 {eventType === 'offline' ? (
                   <>
-                    <div>
+                    <div id="field-venue-name">
                       <div className="flex items-center gap-2 mb-3">
                         <span className="text-adv-orange font-bold">*</span>
                         <span className="text-adv-slate font-bold text-sm">{t.venueName}</span>
@@ -2477,13 +2916,19 @@ export default function CreateEvent() {
                           onChange={(e) => setVenueName(e.target.value)}
                           maxLength={80}
                           placeholder={t.venueName}
-                          className="w-full bg-white text-adv-slate border border-gray-200 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all placeholder:text-gray-300"
+                          className={`w-full bg-white text-adv-slate border rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all placeholder:text-gray-300 ${attemptedSubmit && eventType === 'offline' && (!venueName || !venueName.trim() || venueName === 'Online Event / ງານອອນລາຍ') ? 'border-rose-400 bg-rose-50/20 ring-2 ring-rose-200' : 'border-gray-200'}`}
                         />
+                        {attemptedSubmit && eventType === 'offline' && (!venueName || !venueName.trim() || venueName === 'Online Event / ງານອອນລາຍ') && (
+                          <p className="text-xs text-rose-600 font-bold mt-1.5 flex items-center gap-1.5">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{lang === 'lo' ? 'ກະລຸນາປ້ອນຊື່ສະຖານທີ່' : 'Venue name is required'}</span>
+                          </p>
+                        )}
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                      <div>
+                      <div id="field-province">
                         <div className="flex items-center gap-2 mb-3">
                           <span className="text-adv-orange font-bold">*</span>
                           <span className="text-adv-slate font-bold text-sm">{t.province}</span>
@@ -2507,7 +2952,7 @@ export default function CreateEvent() {
                           <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                         </div>
                       </div>
-                      <div>
+                      <div id="field-district">
                         <div className="flex items-center gap-2 mb-3">
                           <span className="text-adv-slate font-bold text-sm">{t.district}</span>
                         </div>
@@ -2616,7 +3061,7 @@ export default function CreateEvent() {
                         <div className="bg-white p-6 rounded-2xl border border-gray-200/80 space-y-5 shadow-sm">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             {/* Meeting / Stream Link */}
-                            <div className="md:col-span-2">
+                            <div className="md:col-span-2" id="field-online-url">
                               <label className="block text-xs font-extrabold text-adv-slate uppercase tracking-wider mb-2">
                                 {lang === 'lo' ? 'ລິ້ງເຂົ້າຮ່ວມງານອອນລາຍ (Stream / Meeting URL)' : 'Stream / Meeting URL'}
                                 <span className="text-adv-orange ml-1">*</span>
@@ -2703,7 +3148,7 @@ export default function CreateEvent() {
                   <span className="text-adv-slate font-bold text-sm">{t.eventInfo}</span>
                 </div>
                 
-                <div className="border border-gray-200 rounded-xl bg-white shadow-sm relative focus-within:ring-2 focus-within:ring-adv-orange/20 focus-within:border-adv-orange transition-all">
+                <div className="border border-gray-200 rounded-xl bg-white shadow-sm relative focus-within:ring-2 focus-within:ring-adv-orange/20 focus-within:border-adv-orange transition-all overflow-hidden">
                   <div className="p-4 relative">
                     {/* Floating Inline Luma-style + Button on Empty Paragraphs */}
                     {plusButtonPos && (
@@ -2756,6 +3201,7 @@ export default function CreateEvent() {
 
                         <div className="space-y-0.5 max-h-[300px] overflow-y-auto custom-scrollbar">
                           {[
+                            { id: 'link', label: lang === 'lo' ? 'ເພີ່ມລິ້ງ (Hyperlink)' : 'Insert Link', icon: LinkIcon },
                             { id: 'h1', label: 'Heading', icon: Heading1 },
                             { id: 'h2', label: 'Subheading', icon: Heading2 },
                             { id: 'attachment', label: 'Image', icon: ImageIcon },
@@ -2809,15 +3255,7 @@ export default function CreateEvent() {
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
-                                  if (linkUrl && savedSelectionRange) {
-                                    const sel = window.getSelection();
-                                    sel?.removeAllRanges();
-                                    sel?.addRange(savedSelectionRange);
-                                    execCommand('createLink', linkUrl);
-                                  }
-                                  setShowLinkInput(false);
-                                  setLinkUrl('');
-                                  setSavedSelectionRange(null);
+                                  applyFloatingLink();
                                 } else if (e.key === 'Escape') {
                                   e.preventDefault();
                                   setShowLinkInput(false);
@@ -2831,17 +3269,7 @@ export default function CreateEvent() {
                             />
                             <button
                               type="button"
-                              onClick={() => {
-                                if (linkUrl && savedSelectionRange) {
-                                  const sel = window.getSelection();
-                                  sel?.removeAllRanges();
-                                  sel?.addRange(savedSelectionRange);
-                                  execCommand('createLink', linkUrl);
-                                }
-                                setShowLinkInput(false);
-                                setLinkUrl('');
-                                setSavedSelectionRange(null);
-                              }}
+                              onClick={applyFloatingLink}
                               className="w-7 h-7 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors shrink-0"
                             >
                               <Check className="w-4 h-4" />
@@ -2932,6 +3360,7 @@ export default function CreateEvent() {
                       onClick={handleEditorClick}
                       onInput={handleEditorInput}
                       onKeyUp={handleEditorInput}
+                      onPaste={handleEditorPaste}
                       onScroll={() => setTimeout(updateImageRect, 10)}
                       onDrop={handleEditorDrop}
                       onDragOver={(e) => {
@@ -3085,7 +3514,7 @@ export default function CreateEvent() {
                   {/* Right Column: Organizer Form Fields */}
                   <div className="lg:col-span-9 space-y-4">
                     {/* Organizer Name */}
-                    <div>
+                    <div id="field-organizer-name">
                       <label className="flex items-center gap-1 mb-1.5 text-xs font-bold text-adv-slate">
                         {t.organizerName} <span className="text-adv-orange">*</span>
                       </label>
@@ -3104,7 +3533,7 @@ export default function CreateEvent() {
 
                     {/* Phone & Email Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                      <div>
+                      <div id="field-organizer-phone">
                         <label className="flex items-center gap-1 mb-1.5 text-xs font-bold text-adv-slate">
                           {lang === 'en' ? 'Organizer Phone' : 'ເບີໂທຜູ້ຈັດງານ'} <span className="text-adv-orange">*</span>
                         </label>
@@ -3120,7 +3549,7 @@ export default function CreateEvent() {
                         />
                       </div>
 
-                      <div>
+                      <div id="field-organizer-email">
                         <label className="flex items-center gap-1 mb-1.5 text-xs font-bold text-adv-slate">
                           {lang === 'en' ? 'Organizer Email' : 'ອີເມວຜູ້ຈັດງານ'} <span className="text-adv-orange">*</span>
                         </label>
@@ -3138,7 +3567,7 @@ export default function CreateEvent() {
                     </div>
 
                     {/* About Organizer / Bio */}
-                    <div>
+                    <div id="field-organizer-bio">
                       <label className="flex items-center gap-1 mb-1.5 text-xs font-bold text-adv-slate">
                         {lang === 'en' ? 'About Organizer / Bio' : 'ກ່ຽວກັບຜູ້ຈັດງານ'} <span className="text-adv-orange">*</span>
                       </label>
@@ -4008,7 +4437,7 @@ export default function CreateEvent() {
                   )}
                   
                   <div className="space-y-6 max-w-2xl">
-                    <div>
+                    <div id="field-bank-name">
                       <label className="block text-sm font-bold text-gray-600 mb-2">{t.bankName}</label>
                       <input 
                         type="text" 
@@ -4018,7 +4447,7 @@ export default function CreateEvent() {
                         className="w-full bg-white border border-gray-200 text-adv-slate rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all shadow-inner"
                       />
                     </div>
-                    <div>
+                    <div id="field-account-holder">
                       <label className="block text-sm font-bold text-gray-600 mb-2">{t.accountHolderName}</label>
                       <input 
                         type="text" 
@@ -4028,7 +4457,7 @@ export default function CreateEvent() {
                         className="w-full bg-white border border-gray-200 text-adv-slate rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all shadow-inner"
                       />
                     </div>
-                    <div>
+                    <div id="field-account-number">
                       <label className="block text-sm font-bold text-gray-600 mb-2">{t.accountNumber}</label>
                       <input 
                         type="text" 
@@ -4037,6 +4466,12 @@ export default function CreateEvent() {
                         placeholder={t.accountNumberPlaceholder}
                         className="w-full bg-white border border-gray-200 text-adv-slate rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all shadow-inner"
                       />
+                      {attemptedSubmit && !eventName.trim() && (
+                        <p id="field-event-name-error" className="text-xs text-rose-600 font-bold mt-2 flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{lang === 'lo' ? 'ກະລຸນາປ້ອນຊື່ກິດຈະກຳ' : 'Event name is required'}</span>
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -4100,7 +4535,7 @@ export default function CreateEvent() {
                     {wasEditing ? t.updateEventSuccessDesc : t.successDesc}
                   </p>
                   <button
-                    onClick={() => { setShowSuccessModal(false); navigate('/account', { state: { targetTab: 'my-event' } }); }}
+                    onClick={() => { setShowSuccessModal(false); if (searchParams.get('adminEdit')) { navigate('/admin'); } else { navigate('/account', { state: { targetTab: 'my-event' } }); } }}
                     className="w-full py-4 rounded-2xl bg-adv-orange hover:bg-orange-600 text-white font-bold transition-all shadow-xl shadow-orange-100 text-lg"
                   >
                     {t.goToDashboard}
@@ -4916,6 +5351,7 @@ export default function CreateEvent() {
                      <div className="bg-gray-50 p-8 rounded-[32px] border border-gray-100 shadow-inner">
                        <div 
                          className="text-gray-600 leading-relaxed text-lg font-medium rich-text-content"
+                         onClick={handlePreviewLinkClick}
                          dangerouslySetInnerHTML={{ __html: selectedEvent.description || 'No description provided.' }}
                        />
                      </div>
@@ -5063,7 +5499,8 @@ export default function CreateEvent() {
                         {lang === 'lo' ? 'ລາຍລະອຽດ event' : 'Event Description'}
                       </h3>
                       <div 
-                        className="prose max-w-none text-gray-600 text-sm leading-relaxed"
+                        className="prose max-w-none text-gray-600 text-sm leading-relaxed rich-text-content"
+                        onClick={handlePreviewLinkClick}
                         dangerouslySetInnerHTML={{ __html: previewData.description || '<p>No description provided yet.</p>' }}
                       />
                     </div>

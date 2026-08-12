@@ -2449,15 +2449,6 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex items-center gap-3">
                   <button 
-                    onClick={() => {
-                      setEditingEvent(selectedEvent);
-                      setSelectedEvent(null);
-                    }}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-orange-50 text-adv-orange hover:bg-adv-orange hover:text-white transition-all text-[10px] font-black uppercase tracking-widest border border-orange-100"
-                  >
-                    <Edit className="w-4 h-4" /> {t.edit}
-                  </button>
-                  <button 
                     onClick={() => setSelectedEvent(null)}
                     className="p-3 rounded-2xl bg-gray-50 hover:bg-gray-100 text-gray-400 hover:text-adv-slate transition-all"
                   >
@@ -2542,7 +2533,22 @@ export default function AdminDashboard() {
                         {lang === 'lo' ? 'ລາຍລະອຽດ event' : 'Event Description'}
                       </h3>
                       <div 
-                        className="prose max-w-none text-gray-600 text-sm leading-relaxed"
+                        className="prose max-w-none text-gray-600 text-sm leading-relaxed rich-text-content"
+                        onClick={(e) => {
+                          const target = e.target as HTMLElement;
+                          const anchor = target.closest('a');
+                          if (anchor) {
+                            let href = anchor.getAttribute('href');
+                            if (href) {
+                              if (!/^https?:\/\//i.test(href) && !href.startsWith('mailto:') && !href.startsWith('tel:')) {
+                                href = `https://${href}`;
+                              }
+                              e.preventDefault();
+                              e.stopPropagation();
+                              window.open(href, '_blank', 'noopener,noreferrer');
+                            }
+                          }
+                        }}
                         dangerouslySetInnerHTML={{ __html: selectedEvent.description || '<p>No description provided.</p>' }}
                       />
                     </div>
@@ -2810,6 +2816,12 @@ export default function AdminDashboard() {
                             >
                               <CheckCircle2 className="w-4 h-4" /> {t.approveEvent}
                             </button>
+                            <Link 
+                              to={`/create?adminEdit=${selectedEvent.id}`}
+                              className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-white border border-gray-200 text-adv-slate hover:bg-gray-50 transition-all text-[10px] font-black uppercase tracking-widest shadow-sm"
+                            >
+                              <Edit className="w-4 h-4" /> {lang === 'lo' ? 'ແກ້ໄຂກິດຈະກຳ' : 'Edit Event'}
+                            </Link>
                             <button 
                               onClick={() => setShowRejectionModal(true)}
                               className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-white border border-red-100 text-red-500 hover:bg-red-50 transition-all text-[10px] font-black uppercase tracking-widest"
@@ -2824,6 +2836,12 @@ export default function AdminDashboard() {
                               className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-white border border-gray-200 text-adv-slate hover:bg-gray-50 transition-all text-[10px] font-black uppercase tracking-widest shadow-sm"
                             >
                               <ExternalLink className="w-4 h-4" /> {t.viewPage}
+                            </Link>
+                            <Link 
+                              to={`/create?adminEdit=${selectedEvent.id}`}
+                              className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-white border border-gray-200 text-adv-slate hover:bg-gray-50 transition-all text-[10px] font-black uppercase tracking-widest shadow-sm"
+                            >
+                              <Edit className="w-4 h-4" /> {lang === 'lo' ? 'ແກ້ໄຂກິດຈະກຳ' : 'Edit Event'}
                             </Link>
                             <button 
                               onClick={() => handleDeleteEvent(selectedEvent.id)}
