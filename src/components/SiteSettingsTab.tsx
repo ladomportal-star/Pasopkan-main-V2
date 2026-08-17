@@ -14,12 +14,19 @@ import {
   CheckCircle2,
   HelpCircle,
   FileText,
+  FileCheck,
   Shield,
   ArrowUp,
   ArrowDown,
   Globe,
   Share2,
-  AlertCircle
+  AlertCircle,
+  BookOpen,
+  Search,
+  X,
+  Sparkles,
+  Check,
+  Grid
 } from 'lucide-react';
 import {
   getContactSettings,
@@ -30,14 +37,24 @@ import {
   saveTermsSettings,
   getPrivacySettings,
   savePrivacySettings,
+  getOrganizerTermsSettings,
+  saveOrganizerTermsSettings,
   ContactSettings,
   SupportSettings,
   TermsSettings,
   PrivacySettings,
+  OrganizerTermsSettings,
+  OrganizerTermItem,
   FAQItem,
   TermSection,
   PrivacySection
 } from '../lib/siteSettings';
+import {
+  TERM_ICON_LIST,
+  TERM_ICON_CATEGORIES,
+  renderTermIcon,
+  TermIconOption
+} from '../lib/termIcons';
 
 interface SiteSettingsTabProps {
   lang: 'en' | 'lo';
@@ -45,7 +62,7 @@ interface SiteSettingsTabProps {
   addActivityLog: (action: string, details: string) => void;
 }
 
-type SubTab = 'contact' | 'support' | 'terms' | 'privacy';
+type SubTab = 'contact' | 'support' | 'terms' | 'organizer_terms' | 'privacy';
 
 export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSettingsTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('contact');
@@ -59,22 +76,30 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
   const [supportForm, setSupportForm] = useState<SupportSettings | null>(null);
   const [termsForm, setTermsForm] = useState<TermsSettings | null>(null);
   const [privacyForm, setPrivacyForm] = useState<PrivacySettings | null>(null);
+  const [organizerTermsForm, setOrganizerTermsForm] = useState<OrganizerTermsSettings | null>(null);
+
+  // Icon Picker State for Organizer Terms
+  const [pickingIconIndex, setPickingIconIndex] = useState<number | null>(null);
+  const [iconSearchQuery, setIconSearchQuery] = useState<string>('');
+  const [selectedIconCategory, setSelectedIconCategory] = useState<string>('all');
 
   // Load all settings on mount
   useEffect(() => {
     async function loadAllSettings() {
       try {
         setIsLoading(true);
-        const [contact, support, terms, privacy] = await Promise.all([
+        const [contact, support, terms, privacy, organizerTerms] = await Promise.all([
           getContactSettings(),
           getSupportSettings(),
           getTermsSettings(),
-          getPrivacySettings()
+          getPrivacySettings(),
+          getOrganizerTermsSettings()
         ]);
         setContactForm(contact);
         setSupportForm(support);
         setTermsForm(terms);
         setPrivacyForm(privacy);
+        setOrganizerTermsForm(organizerTerms);
       } catch (error) {
         console.error('Error loading site settings:', error);
         setErrorMessage(lang === 'en' ? 'Failed to load site settings. Please try again.' : 'ບໍ່ສາມາດໂຫຼດຂໍ້ມູນການຕັ້ງຄ່າເວັບໄຊໄດ້. ກະລຸນາລອງໃໝ່.');
@@ -135,6 +160,22 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
       await saveTermsSettings(termsForm);
       addActivityLog('Site settings updated', 'Updated "Terms & Conditions" content');
       triggerSuccess(lang === 'en' ? 'Terms & Conditions saved successfully!' : 'ບັນທຶກເງື່ອນໄຂ ແລະ ຂໍ້ກຳນົດສຳເລັດແລ້ວ!');
+    } catch (err) {
+      setErrorMessage(lang === 'en' ? 'Failed to save settings.' : 'ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກ.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveOrganizerTerms = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!organizerTermsForm) return;
+    try {
+      setIsSaving(true);
+      setErrorMessage(null);
+      await saveOrganizerTermsSettings(organizerTermsForm);
+      addActivityLog('Site settings updated', 'Updated "Organizer Terms & Conditions" content');
+      triggerSuccess(lang === 'en' ? 'Organizer Terms & Conditions saved successfully!' : 'ບັນທຶກເງື່ອນໄຂ ແລະ ຂໍ້ກຳນົດສຳລັບຜູ້ຈັດງານສຳເລັດແລ້ວ!');
     } catch (err) {
       setErrorMessage(lang === 'en' ? 'Failed to save settings.' : 'ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກ.');
     } finally {
@@ -304,6 +345,72 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
     });
   };
 
+  // Organizer Terms CRUD Helpers
+  const addOrganizerTermSection = () => {
+    if (!organizerTermsForm) return;
+    const newTerm: OrganizerTermItem = {
+      id: `term-${Date.now()}`,
+      title_en: '',
+      title_lo: '',
+      content_en: '',
+      content_lo: '',
+      icon: 'file-check'
+    };
+    setOrganizerTermsForm({
+      ...organizerTermsForm,
+      sections: [...organizerTermsForm.sections, newTerm]
+    });
+  };
+
+  const removeOrganizerTermSection = (index: number) => {
+    if (!organizerTermsForm) return;
+    const newSections = [...organizerTermsForm.sections];
+    newSections.splice(index, 1);
+    setOrganizerTermsForm({
+      ...organizerTermsForm,
+      sections: newSections
+    });
+  };
+
+  const moveOrganizerTermSection = (index: number, direction: 'up' | 'down') => {
+    if (!organizerTermsForm) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= organizerTermsForm.sections.length) return;
+
+    const newSections = [...organizerTermsForm.sections];
+    const temp = newSections[index];
+    newSections[index] = newSections[targetIndex];
+    newSections[targetIndex] = temp;
+
+    setOrganizerTermsForm({
+      ...organizerTermsForm,
+      sections: newSections
+    });
+  };
+
+  const updateOrganizerTermSection = (index: number, key: keyof OrganizerTermItem, value: string) => {
+    if (!organizerTermsForm) return;
+    const newSections = [...organizerTermsForm.sections];
+    newSections[index] = {
+      ...newSections[index],
+      [key]: value
+    };
+    setOrganizerTermsForm({
+      ...organizerTermsForm,
+      sections: newSections
+    });
+  };
+
+  const filteredIcons = TERM_ICON_LIST.filter((icon) => {
+    const matchesCategory = selectedIconCategory === 'all' || icon.category === selectedIconCategory;
+    const query = iconSearchQuery.toLowerCase().trim();
+    const matchesSearch = !query ||
+      icon.value.toLowerCase().includes(query) ||
+      icon.labelEn.toLowerCase().includes(query) ||
+      icon.labelLo.toLowerCase().includes(query);
+    return matchesCategory && matchesSearch;
+  });
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-4">
@@ -381,7 +488,20 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
           }`}
         >
           <FileText className="w-4 h-4" />
-          {lang === 'en' ? 'Terms & Conditions' : 'ເງື່ອນໄຂ & ຂໍ້ກຳນົດ'}
+          {lang === 'en' ? 'General Terms' : 'ເງື່ອນໄຂທົ່ວໄປ'}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setActiveSubTab('organizer_terms'); setErrorMessage(null); }}
+          className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all border ${
+            activeSubTab === 'organizer_terms'
+              ? 'bg-adv-orange border-adv-orange text-white shadow-md shadow-orange-100'
+              : 'bg-white border-gray-100 text-gray-500 hover:bg-gray-50'
+          }`}
+        >
+          <BookOpen className="w-4 h-4" />
+          {lang === 'en' ? 'Organizer Terms' : 'ເງື່ອນໄຂຜູ້ຈັດງານ'}
         </button>
 
         <button
@@ -996,6 +1116,276 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
           </form>
         )}
 
+        {/* ORGANIZER TERMS & CONDITIONS FORM */}
+        {activeSubTab === 'organizer_terms' && organizerTermsForm && (
+          <form onSubmit={handleSaveOrganizerTerms} className="space-y-6">
+            {/* Page Header and Intro */}
+            <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 space-y-6">
+              <h3 className="text-sm font-black text-adv-slate uppercase tracking-wider flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-adv-orange" />
+                {lang === 'en' ? 'Organizer Terms Header & Intro' : 'ຫົວຂໍ້ ແລະ ບົດນຳເງື່ອນໄຂຜູ້ຈັດງານ'}
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-1">
+                    Page Title (EN)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={organizerTermsForm.title_en}
+                    onChange={(e) => setOrganizerTermsForm({ ...organizerTermsForm, title_en: e.target.value })}
+                    className="w-full bg-white border border-gray-100 rounded-2xl px-5 py-4 text-adv-slate font-bold shadow-sm focus:outline-none focus:border-adv-orange/30 transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-1">
+                    Page Title (LO)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={organizerTermsForm.title_lo}
+                    onChange={(e) => setOrganizerTermsForm({ ...organizerTermsForm, title_lo: e.target.value })}
+                    className="w-full bg-white border border-gray-100 rounded-2xl px-5 py-4 text-adv-slate font-bold shadow-sm focus:outline-none focus:border-adv-orange/30 transition-all"
+                  />
+                </div>
+
+                <div className="col-span-1 md:col-span-2">
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-1">
+                    Introduction Statement (EN)
+                  </label>
+                  <textarea
+                    required
+                    value={organizerTermsForm.intro_en}
+                    onChange={(e) => setOrganizerTermsForm({ ...organizerTermsForm, intro_en: e.target.value })}
+                    className="w-full bg-white border border-gray-100 rounded-2xl px-5 py-4 text-adv-slate font-medium shadow-sm focus:outline-none focus:border-adv-orange/30 transition-all min-h-[90px]"
+                  />
+                </div>
+
+                <div className="col-span-1 md:col-span-2">
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-1">
+                    Introduction Statement (LO)
+                  </label>
+                  <textarea
+                    required
+                    value={organizerTermsForm.intro_lo}
+                    onChange={(e) => setOrganizerTermsForm({ ...organizerTermsForm, intro_lo: e.target.value })}
+                    className="w-full bg-white border border-gray-100 rounded-2xl px-5 py-4 text-adv-slate font-medium shadow-sm focus:outline-none focus:border-adv-orange/30 transition-all min-h-[90px]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Organizer Terms Cards List */}
+            <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-black text-adv-slate uppercase tracking-wider flex items-center gap-2">
+                    <FileCheck className="w-4 h-4 text-adv-orange" />
+                    {lang === 'en' ? 'Organizer Terms Cards & Requirements' : 'ລາຍການຂໍ້ກຳນົດ ແລະ ເງື່ອນໄຂສຳລັບຜູ້ຈັດງານ'}
+                  </h3>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                    {lang === 'en' ? 'Manage term requirements, descriptions and assigned icons.' : 'ຈັດການເງື່ອນໄຂ, ເນື້ອຫາ ແລະ ໄອຄອນສະແດງຜົນ.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={addOrganizerTermSection}
+                  className="flex items-center gap-1.5 px-4 py-2 border rounded-full text-[10px] font-black uppercase tracking-wider text-adv-orange border-orange-100 bg-orange-50/40 hover:bg-orange-50 transition-all shadow-sm"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  {lang === 'en' ? 'Add Requirement Card' : 'ເພີ່ມຂໍ້ກຳນົດ'}
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {organizerTermsForm.sections.map((sect, index) => (
+                  <div key={sect.id || index} className="p-6 bg-white border border-gray-100 rounded-2xl relative shadow-sm group hover:border-orange-200 transition-all">
+                    {/* Ordering and Delete buttons */}
+                    <div className="absolute top-4 right-4 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={index === 0}
+                        onClick={() => moveOrganizerTermSection(index, 'up')}
+                        className="p-1.5 bg-gray-50 text-gray-400 rounded-lg hover:bg-gray-100 hover:text-adv-slate disabled:opacity-30 transition-all"
+                        title={lang === 'en' ? 'Move Up' : 'ຍ້າຍຂຶ້ນ'}
+                      >
+                        <ArrowUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={index === organizerTermsForm.sections.length - 1}
+                        onClick={() => moveOrganizerTermSection(index, 'down')}
+                        className="p-1.5 bg-gray-50 text-gray-400 rounded-lg hover:bg-gray-100 hover:text-adv-slate disabled:opacity-30 transition-all"
+                        title={lang === 'en' ? 'Move Down' : 'ຍ້າຍລົງ'}
+                      >
+                        <ArrowDown className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeOrganizerTermSection(index)}
+                        className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-all ml-1"
+                        title={lang === 'en' ? 'Remove Card' : 'ລຶບກາດນີ້'}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-adv-orange shadow-sm">
+                          {renderTermIcon(sect.icon, "w-5 h-5")}
+                        </div>
+                        <div>
+                          <div className="text-[11px] font-bold text-gray-400">
+                            {lang === 'en' ? `Requirement #${index + 1}` : `ຂໍ້ກຳນົດທີ #${index + 1}`}
+                          </div>
+                          <div className="text-xs font-black text-adv-slate">
+                            {sect.title_en || (lang === 'en' ? 'Untitled Requirement' : 'ຂໍ້ກຳນົດທີ່ບໍ່ມີຊື່')}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPickingIconIndex(index);
+                          setIconSearchQuery('');
+                          setSelectedIconCategory('all');
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-orange-200 bg-orange-50 text-adv-orange text-xs font-black hover:bg-adv-orange hover:text-white transition-all shadow-sm"
+                      >
+                        <Grid className="w-3.5 h-3.5" />
+                        {lang === 'en' ? 'Change Icon (58 available)' : 'ປ່ຽນໄອຄອນ (ມີ 58 ໄອຄອນ)'}
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                      {/* Quick Icon Selector Pills */}
+                      <div className="col-span-1 md:col-span-2">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest pl-1">
+                            {lang === 'en' ? 'Quick Choose Icon' : 'ເລືອກໄອຄອນດ່ວນ'}
+                          </label>
+                          <span className="text-[9px] font-bold text-gray-400">
+                            {lang === 'en' ? 'Current: ' : 'ປະຈຸບັນ: '}
+                            <span className="text-adv-orange font-black uppercase">{sect.icon || 'file-check'}</span>
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1.5">
+                          {TERM_ICON_LIST.slice(0, 14).map((item) => (
+                            <button
+                              key={item.value}
+                              type="button"
+                              onClick={() => updateOrganizerTermSection(index, 'icon', item.value)}
+                              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all border ${
+                                (sect.icon || 'file-check') === item.value
+                                  ? 'bg-adv-orange text-white border-adv-orange shadow-sm scale-105'
+                                  : 'bg-gray-50 text-gray-600 border-gray-100 hover:bg-gray-100'
+                              }`}
+                            >
+                              {renderTermIcon(item.value, "w-3.5 h-3.5")}
+                              <span>{lang === 'en' ? item.labelEn : item.labelLo}</span>
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPickingIconIndex(index);
+                              setIconSearchQuery('');
+                              setSelectedIconCategory('all');
+                            }}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-black text-adv-orange border border-dashed border-orange-200 bg-orange-50/50 hover:bg-orange-100 transition-all"
+                          >
+                            <Plus className="w-3 h-3" />
+                            {lang === 'en' ? '+ More Icons' : '+ ເບິ່ງໄອຄອນທັງໝົດ'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-1">
+                          Requirement Title (EN)
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={sect.title_en}
+                          onChange={(e) => updateOrganizerTermSection(index, 'title_en', e.target.value)}
+                          placeholder="e.g. Information Accuracy"
+                          className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-adv-slate font-bold focus:bg-white focus:outline-none focus:border-adv-orange/30 transition-all"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-1">
+                          Requirement Title (LO)
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={sect.title_lo}
+                          onChange={(e) => updateOrganizerTermSection(index, 'title_lo', e.target.value)}
+                          placeholder="ຕົວຢ່າງ: ຄວາມຖືກຕ້ອງຂອງຂໍ້ມູນ"
+                          className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-adv-slate font-bold focus:bg-white focus:outline-none focus:border-adv-orange/30 transition-all"
+                        />
+                      </div>
+
+                      <div className="col-span-1 md:col-span-2">
+                        <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-1">
+                          Requirement Description (EN)
+                        </label>
+                        <textarea
+                          required
+                          value={sect.content_en}
+                          onChange={(e) => updateOrganizerTermSection(index, 'content_en', e.target.value)}
+                          placeholder="Explain what the organizer is responsible for in English..."
+                          className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-adv-slate font-medium focus:bg-white focus:outline-none focus:border-adv-orange/30 transition-all min-h-[80px]"
+                        />
+                      </div>
+
+                      <div className="col-span-1 md:col-span-2">
+                        <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-1">
+                          Requirement Description (LO)
+                        </label>
+                        <textarea
+                          required
+                          value={sect.content_lo}
+                          onChange={(e) => updateOrganizerTermSection(index, 'content_lo', e.target.value)}
+                          placeholder="ອະທິບາຍລາຍລະອຽດຄວາມຮັບຜິດຊອບຂອງຜູ້ຈັດງານເປັນພາສາລາວ..."
+                          className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-adv-slate font-medium focus:bg-white focus:outline-none focus:border-adv-orange/30 transition-all min-h-[80px]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {organizerTermsForm.sections.length === 0 && (
+                  <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-gray-200">
+                    <BookOpen className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+                    <p className="text-gray-400 font-bold tracking-tight">No terms defined. Click "Add Requirement Card" above.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4">
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="flex items-center gap-2 px-8 py-4 rounded-2xl bg-adv-orange text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-orange-100 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {lang === 'en' ? 'Save Organizer Terms' : 'ບັນທຶກເງື່ອນໄຂຜູ້ຈັດງານ'}
+              </button>
+            </div>
+          </form>
+        )}
+
         {/* PRIVACY POLICY FORM */}
         {activeSubTab === 'privacy' && privacyForm && (
           <form onSubmit={handleSavePrivacy} className="space-y-6">
@@ -1133,6 +1523,179 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
           </form>
         )}
       </div>
+
+      {/* FULL ICON PICKER MODAL */}
+      <AnimatePresence>
+        {pickingIconIndex !== null && organizerTermsForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden"
+            >
+              {/* Modal Header */}
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center shadow-md shadow-orange-200">
+                    <Grid className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-adv-slate">
+                      {lang === 'en' ? 'Choose Term Icon' : 'ເລືອກໄອຄອນຂໍ້ກຳນົດ'}
+                    </h3>
+                    <p className="text-xs text-gray-500 font-medium">
+                      {lang === 'en'
+                        ? `Selecting for Requirement #${pickingIconIndex + 1}: ${organizerTermsForm.sections[pickingIconIndex]?.title_en || 'Untitled'}`
+                        : `ກຳລັງເລືອກໃຫ້ຂໍ້ກຳນົດທີ #${pickingIconIndex + 1}`}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setPickingIconIndex(null)}
+                  className="p-2 text-gray-400 hover:text-adv-slate rounded-xl hover:bg-gray-100 transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Search & Category Filter */}
+              <div className="p-6 border-b border-gray-100 space-y-4 bg-white">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={iconSearchQuery}
+                    onChange={(e) => setIconSearchQuery(e.target.value)}
+                    placeholder={lang === 'en' ? 'Search icons by name or keywords (e.g., trust, fee, venue, ticket, star)...' : 'ຄົ້ນຫາໄອຄອນຕາມຊື່ ຫຼື ຄຳສັບ (ຕົວຢ່າງ: ຄວາມປອດໄພ, ລາຄາ, ປີ້, ດາວ)...'}
+                    className="w-full pl-11 pr-10 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold text-adv-slate focus:bg-white focus:outline-none focus:border-adv-orange/40 transition-all"
+                    autoFocus
+                  />
+                  {iconSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setIconSearchQuery('')}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-adv-slate"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Categories */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  {TERM_ICON_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setSelectedIconCategory(cat.id)}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all border ${
+                        selectedIconCategory === cat.id
+                          ? 'bg-adv-orange border-adv-orange text-white shadow-sm'
+                          : 'bg-gray-50 border-gray-100 text-gray-500 hover:bg-gray-100'
+                      }`}
+                    >
+                      {lang === 'en' ? cat.labelEn : cat.labelLo}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] font-bold text-gray-400 px-1">
+                  <span>
+                    {lang === 'en'
+                      ? `Showing ${filteredIcons.length} icon${filteredIcons.length === 1 ? '' : 's'}`
+                      : `ສະແດງທັງໝົດ ${filteredIcons.length} ໄອຄອນ`}
+                  </span>
+                  <span>
+                    {lang === 'en' ? 'Click any icon to apply' : 'ຄລິກໄອຄອນໃດກໍ່ໄດ້ເພື່ອເລືອກ'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Icon Grid */}
+              <div className="p-6 overflow-y-auto max-h-[420px] bg-gray-50/40">
+                {filteredIcons.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {filteredIcons.map((item) => {
+                      const isSelected = organizerTermsForm.sections[pickingIconIndex]?.icon === item.value;
+                      return (
+                        <button
+                          key={item.value}
+                          type="button"
+                          onClick={() => {
+                            updateOrganizerTermSection(pickingIconIndex, 'icon', item.value);
+                            setPickingIconIndex(null);
+                          }}
+                          className={`p-3.5 rounded-2xl flex flex-col items-center text-center gap-2 transition-all border group ${
+                            isSelected
+                              ? 'bg-orange-500 text-white border-orange-500 shadow-lg shadow-orange-200 scale-[1.02]'
+                              : 'bg-white text-gray-700 border-gray-100 hover:border-adv-orange/40 hover:shadow-md hover:bg-orange-50/30'
+                          }`}
+                        >
+                          <div
+                            className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${
+                              isSelected
+                                ? 'bg-white/20 text-white'
+                                : 'bg-gray-50 group-hover:bg-orange-100 text-adv-slate group-hover:text-adv-orange'
+                            }`}
+                          >
+                            {renderTermIcon(item.value, "w-6 h-6")}
+                          </div>
+                          <div className="w-full">
+                            <div className={`text-xs font-black truncate ${isSelected ? 'text-white' : 'text-adv-slate'}`}>
+                              {lang === 'en' ? item.labelEn : item.labelLo}
+                            </div>
+                            <div className={`text-[10px] font-bold truncate mt-0.5 ${isSelected ? 'text-white/80' : 'text-gray-400'}`}>
+                              {lang === 'en' ? item.labelLo : item.labelEn}
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <div className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest bg-white/20 px-2 py-0.5 rounded-full mt-0.5">
+                              <Check className="w-2.5 h-2.5" />
+                              {lang === 'en' ? 'Selected' : 'ເລືອກແລ້ວ'}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-12 text-center">
+                    <Search className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm font-bold text-gray-500">
+                      {lang === 'en' ? `No icons found matching "${iconSearchQuery}"` : `ບໍ່ພົບໄອຄອນທີ່ກົງກັບ "${iconSearchQuery}"`}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { setIconSearchQuery(''); setSelectedIconCategory('all'); }}
+                      className="mt-3 text-xs font-black text-adv-orange hover:underline"
+                    >
+                      {lang === 'en' ? 'Clear Filters' : 'ລ້າງຕົວກອງ'}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-gray-100 bg-white flex items-center justify-between">
+                <div className="text-xs text-gray-400 font-bold">
+                  {lang === 'en' ? 'Total 58 icons available' : 'ມີທັງໝົດ 58 ໄອຄອນໃຫ້ເລືອກ'}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPickingIconIndex(null)}
+                  className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-adv-slate text-xs font-black rounded-xl transition-all"
+                >
+                  {lang === 'en' ? 'Close' : 'ປິດ'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

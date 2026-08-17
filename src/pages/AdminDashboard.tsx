@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, Users, Calendar, CheckCircle2, XCircle, Trash2, Edit, ExternalLink, Search, Filter, X, MessageSquare, ChevronDown, MapPin, Save, LayoutDashboard, TrendingUp, DollarSign, Activity, Loader2, AlertCircle, Menu, Globe, User, Bell, Plus, Info, Upload, Image as ImageIcon, Printer, CreditCard, Lock, Eye, EyeOff, LogIn, LogOut, Settings, UploadCloud, Clock, Ticket, Monitor, Smartphone } from 'lucide-react';
+import { Download, RefreshCw, Shield, Users, Calendar, CheckCircle2, XCircle, Trash2, Edit, ExternalLink, Search, Filter, X, MessageSquare, ChevronDown, MapPin, Save, LayoutDashboard, TrendingUp, DollarSign, Activity, Loader2, AlertCircle, Menu, Globe, User, Bell, Plus, Info, Upload, Image as ImageIcon, Printer, CreditCard, Lock, Eye, EyeOff, LogIn, LogOut, Settings, UploadCloud, Clock, Ticket, Monitor, Smartphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { events } from '../data/events';
 import { useLanguage } from '../LanguageContext';
@@ -12,6 +12,40 @@ import Logo from '../components/Logo';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import SiteSettingsTab from '../components/SiteSettingsTab';
 import { safeStorage } from '../lib/storage';
+
+// Utility for exporting data
+const exportToCSV = (filename: string, rows: any[]) => {
+  if (!rows || !rows.length) return;
+  const separator = ',';
+  // Exclude nested object fields that don't format well in basic CSV
+  const keys = Object.keys(rows[0]).filter(k => k !== 'bankInfo' && k !== 'organizerInfo' && k !== 'paymentInfo');
+  
+  const csvContent =
+    keys.join(separator) +
+    '\n' +
+    rows.map(row => {
+      return keys.map(k => {
+        let cell = row[k] === null || row[k] === undefined ? '' : row[k];
+        cell = cell instanceof Date ? cell.toLocaleString() : cell.toString().replace(/"/g, '""');
+        if (cell.search(/("|,|\n)/g) >= 0) {
+          cell = `"${cell}"`;
+        }
+        return cell;
+      }).join(separator);
+    }).join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  if (link.download !== undefined) {
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+};
 
 // Mock data for admin panel
 const initialMockUsers = [
@@ -121,7 +155,7 @@ const translations = {
     adminDesc: 'Manage users, approve events, and oversee platform activity.',
     overview: 'Overview',
     ticketSalesTrend: 'Ticket Sales Trend',
-    salesVolumeLast7Days: 'Sales Volume & Revenue (Last 7 Days)',
+    salesVolumeLast30Days: 'Sales Volume & Revenue (Last 30 Days)',
     tickets: 'Tickets Sold',
     revenue: 'Revenue',
     pendingApprovals: 'Pending Approvals',
@@ -263,7 +297,7 @@ const translations = {
     adminDesc: 'ຈັດການຜູ້ໃຊ້, ອະນຸມັດ event, ແລະ ເບິ່ງແຍງກິດຈະກຳຂອງແພລດຟອມ.',
     overview: 'ພາບລວມ',
     ticketSalesTrend: 'ແນວໂນ້ມການຂາຍປີ້',
-    salesVolumeLast7Days: 'ປະລິມານການຂາຍ ແລະ ລາຍຮັບ (7 ວັນຫຼ້າສຸດ)',
+    salesVolumeLast30Days: 'ປະລິມານການຂາຍ ແລະ ລາຍຮັບ (30 ວັນຫຼ້າສຸດ)',
     tickets: 'ປີ້ທີ່ຂາຍແລ້ວ',
     revenue: 'ລາຍຮັບ',
     pendingApprovals: 'ລໍຖ້າການອະນຸມັດ',
@@ -647,6 +681,31 @@ export default function AdminDashboard() {
     return () => clearTimeout(timer);
   }, []);
 
+  const handleExportData = () => {
+    switch (activeTab) {
+      case 'users':
+        exportToCSV('pasopkan_users.csv', usersList);
+        break;
+      case 'events':
+        exportToCSV('pasopkan_events.csv', eventsList);
+        break;
+      case 'past-events':
+        exportToCSV('pasopkan_past_events.csv', eventsList.filter(e => new Date(e.date) < new Date()));
+        break;
+      case 'approvals':
+        exportToCSV('pasopkan_pending_approvals.csv', pendingEventsList);
+        break;
+      case 'payouts':
+        exportToCSV('pasopkan_payouts.csv', payoutsList);
+        break;
+      case 'activity-log':
+        exportToCSV('pasopkan_activity_logs.csv', activityLogs);
+        break;
+      default:
+        break;
+    }
+  };
+
   const handleApprove = (id: string) => {
     const eventToApprove = pendingEventsList.find(e => e.id === id);
     if (eventToApprove) {
@@ -864,36 +923,41 @@ export default function AdminDashboard() {
   });
 
   const salesTrendData = React.useMemo(() => {
-    const data = [];
-    const baseMultiplier = Math.max(filteredOverviewEvents.length, 1);
-    const now = new Date('2026-07-09');
+    const days = 30;
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
     
-    const baseTickets = [45, 68, 52, 94, 88, 120, 165];
-    const baseRevenue = [13500, 20400, 15600, 28200, 26400, 36000, 49500];
-
-    for (let i = 6; i >= 0; i--) {
+    const dailyData = new Map();
+    
+    for (let i = days - 1; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(now.getDate() - i);
-      
-      const dayLabel = d.toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { 
-        weekday: 'short', 
-        month: 'short', 
-        day: 'numeric' 
+      const dateKey = d.toISOString().split("T")[0];
+      const dayLabel = d.toLocaleDateString(lang === "lo" ? "lo-LA" : "en-US", {
+        month: "short",
+        day: "numeric"
       });
-
-      const idx = 6 - i;
-      const variance = 0.85 + (Math.sin(idx * 1.7) * 0.15);
-      const ticketsSold = Math.round(baseTickets[idx] * variance * (0.6 + baseMultiplier * 0.1));
-      const revenueAmt = Math.round(baseRevenue[idx] * variance * (0.6 + baseMultiplier * 0.1));
-
-      data.push({
-        date: dayLabel,
-        tickets: ticketsSold,
-        revenue: revenueAmt,
-      });
+      dailyData.set(dateKey, { date: dayLabel, tickets: 0, revenue: 0 });
     }
-    return data;
-  }, [filteredOverviewEvents, lang]);
+
+    realTickets.forEach(ticket => {
+      if (ticket.purchaseDate) {
+        const ticketDate = new Date(ticket.purchaseDate);
+        ticketDate.setHours(0, 0, 0, 0);
+        const dateKey = ticketDate.toISOString().split("T")[0];
+        
+        if (dailyData.has(dateKey)) {
+          const existing = dailyData.get(dateKey);
+          const quantity = Number(ticket.quantity) || 1;
+          const price = Number(ticket.tier?.price) || 0;
+          existing.tickets += quantity;
+          existing.revenue += (quantity * price) / 1000;
+        }
+      }
+    });
+
+    return Array.from(dailyData.values());
+  }, [realTickets, lang]);
 
   if (!isAdminAuthenticated) {
     return (
@@ -924,10 +988,10 @@ export default function AdminDashboard() {
               <img 
                 src="/pasopkan_logo.png" 
                 alt="Pasopkan Logo" 
-                className="h-20 sm:h-24 w-auto object-contain" 
+                className="h-28 sm:h-36 md:h-40 w-auto object-contain max-w-full drop-shadow-sm" 
                 referrerPolicy="no-referrer"
               />
-              <span className="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-bold mt-2">{t.adminDashboard}</span>
+              <span className="text-xs uppercase tracking-[0.25em] text-gray-400 font-extrabold mt-3">{t.adminDashboard}</span>
             </Link>
             
             <div className={`flex items-center justify-center w-14 h-14 rounded-2xl mb-4 ${
@@ -1145,8 +1209,8 @@ export default function AdminDashboard() {
         <div className="flex items-center justify-between mb-6 lg:mb-8 print:hidden">
           <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity group">
-              <div className="flex items-center justify-center transition-transform duration-500 ease-out group-hover:scale-110">
-                <img src="/pasopkan_logo.png" alt="Pasopkan Logo" className="h-14 sm:h-16 w-auto object-contain" referrerPolicy="no-referrer" />
+              <div className="flex items-center justify-center transition-transform duration-500 ease-out group-hover:scale-105">
+                <img src="/pasopkan_logo.png" alt="Pasopkan Logo" className="h-20 sm:h-24 md:h-28 w-auto object-contain" referrerPolicy="no-referrer" />
               </div>
               <div className="hidden sm:flex flex-col pt-0.5">
                 <div className="flex items-center gap-1.5 mt-0.5">
@@ -1368,6 +1432,27 @@ export default function AdminDashboard() {
                       {t.printReport}
                     </button>
                   )}
+                  {['users', 'events', 'past-events', 'approvals', 'payouts', 'activity-log'].includes(activeTab) && (
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => {
+                          setIsLoading(true);
+                          setTimeout(() => setIsLoading(false), 800);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-white text-adv-slate border border-gray-200 rounded-xl text-xs font-black uppercase tracking-widest hover:border-adv-orange hover:text-adv-orange transition-all shadow-sm print:hidden"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                        {lang === 'lo' ? 'ຣີເຟຣຊ' : 'Sync'}
+                      </button>
+                      <button 
+                        onClick={handleExportData}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-green-700 transition-all shadow-lg shadow-green-600/20 print:hidden"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        {lang === 'lo' ? 'ສົ່ງອອກ CSV' : 'Export CSV'}
+                      </button>
+                    </div>
+                  )}
                   {activeTab !== 'site-settings' && (
                     <div className="relative print:hidden">
                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-adv-orange" />
@@ -1438,88 +1523,137 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Ticket Sales Trend Line Chart */}
-                  <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div>
-                        <h3 className="text-base font-black text-adv-slate flex items-center gap-2">
-                          <span className="p-1 bg-orange-50 text-adv-orange rounded-lg">📈</span>
-                          {t.ticketSalesTrend}
-                        </h3>
-                        <p className="text-xs text-gray-400 font-semibold mt-1">
-                          {t.salesVolumeLast7Days}
-                        </p>
+                  <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    {/* Ticket Sales Trend Line Chart */}
+                    <div className="xl:col-span-2 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                          <h3 className="text-base font-black text-adv-slate flex items-center gap-2">
+                            <span className="p-1 bg-orange-50 text-adv-orange rounded-lg">📈</span>
+                            {t.ticketSalesTrend}
+                          </h3>
+                          <p className="text-xs text-gray-400 font-semibold mt-1">
+                            {t.salesVolumeLast30Days}
+                          </p>
+                        </div>
+                        
+                        <div className="flex items-center gap-4 text-[11px] font-black uppercase tracking-wider text-gray-400">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-adv-orange inline-block" />
+                            <span className="text-adv-slate">{t.tickets}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />
+                            <span className="text-adv-slate">{t.revenue} (₭ x1,000)</span>
+                          </div>
+                        </div>
                       </div>
-                      
-                      <div className="flex items-center gap-4 text-[11px] font-black uppercase tracking-wider text-gray-400">
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 rounded-full bg-adv-orange inline-block" />
-                          <span className="text-adv-slate">{t.tickets}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />
-                          <span className="text-adv-slate">{t.revenue} (₭ x1,000)</span>
-                        </div>
+
+                      <div className="h-80 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={salesTrendData}
+                            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                            <XAxis 
+                              dataKey="date" 
+                              stroke="#9CA3AF" 
+                              fontSize={11} 
+                              tickLine={false} 
+                              axisLine={false}
+                              dy={10}
+                            />
+                            <YAxis 
+                              stroke="#9CA3AF" 
+                              fontSize={11} 
+                              tickLine={false} 
+                              axisLine={false}
+                            />
+                            <Tooltip 
+                              contentStyle={{ 
+                                background: '#222222', 
+                                border: 'none', 
+                                borderRadius: '12px',
+                                boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                                color: '#ffffff',
+                                padding: '12px 16px'
+                              }}
+                              labelClassName="font-black text-xs text-orange-400 mb-1"
+                              itemStyle={{
+                                fontSize: '11px',
+                                fontWeight: 'bold',
+                                color: '#ffffff'
+                              }}
+                            />
+                            <Line 
+                              name={t.tickets}
+                              type="monotone" 
+                              dataKey="tickets" 
+                              stroke="#FF5B00" 
+                              strokeWidth={3}
+                              activeDot={{ r: 6, strokeWidth: 0, fill: '#FF5B00' }}
+                              dot={{ r: 4, strokeWidth: 2, fill: '#ffffff', stroke: '#FF5B00' }}
+                            />
+                            <Line 
+                              name={t.revenue}
+                              type="monotone" 
+                              dataKey="revenue" 
+                              stroke="#3B82F6" 
+                              strokeWidth={3}
+                              activeDot={{ r: 6, strokeWidth: 0, fill: '#3B82F6' }}
+                              dot={{ r: 4, strokeWidth: 2, fill: '#ffffff', stroke: '#3B82F6' }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
                       </div>
                     </div>
 
-                    <div className="h-80 w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart
-                          data={salesTrendData}
-                          margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                          <XAxis 
-                            dataKey="date" 
-                            stroke="#9CA3AF" 
-                            fontSize={11} 
-                            tickLine={false} 
-                            axisLine={false}
-                            dy={10}
-                          />
-                          <YAxis 
-                            stroke="#9CA3AF" 
-                            fontSize={11} 
-                            tickLine={false} 
-                            axisLine={false}
-                          />
-                          <Tooltip 
-                            contentStyle={{ 
-                              background: '#222222', 
-                              border: 'none', 
-                              borderRadius: '12px',
-                              boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                              color: '#ffffff',
-                              padding: '12px 16px'
-                            }}
-                            labelClassName="font-black text-xs text-orange-400 mb-1"
-                            itemStyle={{
-                              fontSize: '11px',
-                              fontWeight: 'bold',
-                              color: '#ffffff'
-                            }}
-                          />
-                          <Line 
-                            name={t.tickets}
-                            type="monotone" 
-                            dataKey="tickets" 
-                            stroke="#FF5B00" 
-                            strokeWidth={3}
-                            activeDot={{ r: 6, strokeWidth: 0, fill: '#FF5B00' }}
-                            dot={{ r: 4, strokeWidth: 2, fill: '#ffffff', stroke: '#FF5B00' }}
-                          />
-                          <Line 
-                            name={t.revenue}
-                            type="monotone" 
-                            dataKey="revenue" 
-                            stroke="#3B82F6" 
-                            strokeWidth={3}
-                            activeDot={{ r: 6, strokeWidth: 0, fill: '#3B82F6' }}
-                            dot={{ r: 4, strokeWidth: 2, fill: '#ffffff', stroke: '#3B82F6' }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
+                    {/* Live Ticket Sales Feed */}
+                    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col relative overflow-hidden h-[420px]">
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-base font-black text-adv-slate flex items-center gap-2">
+                          <div className="relative flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                          </div>
+                          Live Sales Counter
+                        </h3>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-50 px-2 py-1 rounded-lg">Real-time</div>
+                      </div>
+                      
+                      <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+                        <AnimatePresence>
+                          {[...realTickets].sort((a, b) => new Date(b.purchaseDate || 0).getTime() - new Date(a.purchaseDate || 0).getTime()).slice(0, 10).map((ticket, idx) => (
+                            <motion.div
+                              key={ticket.id || idx}
+                              initial={{ opacity: 0, x: 20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              className="p-3 rounded-2xl bg-gray-50/80 border border-gray-100 flex items-center justify-between gap-3 group hover:bg-orange-50/50 hover:border-orange-100 transition-colors"
+                            >
+                              <div className="flex flex-col overflow-hidden">
+                                <span className="text-xs font-bold text-adv-slate truncate">{ticket.event?.title || 'Unknown Event'}</span>
+                                <span className="text-[10px] text-gray-400 font-semibold mt-0.5 truncate">{ticket.tier?.name || 'General'} • x{ticket.quantity || 1}</span>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className="text-xs font-black text-adv-orange whitespace-nowrap">
+                                  {new Intl.NumberFormat('lo-LA').format((ticket.tier?.price || 0) * (ticket.quantity || 1))} ₭
+                                </div>
+                                <div className="text-[9px] text-gray-400 uppercase tracking-wider font-bold mt-1">
+                                  {ticket.purchaseDate ? new Date(ticket.purchaseDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second: '2-digit'}) : 'Just now'}
+                                </div>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                        
+                        {realTickets.length === 0 && (
+                          <div className="flex flex-col items-center justify-center h-full text-center text-gray-400 opacity-50">
+                            <Activity className="w-8 h-8 mb-3 text-gray-300" />
+                            <p className="text-xs font-bold uppercase tracking-wider">Awaiting sales activity</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -1607,7 +1741,10 @@ export default function AdminDashboard() {
                       const matchesMonth = filterMonth === 'all' || (eventDate.getMonth() + 1).toString().padStart(2, '0') === filterMonth;
                       const matchesYear = filterYear === 'all' || eventDate.getFullYear().toString() === filterYear;
                       return matchesSearch && matchesMonth && matchesYear;
-                    }).map(event => (
+                    }).map(event => {
+                    const ticketsSold = realTickets.filter(t => t.event?.id === event.id).reduce((sum, t) => sum + (Number(t.quantity) || 1), 0);
+                    return (
+
                       <div key={event.id} className="flex flex-col lg:flex-row lg:items-center justify-between p-6 rounded-3xl bg-white border border-gray-100 hover:border-adv-orange/30 transition-all group gap-6 shadow-sm">
                         <div className="flex items-center gap-5">
                           <div className="relative w-24 h-24 rounded-2xl overflow-hidden shrink-0 shadow-md">
@@ -1656,7 +1793,8 @@ export default function AdminDashboard() {
                           </button>
                         </div>
                       </div>
-                    ))
+                    ); })
+
                   )}
                 </div>
               )}
@@ -1757,7 +1895,10 @@ export default function AdminDashboard() {
                     const matchesMonth = filterMonth === 'all' || (eventDate.getMonth() + 1).toString().padStart(2, '0') === filterMonth;
                     const matchesYear = filterYear === 'all' || eventDate.getFullYear().toString() === filterYear;
                     return matchesSearch && isUpcoming && matchesMonth && matchesYear;
-                  }).map(event => (
+                  }).map(event => {
+                    const ticketsSold = realTickets.filter(t => t.event?.id === event.id).reduce((sum, t) => sum + (Number(t.quantity) || 1), 0);
+                    return (
+
                     <div key={event.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-3xl bg-white border border-gray-100 hover:border-adv-orange/30 transition-all group gap-5 shadow-sm">
                       <div className="flex items-center gap-5">
                         <div className="relative w-20 h-20 rounded-2xl overflow-hidden shrink-0 shadow-md">
@@ -1778,6 +1919,9 @@ export default function AdminDashboard() {
                               <MapPin className="w-3.5 h-3.5 text-gray-300" />
                               {event.location}
                             </span>
+                            <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-orange-50 border border-orange-100 text-adv-orange uppercase tracking-widest text-[10px] ml-2 font-black">
+                              🎫 {ticketsSold} {t.ticketsSold}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -1791,7 +1935,8 @@ export default function AdminDashboard() {
                         </button>
                       </div>
                     </div>
-                  ))}
+                  );
+                })}
                   {eventsList.filter(e => {
                     const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase());
                     const isUpcoming = new Date(`${e.date}T23:59:59`) >= new Date();
@@ -1817,7 +1962,10 @@ export default function AdminDashboard() {
                     const matchesMonth = filterMonth === 'all' || (eventDate.getMonth() + 1).toString().padStart(2, '0') === filterMonth;
                     const matchesYear = filterYear === 'all' || eventDate.getFullYear().toString() === filterYear;
                     return matchesSearch && isPast && matchesMonth && matchesYear;
-                  }).map(event => (
+                  }).map(event => {
+                    const ticketsSold = realTickets.filter(t => t.event?.id === event.id).reduce((sum, t) => sum + (Number(t.quantity) || 1), 0);
+                    return (
+
                     <div key={event.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-3xl bg-white border border-gray-100 hover:border-adv-orange/30 transition-all group gap-5 shadow-sm">
                       <div className="flex items-center gap-5">
                         <div className="relative w-20 h-20 rounded-2xl overflow-hidden shrink-0 shadow-md grayscale group-hover:grayscale-0 transition-all">
@@ -1847,7 +1995,8 @@ export default function AdminDashboard() {
                         </button>
                       </div>
                     </div>
-                  ))}
+                  );
+                })}
                   {eventsList.filter(e => {
                     const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase());
                     const isPast = new Date(`${e.date}T23:59:59`) < new Date();

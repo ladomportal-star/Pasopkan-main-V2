@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { Calendar, Ticket, Compass, TrendingUp, Users, ShieldCheck, ArrowRight, Sparkles, MapPin, Award } from 'lucide-react';
+import { Calendar, Ticket, Compass, TrendingUp, Users, ShieldCheck, ArrowRight, Sparkles, MapPin } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 
 const translations = {
@@ -105,15 +105,6 @@ export default function About() {
         <div className="text-center mb-16 md:mb-24 relative">
           {/* Decorative gradients */}
           <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-72 h-72 bg-adv-orange/10 blur-[80px] rounded-full pointer-events-none" />
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-3 py-1 bg-orange-50 rounded-full border border-orange-100 text-adv-orange text-xs font-bold uppercase tracking-wider mb-4"
-          >
-            <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-            <span>Discover • Create • Experience</span>
-          </motion.div>
 
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
@@ -176,14 +167,6 @@ export default function About() {
               referrerPolicy="no-referrer"
               className="w-full h-full object-cover rounded-2xl"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-adv-slate/50 to-transparent pointer-events-none rounded-2xl" />
-            <div className="absolute bottom-6 left-6 right-6 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Award className="w-5 h-5 text-adv-orange" />
-                <span className="text-xs font-bold tracking-wider uppercase">Premium Ticket Solutions</span>
-              </div>
-              <span className="text-xs font-semibold px-2.5 py-1 bg-white/20 backdrop-blur-md rounded-md">Laos #1</span>
-            </div>
           </motion.div>
         </div>
 

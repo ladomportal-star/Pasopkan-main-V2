@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
-import { Calendar, Folder, FileText, Plus, User, Users, Mail, ChevronDown, Inbox, Ticket, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, Image as ImageIcon, Video, MapPin, Loader2, Trash2, X, Check, QrCode, LogOut, Edit, ShieldCheck, DollarSign, RefreshCcw, FileCheck, BookOpen, AlertCircle, ShieldAlert, ArrowLeft, ArrowRight, Globe, Clock, Settings, Lock, Eye, UploadCloud, ExternalLink, Monitor, Smartphone, CheckCircle2, Sparkles, Paperclip, Search, Quote, Minus, Heading1, Heading2, Link as LinkIcon } from 'lucide-react';
+import { Calendar, Folder, FileText, Plus, User, Users, Mail, ChevronDown, Inbox, Ticket, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, Image as ImageIcon, Video, MapPin, Loader2, Trash2, X, Check, QrCode, LogOut, Edit, ShieldCheck, DollarSign, RefreshCcw, FileCheck, BookOpen, AlertCircle, ShieldAlert, ArrowLeft, ArrowRight, Globe, Clock, Settings, Lock, Eye, UploadCloud, ExternalLink, Monitor, Smartphone, CheckCircle2, Sparkles, Paperclip, Search, Quote, Minus, Heading1, Heading2, Link as LinkIcon, Award } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { safeStorage } from '../lib/storage';
@@ -12,6 +12,20 @@ import { ScrollTimePicker } from '../components/ScrollTimePicker';
 import { FlexibleDatePicker } from '../components/FlexibleDatePicker';
 import { CalendarPicker } from '../components/CalendarPicker';
 import SocialLinksForm, { SocialLinks } from '../components/SocialLinksForm';
+import {
+  getOrganizerTermsSettings,
+  OrganizerTermsSettings,
+  DEFAULT_ORGANIZER_TERMS_SETTINGS
+} from '../lib/siteSettings';
+import { renderTermIcon } from '../lib/termIcons';
+
+const PAYMENT_BANKS = [
+  { value: 'BCEL', labelEn: 'BCEL Bank', labelLo: 'BCEL Bank (ທະນາຄານ ການຄ້າຕ່າງປະເທດລາວ)' },
+  { value: 'JDB', labelEn: 'JDB Bank', labelLo: 'JDB Bank (ທະນາຄານ ພັດທະນາຮ່ວມ)' },
+  { value: 'LDB', labelEn: 'LDB Bank', labelLo: 'LDB Bank (ທະນາຄານ ພັດທະນາລາວ)' },
+  { value: 'Indochina Bank', labelEn: 'Indochina Bank', labelLo: 'Indochina Bank (ທະນາຄານ ອິນໂດຈີນ)' },
+  { value: 'ST Bank', labelEn: 'ST Bank', labelLo: 'ST Bank (ທະນາຄານ ເອັສທີ)' },
+];
 
 const translations = {
   en: {
@@ -632,6 +646,23 @@ export default function CreateEvent() {
   const [showEditBlockedModal, setShowEditBlockedModal] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+
+  // Dynamic Organizer Terms & Conditions from Site Settings
+  const [organizerTerms, setOrganizerTerms] = useState<OrganizerTermsSettings>(DEFAULT_ORGANIZER_TERMS_SETTINGS);
+
+  useEffect(() => {
+    async function loadTerms() {
+      try {
+        const termsData = await getOrganizerTermsSettings();
+        if (termsData) {
+          setOrganizerTerms(termsData);
+        }
+      } catch (err) {
+        console.error('Failed to load organizer terms:', err);
+      }
+    }
+    loadTerms();
+  }, []);
 
 
   // Helper to extract missing required fields across steps
@@ -4439,13 +4470,27 @@ export default function CreateEvent() {
                   <div className="space-y-6 max-w-2xl">
                     <div id="field-bank-name">
                       <label className="block text-sm font-bold text-gray-600 mb-2">{t.bankName}</label>
-                      <input 
-                        type="text" 
-                        value={bankName}
-                        onChange={(e) => setBankName(e.target.value.replace(/[0-9]/g, ''))}
-                        placeholder={t.bankNamePlaceholder}
-                        className="w-full bg-white border border-gray-200 text-adv-slate rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all shadow-inner"
-                      />
+                      <div className="relative">
+                        <select 
+                          value={
+                            PAYMENT_BANKS.find(b => b.value === bankName || b.value.toLowerCase() === bankName.toLowerCase())?.value || ''
+                          }
+                          onChange={(e) => setBankName(e.target.value)}
+                          className="w-full bg-white border border-gray-200 text-adv-slate rounded-xl px-4 py-3.5 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all shadow-inner appearance-none cursor-pointer pr-10"
+                        >
+                          <option value="" disabled>
+                            {lang === 'lo' ? '-- ເລືອກທະນາຄານ --' : '-- Select Bank --'}
+                          </option>
+                          {PAYMENT_BANKS.map((b) => (
+                            <option key={b.value} value={b.value}>
+                              {lang === 'lo' ? b.labelLo : b.labelEn}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                          <ChevronDown className="w-4 h-4" />
+                        </div>
+                      </div>
                     </div>
                     <div id="field-account-holder">
                       <label className="block text-sm font-bold text-gray-600 mb-2">{t.accountHolderName}</label>
@@ -4855,127 +4900,45 @@ export default function CreateEvent() {
                   <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-orange-50 text-adv-orange mb-6 border border-orange-100 shadow-inner">
                     <BookOpen className="w-10 h-10" />
                   </div>
-                  <h2 className="text-3xl font-extrabold text-adv-slate mb-4">{t.termsTitle}</h2>
-                  <p className="text-gray-500 max-w-2xl mx-auto font-medium leading-relaxed">{t.termsIntro}</p>
+                  <h2 className="text-3xl font-extrabold text-adv-slate mb-4">
+                    {lang === 'lo' ? (organizerTerms.title_lo || organizerTerms.title_en) : (organizerTerms.title_en || organizerTerms.title_lo)}
+                  </h2>
+                  <p className="text-gray-500 max-w-2xl mx-auto font-medium leading-relaxed">
+                    {lang === 'lo' ? (organizerTerms.intro_lo || organizerTerms.intro_en) : (organizerTerms.intro_en || organizerTerms.intro_lo)}
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Term 1 */}
-                  <div className="bg-white border border-gray-100 rounded-2xl p-6 hover:shadow-lg transition-all group">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500 shrink-0 border border-blue-100 group-hover:bg-blue-500 group-hover:text-white transition-all shadow-sm">
-                        <FileCheck className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-bold text-adv-slate mb-2">{t.term1Title}</h3>
-                        <p className="text-gray-500 leading-relaxed text-xs font-medium">{t.termsList1}</p>
-                      </div>
-                    </div>
-                  </div>
+                  {organizerTerms.sections && organizerTerms.sections.map((sect, index) => {
+                    const colorSchemes = [
+                      { bg: 'bg-blue-50', text: 'text-blue-500', border: 'border-blue-100', hoverBg: 'group-hover:bg-blue-500' },
+                      { bg: 'bg-orange-50', text: 'text-adv-orange', border: 'border-orange-100', hoverBg: 'group-hover:bg-adv-orange' },
+                      { bg: 'bg-red-50', text: 'text-red-500', border: 'border-red-100', hoverBg: 'group-hover:bg-red-500' },
+                      { bg: 'bg-emerald-50', text: 'text-emerald-500', border: 'border-emerald-100', hoverBg: 'group-hover:bg-emerald-500' },
+                      { bg: 'bg-purple-50', text: 'text-purple-500', border: 'border-purple-100', hoverBg: 'group-hover:bg-purple-500' },
+                      { bg: 'bg-indigo-50', text: 'text-indigo-500', border: 'border-indigo-100', hoverBg: 'group-hover:bg-indigo-500' },
+                      { bg: 'bg-amber-50', text: 'text-amber-500', border: 'border-amber-100', hoverBg: 'group-hover:bg-amber-500' },
+                      { bg: 'bg-rose-50', text: 'text-rose-500', border: 'border-rose-100', hoverBg: 'group-hover:bg-rose-500' },
+                      { bg: 'bg-teal-50', text: 'text-teal-500', border: 'border-teal-100', hoverBg: 'group-hover:bg-teal-500' }
+                    ];
+                    const scheme = colorSchemes[index % colorSchemes.length];
+                    const title = lang === 'lo' ? (sect.title_lo || sect.title_en) : (sect.title_en || sect.title_lo);
+                    const content = lang === 'lo' ? (sect.content_lo || sect.content_en) : (sect.content_en || sect.content_lo);
 
-                  {/* Term 2 */}
-                  <div className="bg-white border border-gray-100 rounded-2xl p-6 hover:shadow-lg transition-all group">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-adv-orange shrink-0 border border-orange-100 group-hover:bg-adv-orange group-hover:text-white transition-all shadow-sm">
-                        <ShieldCheck className="w-6 h-6" />
+                    return (
+                      <div key={sect.id || index} className="bg-white border border-gray-100 rounded-2xl p-6 hover:shadow-lg transition-all group">
+                        <div className="flex items-start gap-4">
+                          <div className={`w-12 h-12 rounded-xl ${scheme.bg} flex items-center justify-center ${scheme.text} shrink-0 border ${scheme.border} ${scheme.hoverBg} group-hover:text-white transition-all shadow-sm`}>
+                            {renderTermIcon(sect.icon, "w-6 h-6")}
+                          </div>
+                          <div>
+                            <h3 className="text-base font-bold text-adv-slate mb-2">{title}</h3>
+                            <p className="text-gray-500 leading-relaxed text-xs font-medium">{content}</p>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-base font-bold text-adv-slate mb-2">{t.term2Title}</h3>
-                        <p className="text-gray-500 leading-relaxed text-xs font-medium">{t.termsList2}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Term 3 */}
-                  <div className="bg-white border border-gray-100 rounded-2xl p-6 hover:shadow-lg transition-all group">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center text-red-500 shrink-0 border border-red-100 group-hover:bg-red-500 group-hover:text-white transition-all shadow-sm">
-                        <AlertCircle className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-bold text-adv-slate mb-2">{t.term3Title}</h3>
-                        <p className="text-gray-500 leading-relaxed text-xs font-medium">{t.termsList3}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Term 4 */}
-                  <div className="bg-white border border-gray-100 rounded-2xl p-6 hover:shadow-lg transition-all group">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0 border border-emerald-100 group-hover:bg-emerald-500 group-hover:text-white transition-all shadow-sm">
-                        <DollarSign className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-bold text-adv-slate mb-2">{t.term4Title}</h3>
-                        <p className="text-gray-500 leading-relaxed text-xs font-medium">{t.termsList4}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Term 5 */}
-                  <div className="bg-white border border-gray-100 rounded-2xl p-6 hover:shadow-lg transition-all group">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-500 shrink-0 border border-purple-100 group-hover:bg-purple-500 group-hover:text-white transition-all shadow-sm">
-                        <RefreshCcw className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-bold text-adv-slate mb-2">{t.term5Title}</h3>
-                        <p className="text-gray-500 leading-relaxed text-xs font-medium">{t.termsList5}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Term 6 */}
-                  <div className="bg-white border border-gray-100 rounded-2xl p-6 hover:shadow-lg transition-all group">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 shrink-0 border border-indigo-100 group-hover:bg-indigo-500 group-hover:text-white transition-all shadow-sm">
-                        <Calendar className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-bold text-adv-slate mb-2">{t.term6Title}</h3>
-                        <p className="text-gray-500 leading-relaxed text-xs font-medium">{t.termsList6}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Term 7 */}
-                  <div className="bg-white border border-gray-100 rounded-2xl p-6 hover:shadow-lg transition-all group">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500 shrink-0 border border-amber-100 group-hover:bg-amber-500 group-hover:text-white transition-all shadow-sm">
-                        <FileText className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-bold text-adv-slate mb-2">{t.term7Title}</h3>
-                        <p className="text-gray-500 leading-relaxed text-xs font-medium">{t.termsList7}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Term 8 */}
-                  <div className="bg-white border border-gray-100 rounded-2xl p-6 hover:shadow-lg transition-all group">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500 shrink-0 border border-rose-100 group-hover:bg-rose-500 group-hover:text-white transition-all shadow-sm">
-                        <ShieldAlert className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-bold text-adv-slate mb-2">{t.term8Title}</h3>
-                        <p className="text-gray-500 leading-relaxed text-xs font-medium">{t.termsList8}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Term 9 */}
-                  <div className="bg-white border border-gray-100 rounded-2xl p-6 hover:shadow-lg transition-all group">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-teal-50 flex items-center justify-center text-teal-500 shrink-0 border border-teal-100 group-hover:bg-teal-500 group-hover:text-white transition-all shadow-sm">
-                        <Globe className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-bold text-adv-slate mb-2">{t.term9Title}</h3>
-                        <p className="text-gray-500 leading-relaxed text-xs font-medium">{t.termsList9}</p>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

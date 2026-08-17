@@ -7,10 +7,13 @@ import Logo from './Logo';
 import { 
   getTermsSettings, 
   getPrivacySettings, 
+  getContactSettings,
   TermsSettings, 
   PrivacySettings, 
+  ContactSettings,
   DEFAULT_TERMS_SETTINGS, 
-  DEFAULT_PRIVACY_SETTINGS 
+  DEFAULT_PRIVACY_SETTINGS,
+  DEFAULT_CONTACT_SETTINGS
 } from '../lib/siteSettings';
 
 const translations = {
@@ -18,7 +21,7 @@ const translations = {
     tagline: 'Your gateway to the best events and experiences. Discover, book, and enjoy.',
     categories: 'Categories',
     company: 'Company',
-    support: 'Support',
+    supportContact: 'Support & Contact us',
     about: 'About Us',
     contact: 'Contact Us',
     help: 'Help Center',
@@ -37,7 +40,7 @@ const translations = {
     tagline: 'ປະຕູສູ່ກິດຈະກຳ และ ປະສົບການທີ່ດີທີ່ສຸດ. ຄົ້ນພົບ, ຈອງ, ແລະ ມ່ວນຊື່ນ.',
     categories: 'ປະເພດ',
     company: 'ບໍລິສັດ',
-    support: 'ຊ່ວຍເຫຼືອ',
+    supportContact: 'ຊ່ວຍເຫຼືອ & ຕິດຕໍ່ພວກເຮົາ',
     about: 'ກ່ຽວກັບພວກເຮົາ',
     contact: 'ຕິດຕໍ່ພວກເຮົາ',
     help: 'ສູນຊ່ວຍເຫຼືອ',
@@ -99,14 +102,17 @@ export default function Footer() {
 
   const [termsSettings, setTermsSettings] = useState<TermsSettings>(DEFAULT_TERMS_SETTINGS);
   const [privacySettings, setPrivacySettings] = useState<PrivacySettings>(DEFAULT_PRIVACY_SETTINGS);
+  const [contactSettings, setContactSettings] = useState<ContactSettings>(DEFAULT_CONTACT_SETTINGS);
 
   useEffect(() => {
     const loadSettings = async () => {
       try {
         const termsData = await getTermsSettings();
         const privacyData = await getPrivacySettings();
+        const contactData = await getContactSettings();
         setTermsSettings(termsData);
         setPrivacySettings(privacyData);
+        setContactSettings(contactData);
       } catch (err) {
         console.warn('Error loading footer settings:', err);
       }
@@ -129,18 +135,26 @@ export default function Footer() {
               />
             </Link>
             <div className="flex items-center gap-3 justify-center">
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-adv-orange hover:text-white transition-all shadow-sm">
-                <Facebook className="w-4.5 h-4.5" />
-              </a>
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-adv-orange hover:text-white transition-all shadow-sm">
-                <Instagram className="w-4.5 h-4.5" />
-              </a>
-              <a href="https://tiktok.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-adv-orange hover:text-white transition-all shadow-sm">
-                <TikTokIcon className="w-4.5 h-4.5" />
-              </a>
-              <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-adv-orange hover:text-white transition-all shadow-sm">
-                <Youtube className="w-4.5 h-4.5" />
-              </a>
+              {contactSettings.facebook && (
+                <a href={contactSettings.facebook} target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-adv-orange hover:text-white transition-all shadow-sm">
+                  <Facebook className="w-4.5 h-4.5" />
+                </a>
+              )}
+              {contactSettings.instagram && (
+                <a href={contactSettings.instagram} target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-adv-orange hover:text-white transition-all shadow-sm">
+                  <Instagram className="w-4.5 h-4.5" />
+                </a>
+              )}
+              {contactSettings.tiktok && (
+                <a href={contactSettings.tiktok} target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-adv-orange hover:text-white transition-all shadow-sm">
+                  <TikTokIcon className="w-4.5 h-4.5" />
+                </a>
+              )}
+              {contactSettings.youtube && (
+                <a href={contactSettings.youtube} target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-adv-orange hover:text-white transition-all shadow-sm">
+                  <Youtube className="w-4.5 h-4.5" />
+                </a>
+              )}
             </div>
           </div>
 
@@ -160,8 +174,11 @@ export default function Footer() {
             <h4 className="font-bold text-adv-slate mb-4 uppercase text-xs tracking-widest">{t.company}</h4>
             <ul className="space-y-2.5">
               <li><Link to="/about" className="text-sm font-medium text-gray-500 hover:text-adv-orange transition-colors">{t.about}</Link></li>
-              <li><a href="https://wa.me/8562091951529" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-gray-500 hover:text-adv-orange transition-colors">{t.contact}</a></li>
-              <li><Link to="/help" className="text-sm font-medium text-gray-500 hover:text-adv-orange transition-colors">{t.support}</Link></li>
+              <li>
+                <Link to="/contact" className="text-sm font-medium text-gray-500 hover:text-adv-orange transition-colors">
+                  {t.supportContact}
+                </Link>
+              </li>
               <li><button onClick={() => setIsTermsOpen(true)} className="text-sm font-medium text-gray-500 hover:text-adv-orange transition-colors text-left focus:outline-none cursor-pointer">{t.terms}</button></li>
               <li><button onClick={() => setIsPrivacyOpen(true)} className="text-sm font-medium text-gray-500 hover:text-adv-orange transition-colors text-left focus:outline-none cursor-pointer">{t.privacy}</button></li>
               <li><Link to="/admin" className="text-sm font-medium text-gray-500 hover:text-adv-orange transition-colors inline-flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-adv-orange" />{t.admin}</Link></li>
@@ -172,18 +189,28 @@ export default function Footer() {
           <div>
             <h4 className="font-bold text-adv-slate mb-4 uppercase text-xs tracking-widest">{t.contact}</h4>
             <ul className="space-y-2.5">
-              <li className="flex items-start gap-3">
-                <MapPin className="w-4 h-4 text-adv-orange mt-1 shrink-0" />
-                <span className="text-sm text-gray-500 leading-relaxed font-medium">Buengkhayong Village, Vientiane, Laos</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Mail className="w-4 h-4 text-adv-orange shrink-0" />
-                <a href="mailto:ladomportal@gmail.com" className="text-sm text-gray-500 font-medium hover:text-adv-orange transition-colors">ladomportal@gmail.com</a>
-              </li>
-              <li className="flex items-center gap-3">
-                <Phone className="w-4 h-4 text-adv-orange shrink-0" />
-                <span className="text-sm text-gray-500 font-medium">+856 20 919 515 29</span>
-              </li>
+              {(contactSettings.officeAddress1_en || contactSettings.officeAddress1_lo) && (
+                <li className="flex items-start gap-3">
+                  <MapPin className="w-4 h-4 text-adv-orange mt-1 shrink-0" />
+                  <span className="text-sm text-gray-500 leading-relaxed font-medium">
+                    {lang === 'en' ? contactSettings.officeAddress1_en : contactSettings.officeAddress1_lo}
+                  </span>
+                </li>
+              )}
+              {contactSettings.email && (
+                <li className="flex items-center gap-3">
+                  <Mail className="w-4 h-4 text-adv-orange shrink-0" />
+                  <a href={`mailto:${contactSettings.email}`} className="text-sm text-gray-500 font-medium hover:text-adv-orange transition-colors">
+                    {contactSettings.email}
+                  </a>
+                </li>
+              )}
+              {contactSettings.phone && (
+                <li className="flex items-center gap-3">
+                  <Phone className="w-4 h-4 text-adv-orange shrink-0" />
+                  <span className="text-sm text-gray-500 font-medium">{contactSettings.phone}</span>
+                </li>
+              )}
             </ul>
           </div>
         </div>

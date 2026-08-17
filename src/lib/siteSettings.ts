@@ -62,6 +62,23 @@ export interface PrivacySettings {
   sections: PrivacySection[];
 }
 
+export interface OrganizerTermItem {
+  id?: string;
+  title_en: string;
+  title_lo: string;
+  content_en: string;
+  content_lo: string;
+  icon?: string;
+}
+
+export interface OrganizerTermsSettings {
+  title_en: string;
+  title_lo: string;
+  intro_en: string;
+  intro_lo: string;
+  sections: OrganizerTermItem[];
+}
+
 // ==========================================
 // DEFAULT VALUE FALLBACKS (FROM ORIGINAL CODE)
 // ==========================================
@@ -189,6 +206,87 @@ export const DEFAULT_PRIVACY_SETTINGS: PrivacySettings = {
   ]
 };
 
+export const DEFAULT_ORGANIZER_TERMS_SETTINGS: OrganizerTermsSettings = {
+  title_en: 'Organizer Terms & Conditions',
+  title_lo: 'ຂໍ້ກຳນົດ ແລະ ເງື່ອນໄຂສຳລັບຜູ້ຈັດງານ',
+  intro_en: 'By creating events on Pasopkan, you agree to the following terms and conditions:',
+  intro_lo: 'ໂດຍການສ້າງ event ເທິງ Pasopkan, ທ່ານຕົກລົງເຫັນດີກັບຂໍ້ກຳນົດ ແລະ ເງື່ອນໄຂດັ່ງຕໍ່ໄປນີ້:',
+  sections: [
+    {
+      id: 'term-1',
+      title_en: 'Information Accuracy',
+      title_lo: 'ຄວາມຖືກຕ້ອງຂອງຂໍ້ມູນ',
+      content_en: 'You are responsible for the accuracy of all event information provided.',
+      content_lo: 'ທ່ານຕ້ອງຮັບຜິດຊອບຕໍ່ຄວາມຖືກຕ້ອງຂອງຂໍ້ມູນ event ທັງໝົດທີ່ໃຫ້ມາ.',
+      icon: 'file-check'
+    },
+    {
+      id: 'term-2',
+      title_en: 'Review & Approval',
+      title_lo: 'ການກວດສອບ ແລະ ອະນຸມັດ',
+      content_en: 'Pasopkan reserves the right to review and approve all events before they are published.',
+      content_lo: 'Pasopkan ສະຫງວນສິດໃນການກວດສອບ ແລະ ອະນຸມັດທຸກ event ກ່ອນທີ່ຈະຖືກເຜີຍແຜ່.',
+      icon: 'shield-check'
+    },
+    {
+      id: 'term-3',
+      title_en: 'Legal Compliance',
+      title_lo: 'ການປະຕິບັດຕາມກົດໝາຍ',
+      content_en: 'You must comply with all local laws and regulations regarding event organization and ticket sales.',
+      content_lo: 'ທ່ານຕ້ອງປະຕິບັດຕາມກົດໝາຍ ແລະ ລະບຽບການທ້ອງຖິ່ນທັງໝົດກ່ຽວກັບການຈັດ event ແລະ ການຂາຍປີ້.',
+      icon: 'alert-circle'
+    },
+    {
+      id: 'term-4',
+      title_en: 'Processing Fees',
+      title_lo: 'ຄ່າທຳນຽມການປະມວນຜົນ',
+      content_en: 'Pasopkan will deduct a standard processing fee from all ticket sales.',
+      content_lo: 'Pasopkan ຈະຫັກຄ່າທຳນຽມການປະມວນຜົນມາດຕະຖານຈາກການຂາຍປີ້ທັງໝົດ.',
+      icon: 'dollar-sign'
+    },
+    {
+      id: 'term-5',
+      title_en: 'Cancellations & Refunds',
+      title_lo: 'ການຍົກເລີກ ແລະ ການຄືນເງິນ',
+      content_en: 'You are responsible for handling any event cancellations or refunds according to your stated policy.',
+      content_lo: 'ທ່ານຕ້ອງຮັບຜິດຊອບໃນການຈັດການການຍົກເລີກ event ຫຼື ການຄືນເງິນຕາມນະໂຍບາຍທີ່ທ່ານໄດ້ລະບຸໄວ້.',
+      icon: 'refresh-ccw'
+    },
+    {
+      id: 'term-6',
+      title_en: 'Payout Schedule',
+      title_lo: 'ກຳນົດເວລາການຖອນເງິນ',
+      content_en: 'Ticket sale payouts are processed weekly or within 3-5 business days after the successful completion of the event.',
+      content_lo: 'ການໂອນເງິນຍອດຂາຍປີ້ຈະຖືກດຳເນີນການເປັນລາຍອາທິດ ຫຼື ພາຍໃນ 3-5 ວັນລັດຖະການຫຼັງຈາກ event ສິ້ນສຸດລົງຢ່າງສຳເລັດ.',
+      icon: 'calendar'
+    },
+    {
+      id: 'term-7',
+      title_en: 'Content & Copyright',
+      title_lo: 'ລິຂະສິດ ແລະ ເນື້ອຫາ',
+      content_en: 'You must own or have explicit rights to all media, trademarks, and content uploaded for your event listing.',
+      content_lo: 'ທ່ານຕ້ອງເປັນເຈົ້າຂອງ ຫຼື ມີສິດຢ່າງຖືກຕ້ອງໃນການນຳໃຊ້ສື່, ເຄື່ອງໝາຍການຄ້າ ແລະ ເນື້ອຫາທັງໝົດທີ່ອັບໂຫຼດ.',
+      icon: 'file-text'
+    },
+    {
+      id: 'term-8',
+      title_en: 'Safety & Security',
+      title_lo: 'ຄວາມປອດໄພ ແລະ ຄວາມສະຫງົບ',
+      content_en: 'Organizers must ensure adequate security, health, and safety protocols are in place for physical attendees.',
+      content_lo: 'ຜູ້ຈັດງານຕ້ອງຮັບປະກັນວ່າມີມາດຕະການຮັກສາຄວາມປອດໄພ, ສຸຂະພາບ ແລະ ຄວາມສະຫງົບຮຽບຮ້ອຍທີ່ພຽງພໍ.',
+      icon: 'shield-alert'
+    },
+    {
+      id: 'term-9',
+      title_en: 'Community Guidelines',
+      title_lo: 'ແນວທາງປະຕິບັດ ແລະ ກົດລະບຽບຊຸມຊົນ',
+      content_en: 'You must maintain professional conduct and adhere to our community guidelines, promoting respectful interactions with all attendees.',
+      content_lo: 'ທ່ານຕ້ອງຮັກສາການປະພຶດທີ່ເປັນມືອາຊີບ ແລະ ປະຕິບັດຕາມແນວທາງຂອງຊຸມຊົນຂອງພວກເຮົາ, ສົ່ງເສີມການພົວພັນທີ່ດີກັບຜູ້ເຂົ້າຮ່ວມທຸກຄົນ.',
+      icon: 'globe'
+    }
+  ]
+};
+
 // ==========================================
 // PERSISTENCE HELPER FUNCTIONS
 // ==========================================
@@ -267,4 +365,12 @@ export async function getPrivacySettings(): Promise<PrivacySettings> {
 }
 export async function savePrivacySettings(settings: PrivacySettings): Promise<void> {
   await saveSettings<PrivacySettings>('privacy_policy', settings);
+}
+
+// Organizer Terms & Conditions
+export async function getOrganizerTermsSettings(): Promise<OrganizerTermsSettings> {
+  return getSettings<OrganizerTermsSettings>('organizer_terms', DEFAULT_ORGANIZER_TERMS_SETTINGS);
+}
+export async function saveOrganizerTermsSettings(settings: OrganizerTermsSettings): Promise<void> {
+  await saveSettings<OrganizerTermsSettings>('organizer_terms', settings);
 }
