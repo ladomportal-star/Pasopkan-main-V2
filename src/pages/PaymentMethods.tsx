@@ -132,11 +132,11 @@ const translations = {
 };
 
 const LAO_BANKS = [
-  { id: 'bcel', name: 'BCEL Bank', label: 'BCEL One', badgeBg: 'bg-red-600', textColor: 'text-red-600' },
-  { id: 'jdb', name: 'JDB Bank', label: 'JDB', badgeBg: 'bg-blue-600', textColor: 'text-blue-600' },
-  { id: 'ldb', name: 'LDB Bank', label: 'LDB', badgeBg: 'bg-emerald-600', textColor: 'text-emerald-600' },
-  { id: 'ibcool', name: 'Indochina Bank', label: 'IB Cool', badgeBg: 'bg-cyan-600', textColor: 'text-cyan-600' },
-  { id: 'stb', name: 'ST Bank', label: 'STB', badgeBg: 'bg-purple-600', textColor: 'text-purple-600' }
+  { id: 'bcel', name: 'BCEL Bank', label: 'BCEL One', badgeBg: 'bg-red-600', textColor: 'text-red-600', logo: '/BCEL.png' },
+  { id: 'jdb', name: 'JDB Bank', label: 'JDB', badgeBg: 'bg-blue-600', textColor: 'text-blue-600', logo: '/JDB.png' },
+  { id: 'ldb', name: 'LDB Bank', label: 'LDB', badgeBg: 'bg-emerald-600', textColor: 'text-emerald-600', logo: '/LDB.png' },
+  { id: 'ibcool', name: 'Indochina Bank', label: 'IB Cool', badgeBg: 'bg-cyan-600', textColor: 'text-cyan-600', logo: '/IB.png' },
+  { id: 'stb', name: 'ST Bank', label: 'STB', badgeBg: 'bg-purple-600', textColor: 'text-purple-600', logo: '/ST.png' }
 ];
 
 const MOCK_PAYOUTS = [
@@ -404,9 +404,22 @@ export default function PaymentMethods() {
             <div className="bg-white border border-gray-200/80 rounded-2xl p-4 sm:p-5 shadow-xs">
               <div className="flex items-center justify-between mb-3.5">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-adv-orange/10 text-adv-orange flex items-center justify-center font-black text-xs shrink-0 border border-adv-orange/20">
-                    <Building className="w-4 h-4" />
-                  </div>
+                  {(() => {
+                    const matchedBank = LAO_BANKS.find(b => 
+                      b.name.toLowerCase() === bankAccount.bankName.toLowerCase() || 
+                      b.label.toLowerCase() === bankAccount.bankName.toLowerCase() ||
+                      bankAccount.bankName.toLowerCase().includes(b.id)
+                    );
+                    return matchedBank?.logo ? (
+                      <div className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center p-1 shadow-2xs shrink-0">
+                        <img src={matchedBank.logo} alt={bankAccount.bankName} className="w-full h-full object-contain rounded-lg" />
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 rounded-xl bg-adv-orange/10 text-adv-orange flex items-center justify-center font-black text-xs shrink-0 border border-adv-orange/20">
+                        <Building className="w-4 h-4" />
+                      </div>
+                    );
+                  })()}
                   <div>
                     <div className="flex items-center gap-2">
                       <h2 className="text-base font-bold text-adv-slate">{bankAccount.bankName}</h2>

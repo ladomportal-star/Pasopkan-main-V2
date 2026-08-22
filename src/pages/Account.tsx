@@ -230,11 +230,11 @@ const MOCK_PAYOUTS = [
 ];
 
 const LAO_BANKS = [
-  { id: 'bcel', name: 'BCEL Bank', label: 'BCEL One', badgeBg: 'bg-red-600', textColor: 'text-red-600' },
-  { id: 'jdb', name: 'JDB Bank', label: 'JDB', badgeBg: 'bg-blue-600', textColor: 'text-blue-600' },
-  { id: 'ldb', name: 'LDB Bank', label: 'LDB', badgeBg: 'bg-emerald-600', textColor: 'text-emerald-600' },
-  { id: 'ibcool', name: 'Indochina Bank', label: 'IB Cool', badgeBg: 'bg-cyan-600', textColor: 'text-cyan-600' },
-  { id: 'stb', name: 'ST Bank', label: 'STB', badgeBg: 'bg-purple-600', textColor: 'text-purple-600' }
+  { id: 'bcel', name: 'BCEL Bank', label: 'BCEL One', badgeBg: 'bg-red-600', textColor: 'text-red-600', logo: '/BCEL.png' },
+  { id: 'jdb', name: 'JDB Bank', label: 'JDB', badgeBg: 'bg-blue-600', textColor: 'text-blue-600', logo: '/JDB.png' },
+  { id: 'ldb', name: 'LDB Bank', label: 'LDB', badgeBg: 'bg-emerald-600', textColor: 'text-emerald-600', logo: '/LDB.png' },
+  { id: 'ibcool', name: 'Indochina Bank', label: 'IB Cool', badgeBg: 'bg-cyan-600', textColor: 'text-cyan-600', logo: '/IB.png' },
+  { id: 'stb', name: 'ST Bank', label: 'STB', badgeBg: 'bg-purple-600', textColor: 'text-purple-600', logo: '/ST.png' }
 ];
 
 export default function Account() {
@@ -1537,9 +1537,22 @@ export default function Account() {
               ) : (
                 <div className={`pt-3 border-t ${theme === 'dark' ? 'border-zinc-800/60' : 'border-gray-100'}`}>
                   <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl flex items-center gap-3 sm:gap-4 ${theme === 'dark' ? 'bg-zinc-950/50' : 'bg-gray-50'}`}>
-                    <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-xs border border-emerald-200/50 dark:border-emerald-800/50">
-                      <Building className="w-4 h-4 sm:w-6 sm:h-6" />
-                    </div>
+                    {(() => {
+                      const matchedBank = LAO_BANKS.find(b => 
+                        b.name.toLowerCase() === bankAccount.bankName.toLowerCase() || 
+                        b.label.toLowerCase() === bankAccount.bankName.toLowerCase() ||
+                        bankAccount.bankName.toLowerCase().includes(b.id)
+                      );
+                      return matchedBank?.logo ? (
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white border border-gray-200 dark:border-zinc-800 flex items-center justify-center p-1.5 shrink-0 shadow-xs">
+                          <img src={matchedBank.logo} alt={bankAccount.bankName} className="w-full h-full object-contain rounded-lg" />
+                        </div>
+                      ) : (
+                        <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-xs border border-emerald-200/50 dark:border-emerald-800/50">
+                          <Building className="w-4 h-4 sm:w-6 sm:h-6" />
+                        </div>
+                      );
+                    })()}
                     <div>
                       <div className="flex items-center gap-2 mb-0.5">
                         <h4 className="text-xs sm:text-sm font-black">{bankAccount.bankName}</h4>

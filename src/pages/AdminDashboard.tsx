@@ -2889,7 +2889,25 @@ export default function AdminDashboard() {
                             <div>
                               <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{t.bankAccount}</div>
                               <div className="font-bold text-adv-slate">{selectedEvent.paymentInfo.accountName}</div>
-                              <div className="text-xs text-gray-500 font-medium mt-1">{selectedEvent.paymentInfo.bankName}</div>
+                              {(() => {
+                                const bName = (selectedEvent.paymentInfo.bankName || '').toLowerCase();
+                                let logo = '';
+                                if (bName.includes('bcel')) logo = '/BCEL.png';
+                                else if (bName.includes('ldb')) logo = '/LDB.png';
+                                else if (bName.includes('jdb')) logo = '/JDB.png';
+                                else if (bName.includes('ib') || bName.includes('indochina')) logo = '/IB.png';
+                                else if (bName.includes('st')) logo = '/ST.png';
+                                return (
+                                  <div className="flex items-center gap-1.5 mt-1">
+                                    {logo && (
+                                      <div className="w-5 h-5 rounded-md bg-white border border-gray-200 p-0.5 flex items-center justify-center shrink-0">
+                                        <img src={logo} alt={selectedEvent.paymentInfo.bankName} className="w-full h-full object-contain" />
+                                      </div>
+                                    )}
+                                    <span className="text-xs text-gray-600 font-bold">{selectedEvent.paymentInfo.bankName}</span>
+                                  </div>
+                                );
+                              })()}
                             </div>
                             <div>
                               <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{t.accountNumber}</div>

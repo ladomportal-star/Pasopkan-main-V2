@@ -105,11 +105,11 @@ interface CheckoutState {
 }
 
 const LAOS_BANKS = [
-  { id: 'bcel', name: 'BCEL One', color: 'bg-red-600' },
-  { id: 'ldb', name: 'LDB Trust', color: 'bg-blue-700' },
-  { id: 'jdb', name: 'JDB Yes', color: 'bg-green-600' },
-  { id: 'ib', name: 'IB Bank', color: 'bg-teal-600' },
-  { id: 'stb', name: 'ST Bank', color: 'bg-emerald-600' },
+  { id: 'bcel', name: 'BCEL One', color: 'bg-red-600', logo: '/BCEL.png' },
+  { id: 'ldb', name: 'LDB Trust', color: 'bg-blue-700', logo: '/LDB.png' },
+  { id: 'jdb', name: 'JDB Yes', color: 'bg-green-600', logo: '/JDB.png' },
+  { id: 'ib', name: 'IB Bank', color: 'bg-teal-600', logo: '/IB.png' },
+  { id: 'stb', name: 'ST Bank', color: 'bg-emerald-600', logo: '/ST.png' },
 ];
 
 const MultiSelectDropdown = ({ options, selectedValues, onChange, lang }: { options: string[], selectedValues: string[], onChange: (values: string[]) => void, lang: 'lo' | 'en' }) => {
@@ -815,8 +815,14 @@ export default function Checkout() {
                                 : 'border-gray-50 hover:border-gray-100 bg-gray-50/50'
                               }`}
                             >
-                              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl ${bank.color} flex items-center justify-center mr-3 shrink-0 shadow-sm`}>
-                                <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center mr-3 shrink-0 shadow-xs p-1">
+                                {bank.logo ? (
+                                  <img src={bank.logo} alt={bank.name} className="w-full h-full object-contain rounded-lg" />
+                                ) : (
+                                  <div className={`w-full h-full rounded-lg ${bank.color} flex items-center justify-center`}>
+                                    <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                                  </div>
+                                )}
                               </div>
                               <div className="flex-1 text-left">
                                 <h4 className="text-sm sm:text-base font-bold text-adv-slate">{bank.name}</h4>
@@ -908,8 +914,16 @@ export default function Checkout() {
                         </>
                       ) : (
                         <>
-                          <div className="text-center mb-8">
-                            <h3 className="text-2xl font-bold text-adv-slate mb-3">{t.scanToPay}</h3>
+                          <div className="text-center mb-6">
+                            {(() => {
+                              const bObj = LAOS_BANKS.find(b => b.id === selectedBank);
+                              return bObj?.logo ? (
+                                <div className="w-14 h-14 mx-auto mb-3 bg-white p-1.5 rounded-2xl shadow-xs border border-gray-150 flex items-center justify-center">
+                                  <img src={bObj.logo} alt={bObj.name} className="w-full h-full object-contain rounded-xl" />
+                                </div>
+                              ) : null;
+                            })()}
+                            <h3 className="text-2xl font-bold text-adv-slate mb-2">{t.scanToPay}</h3>
                             <p className="text-gray-500 text-sm font-medium">{t.openAppToScan.replace('{bankName}', LAOS_BANKS.find(b => b.id === selectedBank)?.name || '')}</p>
                           </div>
                           
