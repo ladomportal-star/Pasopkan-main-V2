@@ -85,48 +85,55 @@ const LandscapeEventCard: React.FC<LandscapeEventCardProps> = ({ event, index, u
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      className="group relative flex flex-col commerce-card shrink-0 w-[calc(100vw-64px)] max-w-[320px] sm:w-[320px] overflow-hidden cursor-pointer snap-start rounded-[2rem]"
+      className="group relative flex flex-col commerce-card shrink-0 w-[230px] sm:w-[280px] md:w-[320px] overflow-hidden cursor-pointer snap-start rounded-2xl sm:rounded-[2rem]"
       onClick={() => navigate(`/event/${event.id}`, { state: { from: location.pathname + location.search } })}
     >
       {/* Visual Header */}
-      <div className="relative h-44 overflow-hidden">
+      <div className="relative h-32 sm:h-40 md:h-44 overflow-hidden bg-gray-100">
         <img 
-          src={event.image} 
+          src={event.image.includes('unsplash.com') ? event.image.replace(/w=\d+/, 'w=600') : event.image} 
+          srcSet={
+            event.image.includes('unsplash.com') 
+            ? `${event.image.replace(/w=\d+/, 'w=400')} 400w, ${event.image.replace(/w=\d+/, 'w=800')} 800w`
+            : undefined
+          }
+          sizes="(max-width: 640px) 250px, 400px"
           alt={event.title} 
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           referrerPolicy="no-referrer"
+          loading="lazy"
         />
       </div>
 
-      <div className="p-4 flex flex-col flex-1">
-        <div className="flex items-center justify-between gap-1.5 text-xs text-adv-slate/50 mb-2">
-          <div className="flex items-center gap-1.5 truncate">
-            <MapPin className="w-3.5 h-3.5 text-adv-orange/70 shrink-0" />
+      <div className="p-3 sm:p-4 flex flex-col flex-1">
+        <div className="flex items-center justify-between gap-1.5 text-[11px] sm:text-xs text-adv-slate/50 mb-1.5">
+          <div className="flex items-center gap-1 truncate">
+            <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-adv-orange/70 shrink-0" />
             <span className="truncate">{event.location}</span>
           </div>
           {getDistanceString() && (
-            <span className="shrink-0 text-[10px] font-bold text-adv-orange bg-orange-50 px-1.5 py-0.5 rounded-md border border-orange-100/30 whitespace-nowrap">
+            <span className="shrink-0 text-[9px] sm:text-[10px] font-bold text-adv-orange bg-orange-50 px-1.5 py-0.5 rounded-md border border-orange-100/30 whitespace-nowrap">
               {getDistanceString()}
             </span>
           )}
         </div>
 
-        <h3 className="text-lg font-bold text-adv-slate leading-snug line-clamp-2 mb-3 h-12">
+        <h3 className="text-sm sm:text-base md:text-lg font-bold text-adv-slate leading-snug line-clamp-2 mb-2 h-9 sm:h-11 md:h-12">
           {event.title}
         </h3>
 
         {/* Footer */}
-        <div className="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between">
+        <div className="mt-auto pt-2 sm:pt-3 border-t border-gray-100 flex items-center justify-between">
           <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t.starting}</span>
+            <span className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t.starting}</span>
             <div className="flex items-baseline gap-1">
-              <span className="text-lg font-bold text-adv-orange leading-tight">{getPriceRange()}</span>
+              <span className="text-sm sm:text-base md:text-lg font-bold text-adv-orange leading-tight">{getPriceRange()}</span>
             </div>
           </div>
           
-          <button className="text-xs font-bold text-adv-orange group-hover:underline flex items-center gap-1">
+          <button className="text-[11px] sm:text-xs font-bold text-adv-orange group-hover:underline flex items-center gap-1">
              {t.book}
-             <ArrowRight className="w-3.5 h-3.5" />
+             <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
           </button>
         </div>
       </div>

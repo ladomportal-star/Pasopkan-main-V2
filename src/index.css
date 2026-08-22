@@ -1,5 +1,25 @@
-@import url('https://fonts.googleapis.com/css2?family=Phetsarath:wght@400;700&family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,400;1,700&family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Noto+Sans+Lao:wght@100..900&family=Noto+Sans+Lao+Looped:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Lao:wght@400;500;600;700&family=Noto+Sans+Lao+Looped:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
+
+/* General Mobile Performance Optimizations */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  overscroll-behavior-y: none;
+}
+
+/* Hardware acceleration for smooth animations */
+.hardware-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+}
 
 /* BoonHome & Boon Font Faces for Lao Language */
 @font-face {

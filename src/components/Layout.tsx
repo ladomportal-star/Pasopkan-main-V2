@@ -34,7 +34,7 @@ export default function Layout() {
   return (
     <div className="flex-1 bg-white text-adv-slate selection:bg-adv-orange/30 font-sans flex flex-col">
       <Navbar />
-      <main className="flex-1 pt-20 lg:pt-24 pb-0 flex flex-col overflow-x-hidden">
+      <main className="flex-1 pt-16 sm:pt-20 lg:pt-24 pb-0 flex flex-col overflow-x-hidden">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}

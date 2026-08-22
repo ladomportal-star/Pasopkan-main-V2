@@ -73,28 +73,28 @@ const getEventStats = (event: LaoEvent) => {
 
 const LandscapeEventCardSkeleton: React.FC = () => {
   return (
-    <div className="relative flex flex-col bg-white border border-gray-150/60 rounded-[2rem] shadow-xs shrink-0 w-[calc(100vw-64px)] max-w-[320px] sm:w-[320px] overflow-hidden">
+    <div className="relative flex flex-col bg-white border border-gray-150/60 rounded-2xl sm:rounded-[2rem] shadow-xs shrink-0 w-[230px] sm:w-[280px] md:w-[320px] overflow-hidden">
       {/* Image header skeleton */}
-      <div className="h-44 bg-gray-100 animate-pulse" />
+      <div className="h-32 sm:h-40 md:h-44 bg-gray-100 animate-pulse" />
 
       {/* Body container */}
-      <div className="p-4 flex flex-col flex-1">
+      <div className="p-3 sm:p-4 flex flex-col flex-1">
         {/* Location skeleton */}
-        <div className="w-1/3 h-3.5 bg-gray-150 rounded-md animate-pulse mb-3" />
+        <div className="w-1/3 h-3 bg-gray-150 rounded-md animate-pulse mb-2" />
 
         {/* Title skeleton */}
-        <div className="space-y-2 mb-4 h-12">
-          <div className="w-11/12 h-4 bg-gray-150 rounded-md animate-pulse" />
-          <div className="w-2/3 h-4 bg-gray-150 rounded-md animate-pulse" />
+        <div className="space-y-1.5 mb-3 h-9 sm:h-11 md:h-12">
+          <div className="w-11/12 h-3.5 bg-gray-150 rounded-md animate-pulse" />
+          <div className="w-2/3 h-3.5 bg-gray-150 rounded-md animate-pulse" />
         </div>
 
         {/* Footer skeleton */}
-        <div className="mt-auto pt-3 border-t border-gray-150 flex items-center justify-between">
-          <div className="space-y-1.5">
-            <div className="w-12 h-2.5 bg-gray-150 rounded-md animate-pulse" />
-            <div className="w-24 h-5 bg-gray-150 rounded-md animate-pulse" />
+        <div className="mt-auto pt-2 sm:pt-3 border-t border-gray-150 flex items-center justify-between">
+          <div className="space-y-1">
+            <div className="w-10 h-2 bg-gray-150 rounded-md animate-pulse" />
+            <div className="w-20 h-4 bg-gray-150 rounded-md animate-pulse" />
           </div>
-          <div className="w-20 h-8 bg-gray-150 rounded-xl animate-pulse" />
+          <div className="w-14 sm:w-20 h-6 sm:h-8 bg-gray-150 rounded-lg sm:rounded-xl animate-pulse" />
         </div>
       </div>
     </div>
@@ -105,13 +105,13 @@ const CategoryRowSkeleton: React.FC<{ title: string }> = ({ title }) => {
   return (
     <div className="flex flex-col mb-0">
       {/* Row Header */}
-      <div className="flex items-end justify-between mb-4 sm:mb-8">
-        <h3 className="text-2xl sm:text-3xl font-display font-bold text-adv-slate">
+      <div className="flex items-end justify-between mb-2.5 sm:mb-6">
+        <h3 className="text-lg sm:text-2xl md:text-3xl font-display font-bold text-adv-slate">
           {title}
         </h3>
         {/* Actions */}
-        <div className="flex items-center gap-3 sm:gap-6 shrink-0">
-          <div className="w-20 h-4 bg-gray-150 rounded-md animate-pulse" />
+        <div className="flex items-center gap-2 sm:gap-6 shrink-0">
+          <div className="w-16 sm:w-20 h-3.5 sm:h-4 bg-gray-150 rounded-md animate-pulse" />
           <div className="hidden sm:flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-gray-150 animate-pulse" />
             <div className="w-10 h-10 rounded-full bg-gray-150 animate-pulse" />
@@ -120,7 +120,7 @@ const CategoryRowSkeleton: React.FC<{ title: string }> = ({ title }) => {
       </div>
 
       {/* Horizontal List */}
-      <div className="flex overflow-x-auto pb-3 sm:pb-6 -mx-4 px-4 sm:-mx-8 sm:px-8 hide-scrollbar gap-6">
+      <div className="flex overflow-x-auto pb-2 sm:pb-5 -mx-4 px-4 sm:-mx-8 sm:px-8 hide-scrollbar gap-3 sm:gap-6">
         {[1, 2, 3, 4].map((n) => (
           <LandscapeEventCardSkeleton key={n} />
         ))}
@@ -144,17 +144,17 @@ const CategoryRow: React.FC<{ category: string, events: LaoEvent[], title: strin
 
   return (
     <div className="flex flex-col mb-0 group">
-      <div className="flex items-end justify-between mb-4 sm:mb-8">
-        <h3 className="text-2xl sm:text-3xl font-display font-bold text-adv-slate">
+      <div className="flex items-end justify-between mb-2.5 sm:mb-6">
+        <h3 className="text-lg sm:text-2xl md:text-3xl font-display font-bold text-adv-slate">
           {title}
         </h3>
-        <div className="flex items-center gap-3 sm:gap-6 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-6 shrink-0">
           <Link 
             to={`/category/${categoryId}`}
-            className="text-xs font-black text-adv-orange hover:text-black transition-colors uppercase tracking-widest flex items-center gap-1.5 group/btn"
+            className="text-[10px] sm:text-xs font-black text-adv-orange hover:text-black transition-colors uppercase tracking-wider sm:tracking-widest flex items-center gap-1 group/btn"
           >
             {lang === 'en' ? 'Show More' : 'ເບິ່ງເພີ່ມເຕີມ'}
-            <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-1" />
+            <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover/btn:translate-x-1" />
           </Link>
           <div className="hidden sm:flex items-center gap-2">
             <button 
@@ -175,7 +175,7 @@ const CategoryRow: React.FC<{ category: string, events: LaoEvent[], title: strin
       
       <div 
         ref={scrollRef}
-        className="flex overflow-x-auto overflow-y-hidden pb-3 sm:pb-6 -mx-4 px-4 sm:-mx-8 sm:px-8 hide-scrollbar gap-6 snap-x snap-mandatory scroll-smooth"
+        className="flex overflow-x-auto overflow-y-hidden pb-2 sm:pb-5 -mx-4 px-4 sm:-mx-8 sm:px-8 hide-scrollbar gap-3 sm:gap-6 snap-x snap-mandatory scroll-smooth hardware-accelerated"
       >
         {events.map((event, index) => (
           <LandscapeEventCard 
@@ -197,12 +197,22 @@ export default function Home() {
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const heroImages = [
-    "https://images.unsplash.com/photo-1542360663-80149f104730?auto=format&fit=crop&q=80&w=2070", // Vang Vieng Hot Air Balloons
-    "https://images.unsplash.com/photo-1563725575791-537452d2427a?auto=format&fit=crop&q=80&w=2070", // Luang Prabang Alms Giving
-    "https://images.unsplash.com/photo-1540611025311-01df3cef54b5?auto=format&fit=crop&q=80&w=2070", // Vientiane Patuxai Exploration
-    "https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&q=80&w=2070", // Luang Prabang Kuang Si Falls
-    "https://images.unsplash.com/photo-1579451861283-a2239070aaa9?auto=format&fit=crop&q=80&w=2070"  // Vang Vieng Kayaking
+    "https://images.unsplash.com/photo-1542360663-80149f104730?auto=format&fit=crop&q=80", // Vang Vieng Hot Air Balloons
+    "https://images.unsplash.com/photo-1563725575791-537452d2427a?auto=format&fit=crop&q=80", // Luang Prabang Alms Giving
+    "https://images.unsplash.com/photo-1540611025311-01df3cef54b5?auto=format&fit=crop&q=80", // Vientiane Patuxai Exploration
+    "https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&q=80", // Luang Prabang Kuang Si Falls
+    "https://images.unsplash.com/photo-1579451861283-a2239070aaa9?auto=format&fit=crop&q=80"  // Vang Vieng Kayaking
   ];
+
+  // Preload appropriately sized images
+  useEffect(() => {
+    const isMobile = window.innerWidth <= 768;
+    const width = isMobile ? '600' : '2070';
+    heroImages.forEach((baseSrc) => {
+      const img = new Image();
+      img.src = `${baseSrc}&w=${width}`;
+    });
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -213,33 +223,30 @@ export default function Home() {
 
   useEffect(() => {
     setIsLoading(true);
-    const timer = setTimeout(() => {
-      let allEvents = events;
-      try {
-        const saved = safeStorage.getItem('organizer_events');
-        if (saved) {
-          allEvents = JSON.parse(saved);
-        }
-      } catch (e) {
-        console.error(e);
+    let allEvents = events;
+    try {
+      const saved = safeStorage.getItem('organizer_events');
+      if (saved) {
+        allEvents = JSON.parse(saved);
       }
+    } catch (e) {
+      console.error(e);
+    }
 
-      // Filter out events that are expired or already in the past
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const day = String(today.getDate()).padStart(2, '0');
-      const todayStr = `${year}-${month}-${day}`;
+    // Filter out events that are expired or already in the past
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
 
-      const activeEvents = allEvents.filter(evt => {
-        const checkDate = evt.endDate || evt.date;
-        return checkDate >= todayStr && evt.status !== 'pending' && evt.status !== 'rejected';
-      });
+    const activeEvents = allEvents.filter(evt => {
+      const checkDate = evt.endDate || evt.date;
+      return checkDate >= todayStr && evt.status !== 'pending' && evt.status !== 'rejected';
+    });
 
-      setFetchedEvents(activeEvents);
-      setIsLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
+    setFetchedEvents(activeEvents);
+    setIsLoading(false);
   }, []);
 
   const categoryTitles: Record<string, Record<'en' | 'lo', string>> = {
@@ -253,18 +260,23 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
-      <section className="relative h-[300px] sm:h-[450px] landscape:h-[350px] lg:h-[650px] flex flex-col justify-end pb-20 sm:pb-32 lg:pb-48 overflow-hidden">
+      <section className="relative h-[220px] sm:h-[360px] landscape:h-[260px] lg:h-[550px] flex flex-col justify-end pb-10 sm:pb-24 lg:pb-36 overflow-hidden">
         <div className="absolute inset-0">
           <AnimatePresence mode="wait">
             <motion.img 
               key={currentImageIndex}
-              src={heroImages[currentImageIndex]} 
+              src={`${heroImages[currentImageIndex]}&w=1200`}
+              srcSet={`${heroImages[currentImageIndex]}&w=600 600w, 
+                       ${heroImages[currentImageIndex]}&w=1200 1200w, 
+                       ${heroImages[currentImageIndex]}&w=2070 2000w`}
+              sizes="(max-width: 768px) 600px, (max-width: 1200px) 1200px, 100vw"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 1.5, ease: "linear" }}
               className="absolute inset-0 w-full h-full object-cover"
               alt="Hero Background"
+              fetchPriority="high"
             />
           </AnimatePresence>
           <div className="absolute inset-0 bg-black/40" />
@@ -272,24 +284,24 @@ export default function Home() {
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 w-full text-center">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-4 md:space-y-8"
+            className="space-y-2 md:space-y-6"
           >
-             <h1 className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl text-white font-black tracking-tight uppercase leading-[0.9] landscape:text-4xl landscape:md:text-6xl">
+             <h1 className="text-2xl sm:text-4xl md:text-6xl lg:text-7xl text-white font-black tracking-tight uppercase leading-[0.95] landscape:text-3xl landscape:md:text-5xl">
                {t.mainTitle}
              </h1>
           </motion.div>
         </div>
       </section>
 
-      <section className="relative -mt-6 sm:-mt-8 md:-mt-12 lg:-mt-14 z-20 px-4 sm:px-8 lg:px-12 max-w-7xl mx-auto mb-12 md:mb-24">
+      <section className="relative -mt-4 sm:-mt-8 md:-mt-12 lg:-mt-14 z-20 px-3 sm:px-8 lg:px-12 max-w-7xl mx-auto mb-6 sm:mb-16 md:mb-20">
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white/80 backdrop-blur-xl border border-white/20 rounded-2xl md:rounded-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] p-4 sm:p-5 md:p-10 landscape:p-4"
+          className="bg-white/85 backdrop-blur-xl border border-white/30 rounded-xl sm:rounded-2xl md:rounded-3xl shadow-[0_16px_32px_-12px_rgba(0,0,0,0.08)] sm:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] p-2.5 sm:p-5 md:p-8 landscape:p-3"
         >
-          <div className="grid grid-cols-4 gap-2 sm:gap-8 lg:gap-12 landscape:grid-cols-4">
+          <div className="grid grid-cols-4 gap-1.5 sm:gap-6 lg:gap-10 landscape:grid-cols-4">
              {[
                { id: 'workshop', label: t.workshops, icon: Lightbulb, color: 'bg-amber-50 text-amber-600' },
                { id: 'sports', label: t.adventure, icon: Mountain, color: 'bg-orange-50 text-orange-600' },
@@ -304,19 +316,19 @@ export default function Home() {
                >
                  <Link 
                    to={`/category/${cat.id}`}
-                   className="flex flex-col items-center gap-2 md:gap-4 group relative"
+                   className="flex flex-col items-center gap-1.5 sm:gap-3 group relative py-0.5"
                  >
-                    <div className={`w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-xl sm:rounded-[1.5rem] md:rounded-[2rem] ${cat.color} flex items-center justify-center transition-all duration-500 group-hover:rounded-2xl group-hover:scale-110 group-hover:shadow-lg group-active:scale-95`}>
-                       <cat.icon className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
+                    <div className={`w-9 h-9 sm:w-13 sm:h-13 md:w-16 md:h-16 rounded-lg sm:rounded-[1.25rem] md:rounded-[1.75rem] ${cat.color} flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-active:scale-95 shadow-2xs`}>
+                       <cat.icon className="w-4 h-4 sm:w-6 sm:h-6 md:w-7 md:h-7" />
                     </div>
                     <div className="text-center">
-                       <span className="block text-[8px] sm:text-xs md:text-sm font-bold text-adv-slate group-hover:translate-y-[-2px] transition-transform uppercase tracking-tighter sm:tracking-normal">
+                       <span className="block text-[9px] sm:text-xs md:text-sm font-bold text-adv-slate group-hover:translate-y-[-1px] transition-transform uppercase tracking-tight sm:tracking-normal line-clamp-1">
                          {cat.label}
                        </span>
                     </div>
                     
                     {/* Hover indicator */}
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-adv-orange opacity-0 group-hover:opacity-100 transition-all duration-300" />
+                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-adv-orange opacity-0 group-hover:opacity-100 transition-all duration-300" />
                  </Link>
                </motion.div>
              ))}
@@ -324,8 +336,8 @@ export default function Home() {
         </motion.div>
       </section>
 
-      <section id="events-section" className="px-4 sm:px-8 lg:px-12 max-w-7xl mx-auto pb-2 sm:pb-16">
-        <div className="space-y-12 sm:space-y-24">
+      <section id="events-section" className="px-3 sm:px-8 lg:px-12 max-w-7xl mx-auto pb-4 sm:pb-16">
+        <div className="space-y-6 sm:space-y-16 md:space-y-20">
           {isLoading ? (
             <>
               {/* Skeletons for Categories list */}

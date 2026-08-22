@@ -1,3 +1,4 @@
+import { EventData, PayoutBill } from "../types";
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Download, RefreshCw, Shield, Users, Calendar, CheckCircle2, XCircle, Trash2, Edit, ExternalLink, Search, Filter, X, MessageSquare, ChevronDown, MapPin, Save, LayoutDashboard, TrendingUp, DollarSign, Activity, Loader2, AlertCircle, Menu, Globe, User, Bell, Plus, Info, Upload, Image as ImageIcon, Printer, CreditCard, Lock, Eye, EyeOff, LogIn, LogOut, Settings, UploadCloud, Clock, Ticket, Monitor, Smartphone } from 'lucide-react';
@@ -2248,69 +2249,69 @@ export default function AdminDashboard() {
                )}
 
               {activeTab === 'payouts' && (
-                <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-white border border-gray-100 rounded-3xl shadow-sm">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-orange-50 rounded-2xl">
-                        <DollarSign className="w-6 h-6 text-adv-orange" />
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-3.5 sm:p-5 bg-white border border-gray-100 rounded-2xl sm:rounded-3xl shadow-2xs sm:shadow-sm">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div className="p-2 sm:p-3 bg-orange-50 rounded-xl sm:rounded-2xl">
+                        <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-adv-orange" />
                       </div>
                       <div>
-                        <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">{t.totalProfit}</p>
-                        <p className="text-2xl font-black text-adv-slate">
+                        <p className="text-[10px] sm:text-xs text-gray-400 font-bold uppercase tracking-wider sm:tracking-widest">{t.totalProfit}</p>
+                        <p className="text-lg sm:text-2xl font-black text-adv-slate">
                           {new Intl.NumberFormat('lo-LA').format(payoutsList.reduce((sum, p) => sum + p.platformFeeAmount, 0))} ₭
                         </p>
                       </div>
                     </div>
                     
-                    <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-100 flex-wrap">
+                    <div className="flex bg-gray-50 p-1 sm:p-1.5 rounded-xl sm:rounded-2xl border border-gray-100 flex-wrap gap-0.5">
                       <button 
                         onClick={() => setPayoutFilter('all')}
-                        className={`px-4 py-2 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${payoutFilter === 'all' ? 'bg-white text-adv-orange shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
+                        className={`px-2.5 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest rounded-lg sm:rounded-xl transition-all ${payoutFilter === 'all' ? 'bg-white text-adv-orange shadow-xs border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
                       >
                         All
                       </button>
                       <button 
                         onClick={() => setPayoutFilter('pending')}
-                        className={`px-4 py-2 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${payoutFilter === 'pending' ? 'bg-white text-adv-orange shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
+                        className={`px-2.5 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest rounded-lg sm:rounded-xl transition-all ${payoutFilter === 'pending' ? 'bg-white text-adv-orange shadow-xs border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
                       >
                         Pending
                       </button>
                       <button 
                         onClick={() => setPayoutFilter('paid')}
-                        className={`px-4 py-2 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${payoutFilter === 'paid' ? 'bg-white text-adv-orange shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
+                        className={`px-2.5 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest rounded-lg sm:rounded-xl transition-all ${payoutFilter === 'paid' ? 'bg-white text-adv-orange shadow-xs border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
                       >
                         Paid
                       </button>
                     </div>
 
-                    <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-100 flex-wrap">
+                    <div className="flex bg-gray-50 p-1 sm:p-1.5 rounded-xl sm:rounded-2xl border border-gray-100 flex-wrap gap-0.5">
                       <button 
                         onClick={() => setPayoutDateFilter('all')}
-                        className={`px-3 py-2 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${payoutDateFilter === 'all' ? 'bg-white text-adv-orange shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
+                        className={`px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest rounded-lg sm:rounded-xl transition-all ${payoutDateFilter === 'all' ? 'bg-white text-adv-orange shadow-xs border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
                       >
                         All Time
                       </button>
                       <button 
                         onClick={() => setPayoutDateFilter('day')}
-                        className={`px-3 py-2 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${payoutDateFilter === 'day' ? 'bg-white text-adv-orange shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
+                        className={`px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest rounded-lg sm:rounded-xl transition-all ${payoutDateFilter === 'day' ? 'bg-white text-adv-orange shadow-xs border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
                       >
                         Day
                       </button>
                       <button 
                         onClick={() => setPayoutDateFilter('week')}
-                        className={`px-3 py-2 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${payoutDateFilter === 'week' ? 'bg-white text-adv-orange shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
+                        className={`px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest rounded-lg sm:rounded-xl transition-all ${payoutDateFilter === 'week' ? 'bg-white text-adv-orange shadow-xs border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
                       >
                         Week
                       </button>
                       <button 
                         onClick={() => setPayoutDateFilter('month')}
-                        className={`px-3 py-2 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${payoutDateFilter === 'month' ? 'bg-white text-adv-orange shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
+                        className={`px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest rounded-lg sm:rounded-xl transition-all ${payoutDateFilter === 'month' ? 'bg-white text-adv-orange shadow-xs border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
                       >
                         Month
                       </button>
                       <button 
                         onClick={() => setPayoutDateFilter('year')}
-                        className={`px-3 py-2 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${payoutDateFilter === 'year' ? 'bg-white text-adv-orange shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
+                        className={`px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest rounded-lg sm:rounded-xl transition-all ${payoutDateFilter === 'year' ? 'bg-white text-adv-orange shadow-xs border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
                       >
                         Year
                       </button>
@@ -2318,12 +2319,12 @@ export default function AdminDashboard() {
                   </div>
 
                   {payoutsList.length === 0 ? (
-                    <div className="text-center py-20 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
-                      <DollarSign className="w-12 h-12 mx-auto mb-4 text-gray-200" />
-                      <p className="text-gray-400 font-bold">No payouts to manage.</p>
+                    <div className="text-center py-12 sm:py-20 bg-gray-50/50 rounded-2xl sm:rounded-3xl border border-dashed border-gray-200">
+                      <DollarSign className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 text-gray-200" />
+                      <p className="text-xs sm:text-sm text-gray-400 font-bold">No payouts to manage.</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                       {payoutsList
                         .filter(p => payoutFilter === 'all' || p.status === payoutFilter)
                         .filter(p => {
@@ -2340,31 +2341,31 @@ export default function AdminDashboard() {
                           return true;
                         })
                         .map(payout => (
-                        <div key={payout.id} className="p-5 rounded-3xl bg-white border border-gray-100 hover:border-adv-orange/30 transition-all shadow-sm">
-                          <div className="flex flex-col lg:flex-row justify-between gap-6">
+                        <div key={payout.id} className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-white border border-gray-100 hover:border-adv-orange/30 transition-all shadow-2xs sm:shadow-sm">
+                          <div className="flex flex-col lg:flex-row justify-between gap-3.5 sm:gap-6">
                             
                             {/* Payout Overview */}
-                            <div className="flex-1 space-y-3">
-                              <div className="flex items-start justify-between">
+                            <div className="flex-1 space-y-2.5 sm:space-y-3">
+                              <div className="flex items-start justify-between gap-2">
                                 <div>
-                                  <h3 className="text-xl font-black text-adv-slate">{payout.eventTitle}</h3>
-                                  <p className="text-sm font-bold text-gray-500 mt-1">{t.organizer}: <span className="text-adv-orange">{payout.organizer}</span></p>
+                                  <h3 className="text-base sm:text-xl font-black text-adv-slate line-clamp-1">{payout.eventTitle}</h3>
+                                  <p className="text-xs sm:text-sm font-bold text-gray-500 mt-0.5 sm:mt-1">{t.organizer}: <span className="text-adv-orange">{payout.organizer}</span></p>
                                 </div>
-                                <span className={`px-3 py-1 text-xs font-black uppercase tracking-widest rounded-full ${
+                                <span className={`px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest rounded-full shrink-0 ${
                                   payout.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-adv-orange'
                                 }`}>
                                   {payout.status === 'paid' ? t.paid : t.pendingPayout}
                                 </span>
                               </div>
                               
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 p-2.5 sm:p-4 bg-gray-50 rounded-xl sm:rounded-2xl border border-gray-100">
                                 <div>
-                                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">{t.totalRevenue}</p>
-                                  <p className="text-base font-black text-adv-slate">{new Intl.NumberFormat('lo-LA').format(payout.revenue)} ₭</p>
+                                  <p className="text-[9px] sm:text-[10px] text-gray-500 font-bold uppercase tracking-wider sm:tracking-widest mb-0.5 sm:mb-1">{t.totalRevenue}</p>
+                                  <p className="text-xs sm:text-base font-black text-adv-slate">{new Intl.NumberFormat('lo-LA').format(payout.revenue)} ₭</p>
                                 </div>
                                 <div>
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{t.platformFee}</p>
+                                  <div className="flex items-center gap-1.5 mb-0.5 sm:mb-1">
+                                    <p className="text-[9px] sm:text-[10px] text-gray-500 font-bold uppercase tracking-wider sm:tracking-widest">{t.platformFee}</p>
                                     {payout.status === 'pending' && (
                                       <button 
                                         onClick={() => {
@@ -2382,7 +2383,7 @@ export default function AdminDashboard() {
                                             setTempFeePercent(payout.platformFeePercent);
                                           }
                                         }}
-                                        className="text-[10px] text-adv-orange font-bold hover:underline"
+                                        className="text-[9px] sm:text-[10px] text-adv-orange font-bold hover:underline"
                                       >
                                         {editingFeeId === payout.id ? 'Save' : 'Edit'}
                                       </button>
@@ -2396,46 +2397,46 @@ export default function AdminDashboard() {
                                         max="100"
                                         value={tempFeePercent}
                                         onChange={(e) => setTempFeePercent(Number(e.target.value))}
-                                        className="w-16 px-2 py-1 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-adv-orange"
+                                        className="w-14 sm:w-16 px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs sm:text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-adv-orange"
                                       />
-                                      <span className="text-sm font-bold text-gray-500">%</span>
+                                      <span className="text-xs sm:text-sm font-bold text-gray-500">%</span>
                                     </div>
                                   ) : (
-                                    <p className="text-base font-black text-red-500">-{new Intl.NumberFormat('lo-LA').format(payout.platformFeeAmount)} ₭ ({payout.platformFeePercent}%)</p>
+                                    <p className="text-xs sm:text-base font-black text-red-500">-{new Intl.NumberFormat('lo-LA').format(payout.platformFeeAmount)} ₭ ({payout.platformFeePercent}%)</p>
                                   )}
                                 </div>
                                 <div className="col-span-2">
-                                  <p className="text-[10px] text-adv-orange font-bold uppercase tracking-widest mb-1">Payout Amount</p>
-                                  <p className="text-xl font-black text-green-600">{new Intl.NumberFormat('lo-LA').format(payout.payoutAmount)} ₭</p>
+                                  <p className="text-[9px] sm:text-[10px] text-adv-orange font-bold uppercase tracking-wider sm:tracking-widest mb-0.5 sm:mb-1">Payout Amount</p>
+                                  <p className="text-sm sm:text-xl font-black text-green-600">{new Intl.NumberFormat('lo-LA').format(payout.payoutAmount)} ₭</p>
                                 </div>
                               </div>
                             </div>
 
                             {/* Bank Details & Action */}
-                            <div className="lg:w-80 space-y-4 shrink-0 border-t lg:border-t-0 lg:border-l border-gray-100 pt-4 lg:pt-0 lg:pl-6">
-                              <h4 className="text-sm font-extrabold text-adv-slate flex items-center gap-2">
-                                <CreditCard className="w-4 h-4 text-adv-orange" />
+                            <div className="lg:w-80 space-y-2.5 sm:space-y-4 shrink-0 border-t lg:border-t-0 lg:border-l border-gray-100 pt-3 lg:pt-0 lg:pl-6">
+                              <h4 className="text-xs sm:text-sm font-extrabold text-adv-slate flex items-center gap-1.5">
+                                <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-adv-orange" />
                                 {t.payoutInfo}
                               </h4>
-                              <div className="space-y-2 bg-orange-50/50 p-3 rounded-2xl border border-orange-100">
-                                <p className="text-xs text-gray-600 font-bold flex justify-between">
+                              <div className="space-y-1.5 bg-orange-50/50 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-orange-100">
+                                <p className="text-[11px] sm:text-xs text-gray-600 font-bold flex justify-between">
                                   <span>{t.bankAccount}:</span>
                                   <span className="text-adv-slate text-right">{payout.bankInfo.bankName}</span>
                                 </p>
-                                <p className="text-xs text-gray-600 font-bold flex justify-between">
+                                <p className="text-[11px] sm:text-xs text-gray-600 font-bold flex justify-between">
                                   <span>{t.name}:</span>
                                   <span className="text-adv-slate text-right">{payout.bankInfo.accountName}</span>
                                 </p>
-                                <p className="text-xs text-gray-600 font-bold flex justify-between">
+                                <p className="text-[11px] sm:text-xs text-gray-600 font-bold flex justify-between">
                                   <span>{t.accountNumber}:</span>
                                   <span className="text-adv-slate text-right font-mono">{payout.bankInfo.accountNumber}</span>
                                 </p>
                               </div>
                               
-                              <div className="space-y-2">
-                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest cursor-pointer group">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <UploadCloud className="w-4 h-4 text-adv-orange group-hover:text-orange-600 transition-colors" />
+                              <div className="space-y-1.5">
+                                <label className="block text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider sm:tracking-widest cursor-pointer group">
+                                  <div className="flex items-center gap-1.5 mb-1">
+                                    <UploadCloud className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-adv-orange group-hover:text-orange-600 transition-colors" />
                                     <span>{uploadingBill[payout.id] || payout.billImage ? 'Change Bill' : 'Upload Bill Image'}</span>
                                   </div>
                                   <input 
@@ -2455,7 +2456,7 @@ export default function AdminDashboard() {
                                   />
                                 </label>
                                 {(uploadingBill[payout.id] || payout.billImage) && (
-                                  <div className="relative w-full h-24 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                                  <div className="relative w-full h-20 sm:h-24 rounded-lg overflow-hidden border border-gray-200 shadow-2xs">
                                     <img src={uploadingBill[payout.id] || payout.billImage} alt="Bill Preview" className="w-full h-full object-cover" />
                                     {uploadingBill[payout.id] && (
                                       <button 

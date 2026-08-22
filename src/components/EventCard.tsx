@@ -83,10 +83,17 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
       {/* Image Container with compact aspect ratio */}
       <div className="relative aspect-[16/9] w-full overflow-hidden bg-gray-100 shrink-0">
         <img 
-          src={event.image} 
+          src={event.image.includes('unsplash.com') ? event.image.replace(/w=\d+/, 'w=600') : event.image} 
+          srcSet={
+            event.image.includes('unsplash.com') 
+            ? `${event.image.replace(/w=\d+/, 'w=400')} 400w, ${event.image.replace(/w=\d+/, 'w=800')} 800w`
+            : undefined
+          }
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           alt={event.title} 
           className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
           referrerPolicy="no-referrer"
+          loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-40 pointer-events-none" />
 

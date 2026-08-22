@@ -1,3 +1,4 @@
+import { BankAccountInfo, PayoutBill, EventData } from "../types";
 import React, { useState, useRef, useEffect } from 'react';
 import { User, Settings, CreditCard, Bell, Shield, HelpCircle, LogOut, ChevronLeft, ChevronRight, Camera, Calendar as CalendarIcon, MapPin, Plus, CheckCircle2, XCircle, X, AlertCircle, AlertTriangle, Loader2, Image as ImageIcon, Ticket, Download, Link2, Copy, ExternalLink, QrCode, Trash2, ShieldCheck , Building, Hash, Save, Edit2, ChevronDown, DollarSign, Info, Smartphone, Lock, Search, Phone, Mail } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -238,7 +239,7 @@ const LAO_BANKS = [
 
 export default function Account() {
 
-  const [bankAccount, setBankAccount] = useState<any | null>(() => {
+  const [bankAccount, setBankAccount] = useState<BankAccountInfo | null>(() => {
     const saved = safeStorage.getItem('organizer_payment_info');
     return saved ? JSON.parse(saved) : null;
   });
@@ -724,7 +725,7 @@ export default function Account() {
   const [showProfilePicSuccess, setShowProfilePicSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [payoutImagePreview, setPayoutImagePreview] = useState<string | null>(null);
-  const [myPayouts, setMyPayouts] = useState<any[]>(MOCK_PAYOUTS);
+  const [myPayouts, setMyPayouts] = useState<PayoutBill[]>(MOCK_PAYOUTS);
 
   useEffect(() => {
     const savedBills = safeStorage.getItem('organizer_payout_bills');
@@ -821,12 +822,12 @@ export default function Account() {
         </div>
         
         {/* Tabs - Mobile Segmented Pill Bar */}
-        <div className={`p-1 rounded-2xl flex gap-1 mb-6 sm:mb-8 transition-colors ${
+        <div className={`p-1 rounded-xl sm:rounded-2xl flex gap-1 mb-4 sm:mb-8 transition-colors ${
           theme === 'dark' ? 'bg-zinc-900/60' : 'bg-gray-200/50'
         } sm:bg-transparent sm:p-0 sm:border-b sm:border-gray-100 sm:rounded-none sm:gap-8`}>
           <button 
             onClick={() => setActiveTab('profile')}
-            className={`flex-1 sm:flex-initial text-center py-2.5 sm:pb-4 sm:pt-0 text-sm font-bold transition-all rounded-xl sm:rounded-none sm:border-b-2 ${
+            className={`flex-1 sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
               activeTab === 'profile' 
                 ? theme === 'dark'
                   ? 'bg-zinc-800 text-white border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange'
@@ -838,7 +839,7 @@ export default function Account() {
           </button>
           <button 
             onClick={() => setActiveTab('my-event')}
-            className={`flex-1 sm:flex-initial text-center py-2.5 sm:pb-4 sm:pt-0 text-sm font-bold transition-all rounded-xl sm:rounded-none sm:border-b-2 ${
+            className={`flex-1 sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
               activeTab === 'my-event' 
                 ? theme === 'dark'
                   ? 'bg-zinc-800 text-white border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange'
@@ -850,7 +851,7 @@ export default function Account() {
           </button>
           <button 
             onClick={() => setActiveTab('payouts')}
-            className={`flex-1 sm:flex-initial text-center py-2.5 sm:pb-4 sm:pt-0 text-sm font-bold transition-all rounded-xl sm:rounded-none sm:border-b-2 ${
+            className={`flex-1 sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
               activeTab === 'payouts' 
                 ? theme === 'dark'
                   ? 'bg-zinc-800 text-white border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange'
@@ -1333,21 +1334,21 @@ export default function Account() {
         </div>
 
         <div className={activeTab === 'payouts' ? 'block' : 'hidden'}>
-          <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div className="max-w-4xl mx-auto space-y-4 sm:space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2.5 sm:gap-4">
               <div>
-                <h2 className={`text-2xl sm:text-3xl font-black transition-colors tracking-tight ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>
+                <h2 className={`text-xl sm:text-3xl font-black transition-colors tracking-tight ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>
                   {t.payouts || (lang === 'lo' ? 'ໃບບິນເບີກຈ່າຍ' : 'Payout Bills')}
                 </h2>
-                <p className="text-sm font-semibold text-gray-500 mt-1">{lang === 'lo' ? 'ຈັດການຂໍ້ມູນທະນາຄານ ແລະ ເບິ່ງປະຫວັດການເບີກຈ່າຍ.' : 'Manage your bank details and view past payouts.'}</p>
+                <p className="text-xs sm:text-sm font-semibold text-gray-500 mt-0.5 sm:mt-1">{lang === 'lo' ? 'ຈັດການຂໍ້ມູນທະນາຄານ ແລະ ເບິ່ງປະຫວັດການເບີກຈ່າຍ.' : 'Manage your bank details and view past payouts.'}</p>
               </div>
-              <div className="p-4 bg-orange-50/80 dark:bg-orange-950/30 border border-orange-100 dark:border-orange-900/40 rounded-2xl flex items-center gap-4 shadow-sm shrink-0 backdrop-blur-xl">
-                <div className="p-2.5 bg-orange-100 dark:bg-orange-900/50 text-adv-orange dark:text-orange-400 rounded-xl">
-                  <DollarSign className="w-5 h-5" />
+              <div className="p-2.5 sm:p-4 bg-orange-50/80 dark:bg-orange-950/30 border border-orange-100 dark:border-orange-900/40 rounded-xl sm:rounded-2xl flex items-center gap-3 sm:gap-4 shadow-2xs shrink-0 backdrop-blur-xl">
+                <div className="p-2 sm:p-2.5 bg-orange-100 dark:bg-orange-900/50 text-adv-orange dark:text-orange-400 rounded-lg sm:rounded-xl">
+                  <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-black text-adv-orange dark:text-orange-400 uppercase tracking-widest">{t.totalReceived || 'Total Received'}</p>
-                  <p className="text-xl font-black text-emerald-700 dark:text-emerald-300">
+                  <p className="text-[9px] sm:text-[10px] font-black text-adv-orange dark:text-orange-400 uppercase tracking-wider sm:tracking-widest">{t.totalReceived || 'Total Received'}</p>
+                  <p className="text-base sm:text-xl font-black text-emerald-700 dark:text-emerald-300">
                     {new Intl.NumberFormat('lo-LA').format(myPayouts.reduce((sum, p) => sum + p.amount, 0))} ₭
                   </p>
                 </div>
@@ -1355,24 +1356,24 @@ export default function Account() {
             </div>
 
             {/* Claimable Event Revenue Card */}
-            <div className={`p-5 sm:p-7 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border transition-all ${
+            <div className={`p-3.5 sm:p-7 rounded-2xl sm:rounded-[2rem] shadow-2xs sm:shadow-sm border transition-all ${
               theme === 'dark' ? 'bg-zinc-900/80 border-zinc-800' : 'bg-white border-gray-100'
             }`}>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 border border-emerald-500/20 shadow-xs">
-                    <DollarSign className="w-6 h-6" />
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 border border-emerald-500/20 shadow-xs">
+                    <DollarSign className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className={`text-base sm:text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <h3 className={`text-xs sm:text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>
                         {lang === 'lo' ? 'ລາຍຮັບກິດຈະກຳທີ່ສາມາດເບີກໄດ້' : 'Claimable Event Revenue'}
                       </h3>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase tracking-wider">
+                      <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[9px] sm:text-[10px] font-black uppercase tracking-wider">
                         {lang === 'lo' ? 'ພ້ອມເບີກ' : 'Ready'}
                       </span>
                     </div>
-                    <p className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                    <p className="text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
                       {new Intl.NumberFormat('lo-LA').format(unclaimedRevenue)} ₭
                     </p>
                   </div>
@@ -1381,58 +1382,58 @@ export default function Account() {
                 <button
                   onClick={() => setShowClaimModal(true)}
                   disabled={unclaimedRevenue <= 0}
-                  className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-md transition-all cursor-pointer active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-4 py-2.5 sm:px-6 sm:py-3.5 rounded-xl sm:rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-sm transition-all cursor-pointer active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 sm:gap-2"
                 >
-                  <Smartphone className="w-4 h-4 text-emerald-200" />
+                  <Smartphone className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-200" />
                   <span>{lang === 'lo' ? 'ຂໍເບີກຈ່າຍເງິນ (Claim Money)' : 'Claim Event Money'}</span>
                 </button>
               </div>
             </div>
 
             {/* Bank Settings Card */}
-            <div className={`p-5 sm:p-7 rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border transition-all ${
+            <div className={`p-3.5 sm:p-7 rounded-2xl sm:rounded-[2rem] shadow-2xs sm:shadow-sm border transition-all ${
               theme === 'dark' ? 'bg-zinc-900/80 border-zinc-800' : 'bg-white border-gray-100'
             }`}>
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-xl ${theme === 'dark' ? 'bg-zinc-800 text-zinc-300' : 'bg-gray-100 text-gray-600'}`}>
-                    <Building className="w-5 h-5" />
+              <div className="flex items-center justify-between mb-3 sm:mb-5">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl ${theme === 'dark' ? 'bg-zinc-800 text-zinc-300' : 'bg-gray-100 text-gray-600'}`}>
+                    <Building className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
                   <div>
-                    <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>{t.payoutSettings || 'Payout Settings'}</h3>
-                    <p className="text-xs text-gray-500 font-semibold">{lang === 'lo' ? 'ບ່ອນທີ່ທ່ານຈະໄດ້ຮັບເງິນເບີກຈ່າຍ' : 'Where you receive your event payouts'}</p>
+                    <h3 className={`text-sm sm:text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>{t.payoutSettings || 'Payout Settings'}</h3>
+                    <p className="text-[10px] sm:text-xs text-gray-500 font-semibold">{lang === 'lo' ? 'ບ່ອນທີ່ທ່ານຈະໄດ້ຮັບເງິນເບີກຈ່າຍ' : 'Where you receive your event payouts'}</p>
                   </div>
                 </div>
                 {bankAccount && isEditingBank && (
                   <button 
                     type="button" 
                     onClick={() => setIsEditingBank(false)}
-                    className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200 rounded-xl hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                    className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200 rounded-lg sm:rounded-xl hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </button>
                 )}
                 {bankAccount && !isEditingBank && (
                   <button 
                     onClick={handleEditBankClick}
-                    className={`px-4 py-2 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl border text-[11px] sm:text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                       theme === 'dark' 
                         ? 'border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-600' 
                         : 'border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'
                     }`}
                   >
-                    <Edit2 className="w-3.5 h-3.5" />
+                    <Edit2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                     {lang === 'lo' ? 'ແກ້ໄຂ' : 'Edit'}
                   </button>
                 )}
               </div>
 
               {isEditingBank || !bankAccount ? (
-                <form onSubmit={handleSaveBank} className="space-y-5 pt-3 border-t border-gray-100 dark:border-zinc-800/60">
+                <form onSubmit={handleSaveBank} className="space-y-3.5 sm:space-y-5 pt-2 sm:pt-3 border-t border-gray-100 dark:border-zinc-800/60">
                   {/* 30-Day Limit Alert Banner */}
-                  <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-start gap-3 shadow-sm">
-                    <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-500" />
-                    <div className="text-xs">
+                  <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-start gap-2.5 sm:gap-3 shadow-xs">
+                    <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 mt-0.5 text-amber-500" />
+                    <div className="text-[11px] sm:text-xs">
                       <p className="font-bold mb-0.5">
                         {lang === 'lo' ? 'ແຈ້ງເຕືອນສຳຄັນ: ການອັບເດດຂໍ້ມູນບັນຊີທະນາຄານ' : 'Important Notice: Bank Details Update Policy'}
                       </p>
@@ -1444,16 +1445,16 @@ export default function Account() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-5">
                     {/* Bank Dropdown Select */}
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block">{lang === 'lo' ? 'ຊື່ທະນາຄານ' : 'Bank Name'}</label>
+                    <div className="space-y-1 sm:space-y-2">
+                      <label className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest block">{lang === 'lo' ? 'ຊື່ທະນາຄານ' : 'Bank Name'}</label>
                       <div className="relative">
-                        <Building className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Building className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <select
                           value={bankFormData.bankName || ''}
                           onChange={(e) => setBankFormData({ ...bankFormData, bankName: e.target.value })}
-                          className={`w-full border rounded-xl pl-10 pr-10 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all appearance-none cursor-pointer ${
+                          className={`w-full border rounded-lg sm:rounded-xl pl-9 sm:pl-10 pr-8 sm:pr-10 py-2 sm:py-3 text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all appearance-none cursor-pointer ${
                             theme === 'dark' 
                               ? 'bg-zinc-950 border-zinc-800 text-white focus:bg-zinc-900' 
                               : 'bg-gray-50 border-gray-200/80 text-adv-slate focus:bg-white'
@@ -1466,22 +1467,22 @@ export default function Account() {
                             </option>
                           ))}
                         </select>
-                        <ChevronDown className="w-4 h-4 text-gray-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                       </div>
                     </div>
 
                     {/* Account Holder Name */}
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block">{lang === 'lo' ? 'ຊື່ບັນຊີ' : 'Account Holder'}</label>
+                    <div className="space-y-1 sm:space-y-2">
+                      <label className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest block">{lang === 'lo' ? 'ຊື່ບັນຊີ' : 'Account Holder'}</label>
                       <div className="relative">
-                        <User className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <input 
                           type="text"
                           required
                           placeholder="e.g. Somsack Xayarath"
                           value={bankFormData.accountName || ''}
                           onChange={(e) => setBankFormData({...bankFormData, accountName: e.target.value.replace(/[0-9]/g, '')})}
-                          className={`w-full border rounded-xl pl-10 pr-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all ${
+                          className={`w-full border rounded-lg sm:rounded-xl pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all ${
                             theme === 'dark' 
                               ? 'bg-zinc-950 border-zinc-800 text-white focus:bg-zinc-900' 
                               : 'bg-gray-50 border-gray-200/80 text-adv-slate focus:bg-white'
@@ -1491,10 +1492,10 @@ export default function Account() {
                     </div>
 
                     {/* Account Number */}
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block">{lang === 'lo' ? 'ເລກບັນຊີ' : 'Account Number'}</label>
+                    <div className="space-y-1 sm:space-y-2">
+                      <label className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest block">{lang === 'lo' ? 'ເລກບັນຊີ' : 'Account Number'}</label>
                       <div className="relative">
-                        <Hash className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Hash className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <input 
                           type="text"
                           inputMode="numeric"
@@ -1502,7 +1503,7 @@ export default function Account() {
                           placeholder="e.g. 120-11-00-1234567-001"
                           value={bankFormData.accountNumber || ''}
                           onChange={(e) => setBankFormData({...bankFormData, accountNumber: e.target.value.replace(/\D/g, '')})}
-                          className={`w-full border rounded-xl pl-10 pr-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all ${
+                          className={`w-full border rounded-lg sm:rounded-xl pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all ${
                             theme === 'dark' 
                               ? 'bg-zinc-950 border-zinc-800 text-white focus:bg-zinc-900' 
                               : 'bg-gray-50 border-gray-200/80 text-adv-slate focus:bg-white'
@@ -1512,19 +1513,19 @@ export default function Account() {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-3 pt-2">
+                  <div className="flex items-center gap-2 sm:gap-3 pt-1">
                     <button 
                       type="submit"
-                      className="px-8 py-3 bg-adv-slate dark:bg-white text-white dark:text-adv-slate rounded-xl text-xs font-black uppercase tracking-widest hover:opacity-90 transition-all cursor-pointer shadow-md active:scale-[0.98] flex items-center justify-center gap-2"
+                      className="px-5 sm:px-8 py-2.5 sm:py-3 bg-adv-slate dark:bg-white text-white dark:text-adv-slate rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest hover:opacity-90 transition-all cursor-pointer shadow-xs active:scale-[0.98] flex items-center justify-center gap-1.5 sm:gap-2"
                     >
-                      <Save className="w-4 h-4" />
+                      <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       {lang === 'lo' ? 'ບັນທຶກ' : 'Save Details'}
                     </button>
                     {bankAccount && (
                       <button 
                         type="button"
                         onClick={() => setIsEditingBank(false)}
-                        className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all cursor-pointer ${
+                        className={`px-5 sm:px-8 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all cursor-pointer ${
                           theme === 'dark' ? 'text-gray-400 hover:bg-zinc-800 hover:text-white' : 'text-gray-500 hover:bg-gray-100'
                         }`}
                       >
@@ -1534,55 +1535,55 @@ export default function Account() {
                   </div>
                 </form>
               ) : (
-                <div className={`pt-4 border-t ${theme === 'dark' ? 'border-zinc-800/60' : 'border-gray-100'}`}>
-                  <div className={`p-4 rounded-2xl flex items-center gap-4 ${theme === 'dark' ? 'bg-zinc-950/50' : 'bg-gray-50'}`}>
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-sm border border-emerald-200/50 dark:border-emerald-800/50">
-                      <Building className="w-6 h-6" />
+                <div className={`pt-3 border-t ${theme === 'dark' ? 'border-zinc-800/60' : 'border-gray-100'}`}>
+                  <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl flex items-center gap-3 sm:gap-4 ${theme === 'dark' ? 'bg-zinc-950/50' : 'bg-gray-50'}`}>
+                    <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-xs border border-emerald-200/50 dark:border-emerald-800/50">
+                      <Building className="w-4 h-4 sm:w-6 sm:h-6" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-0.5">
-                        <h4 className="text-sm font-black">{bankAccount.bankName}</h4>
-                        <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-widest rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
+                        <h4 className="text-xs sm:text-sm font-black">{bankAccount.bankName}</h4>
+                        <span className="px-1.5 py-0.5 text-[8px] sm:text-[9px] font-black uppercase tracking-wider sm:tracking-widest rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
                           {lang === 'lo' ? 'ເຊື່ອມຕໍ່ແລ້ວ' : 'Connected'}
                         </span>
                       </div>
-                      <p className="text-xs font-bold text-gray-500 dark:text-gray-400">{bankAccount.accountName} <span className="mx-1 text-gray-300 dark:text-zinc-700">•</span> {bankAccount.accountNumber}</p>
+                      <p className="text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400">{bankAccount.accountName} <span className="mx-1 text-gray-300 dark:text-zinc-700">•</span> {bankAccount.accountNumber}</p>
                     </div>
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="pt-2">
-              <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>{lang === 'lo' ? 'ປະຫວັດການເບີກຈ່າຍ' : 'Payout History'}</h3>
+            <div className="pt-1 sm:pt-2">
+              <h3 className={`text-base sm:text-lg font-bold mb-2.5 sm:mb-4 ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>{lang === 'lo' ? 'ປະຫວັດການເບີກຈ່າຍ' : 'Payout History'}</h3>
               {myPayouts.length === 0 ? (
-                <div className={`text-center py-16 sm:py-20 rounded-[2rem] border shadow-sm ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-gray-100'}`}>
-                  <DollarSign className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-4 text-gray-300 dark:text-zinc-600" />
-                  <h3 className={`text-lg font-bold mb-2 ${theme === 'dark' ? 'text-zinc-300' : 'text-gray-500'}`}>{t.payoutsEmpty || 'No payouts yet'}</h3>
-                  <p className="text-xs sm:text-sm text-gray-400 font-medium max-w-sm mx-auto px-4">
+                <div className={`text-center py-10 sm:py-20 rounded-2xl sm:rounded-[2rem] border shadow-xs ${theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-gray-100'}`}>
+                  <DollarSign className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-3 text-gray-300 dark:text-zinc-600" />
+                  <h3 className={`text-base sm:text-lg font-bold mb-1.5 ${theme === 'dark' ? 'text-zinc-300' : 'text-gray-500'}`}>{t.payoutsEmpty || 'No payouts yet'}</h3>
+                  <p className="text-[11px] sm:text-sm text-gray-400 font-medium max-w-sm mx-auto px-4">
                     Once your event is completed and processed by the admin, your payout receipts will appear here.
                   </p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {myPayouts.map((bill, index) => (
-                    <div key={index} className={`p-5 sm:p-6 rounded-[1.5rem] shadow-sm border flex flex-col sm:flex-row gap-5 transition-all ${
+                    <div key={index} className={`p-3.5 sm:p-6 rounded-2xl sm:rounded-[1.5rem] shadow-2xs sm:shadow-sm border flex flex-col sm:flex-row gap-3 sm:gap-5 transition-all ${
                       theme === 'dark' ? 'bg-zinc-900/80 border-zinc-800 hover:border-adv-orange/30' : 'bg-white border-gray-100 hover:border-adv-orange/30'
                     }`}>
-                      <div className="w-full sm:w-24 h-40 sm:h-auto shrink-0 rounded-xl overflow-hidden border border-gray-100 dark:border-zinc-800 shadow-sm relative group cursor-pointer" onClick={() => setPayoutImagePreview(bill.receiptUrl)}>
-                        <img src={bill.receiptUrl} alt="Admin Submit Receipt" className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" />
+                      <div className="w-full sm:w-24 h-28 sm:h-auto shrink-0 rounded-lg sm:rounded-xl overflow-hidden border border-gray-100 dark:border-zinc-800 shadow-xs relative group cursor-pointer bg-gray-50 dark:bg-zinc-950 flex items-center justify-center" onClick={() => setPayoutImagePreview(bill.receiptUrl)}>
+                        <img src={bill.receiptUrl} alt="Admin Submit Receipt" className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-300" />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                          <ExternalLink className="w-5 h-5 text-white" />
+                          <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                         </div>
                       </div>
 
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-3">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                          <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">{lang === 'lo' ? 'ສຳເລັດ' : 'Completed'}</span>
+                        <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-3">
+                          <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
+                          <span className="text-[9px] sm:text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider sm:tracking-widest">{lang === 'lo' ? 'ສຳເລັດ' : 'Completed'}</span>
                           
                           <div className="relative group ml-0.5 flex items-center">
-                            <Info className="w-3.5 h-3.5 text-gray-400 hover:text-adv-slate dark:hover:text-white cursor-help transition-colors" />
+                            <Info className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400 hover:text-adv-slate dark:hover:text-white cursor-help transition-colors" />
                             <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 w-48 p-3 bg-gray-900 dark:bg-zinc-800 text-white text-xs rounded-xl shadow-xl z-10 before:content-[''] before:absolute before:top-full before:left-1/2 before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-gray-900 dark:before:border-t-zinc-800 pointer-events-none">
                               <p className="font-bold mb-1">Transaction Details</p>
                               <div className="space-y-1 mt-2">
@@ -1592,33 +1593,33 @@ export default function Account() {
                             </div>
                           </div>
 
-                          <span className="text-[10px] font-bold text-gray-400 ml-auto">{bill.date}</span>
+                          <span className="text-[9px] sm:text-[10px] font-bold text-gray-400 ml-auto">{bill.date}</span>
                         </div>
-                        <h4 className={`text-base font-black mb-1 line-clamp-1 ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>{bill.event}</h4>
-                        <p className="text-xs text-gray-500 font-semibold mb-4">{lang === 'lo' ? 'ໂອນໄປຫາ:' : 'Transferred to:'} {bill.account}</p>
+                        <h4 className={`text-sm sm:text-base font-bold sm:font-black mb-0.5 sm:mb-1 line-clamp-1 ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>{bill.event}</h4>
+                        <p className="text-[11px] sm:text-xs text-gray-500 font-semibold mb-2 sm:mb-4">{lang === 'lo' ? 'ໂອນໄປຫາ:' : 'Transferred to:'} {bill.account}</p>
                         
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-4 sm:gap-6">
                           <div>
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{lang === 'lo' ? 'ລະຫັດທຸລະກຳ' : 'Transaction ID'}</p>
-                            <p className="text-sm font-bold font-mono text-gray-500 dark:text-gray-400">{bill.id}</p>
+                            <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{lang === 'lo' ? 'ລະຫັດທຸລະກຳ' : 'Transaction ID'}</p>
+                            <p className="text-xs sm:text-sm font-bold font-mono text-gray-500 dark:text-gray-400">{bill.id}</p>
                           </div>
                         </div>
                       </div>
                       
-                      <div className={`sm:w-56 p-4 rounded-xl flex flex-col justify-center border ${
+                      <div className={`sm:w-56 p-2.5 sm:p-4 rounded-xl flex flex-col justify-center border ${
                         theme === 'dark' ? 'bg-zinc-950/50 border-zinc-800/50' : 'bg-gray-50 border-gray-100'
                       }`}>
-                        <div className="flex justify-between items-center mb-1.5">
-                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{lang === 'lo' ? 'ຍອດລວມ' : 'Gross'}</p>
-                          <p className="text-xs font-bold text-gray-500">{new Intl.NumberFormat('lo-LA').format(bill.grossAmount)} ₭</p>
+                        <div className="flex justify-between items-center mb-1 sm:mb-1.5">
+                          <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest">{lang === 'lo' ? 'ຍອດລວມ' : 'Gross'}</p>
+                          <p className="text-[11px] sm:text-xs font-bold text-gray-500">{new Intl.NumberFormat('lo-LA').format(bill.grossAmount)} ₭</p>
                         </div>
-                        <div className="flex justify-between items-center mb-3">
-                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{lang === 'lo' ? 'ຄ່າທຳນຽມ' : 'Fee'}</p>
-                          <p className="text-xs font-bold text-red-500">-{new Intl.NumberFormat('lo-LA').format(bill.platformFee)} ₭</p>
+                        <div className="flex justify-between items-center mb-2 sm:mb-3">
+                          <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest">{lang === 'lo' ? 'ຄ່າທຳນຽມ' : 'Fee'}</p>
+                          <p className="text-[11px] sm:text-xs font-bold text-red-500">-{new Intl.NumberFormat('lo-LA').format(bill.platformFee)} ₭</p>
                         </div>
-                        <div className="pt-3 border-t border-gray-200 dark:border-zinc-800/80">
-                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{lang === 'lo' ? 'ຮັບເງິນສຸດທິ' : 'Net Payout'}</p>
-                          <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">{new Intl.NumberFormat('lo-LA').format(bill.amount)} ₭</p>
+                        <div className="pt-2 sm:pt-3 border-t border-gray-200 dark:border-zinc-800/80 flex sm:flex-col justify-between sm:justify-start items-center sm:items-start">
+                          <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0 sm:mb-1">{lang === 'lo' ? 'ຮັບເງິນສຸດທິ' : 'Net Payout'}</p>
+                          <p className="text-base sm:text-xl font-black text-emerald-600 dark:text-emerald-400">{new Intl.NumberFormat('lo-LA').format(bill.amount)} ₭</p>
                         </div>
                       </div>
                     </div>
@@ -2308,38 +2309,38 @@ export default function Account() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className={`max-w-md w-full rounded-[2rem] p-6 sm:p-8 shadow-2xl border ${
+              className={`max-w-md w-full rounded-2xl sm:rounded-[2rem] p-4 sm:p-8 shadow-2xl border ${
                 theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
               }`}
               onClick={e => e.stopPropagation()}
             >
-              <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-4 border border-emerald-500/20 shadow-xs">
-                <DollarSign className="w-7 h-7" />
+              <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-3 sm:mb-4 border border-emerald-500/20 shadow-xs">
+                <DollarSign className="w-5 h-5 sm:w-7 sm:h-7" />
               </div>
 
-              <h3 className="text-lg font-black text-center mb-1">
+              <h3 className="text-base sm:text-lg font-black text-center mb-0.5 sm:mb-1">
                 {lang === 'lo' ? 'ຢືນຢັນການເບີກຈ່າຍເງິນກິດຈະກຳ' : 'Confirm Claim Event Money'}
               </h3>
-              <p className="text-xs text-gray-400 font-medium text-center mb-5">
+              <p className="text-[11px] sm:text-xs text-gray-400 font-medium text-center mb-3 sm:mb-5">
                 {lang === 'lo' ? 'ຂໍເບີກຈ່າຍເງິນລາຍຮັບຈາກການຂາຍປີ້ກິດຈະກຳຂອງທ່ານ' : 'Request payout for your event ticket sales revenue.'}
               </p>
 
-              <div className={`p-4 rounded-2xl mb-5 space-y-2.5 text-xs border ${
+              <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl mb-3 sm:mb-5 space-y-2 sm:space-y-2.5 text-xs border ${
                 theme === 'dark' ? 'bg-zinc-950/60 border-zinc-800' : 'bg-gray-50 border-gray-150'
               }`}>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ຈຳນວນເງິນ:' : 'Amount to Claim:'}</span>
-                  <span className="font-black text-base text-emerald-600 dark:text-emerald-400">
+                  <span className="font-black text-sm sm:text-base text-emerald-600 dark:text-emerald-400">
                     {new Intl.NumberFormat('lo-LA').format(unclaimedRevenue)} ₭
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ຄ່າທຳນຽມ (5%):' : 'Platform Fee (5%):'}</span>
-                  <span className="font-bold text-red-500">
+                  <span className="font-bold text-red-500 text-xs">
                     -{new Intl.NumberFormat('lo-LA').format(unclaimedRevenue * 0.05)} ₭
                   </span>
                 </div>
-                <div className="pt-2 border-t border-gray-200 dark:border-zinc-800 flex justify-between items-center">
+                <div className="pt-1.5 sm:pt-2 border-t border-gray-200 dark:border-zinc-800 flex justify-between items-center text-[11px] sm:text-xs">
                   <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ທະນາຄານຮັບເງິນ:' : 'Payout Bank:'}</span>
                   <span className="font-extrabold">{bankAccount?.bankName || 'BCEL Bank'} ({bankAccount?.accountNumber ? `*${bankAccount.accountNumber.slice(-4)}` : '*8899'})</span>
                 </div>
@@ -2347,12 +2348,12 @@ export default function Account() {
 
               {/* 2FA Authenticator Field if 2FA Enabled */}
               {is2FAEnabled && (
-                <div className="mb-6 p-4 rounded-2xl bg-orange-500/10 border border-orange-500/20 space-y-2">
+                <div className="mb-4 sm:mb-6 p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-orange-500/10 border border-orange-500/20 space-y-1.5 sm:space-y-2">
                   <div className="flex items-center gap-2 text-adv-orange font-bold text-xs">
-                    <Smartphone className="w-4 h-4" />
+                    <Smartphone className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     <span>{lang === 'lo' ? 'ຕ້ອງການ 2FA Authenticator' : '2FA Authenticator Required'}</span>
                   </div>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-300 font-medium leading-relaxed">
+                  <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-300 font-medium leading-relaxed">
                     {lang === 'lo'
                       ? 'ກະລຸນາປ້ອນລະຫັດ 6 ຫຼັກຈາກແອັບ Authenticator ຂອງທ່ານເພື່ອຢືນຢັນການເບີກຈ່າຍເງິນ.'
                       : 'Please enter the 6-digit code from your Authenticator app to authorize payout.'}
@@ -2364,20 +2365,20 @@ export default function Account() {
                       value={claimCode2FA}
                       onChange={(e) => setClaimCode2FA(e.target.value.replace(/\D/g, ''))}
                       placeholder="123456"
-                      className={`w-full border rounded-xl px-4 py-3 font-mono font-black text-center text-base tracking-widest focus:outline-none focus:ring-2 focus:ring-adv-orange ${
+                      className={`w-full border rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-3 font-mono font-black text-center text-sm sm:text-base tracking-widest focus:outline-none focus:ring-2 focus:ring-adv-orange ${
                         theme === 'dark' ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-white border-gray-200 text-adv-slate'
                       }`}
                     />
-                    <Lock className="w-4 h-4 text-gray-300 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-300 absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 </div>
               )}
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <button
                   type="button"
                   onClick={() => setShowClaimModal(false)}
-                  className={`flex-1 py-3.5 rounded-xl font-bold text-xs border transition-colors cursor-pointer ${
+                  className={`flex-1 py-2.5 sm:py-3.5 rounded-lg sm:rounded-xl font-bold text-xs border transition-colors cursor-pointer ${
                     theme === 'dark' ? 'border-zinc-800 hover:bg-zinc-800 text-gray-300' : 'border-gray-200 hover:bg-gray-100 text-gray-600'
                   }`}
                 >
@@ -2387,9 +2388,9 @@ export default function Account() {
                   type="button"
                   disabled={isClaiming || (is2FAEnabled && claimCode2FA.length < 6)}
                   onClick={handleConfirmClaimPayout}
-                  className="flex-1 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 py-2.5 sm:py-3.5 rounded-lg sm:rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs sm:shadow-md transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 sm:gap-2"
                 >
-                  {isClaiming ? <Loader2 className="w-4 h-4 animate-spin" /> : <DollarSign className="w-4 h-4" />}
+                  {isClaiming ? <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" /> : <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                   <span>{lang === 'lo' ? 'ຢືນຢັນເບີກຈ່າຍເງິນ' : 'Confirm & Claim'}</span>
                 </button>
               </div>
