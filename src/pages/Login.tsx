@@ -8,6 +8,7 @@ import { useTheme } from '../ThemeContext';
 import Logo from '../components/Logo';
 import OtpInput from '../components/OtpInput';
 import { safeStorage } from '../lib/storage';
+import SEO from '../components/SEO';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -229,6 +230,11 @@ export default function Login() {
         theme === 'dark' ? 'bg-zinc-950' : 'bg-white'
       }`}
     >
+      <SEO
+        title={t.signInTitle || (lang === 'lo' ? 'ເຂົ້າສູ່ລະບົບ Pasopkan' : 'Sign in to Pasopkan')}
+        description="Sign in to your Pasopkan account to manage event tickets, registrations, and organizer dashboards."
+        noindex={true}
+      />
       {/* Header with Back and Language Switch */}
       <div className="absolute top-0 left-0 right-0 p-4 sm:p-6 flex justify-between items-center w-full max-w-7xl mx-auto">
         <button 
@@ -260,7 +266,7 @@ export default function Login() {
             <img 
               src="/pasopkan_logo.png" 
               alt="Pasopkan Logo" 
-              className="h-28 sm:h-36 w-auto object-contain" 
+              className="h-36 sm:h-48 md:h-56 w-auto object-contain transition-transform duration-300 hover:scale-[1.03]" 
               referrerPolicy="no-referrer"
             />
           </Link>

@@ -4,6 +4,7 @@ import { Camera, ArrowLeft, Save, User, CheckCircle2, ChevronDown } from 'lucide
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { useAuth } from '../AuthContext';
+import SEO from '../components/SEO';
 
 const translations = {
   en: {
@@ -154,6 +155,11 @@ export default function EditProfile() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] py-4 md:py-6">
+      <SEO
+        title={t.editProfile || (lang === 'lo' ? 'ແກ້ໄຂໂປຣໄຟລ໌' : 'Edit Profile')}
+        description="Update your personal details, name, and profile picture on Pasopkan."
+        noindex={true}
+      />
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
         <button 
           onClick={() => navigate(-1)}

@@ -18,6 +18,7 @@ import {
   DEFAULT_ORGANIZER_TERMS_SETTINGS
 } from '../lib/siteSettings';
 import { renderTermIcon } from '../lib/termIcons';
+import SEO from '../components/SEO';
 
 const PAYMENT_BANKS = [
   { value: 'BCEL', labelEn: 'BCEL Bank', labelLo: 'BCEL Bank (ທະນາຄານ ການຄ້າຕ່າງປະເທດລາວ)' },
@@ -310,7 +311,7 @@ const translations = {
     sports: 'ການຜະຈົນໄພ ແລະ ທ່ອງທ່ຽວ',
     workshop: 'ເວີກຊອບ',
     festival: 'ເທດສະການ',
-    voucher: 'ບັດສ່ວນຫຼຸດ ແລະ ການຈອງ',
+    voucher: 'Voucher ແລະ ການຈອງ',
     eventInfo: 'ຂໍ້ມູນ event',
     intro: 'ແນະນຳ event:',
     introPlaceholder: '[ສະຫຼຸບຫຍໍ້ຂອງ event: ເນື້ອໃນຫຼັກ, ຈຸດເດັ່ນ, ແລະ ເຫດຜົນທີ່ຜູ້ເຂົ້າຮ່ວມບໍ່ຄວນພາດ]',
@@ -2279,6 +2280,11 @@ export default function CreateEvent() {
       transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
       className="flex flex-1 bg-[#F9FAFB] text-gray-600 font-sans overflow-hidden min-h-screen"
     >
+      <SEO
+        title={editingEventId ? (lang === 'lo' ? 'ແກ້ໄຂກິດຈະກຳ' : 'Edit Event') : (lang === 'lo' ? 'ສ້າງກິດຈະກຳໃໝ່' : 'Create Event | Organizer Center')}
+        description="Host workshops, sports adventures, festivals and sell tickets with Pasopkan organizer suite."
+        noindex={true}
+      />
       {/* Sidebar */}
       <div className="w-64 sm:w-72 bg-white border-r border-gray-100 flex flex-col shrink-0">
         <div className="h-24 sm:h-28 flex items-center justify-center px-6 border-b border-gray-100">
@@ -2374,7 +2380,7 @@ export default function CreateEvent() {
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === 1 ? 'bg-adv-orange text-white' : 'bg-gray-100 text-gray-500'}`}>1</div>
                       <span className={`text-sm font-bold ${activeStep === 1 ? 'text-adv-slate' : 'text-gray-400'}`}>{t.step1}</span>
                       {attemptedSubmit && getMissingFieldsList().some(m => m.step === 1) && (
-                        <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0" title="Missing fields" />
+                        <span className="w-2 h-2 rounded-full bg-adv-orange animate-pulse shrink-0" title="Missing fields" />
                       )}
                     </button>
                     <button 
@@ -2384,7 +2390,7 @@ export default function CreateEvent() {
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === 2 ? 'bg-adv-orange text-white' : 'bg-gray-100 text-gray-500'}`}>2</div>
                       <span className={`text-sm font-bold ${activeStep === 2 ? 'text-adv-slate' : 'text-gray-400'}`}>{t.step2}</span>
                       {attemptedSubmit && getMissingFieldsList().some(m => m.step === 2) && (
-                        <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0" title="Missing fields" />
+                        <span className="w-2 h-2 rounded-full bg-adv-orange animate-pulse shrink-0" title="Missing fields" />
                       )}
                     </button>
                     <button 
@@ -2408,7 +2414,7 @@ export default function CreateEvent() {
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === 5 ? 'bg-adv-orange text-white' : 'bg-gray-100 text-gray-500'}`}>5</div>
                       <span className={`text-sm font-bold ${activeStep === 5 ? 'text-adv-slate' : 'text-gray-400'}`}>{t.step4}</span>
                       {attemptedSubmit && getMissingFieldsList().some(m => m.step === 5) && (
-                        <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0" title="Missing fields" />
+                        <span className="w-2 h-2 rounded-full bg-adv-orange animate-pulse shrink-0" title="Missing fields" />
                       )}
                     </button>
                   </div>
@@ -2536,21 +2542,21 @@ export default function CreateEvent() {
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.98, y: -10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  className="p-5 bg-gradient-to-r from-rose-50 via-amber-50/70 to-rose-50 border-2 border-rose-300/80 rounded-3xl shadow-md mb-6 space-y-3.5"
+                  className="p-5 bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 border-2 border-adv-orange/50 rounded-3xl shadow-md mb-6 space-y-3.5"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-md animate-pulse">
+                      <div className="w-10 h-10 rounded-2xl bg-adv-orange text-white flex items-center justify-center shrink-0 shadow-md animate-pulse">
                         <ShieldAlert className="w-5 h-5" />
                       </div>
                       <div>
-                        <h4 className="text-base font-extrabold text-rose-950 flex items-center gap-2">
+                        <h4 className="text-base font-extrabold text-orange-950 flex items-center gap-2">
                           <span>{lang === 'lo' ? 'ຂໍ້ມູນຈຳເປັນຍັງບໍ່ຄົບຖ້ວນ' : 'Incomplete Required Information'}</span>
-                          <span className="bg-rose-500 text-white text-xs font-black px-2.5 py-0.5 rounded-full">
+                          <span className="bg-adv-orange text-white text-xs font-black px-2.5 py-0.5 rounded-full">
                             {getMissingFieldsList().length} {lang === 'lo' ? 'ຢ່າງ' : 'Missing'}
                           </span>
                         </h4>
-                        <p className="text-xs font-medium text-rose-800/90 mt-0.5">
+                        <p className="text-xs font-medium text-orange-900/90 mt-0.5">
                           {lang === 'lo'
                             ? 'ກະລຸນາປ້ອນຂໍ້ມູນໃນຊ່ອງດັ່ງລຸ່ມນີ້ໃຫ້ຄົບຖ້ວນ. ຄລິກທີ່ລາຍການເພື່ອໄປທີ່ຊ່ອງນັ້ນໂດຍກົງ:'
                             : 'Please fill in the required fields below before publishing. Click any item to jump directly to it:'}
@@ -2559,7 +2565,7 @@ export default function CreateEvent() {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 pt-2 border-t border-rose-200/80">
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-orange-200/80">
                     {getMissingFieldsList().map((item) => {
                       const isActiveStep = activeStep === item.step;
                       return (
@@ -2569,8 +2575,8 @@ export default function CreateEvent() {
                           onClick={() => jumpToMissingField(item.step, item.elementId)}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all border shadow-2xs cursor-pointer ${
                             isActiveStep 
-                              ? 'bg-rose-600 text-white border-rose-600 ring-2 ring-rose-300' 
-                              : 'bg-white text-rose-800 border-rose-200 hover:bg-rose-100 hover:border-rose-300'
+                              ? 'bg-adv-orange text-white border-adv-orange ring-2 ring-orange-300' 
+                              : 'bg-white text-orange-900 border-orange-200 hover:bg-orange-100/70 hover:border-orange-300'
                           }`}
                         >
                           <span className="opacity-80 font-bold">[{lang === 'lo' ? `ຂັ້ນຕອນ ${item.step}` : `Step ${item.step}`}]</span>
@@ -2597,7 +2603,7 @@ export default function CreateEvent() {
                         onChange={(e) => setEventName(e.target.value)}
                         maxLength={100}
                         placeholder={lang === 'lo' ? 'ປ້ອນຊື່ກິດຈະກຳ...' : 'Enter event name...'}
-                        className={`w-full bg-white text-adv-slate border border-gray-200 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all placeholder:text-gray-300 font-bold shadow-inner ${attemptedSubmit && !eventName.trim() ? 'border-rose-400 bg-rose-50/20 ring-2 ring-rose-200' : ''}`}
+                        className={`w-full bg-white text-adv-slate border border-gray-200 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all placeholder:text-gray-300 font-bold shadow-inner ${attemptedSubmit && !eventName.trim() ? 'border-orange-400 bg-orange-50/20 ring-2 ring-orange-200' : ''}`}
                       />
                     </div>
                   </div>
@@ -2631,8 +2637,8 @@ export default function CreateEvent() {
 
                     {/* 1. COVER EVENT IMAGE BOX */}
   {attemptedSubmit && (!horizontalImage && !verticalImage) && (
-    <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-xs font-bold text-rose-700">
-      <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+    <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl flex items-center gap-2 text-xs font-bold text-orange-800">
+      <AlertCircle className="w-4 h-4 text-adv-orange shrink-0" />
       <span>{lang === 'lo' ? 'ກະລຸນາອັບໂຫຼດຮູບໜ້າປົກກິດຈະກຳ' : 'Main event cover photo is required'}</span>
     </div>
   )}
@@ -2947,11 +2953,11 @@ export default function CreateEvent() {
                           onChange={(e) => setVenueName(e.target.value)}
                           maxLength={80}
                           placeholder={t.venueName}
-                          className={`w-full bg-white text-adv-slate border rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all placeholder:text-gray-300 ${attemptedSubmit && eventType === 'offline' && (!venueName || !venueName.trim() || venueName === 'Online Event / ງານອອນລາຍ') ? 'border-rose-400 bg-rose-50/20 ring-2 ring-rose-200' : 'border-gray-200'}`}
+                          className={`w-full bg-white text-adv-slate border rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all placeholder:text-gray-300 ${attemptedSubmit && eventType === 'offline' && (!venueName || !venueName.trim() || venueName === 'Online Event / ງານອອນລາຍ') ? 'border-orange-400 bg-orange-50/20 ring-2 ring-orange-200' : 'border-gray-200'}`}
                         />
                         {attemptedSubmit && eventType === 'offline' && (!venueName || !venueName.trim() || venueName === 'Online Event / ງານອອນລາຍ') && (
-                          <p className="text-xs text-rose-600 font-bold mt-1.5 flex items-center gap-1.5">
-                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <p className="text-xs text-adv-orange font-bold mt-1.5 flex items-center gap-1.5">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-adv-orange" />
                             <span>{lang === 'lo' ? 'ກະລຸນາປ້ອນຊື່ສະຖານທີ່' : 'Venue name is required'}</span>
                           </p>
                         )}
@@ -3826,9 +3832,9 @@ export default function CreateEvent() {
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-3.5 text-rose-800 text-sm font-semibold"
+                        className="p-4 bg-orange-50 border border-orange-200 rounded-2xl flex items-start gap-3.5 text-orange-900 text-sm font-semibold"
                       >
-                        <ShieldAlert className="w-5 h-5 text-rose-500 shrink-0 mt-0.5 animate-pulse" />
+                        <ShieldAlert className="w-5 h-5 text-adv-orange shrink-0 mt-0.5 animate-pulse" />
                         <div>{validationError}</div>
                       </motion.div>
                     )}
@@ -4512,8 +4518,8 @@ export default function CreateEvent() {
                         className="w-full bg-white border border-gray-200 text-adv-slate rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all shadow-inner"
                       />
                       {attemptedSubmit && !eventName.trim() && (
-                        <p id="field-event-name-error" className="text-xs text-rose-600 font-bold mt-2 flex items-center gap-1.5">
-                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <p id="field-event-name-error" className="text-xs text-adv-orange font-bold mt-2 flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0 text-adv-orange" />
                           <span>{lang === 'lo' ? 'ກະລຸນາປ້ອນຊື່ກິດຈະກຳ' : 'Event name is required'}</span>
                         </p>
                       )}

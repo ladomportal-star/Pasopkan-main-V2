@@ -26,7 +26,15 @@ import {
   X,
   Sparkles,
   Check,
-  Grid
+  Grid,
+  Image as ImageIcon,
+  Sliders,
+  RotateCcw,
+  UploadCloud,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Layers
 } from 'lucide-react';
 import {
   getContactSettings,
@@ -39,6 +47,8 @@ import {
   savePrivacySettings,
   getOrganizerTermsSettings,
   saveOrganizerTermsSettings,
+  getHomeHeroSettings,
+  saveHomeHeroSettings,
   ContactSettings,
   SupportSettings,
   TermsSettings,
@@ -47,7 +57,11 @@ import {
   OrganizerTermItem,
   FAQItem,
   TermSection,
-  PrivacySection
+  PrivacySection,
+  HomeHeroSettings,
+  HeroSlide,
+  DEFAULT_HOME_HERO_SETTINGS,
+  DEFAULT_HERO_SLIDES
 } from '../lib/siteSettings';
 import {
   TERM_ICON_LIST,
@@ -62,16 +76,18 @@ interface SiteSettingsTabProps {
   addActivityLog: (action: string, details: string) => void;
 }
 
-type SubTab = 'contact' | 'support' | 'terms' | 'organizer_terms' | 'privacy';
+type SubTab = 'home_hero' | 'contact' | 'support' | 'terms' | 'organizer_terms' | 'privacy';
 
 export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSettingsTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<SubTab>('contact');
+  const [activeSubTab, setActiveSubTab] = useState<SubTab>('home_hero');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Form States
+  const [homeHeroForm, setHomeHeroForm] = useState<HomeHeroSettings | null>(null);
+  const [previewSlideIdx, setPreviewSlideIdx] = useState<number>(0);
   const [contactForm, setContactForm] = useState<ContactSettings | null>(null);
   const [supportForm, setSupportForm] = useState<SupportSettings | null>(null);
   const [termsForm, setTermsForm] = useState<TermsSettings | null>(null);
@@ -88,18 +104,20 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
     async function loadAllSettings() {
       try {
         setIsLoading(true);
-        const [contact, support, terms, privacy, organizerTerms] = await Promise.all([
+        const [contact, support, terms, privacy, organizerTerms, homeHero] = await Promise.all([
           getContactSettings(),
           getSupportSettings(),
           getTermsSettings(),
           getPrivacySettings(),
-          getOrganizerTermsSettings()
+          getOrganizerTermsSettings(),
+          getHomeHeroSettings()
         ]);
         setContactForm(contact);
         setSupportForm(support);
         setTermsForm(terms);
         setPrivacyForm(privacy);
         setOrganizerTermsForm(organizerTerms);
+        setHomeHeroForm(homeHero);
       } catch (error) {
         console.error('Error loading site settings:', error);
         setErrorMessage(lang === 'en' ? 'Failed to load site settings. Please try again.' : 'ບໍ່ສາມາດໂຫຼດຂໍ້ມູນການຕັ້ງຄ່າເວັບໄຊໄດ້. ກະລຸນາລອງໃໝ່.');
@@ -119,6 +137,118 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
   };
 
   // Handlers for Saving
+  const handleSaveHomeHero = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!homeHeroForm) return;
+    if (!homeHeroForm.slides || homeHeroForm.slides.length === 0) {
+      setErrorMessage(lang === 'en' ? 'Please include at least one slide image.' : 'ກະລຸນາເພີ່ມຮູບສະໄລດ໌ຢ່າງໜ້ອຍ 1 ຮູບ.');
+      return;
+    }
+    // Validate that each slide has an image url
+    const hasEmptyUrl = homeHeroForm.slides.some(s => !s.imageUrl.trim());
+    if (hasEmptyUrl) {
+      setErrorMessage(lang === 'en' ? 'Every slide must have a valid Image URL or uploaded image.' : 'ທຸກສະໄລດ໌ຕ້ອງມີ URL ຮູບພາບ ຫຼື ຮູບທີ່ອັບໂຫຼດ.');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      setErrorMessage(null);
+      await saveHomeHeroSettings(homeHeroForm);
+      addActivityLog('Site settings updated', 'Updated Home Page hero title and slide images');
+      triggerSuccess(lang === 'en' ? 'Home page slider & hero text saved successfully!' : 'ບັນທຶກສະໄລດ໌ ແລະ ຫົວຂໍ້ໜ້າຫຼັກສຳເລັດແລ້ວ!');
+    } catch (err) {
+      setErrorMessage(lang === 'en' ? 'Failed to save hero settings.' : 'ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກ.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Home Hero CRUD Helpers
+  const addHeroSlide = () => {
+    if (!homeHeroForm) return;
+    const newSlide: HeroSlide = {
+      id: `slide-${Date.now()}`,
+      imageUrl: '',
+      title_en: '',
+      title_lo: ''
+    };
+    setHomeHeroForm({
+      ...homeHeroForm,
+      slides: [...homeHeroForm.slides, newSlide]
+    });
+    setPreviewSlideIdx(homeHeroForm.slides.length);
+  };
+
+  const removeHeroSlide = (index: number) => {
+    if (!homeHeroForm) return;
+    if (homeHeroForm.slides.length <= 1) {
+      setErrorMessage(lang === 'en' ? 'At least one slide image is required.' : 'ຕ້ອງມີຮູບສະໄລດ໌ຢ່າງໜ້ອຍ 1 ຮູບ.');
+      return;
+    }
+    const newSlides = [...homeHeroForm.slides];
+    newSlides.splice(index, 1);
+    setHomeHeroForm({
+      ...homeHeroForm,
+      slides: newSlides
+    });
+    if (previewSlideIdx >= newSlides.length) {
+      setPreviewSlideIdx(Math.max(0, newSlides.length - 1));
+    }
+  };
+
+  const moveHeroSlide = (index: number, direction: 'up' | 'down') => {
+    if (!homeHeroForm) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= homeHeroForm.slides.length) return;
+
+    const newSlides = [...homeHeroForm.slides];
+    const temp = newSlides[index];
+    newSlides[index] = newSlides[targetIndex];
+    newSlides[targetIndex] = temp;
+
+    setHomeHeroForm({
+      ...homeHeroForm,
+      slides: newSlides
+    });
+    setPreviewSlideIdx(targetIndex);
+  };
+
+  const updateHeroSlide = (index: number, key: keyof HeroSlide, value: string) => {
+    if (!homeHeroForm) return;
+    const newSlides = [...homeHeroForm.slides];
+    newSlides[index] = {
+      ...newSlides[index],
+      [key]: value
+    };
+    setHomeHeroForm({
+      ...homeHeroForm,
+      slides: newSlides
+    });
+  };
+
+  const handleHeroSlideFileUpload = (index: number, file: File) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      if (result) {
+        updateHeroSlide(index, 'imageUrl', result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const resetHeroSlidesToDefault = () => {
+    if (!homeHeroForm) return;
+    setHomeHeroForm({
+      ...homeHeroForm,
+      slides: DEFAULT_HERO_SLIDES
+    });
+    setPreviewSlideIdx(0);
+    triggerSuccess(lang === 'en' ? 'Reset to default Laos landmark slides' : 'ຣີເຊັດເປັນຮູບພາບມາດຕະຖານແລ້ວ');
+  };
+
   const handleSaveContact = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!contactForm) return;
@@ -454,6 +584,19 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
       <div className="flex flex-wrap gap-2 pb-2 border-b border-gray-100">
         <button
           type="button"
+          onClick={() => { setActiveSubTab('home_hero'); setErrorMessage(null); }}
+          className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all border ${
+            activeSubTab === 'home_hero'
+              ? 'bg-adv-orange border-adv-orange text-white shadow-md shadow-orange-100'
+              : 'bg-white border-gray-100 text-gray-500 hover:bg-gray-50'
+          }`}
+        >
+          <ImageIcon className="w-4 h-4" />
+          {lang === 'en' ? 'Home Slide & Hero' : 'ສະໄລດ໌ & ຫົວຂໍ້ໜ້າຫຼັກ'}
+        </button>
+
+        <button
+          type="button"
           onClick={() => { setActiveSubTab('contact'); setErrorMessage(null); }}
           className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all border ${
             activeSubTab === 'contact'
@@ -520,6 +663,399 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
 
       {/* Editor Content Area */}
       <div className="bg-white rounded-3xl p-2">
+        {/* HOME HERO & SLIDER FORM */}
+        {activeSubTab === 'home_hero' && homeHeroForm && (
+          <form onSubmit={handleSaveHomeHero} className="space-y-8">
+            {/* Header description */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+              <div>
+                <h3 className="text-base font-black text-adv-slate flex items-center gap-2 uppercase tracking-wide">
+                  <ImageIcon className="w-5 h-5 text-adv-orange" />
+                  {lang === 'en' ? 'Home Page Hero & Slide Images' : 'ສະໄລດ໌ຮູບພາບ ແລະ ຂໍ້ຄວາມໜ້າຫຼັກ'}
+                </h3>
+                <p className="text-xs font-medium text-gray-400 mt-1">
+                  {lang === 'en' 
+                    ? 'Customize the hero headline text, rotation speed, and manage the background slide images displayed on the homepage.' 
+                    : 'ປັບແຕ່ງຫົວຂໍ້ໃຫຍ່, ຄວາມໄວໃນການປ່ຽນຮູບ, ແລະ ຈັດການຮູບພາບສະໄລດ໌ພື້ນຫຼັງທີ່ສະແດງຢູ່ໜ້າຫຼັກ.'}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={resetHeroSlidesToDefault}
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-all"
+                  title={lang === 'en' ? 'Reset to default landmark images' : 'ຣີເຊັດເປັນຮູບພາບມາດຕະຖານ'}
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-gray-500" />
+                  {lang === 'en' ? 'Reset Defaults' : 'ຣີເຊັດມາດຕະຖານ'}
+                </button>
+                <button
+                  type="button"
+                  onClick={addHeroSlide}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-orange-50 hover:bg-orange-100 text-adv-orange text-xs font-black rounded-xl transition-all border border-orange-200/60"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  {lang === 'en' ? 'Add Slide' : 'ເພີ່ມຮູບສະໄລດ໌'}
+                </button>
+              </div>
+            </div>
+
+            {/* Live Interactive Hero Banner Preview */}
+            <div className="bg-gray-900 rounded-3xl overflow-hidden border border-gray-800 shadow-xl">
+              <div className="px-5 py-3 bg-black/60 border-b border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-adv-orange" />
+                  <span className="text-xs font-black text-white uppercase tracking-wider">
+                    {lang === 'en' ? 'Live Hero Banner Preview' : 'ຕົວຢ່າງສະແດງຜົນຕົວຈິງ'}
+                  </span>
+                </div>
+                <div className="text-[11px] font-bold text-gray-400">
+                  {lang === 'en' ? `Slide ${previewSlideIdx + 1} of ${homeHeroForm.slides.length}` : `ຮູບທີ ${previewSlideIdx + 1} ຈາກ ${homeHeroForm.slides.length}`}
+                </div>
+              </div>
+
+              <div className="relative h-48 sm:h-64 md:h-72 w-full flex flex-col items-center justify-center text-center p-6 overflow-hidden">
+                {/* Background image preview */}
+                {homeHeroForm.slides[previewSlideIdx]?.imageUrl ? (
+                  <img
+                    src={homeHeroForm.slides[previewSlideIdx].imageUrl}
+                    alt="Preview"
+                    className="absolute inset-0 w-full h-full object-cover transition-all duration-700"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-tr from-slate-900 to-slate-800 flex items-center justify-center text-gray-500 text-xs font-bold">
+                    No image URL specified
+                  </div>
+                )}
+
+                {/* Dark Overlay */}
+                <div className="absolute inset-0 bg-black/45 backdrop-blur-[0.5px]" />
+
+                {/* Overlay Title */}
+                <div className="relative z-10 max-w-2xl px-4">
+                  <h1 className="text-xl sm:text-3xl md:text-4xl text-white font-black tracking-tight uppercase leading-[0.95] drop-shadow-md">
+                    {lang === 'lo' ? (homeHeroForm.mainTitle_lo || 'ປະສົບການໃໝ່ໆລໍຖ້າທ່ານຢູ່') : (homeHeroForm.mainTitle_en || 'Your Next Adventure Awaits')}
+                  </h1>
+                  {homeHeroForm.slides[previewSlideIdx]?.title_en && (
+                    <p className="mt-2 inline-block px-3 py-1 bg-black/50 backdrop-blur-md rounded-full text-[10px] sm:text-xs font-semibold text-white/90 border border-white/20">
+                      📍 {lang === 'lo' ? (homeHeroForm.slides[previewSlideIdx].title_lo || homeHeroForm.slides[previewSlideIdx].title_en) : homeHeroForm.slides[previewSlideIdx].title_en}
+                    </p>
+                  )}
+                </div>
+
+                {/* Preview Prev / Next Controls */}
+                {homeHeroForm.slides.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewSlideIdx((prev) => (prev > 0 ? prev - 1 : homeHeroForm.slides.length - 1))}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-all border border-white/20"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewSlideIdx((prev) => (prev + 1) % homeHeroForm.slides.length)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-all border border-white/20"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+
+                    {/* Dots indicator */}
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10">
+                      {homeHeroForm.slides.map((_, dotIdx) => (
+                        <button
+                          key={dotIdx}
+                          type="button"
+                          onClick={() => setPreviewSlideIdx(dotIdx)}
+                          className={`h-2 rounded-full transition-all ${
+                            dotIdx === previewSlideIdx ? 'w-6 bg-adv-orange' : 'w-2 bg-white/50 hover:bg-white'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Main Title & General Settings */}
+            <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 space-y-6">
+              <h3 className="text-sm font-black text-adv-slate uppercase tracking-wider flex items-center gap-2">
+                <Globe className="w-4 h-4 text-adv-orange" />
+                {lang === 'en' ? 'Main Hero Headline Text' : 'ຂໍ້ຄວາມຫົວຂໍ້ໃຫຍ່ໜ້າຫຼັກ'}
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-1">
+                    Main Title (English) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={homeHeroForm.mainTitle_en}
+                    onChange={(e) => setHomeHeroForm({ ...homeHeroForm, mainTitle_en: e.target.value })}
+                    placeholder="e.g. Your Next Adventure Awaits"
+                    className="w-full bg-white border border-gray-100 rounded-2xl px-5 py-4 text-adv-slate font-bold shadow-sm focus:outline-none focus:border-adv-orange/30 transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-1">
+                    Main Title (Lao - ພາສາລາວ) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={homeHeroForm.mainTitle_lo}
+                    onChange={(e) => setHomeHeroForm({ ...homeHeroForm, mainTitle_lo: e.target.value })}
+                    placeholder="ຕົວຢ່າງ: ປະສົບການໃໝ່ໆລໍຖ້າທ່ານຢູ່"
+                    className="w-full bg-white border border-gray-100 rounded-2xl px-5 py-4 text-adv-slate font-bold shadow-sm focus:outline-none focus:border-adv-orange/30 transition-all"
+                  />
+                </div>
+
+                <div className="col-span-1 md:col-span-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-gray-100">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-1">
+                      {lang === 'en' ? 'Slide Rotation Speed (Seconds)' : 'ຄວາມໄວໃນການປ່ຽນສະໄລດ໌ (ວິນາທີ)'}
+                    </label>
+                    <p className="text-xs text-gray-400 font-medium pl-1">
+                      {lang === 'en' ? 'How long each background photo is displayed before moving to the next.' : 'ໄລຍະເວລາສະແດງຮູບແຕ່ລະແຜ່ນກ່ອນປ່ຽນໄປຮູບຖັດໄປ.'}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {[3, 5, 8, 10].map((sec) => (
+                      <button
+                        key={sec}
+                        type="button"
+                        onClick={() => setHomeHeroForm({ ...homeHeroForm, slideIntervalSeconds: sec })}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                          homeHeroForm.slideIntervalSeconds === sec
+                            ? 'bg-adv-orange text-white shadow-xs'
+                            : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        {sec}s
+                      </button>
+                    ))}
+                    <div className="flex items-center gap-1 ml-2">
+                      <input
+                        type="number"
+                        min="2"
+                        max="30"
+                        value={homeHeroForm.slideIntervalSeconds || 5}
+                        onChange={(e) => setHomeHeroForm({ ...homeHeroForm, slideIntervalSeconds: Math.max(2, parseInt(e.target.value) || 5) })}
+                        className="w-16 bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs text-center font-bold text-adv-slate focus:outline-none focus:border-adv-orange"
+                      />
+                      <span className="text-xs font-bold text-gray-400">sec</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Slide Images List */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-black text-adv-slate uppercase tracking-wider flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-adv-orange" />
+                    {lang === 'en' ? `Slide Background Images (${homeHeroForm.slides.length})` : `ລາຍການຮູບພາບສະໄລດ໌ (${homeHeroForm.slides.length})`}
+                  </h3>
+                  <p className="text-xs font-medium text-gray-400 mt-0.5">
+                    {lang === 'en' ? 'Add, replace, reorder, or upload high-resolution photos for the hero background.' : 'ເພີ່ມ, ປ່ຽນ, ຈັດລຳດັບ, ຫຼື ອັບໂຫຼດຮູບພາບຄວາມລະອຽດສູງ.'}
+                  </p>
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={addHeroSlide}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-adv-orange hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  {lang === 'en' ? 'Add Slide' : 'ເພີ່ມຮູບສະໄລດ໌'}
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {homeHeroForm.slides.map((slide, idx) => (
+                  <div
+                    key={slide.id || idx}
+                    className="p-5 bg-gray-50/70 border border-gray-150 rounded-2xl transition-all hover:border-gray-200 space-y-4"
+                  >
+                    {/* Top Slide Row: Index & Controls */}
+                    <div className="flex items-center justify-between pb-3 border-b border-gray-200/70">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-7 h-7 rounded-lg bg-orange-100 text-adv-orange font-black text-xs flex items-center justify-center">
+                          #{idx + 1}
+                        </span>
+                        <span className="text-xs font-black text-adv-slate uppercase tracking-wider">
+                          {slide.title_en || slide.title_lo || (lang === 'en' ? `Slide Image #${idx + 1}` : `ຮູບສະໄລດ໌ #${idx + 1}`)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => moveHeroSlide(idx, 'up')}
+                          className="p-1.5 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          title={lang === 'en' ? 'Move Up' : 'ຍ້າຍຂຶ້ນ'}
+                        >
+                          <ArrowUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={idx === homeHeroForm.slides.length - 1}
+                          onClick={() => moveHeroSlide(idx, 'down')}
+                          className="p-1.5 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          title={lang === 'en' ? 'Move Down' : 'ຍ້າຍລົງ'}
+                        >
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={homeHeroForm.slides.length <= 1}
+                          onClick={() => removeHeroSlide(idx)}
+                          className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors ml-1"
+                          title={lang === 'en' ? 'Delete Slide' : 'ລຶບຮູບສະໄລດ໌'}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Image Preview & URL Inputs */}
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+                      {/* Thumbnail Preview */}
+                      <div className="md:col-span-4 lg:col-span-3">
+                        <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-gray-200 border border-gray-300 group">
+                          {slide.imageUrl ? (
+                            <img
+                              src={slide.imageUrl}
+                              alt={`Slide ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.opacity = '0.3';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 p-2 text-center">
+                              <ImageIcon className="w-6 h-6 mb-1 text-gray-300" />
+                              <span className="text-[10px] font-bold">No Image</span>
+                            </div>
+                          )}
+
+                          <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[11px] font-black cursor-pointer transition-opacity">
+                            <UploadCloud className="w-5 h-5 mb-1" />
+                            <span>{lang === 'en' ? 'Upload Image' : 'ອັບໂຫຼດຮູບ'}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleHeroSlideFileUpload(idx, file);
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* URL and Caption inputs */}
+                      <div className="md:col-span-8 lg:col-span-9 space-y-3">
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-1">
+                            {lang === 'en' ? 'Image URL or Uploaded Data' : 'URL ຮູບພາບ ຫຼື ໄຟລ໌ທີ່ອັບໂຫຼດ'} <span className="text-red-500">*</span>
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              required
+                              value={slide.imageUrl}
+                              onChange={(e) => updateHeroSlide(idx, 'imageUrl', e.target.value)}
+                              placeholder="https://images.unsplash.com/... or upload a file"
+                              className="flex-1 bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-mono text-adv-slate shadow-2xs focus:outline-none focus:border-adv-orange"
+                            />
+                            <label className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-adv-slate rounded-xl text-xs font-bold cursor-pointer transition-all shadow-2xs">
+                              <UploadCloud className="w-3.5 h-3.5 text-adv-orange" />
+                              <span>{lang === 'en' ? 'Upload' : 'ອັບໂຫຼດ'}</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleHeroSlideFileUpload(idx, file);
+                                }}
+                              />
+                            </label>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-1">
+                              Caption / Landmark (EN)
+                            </label>
+                            <input
+                              type="text"
+                              value={slide.title_en || ''}
+                              onChange={(e) => updateHeroSlide(idx, 'title_en', e.target.value)}
+                              placeholder="e.g. Luang Prabang Kuang Si Falls"
+                              className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-medium text-adv-slate shadow-2xs focus:outline-none focus:border-adv-orange"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-1">
+                              Caption / Landmark (LO)
+                            </label>
+                            <input
+                              type="text"
+                              value={slide.title_lo || ''}
+                              onChange={(e) => updateHeroSlide(idx, 'title_lo', e.target.value)}
+                              placeholder="ຕົວຢ່າງ: ຕາດກວາງຊີ ຫຼວງພະບາງ"
+                              className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-medium text-adv-slate shadow-2xs focus:outline-none focus:border-adv-orange"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <div className="pt-6 border-t border-gray-100 flex items-center justify-end gap-4">
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="flex items-center gap-2 px-8 py-4 bg-adv-orange hover:bg-orange-600 text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-orange-100 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {lang === 'en' ? 'Saving Settings...' : 'ກຳລັງບັນທຶກ...'}
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    {lang === 'en' ? 'Save Home Hero & Slide Changes' : 'ບັນທຶກການຕັ້ງຄ່າສະໄລດ໌ & ຫົວຂໍ້'}
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        )}
+
         {/* CONTACT US FORM */}
         {activeSubTab === 'contact' && contactForm && (
           <form onSubmit={handleSaveContact} className="space-y-6">

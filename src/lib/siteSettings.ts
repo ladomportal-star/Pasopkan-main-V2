@@ -62,6 +62,22 @@ export interface PrivacySettings {
   sections: PrivacySection[];
 }
 
+export interface HeroSlide {
+  id: string;
+  imageUrl: string;
+  title_en?: string;
+  title_lo?: string;
+}
+
+export interface HomeHeroSettings {
+  mainTitle_en: string;
+  mainTitle_lo: string;
+  heroSub_en?: string;
+  heroSub_lo?: string;
+  slideIntervalSeconds: number;
+  slides: HeroSlide[];
+}
+
 export interface OrganizerTermItem {
   id?: string;
   title_en: string;
@@ -204,6 +220,48 @@ export const DEFAULT_PRIVACY_SETTINGS: PrivacySettings = {
       content_lo: 'ພວກເຮົາໃຊ້ການເຂົ້າລະຫັດມາດຕະຖານອຸດສາຫະກຳເພື່ອປົກປ້ອງຂໍ້ມູນຂອງທ່ານຈາກການເຂົ້າເຖິງທີ່ບໍ່ໄດ້ຮັບອະນຸຍາດ.'
     }
   ]
+};
+
+export const DEFAULT_HERO_SLIDES: HeroSlide[] = [
+  {
+    id: 'slide-1',
+    imageUrl: 'https://images.unsplash.com/photo-1542360663-80149f104730?auto=format&fit=crop&q=80',
+    title_en: 'Vang Vieng Hot Air Balloons',
+    title_lo: 'ບານລູນ ວັງວຽງ'
+  },
+  {
+    id: 'slide-2',
+    imageUrl: 'https://images.unsplash.com/photo-1563725575791-537452d2427a?auto=format&fit=crop&q=80',
+    title_en: 'Luang Prabang Alms Giving',
+    title_lo: 'ຕັກບາດ ຫຼວງພະບາງ'
+  },
+  {
+    id: 'slide-3',
+    imageUrl: 'https://images.unsplash.com/photo-1540611025311-01df3cef54b5?auto=format&fit=crop&q=80',
+    title_en: 'Vientiane Patuxai Exploration',
+    title_lo: 'ປະຕູໄຊ ນະຄອນຫຼວງວຽງຈັນ'
+  },
+  {
+    id: 'slide-4',
+    imageUrl: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&q=80',
+    title_en: 'Luang Prabang Kuang Si Falls',
+    title_lo: 'ຕາດກວາງຊີ ຫຼວງພະບາງ'
+  },
+  {
+    id: 'slide-5',
+    imageUrl: 'https://images.unsplash.com/photo-1579451861283-a2239070aaa9?auto=format&fit=crop&q=80',
+    title_en: 'Vang Vieng Kayaking',
+    title_lo: 'ພາຍເຮືອຄາຍັກ ວັງວຽງ'
+  }
+];
+
+export const DEFAULT_HOME_HERO_SETTINGS: HomeHeroSettings = {
+  mainTitle_en: 'Your Next Adventure Awaits',
+  mainTitle_lo: 'ປະສົບການໃໝ່ໆລໍຖ້າທ່ານຢູ່',
+  heroSub_en: 'Discover Great Experiences',
+  heroSub_lo: 'ຄົ້ນພົບປະສົບການທີ່ດີເລີດ',
+  slideIntervalSeconds: 5,
+  slides: DEFAULT_HERO_SLIDES,
 };
 
 export const DEFAULT_ORGANIZER_TERMS_SETTINGS: OrganizerTermsSettings = {
@@ -374,3 +432,12 @@ export async function getOrganizerTermsSettings(): Promise<OrganizerTermsSetting
 export async function saveOrganizerTermsSettings(settings: OrganizerTermsSettings): Promise<void> {
   await saveSettings<OrganizerTermsSettings>('organizer_terms', settings);
 }
+
+// Home Hero & Slides
+export async function getHomeHeroSettings(): Promise<HomeHeroSettings> {
+  return getSettings<HomeHeroSettings>('home_hero', DEFAULT_HOME_HERO_SETTINGS);
+}
+export async function saveHomeHeroSettings(settings: HomeHeroSettings): Promise<void> {
+  await saveSettings<HomeHeroSettings>('home_hero', settings);
+}
+

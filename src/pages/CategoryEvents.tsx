@@ -5,6 +5,7 @@ import { events, LaoEvent } from '../data/events';
 import EventCard from '../components/EventCard';
 import { useLanguage } from '../LanguageContext';
 import { safeStorage } from '../lib/storage';
+import SEO from '../components/SEO';
 
 const translations = {
   en: {
@@ -108,7 +109,7 @@ export default function CategoryEvents() {
   const getTranslatedCategory = (cat: string) => {
     const catTranslations: Record<string, any> = {
       en: { Sports: 'Adventure & Sports', Workshop: 'Workshops', Festival: 'Festivals', Voucher: 'Voucher and Booking' },
-      lo: { Sports: 'ການຜະຈົນໄພ ແລະ ທ່ອງທ່ຽວ', Workshop: 'ເວີກຊອບ', Festival: 'ເທດສະການ', Voucher: 'ບັດສ່ວນຫຼຸດ ແລະ ການຈອງ' }
+      lo: { Sports: 'ການຜະຈົນໄພ ແລະ ທ່ອງທ່ຽວ', Workshop: 'ເວີກຊອບ', Festival: 'ເທດສະການ', Voucher: 'Voucher ແລະ ການຈອງ' }
     };
     return catTranslations[lang][cat] || cat;
   };
@@ -226,8 +227,15 @@ export default function CategoryEvents() {
     );
   }
 
+  const translatedCat = getTranslatedCategory(categoryName);
+
   return (
     <div className="min-h-screen bg-[#F9FAFB] pt-3 sm:pt-6 pb-8 sm:pb-12">
+      <SEO
+        title={`${translatedCat} Events`}
+        description={`Explore upcoming and featured ${translatedCat} events, workshops, and experiences across Laos on Pasopkan.`}
+        keywords={[translatedCat, 'Laos Events', 'Pasopkan', 'Tickets', categoryName]}
+      />
       <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 animate-fade-in">
         
         {/* Top Header Row with Back link */}

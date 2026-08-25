@@ -57,6 +57,7 @@ import { getReviewsForEvent, getAverageRatingForEvent, saveReview } from '../dat
 import { useAuth } from '../AuthContext';
 import { collection, query, where, onSnapshot, doc, setDoc, getDocs } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
+import SEO from '../components/SEO';
 
 const XIcon = ({ className = "w-3.5 h-3.5" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -1198,8 +1199,17 @@ export default function EventDetails() {
     }
   };
 
+  const rawDescription = event.description ? event.description.replace(/<[^>]*>?/gm, '').trim() : '';
+
   return (
     <div className="min-h-screen bg-[#F9FAFB] pb-6 lg:pb-8">
+      <SEO
+        title={event.title}
+        description={rawDescription ? rawDescription.substring(0, 160) : undefined}
+        image={event.image || (galleryImages.length > 0 ? galleryImages[0] : undefined)}
+        type="event"
+        keywords={[event.category, event.location, 'Pasopkan', 'Tickets', event.title]}
+      />
       <AnimatePresence>
         {fullscreenImageIndex !== null && (
           <motion.div 
@@ -1404,17 +1414,6 @@ export default function EventDetails() {
                          ))}
                        </div>
                      )}
-
-                     {/* Bottom Right Photo Badge Pill */}
-                     {galleryImages.length > 1 && (
-                       <button 
-                         onClick={() => setFullscreenImageIndex(activeImageIndex)}
-                         className="absolute bottom-4 right-4 bg-white/95 backdrop-blur-xs px-3.5 py-1.5 rounded-full text-[11px] font-black text-adv-slate border border-gray-100 shadow-md flex items-center gap-1.5 hover:bg-white active:scale-95 transition-all z-20 cursor-pointer"
-                       >
-                         <ImageIcon className="w-3.5 h-3.5 text-gray-600" />
-                         <span>{galleryImages.length}</span>
-                       </button>
-                     )}
                    </div>
 
                    {/* Mobile Horizontal Thumbnail Strip for quick tap/slide */}
@@ -1559,13 +1558,6 @@ export default function EventDetails() {
                      <div className="absolute top-4 right-4 bg-black/20 hover:bg-white/20 backdrop-blur-md border border-white/15 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-all active:scale-95 group/btn z-10" title="Full Screen">
                        <Maximize2 className="w-4 h-4 transition-transform duration-300 group-hover/btn:scale-110" />
                      </div>
-
-                     {/* Photo Index Indicator */}
-                     {galleryImages.length > 1 && (
-                       <div className="absolute top-4 left-4 bg-black/45 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-white border border-white/10 z-10">
-                         {activeImageIndex + 1} / {galleryImages.length}
-                       </div>
-                     )}
                    </div>
 
                    {/* Thumbnail strip */}
@@ -1734,14 +1726,7 @@ export default function EventDetails() {
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <a
-                        href={`mailto:${event.organizerContact || 'info@pasopkan.com'}`}
-                        className="py-2.5 px-3 bg-gray-50 hover:bg-gray-100 active:scale-[0.98] transition-all border border-gray-150 rounded-xl text-xs font-bold text-gray-700 flex items-center justify-center gap-1.5 shadow-2xs"
-                      >
-                        <Mail className="w-3.5 h-3.5 text-adv-orange shrink-0" />
-                        <span className="truncate">{lang === 'en' ? 'Email' : 'ອີເມວ'}</span>
-                      </a>
+                    <div className="grid grid-cols-1 gap-2">
                       <a
                         href="tel:+8562099999999"
                         className="py-2.5 px-3 bg-gray-50 hover:bg-gray-100 active:scale-[0.98] transition-all border border-gray-150 rounded-xl text-xs font-bold text-gray-700 flex items-center justify-center gap-1.5 shadow-2xs"
@@ -1911,11 +1896,6 @@ export default function EventDetails() {
                                <p className="font-bold text-xs text-adv-slate group-hover:text-black transition-colors truncate">
                                  {tier.name}
                                </p>
-                               {isSelected && (
-                                 <span className="text-[10px] font-black bg-adv-orange text-white px-2 py-0.5 rounded-md">
-                                   {currentQty}
-                                 </span>
-                               )}
                              </div>
                              <div className="flex items-center gap-2 mt-0.5">
                                <span className="font-mono font-black text-xs text-adv-orange">
@@ -2153,14 +2133,7 @@ export default function EventDetails() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <a
-                      href={`mailto:${event.organizerContact || 'info@pasopkan.com'}`}
-                      className="py-2.5 px-3 bg-gray-50 hover:bg-gray-100 active:scale-[0.98] transition-all border border-gray-150 rounded-xl text-xs font-bold text-gray-700 flex items-center justify-center gap-1.5 shadow-2xs"
-                    >
-                      <Mail className="w-3.5 h-3.5 text-adv-orange shrink-0" />
-                      <span className="truncate">{lang === 'en' ? 'Email' : 'ອີເມວ'}</span>
-                    </a>
+                  <div className="grid grid-cols-1 gap-2">
                     <a
                       href="tel:+8562099999999"
                       className="py-2.5 px-3 bg-gray-50 hover:bg-gray-100 active:scale-[0.98] transition-all border border-gray-150 rounded-xl text-xs font-bold text-gray-700 flex items-center justify-center gap-1.5 shadow-2xs"

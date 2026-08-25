@@ -3,6 +3,7 @@ import { ArrowLeft, Bell, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
+import SEO from '../components/SEO';
 
 const translations = {
   en: {
@@ -51,6 +52,11 @@ export default function Notifications() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] py-4 md:py-6">
+      <SEO
+        title={t.notifications || 'Notifications'}
+        description="Configure notification preferences and activity alerts on Pasopkan."
+        noindex={true}
+      />
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-12">
         <button 
           onClick={() => navigate(-1)}

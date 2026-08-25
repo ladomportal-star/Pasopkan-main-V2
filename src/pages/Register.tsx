@@ -7,6 +7,7 @@ import { useLanguage } from '../LanguageContext';
 import { useTheme } from '../ThemeContext';
 import Logo from '../components/Logo';
 import OtpInput from '../components/OtpInput';
+import SEO from '../components/SEO';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -151,6 +152,11 @@ export default function Register() {
         theme === 'dark' ? 'bg-zinc-950' : 'bg-white'
       }`}
     >
+      <SEO
+        title={t.registerTitle || (lang === 'lo' ? 'ສ້າງບັນຊີ Pasopkan' : 'Create an Account | Pasopkan')}
+        description="Register for a Pasopkan account to discover, book, and organize events in Laos."
+        noindex={true}
+      />
       {/* Header with Back and Language Switch */}
       <div className="absolute top-0 left-0 right-0 p-4 sm:p-6 flex justify-between items-center w-full max-w-7xl mx-auto">
         <button 
@@ -182,7 +188,7 @@ export default function Register() {
             <img 
               src="/pasopkan_logo.png" 
               alt="Pasopkan Logo" 
-              className="h-28 sm:h-36 w-auto object-contain" 
+              className="h-36 sm:h-48 md:h-56 w-auto object-contain transition-transform duration-300 hover:scale-[1.03]" 
               referrerPolicy="no-referrer"
             />
           </Link>

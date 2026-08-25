@@ -52,7 +52,7 @@ const translations = {
     festivals: 'ເທດສະການ',
     workshops: 'ເວີກຊອບ',
     concerts: 'ຄອນເສີດ',
-    vouchers: 'ບັດສ່ວນຫຼຸດ ແລະ ການຈອງ',
+    vouchers: 'Voucher ແລະ ການຈອງ',
     admin: 'ລະບົບແອດມິນ'
   }
 };

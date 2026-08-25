@@ -21,6 +21,7 @@ import { useAuth } from '../AuthContext';
 import { QRCodeSVG } from 'qrcode.react';
 import { doc, setDoc, collection } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
+import SEO from '../components/SEO';
 
 const translations = {
   en: {
@@ -602,6 +603,11 @@ export default function Checkout() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] pt-1 sm:pt-2 pb-12 px-4 lg:px-8">
+      <SEO
+        title={lang === 'lo' ? `ຊຳລະເງິນ - ${event?.title || 'ປີ້'}` : `Checkout - ${event?.title || 'Tickets'}`}
+        description="Complete your secure ticket payment and registration on Pasopkan."
+        noindex={true}
+      />
       <AnimatePresence>
         {fullscreenImage && (
           <motion.div 
@@ -840,8 +846,8 @@ export default function Checkout() {
                               : 'border-gray-50 hover:border-gray-100 bg-gray-50/50'
                             }`}
                           >
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-orange-500 flex items-center justify-center mr-3 shrink-0 shadow-sm">
-                              <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center mr-3 shrink-0 shadow-xs p-1">
+                              <img src="/Card.png" alt="Credit Card" className="w-full h-full object-contain rounded-lg" />
                             </div>
                             <div className="flex-1 text-left">
                               <h4 className="text-sm sm:text-base font-bold text-adv-slate">{lang === 'en' ? 'Credit Card' : 'ບັດເຄຣດິດ'}</h4>
@@ -883,8 +889,8 @@ export default function Checkout() {
                              </div>
                              
                              <div className="w-full bg-white rounded-2xl p-6 border border-gray-100 text-center space-y-6">
-                               <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mx-auto text-adv-orange animate-pulse">
-                                 <CreditCard className="w-8 h-8" />
+                               <div className="w-16 h-16 bg-white border border-gray-150 rounded-2xl flex items-center justify-center mx-auto p-2 shadow-xs">
+                                 <img src="/Card.png" alt="Credit Card" className="w-full h-full object-contain" />
                                </div>
                                
                                <div className="space-y-2">

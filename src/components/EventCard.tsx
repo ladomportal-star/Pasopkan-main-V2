@@ -34,7 +34,7 @@ const translations = {
     sports: 'ການຜະຈົນໄພ',
     workshop: 'ເວີກຊອບ',
     festival: 'ເທດສະການ',
-    voucher: 'ບັດສ່ວນຫຼຸດ ແລະ ການຈອງ',
+    voucher: 'Voucher ແລະ ການຈອງ',
     free: 'ຟຣີ',
     soldOut: 'ໝົດແລ້ວ',
     pastEvent: 'ຜ່ານມາ',

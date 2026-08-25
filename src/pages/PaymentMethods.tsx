@@ -23,6 +23,7 @@ import {
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { useLanguage } from '../LanguageContext';
+import SEO from '../components/SEO';
 
 const translations = {
   en: {
@@ -382,6 +383,11 @@ export default function PaymentMethods() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] pt-2 sm:pt-3 pb-8 md:pb-12">
+      <SEO
+        title={t.payoutSettings || 'Payout Settings'}
+        description="Manage your bank account for ticket revenue payouts and download payout receipts on Pasopkan."
+        noindex={true}
+      />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-1">
         <button 
           onClick={() => navigate(-1)}

@@ -35,6 +35,7 @@ import { events, LaoEvent } from '../data/events';
 import { useLanguage } from '../LanguageContext';
 import { useTheme } from '../ThemeContext';
 import { CheckinRecord, useCheckins } from '../lib/checkinsStore';
+import SEO from '../components/SEO';
 
 const LazyScanner = React.lazy(() => 
   import('@yudiel/react-qr-scanner')
@@ -387,6 +388,11 @@ export default function StaffScanner() {
     <div className={`min-h-screen transition-colors ${
       theme === 'dark' ? 'bg-zinc-950 text-white' : 'bg-gray-50 text-adv-slate'
     }`}>
+      <SEO
+        title={t.scanner || (lang === 'lo' ? 'ສະແກນກວດປີ້' : 'Staff Ticket Scanner')}
+        description="Gate staff QR ticket verification scanner for Pasopkan events."
+        noindex={true}
+      />
       {/* Toast Notification Bar */}
       <AnimatePresence>
         {toastMessage && (

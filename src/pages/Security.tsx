@@ -1,6 +1,7 @@
 import { ArrowLeft, Shield, Smartphone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../LanguageContext';
+import SEO from '../components/SEO';
 
 const translations = {
   en: {
@@ -26,6 +27,11 @@ export default function Security() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] py-4 md:py-6">
+      <SEO
+        title={t.securityPrivacy || 'Security & Privacy'}
+        description="Manage your account security, two-factor authentication, and privacy settings on Pasopkan."
+        noindex={true}
+      />
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
         <button 
           onClick={() => navigate('/account')}

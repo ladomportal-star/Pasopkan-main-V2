@@ -13,6 +13,7 @@ import Logo from '../components/Logo';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import SiteSettingsTab from '../components/SiteSettingsTab';
 import { safeStorage } from '../lib/storage';
+import SEO from '../components/SEO';
 
 // Utility for exporting data
 const exportToCSV = (filename: string, rows: any[]) => {
@@ -1189,6 +1190,11 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] py-4 md:py-12 pb-24 md:pb-12 print:bg-white print:py-0 print:pb-0">
+      <SEO
+        title={t.adminDashboard || 'Admin Console | Pasopkan'}
+        description="Administrative management panel for Pasopkan event ticketing system."
+        noindex={true}
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 print:max-w-none print:px-0">
         
         {/* Print Header */}

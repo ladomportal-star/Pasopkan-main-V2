@@ -10,6 +10,7 @@ import { useAuth } from '../AuthContext';
 import { useLanguage } from '../LanguageContext';
 import { useTheme } from '../ThemeContext';
 import { CheckinRecord, useCheckins } from '../lib/checkinsStore';
+import SEO from '../components/SEO';
 
 const LazyScanner = React.lazy(() => 
   import('@yudiel/react-qr-scanner')
@@ -812,6 +813,11 @@ export default function Account() {
     <div className={`min-h-screen transition-colors duration-300 py-4 sm:py-8 px-3.5 sm:px-6 lg:px-8 ${
       theme === 'dark' ? 'bg-zinc-950 text-white' : 'bg-[#F9FAFB] text-adv-slate'
     }`}>
+      <SEO
+        title={t.myProfile || (lang === 'lo' ? 'ບັນຊີ & ການຕັ້ງຄ່າ' : 'Account & Settings')}
+        description="Manage your Pasopkan profile, organizer settings, notifications, and event tickets."
+        noindex={true}
+      />
       <div className="max-w-4xl mx-auto pt-1 sm:pt-2">
         <div className="flex items-center justify-between mb-6 sm:mb-8">
           <h1 className={`text-2xl sm:text-3xl font-bold transition-colors ${

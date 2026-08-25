@@ -3,6 +3,7 @@ import { ArrowLeft, HelpCircle, Mail, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../LanguageContext';
 import { getSupportSettings, SupportSettings, DEFAULT_SUPPORT_SETTINGS } from '../lib/siteSettings';
+import SEO from '../components/SEO';
 
 const translations = {
   en: {
@@ -39,6 +40,11 @@ export default function Help() {
   
   return (
     <div className="min-h-screen bg-gray-50 py-4 md:py-6 pt-4 sm:pt-6">
+      <SEO
+        title={helpSupport || (lang === 'lo' ? 'ສູນຊ່ວຍເຫຼືອ & ຄຳຖາມທີ່ພົບເລື້ອຍ' : 'Help & Support')}
+        description="Frequently Asked Questions and customer support contacts for Pasopkan ticketing platform."
+        keywords={['Pasopkan Help', 'Support Laos', 'FAQ Events Tickets Laos']}
+      />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <button 
           onClick={() => navigate(-1)}

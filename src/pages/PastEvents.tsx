@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { events } from '../data/events';
 import { useLanguage } from '../LanguageContext';
 import { saveReview, getUserReviewForEvent } from '../data/reviews';
+import SEO from '../components/SEO';
 
 const translations = {
   en: {
@@ -262,6 +263,11 @@ export default function PastEvents() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] pt-2 sm:pt-3 pb-8 md:pb-12">
+      <SEO
+        title={t.title}
+        description="View your past event attendance history and leave verified reviews for experiences in Laos."
+        noindex={true}
+      />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-1">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">

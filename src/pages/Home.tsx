@@ -26,6 +26,8 @@ import { events, LaoEvent, getEventStatus } from '../data/events';
 import { useLanguage } from '../LanguageContext';
 import LandscapeEventCard from '../components/LandscapeEventCard';
 import { safeStorage } from '../lib/storage';
+import { getHomeHeroSettings, HomeHeroSettings, DEFAULT_HOME_HERO_SETTINGS } from '../lib/siteSettings';
+import SEO from '../components/SEO';
 
 const translations = {
   en: {
@@ -52,7 +54,7 @@ const translations = {
     workshops: 'ເວີກຊັອບ',
     adventure: 'ການຜະຈົນໄພ ແລະ ທ່ອງທ່ຽວ',
     festivals: 'ເທດສະການ',
-    vouchers: 'ບັດສ່ວນຫຼຸດ ແລະ ການຈອງ'
+    vouchers: 'Voucher ແລະ ການຈອງ'
   }
 };
 
@@ -195,31 +197,55 @@ export default function Home() {
   const { lang } = useLanguage();
   const t = translations[lang];
 
+  const [heroSettings, setHeroSettings] = useState<HomeHeroSettings>(DEFAULT_HOME_HERO_SETTINGS);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const heroImages = [
-    "https://images.unsplash.com/photo-1542360663-80149f104730?auto=format&fit=crop&q=80", // Vang Vieng Hot Air Balloons
-    "https://images.unsplash.com/photo-1563725575791-537452d2427a?auto=format&fit=crop&q=80", // Luang Prabang Alms Giving
-    "https://images.unsplash.com/photo-1540611025311-01df3cef54b5?auto=format&fit=crop&q=80", // Vientiane Patuxai Exploration
-    "https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&q=80", // Luang Prabang Kuang Si Falls
-    "https://images.unsplash.com/photo-1579451861283-a2239070aaa9?auto=format&fit=crop&q=80"  // Vang Vieng Kayaking
-  ];
+
+  // Fetch dynamic hero settings from Firestore / LocalStorage
+  useEffect(() => {
+    let isMounted = true;
+    getHomeHeroSettings()
+      .then((settings) => {
+        if (isMounted && settings && settings.slides && settings.slides.length > 0) {
+          setHeroSettings(settings);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load dynamic hero settings:', err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const heroSlides = heroSettings.slides && heroSettings.slides.length > 0
+    ? heroSettings.slides
+    : DEFAULT_HOME_HERO_SETTINGS.slides;
 
   // Preload appropriately sized images
   useEffect(() => {
     const isMobile = window.innerWidth <= 768;
     const width = isMobile ? '600' : '2070';
-    heroImages.forEach((baseSrc) => {
-      const img = new Image();
-      img.src = `${baseSrc}&w=${width}`;
+    heroSlides.forEach((slide) => {
+      if (slide.imageUrl) {
+        const img = new Image();
+        if (slide.imageUrl.includes('images.unsplash.com')) {
+          img.src = `${slide.imageUrl}&w=${width}`;
+        } else {
+          img.src = slide.imageUrl;
+        }
+      }
     });
-  }, []);
+  }, [heroSlides]);
 
+  // Image slider timer based on configurable slideIntervalSeconds
   useEffect(() => {
+    if (heroSlides.length <= 1) return;
+    const intervalMs = (heroSettings.slideIntervalSeconds || 5) * 1000;
     const timer = setInterval(() => {
-      setCurrentImageIndex((prev) => (prev + 1) % heroImages.length);
-    }, 5000);
+      setCurrentImageIndex((prev) => (prev + 1) % heroSlides.length);
+    }, intervalMs);
     return () => clearInterval(timer);
-  }, []);
+  }, [heroSlides.length, heroSettings.slideIntervalSeconds]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -253,49 +279,59 @@ export default function Home() {
     'Sports': { en: 'Adventure and Tour', lo: 'ການຜະຈົນໄພ ແລະ ທ່ອງທ່ຽວ' },
     'Festival': { en: 'Festivals', lo: 'ເທດສະການ' },
     'Workshop': { en: 'Workshops', lo: 'ເວີກຊັອບ' },
-    'Voucher': { en: 'Voucher and Booking', lo: 'ບັດສ່ວນຫຼຸດ ແລະ ການຈອງ' }
+    'Voucher': { en: 'Voucher and Booking', lo: 'Voucher ແລະ ການຈອງ' }
   };
 
   const categories = ['Workshop', 'Sports', 'Festival', 'Voucher'];
 
+  const currentSlide = heroSlides[currentImageIndex] || heroSlides[0];
+  const isUnsplash = currentSlide?.imageUrl?.includes('images.unsplash.com');
+  const mainHeroTitle = lang === 'lo' 
+    ? (heroSettings.mainTitle_lo || t.mainTitle) 
+    : (heroSettings.mainTitle_en || t.mainTitle);
+
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
-      <section className="relative h-[220px] sm:h-[360px] landscape:h-[260px] lg:h-[550px] flex flex-col justify-end pb-10 sm:pb-24 lg:pb-36 overflow-hidden">
+      <SEO 
+        title={lang === 'lo' ? 'ໜ້າຫຼັກ - ຄົ້ນພົບກິດຈະກຳ ແລະ ງານເທດສະການ' : 'Home - Discover Events & Experiences in Laos'}
+        description={lang === 'lo' ? 'ຄົ້ນພົບ ແລະ ຈອງປີ້ງານກິດຈະກຳ, ເວີກຊັອບ, ກິລາ ແລະ ເທດສະການຊັ້ນນຳໃນປະເທດລາວ' : 'Explore and book tickets for the best workshops, outdoor adventures, festivals, and cultural events across Laos.'}
+      />
+      <section className="relative h-[220px] sm:h-[360px] landscape:h-[260px] lg:h-[550px] flex flex-col justify-center items-center pb-4 sm:pb-8 lg:pb-12 overflow-hidden">
         <div className="absolute inset-0">
           <AnimatePresence mode="wait">
             <motion.img 
-              key={currentImageIndex}
-              src={`${heroImages[currentImageIndex]}&w=1200`}
-              srcSet={`${heroImages[currentImageIndex]}&w=600 600w, 
-                       ${heroImages[currentImageIndex]}&w=1200 1200w, 
-                       ${heroImages[currentImageIndex]}&w=2070 2000w`}
+              key={currentSlide?.id || currentSlide?.imageUrl || currentImageIndex}
+              src={isUnsplash ? `${currentSlide.imageUrl}&w=1200` : currentSlide.imageUrl}
+              srcSet={isUnsplash ? `${currentSlide.imageUrl}&w=600 600w, 
+                       ${currentSlide.imageUrl}&w=1200 1200w, 
+                       ${currentSlide.imageUrl}&w=2070 2000w` : undefined}
               sizes="(max-width: 768px) 600px, (max-width: 1200px) 1200px, 100vw"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 1.5, ease: "linear" }}
               className="absolute inset-0 w-full h-full object-cover"
-              alt="Hero Background"
+              alt={currentSlide?.title_en || 'Hero Background'}
               fetchPriority="high"
             />
           </AnimatePresence>
           <div className="absolute inset-0 bg-black/40" />
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 w-full text-center">
+        <div className="relative z-10 max-w-7xl mx-auto pl-6 pr-2 sm:pl-12 sm:pr-4 lg:pl-16 lg:pr-8 w-full text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="space-y-2 md:space-y-6"
           >
              <h1 className="text-2xl sm:text-4xl md:text-6xl lg:text-7xl text-white font-black tracking-tight uppercase leading-[0.95] landscape:text-3xl landscape:md:text-5xl">
-               {t.mainTitle}
+               {mainHeroTitle}
              </h1>
           </motion.div>
         </div>
       </section>
 
-      <section className="relative -mt-4 sm:-mt-8 md:-mt-12 lg:-mt-14 z-20 px-3 sm:px-8 lg:px-12 max-w-7xl mx-auto mb-6 sm:mb-16 md:mb-20">
+      <section className="relative -mt-4 sm:-mt-8 md:-mt-12 lg:-mt-14 z-20 pl-5 pr-2 sm:pl-11 sm:pr-5 lg:pl-16 lg:pr-8 max-w-7xl mx-auto mb-6 sm:mb-16 md:mb-20">
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
@@ -336,7 +372,7 @@ export default function Home() {
         </motion.div>
       </section>
 
-      <section id="events-section" className="px-3 sm:px-8 lg:px-12 max-w-7xl mx-auto pb-4 sm:pb-16">
+      <section id="events-section" className="pl-5 pr-2 sm:pl-11 sm:pr-5 lg:pl-16 lg:pr-8 max-w-7xl mx-auto pb-4 sm:pb-16">
         <div className="space-y-6 sm:space-y-16 md:space-y-20">
           {isLoading ? (
             <>

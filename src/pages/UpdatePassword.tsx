@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useLanguage } from '../LanguageContext';
 import { safeStorage } from '../lib/storage';
+import SEO from '../components/SEO';
 
 const translations = {
   en: {
@@ -106,6 +107,11 @@ export default function UpdatePassword() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] py-4 md:py-6">
+      <SEO
+        title={t.twoFactorTitle || '2FA Authenticator'}
+        description="Set up and manage Two-Factor Authentication on Pasopkan."
+        noindex={true}
+      />
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
         <button 
           onClick={() => navigate('/security')}

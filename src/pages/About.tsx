@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { Calendar, Ticket, Compass, TrendingUp, Users, ShieldCheck, ArrowRight, Sparkles, MapPin } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
+import SEO from '../components/SEO';
 
 const translations = {
   en: {
@@ -99,6 +100,11 @@ export default function About() {
 
   return (
     <div className="pt-24 pb-16 min-h-screen bg-white">
+      <SEO
+        title={t.title}
+        description={t.subtitle || 'Learn about Pasopkan, the premier event hosting and digital ticketing platform in Laos.'}
+        keywords={['About Pasopkan', 'Event Ticketing Platform Laos', 'Event Management Laos', 'Pasopkan Story']}
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Hero Section */}

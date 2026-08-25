@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Facebook, Instagram, Youtube, Phone, Mail, MapPin } from 'lucide-react';
 import { useLanguage } from '../LanguageContext';
 import { getContactSettings, ContactSettings, DEFAULT_CONTACT_SETTINGS } from '../lib/siteSettings';
+import SEO from '../components/SEO';
 
 // Adding a simple TikTok SVG since lucide doesn't have it natively
 const TikTokIcon = ({ className }: { className?: string }) => (
@@ -68,6 +69,11 @@ export default function Contact() {
 
   return (
     <div className="pt-24 pb-16 min-h-screen">
+      <SEO
+        title={contactUs || (lang === 'lo' ? 'ຕິດຕໍ່ພວກເຮົາ' : 'Contact Us')}
+        description={contactDesc || 'Get in touch with the Pasopkan support and partner team in Laos.'}
+        keywords={['Contact Pasopkan', 'Event Organizer Support Laos', 'Pasopkan Office Vientiane']}
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
@@ -75,7 +81,7 @@ export default function Contact() {
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-emerald-500 to-green-500 uppercase tracking-tight mb-4 drop-shadow-sm"
+            className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 via-emerald-600 to-green-600 uppercase tracking-tight mb-4 drop-shadow-xs"
           >
             {contactUs}
           </motion.h1>
@@ -83,7 +89,7 @@ export default function Contact() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-zinc-400 max-w-2xl mx-auto text-lg"
+            className="text-gray-500 max-w-2xl mx-auto text-lg font-medium"
           >
             {contactDesc}
           </motion.p>
@@ -91,18 +97,18 @@ export default function Contact() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
           
-          {/* Social Links Form */}
+          {/* Social Links Form (Connect With Us) */}
           <motion.div 
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-[#1e1e1e] p-8 sm:p-10 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden"
+            className="bg-white p-8 sm:p-10 rounded-3xl border border-gray-200/80 shadow-xl relative overflow-hidden"
           >
             {/* Decorative blob */}
-            <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald-500/10 blur-[60px] rounded-full pointer-events-none" />
+            <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald-500/5 blur-[60px] rounded-full pointer-events-none" />
 
-            <h2 className="text-2xl font-bold text-white mb-6">{t.connectWithUs}</h2>
-            <p className="text-zinc-400 mb-8">
+            <h2 className="text-2xl font-bold text-adv-slate mb-6">{t.connectWithUs}</h2>
+            <p className="text-gray-500 mb-8 font-medium">
               {t.socialDesc}
             </p>
 
@@ -112,14 +118,14 @@ export default function Contact() {
                   href={settings.facebook} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="flex items-center gap-4 bg-white/5 hover:bg-white/10 p-4 rounded-2xl border border-white/5 hover:border-[#1877F2]/50 transition-all group"
+                  className="flex items-center gap-4 bg-gray-50/80 hover:bg-gray-100/80 p-4 rounded-2xl border border-gray-200/80 hover:border-[#1877F2]/50 transition-all group shadow-2xs"
                 >
                   <div className="w-12 h-12 bg-[#1877F2]/10 rounded-full flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                     <Facebook className="w-6 h-6 text-[#1877F2]" />
                   </div>
                   <div>
-                    <h3 className="text-white font-semibold">Facebook</h3>
-                    <p className="text-xs text-zinc-500">@pasopkan</p>
+                    <h3 className="text-adv-slate font-semibold">Facebook</h3>
+                    <p className="text-xs text-gray-400">@pasopkan</p>
                   </div>
                 </a>
               )}
@@ -129,14 +135,14 @@ export default function Contact() {
                   href={settings.instagram} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="flex items-center gap-4 bg-white/5 hover:bg-white/10 p-4 rounded-2xl border border-white/5 hover:border-[#E4405F]/50 transition-all group"
+                  className="flex items-center gap-4 bg-gray-50/80 hover:bg-gray-100/80 p-4 rounded-2xl border border-gray-200/80 hover:border-[#E4405F]/50 transition-all group shadow-2xs"
                 >
                   <div className="w-12 h-12 bg-[#E4405F]/10 rounded-full flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                     <Instagram className="w-6 h-6 text-[#E4405F]" />
                   </div>
                   <div>
-                    <h3 className="text-white font-semibold">Instagram</h3>
-                    <p className="text-xs text-zinc-500">@pasopkan</p>
+                    <h3 className="text-adv-slate font-semibold">Instagram</h3>
+                    <p className="text-xs text-gray-400">@pasopkan</p>
                   </div>
                 </a>
               )}
@@ -146,14 +152,14 @@ export default function Contact() {
                   href={settings.tiktok} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="flex items-center gap-4 bg-white/5 hover:bg-white/10 p-4 rounded-2xl border border-white/5 hover:border-[#00f2fe]/50 transition-all group"
+                  className="flex items-center gap-4 bg-gray-50/80 hover:bg-gray-100/80 p-4 rounded-2xl border border-gray-200/80 hover:border-black/50 transition-all group shadow-2xs"
                 >
-                  <div className="w-12 h-12 bg-zinc-800 rounded-full flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                    <TikTokIcon className="w-6 h-6 text-white" />
+                  <div className="w-12 h-12 bg-black/5 rounded-full flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <TikTokIcon className="w-6 h-6 text-black" />
                   </div>
                   <div>
-                    <h3 className="text-white font-semibold">TikTok</h3>
-                    <p className="text-xs text-zinc-500">@pasopkans</p>
+                    <h3 className="text-adv-slate font-semibold">TikTok</h3>
+                    <p className="text-xs text-gray-400">@pasopkans</p>
                   </div>
                 </a>
               )}
@@ -163,27 +169,27 @@ export default function Contact() {
                   href={settings.youtube} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="flex items-center gap-4 bg-white/5 hover:bg-white/10 p-4 rounded-2xl border border-white/5 hover:border-[#FF0000]/50 transition-all group"
+                  className="flex items-center gap-4 bg-gray-50/80 hover:bg-gray-100/80 p-4 rounded-2xl border border-gray-200/80 hover:border-[#FF0000]/50 transition-all group shadow-2xs"
                 >
                   <div className="w-12 h-12 bg-[#FF0000]/10 rounded-full flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                     <Youtube className="w-6 h-6 text-[#FF0000]" />
                   </div>
                   <div>
-                    <h3 className="text-white font-semibold">YouTube</h3>
-                    <p className="text-xs text-zinc-500">Pasopkan</p>
+                    <h3 className="text-adv-slate font-semibold">YouTube</h3>
+                    <p className="text-xs text-gray-400">Pasopkan</p>
                   </div>
                 </a>
               )}
             </div>
             
             {settings.whatsapp && (
-              <div className="mt-8 pt-8 border-t border-white/10">
-                <h3 className="text-white font-semibold mb-4">{t.dropLine}</h3>
+              <div className="mt-8 pt-8 border-t border-gray-100">
+                <h3 className="text-adv-slate font-semibold mb-4">{t.dropLine}</h3>
                 <a 
                   href={settings.whatsapp} 
-                  target="_blank"
+                  target="_blank" 
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold transition-all shadow-lg hover:shadow-emerald-500/25 active:scale-[0.98]"
+                  className="flex items-center justify-center gap-2 w-full py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold transition-all shadow-md hover:shadow-emerald-500/25 active:scale-[0.98]"
                 >
                   <Phone className="w-5 h-5" />
                   {t.chatWhatsApp} ({settings.phone})
@@ -200,25 +206,25 @@ export default function Contact() {
             className="space-y-8"
           >
             <div className="flex gap-6 items-start">
-              <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center shrink-0 border border-emerald-500/20">
-                <MapPin className="w-6 h-6 text-emerald-400" />
+              <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center shrink-0 border border-emerald-100 shadow-2xs">
+                <MapPin className="w-6 h-6 text-emerald-600" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-white mb-2">{t.ourOffice}</h3>
-                <p className="text-zinc-400 mb-1">{officeAddress1}</p>
-                <p className="text-sm text-zinc-500">{officeAddress2}</p>
+                <h3 className="text-xl font-bold text-adv-slate mb-2">{t.ourOffice}</h3>
+                <p className="text-gray-600 mb-1">{officeAddress1}</p>
+                <p className="text-sm text-gray-400">{officeAddress2}</p>
               </div>
             </div>
 
             {settings.email && (
               <div className="flex gap-6 items-start">
-                <div className="w-14 h-14 bg-green-500/10 rounded-2xl flex items-center justify-center shrink-0 border border-green-500/20">
-                  <Mail className="w-6 h-6 text-green-400" />
+                <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center shrink-0 border border-green-100 shadow-2xs">
+                  <Mail className="w-6 h-6 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white mb-2">{t.emailUs}</h3>
-                  <p className="text-zinc-400 mb-1">{t.generalInquiries}</p>
-                  <a href={`mailto:${settings.email}`} className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors">
+                  <h3 className="text-xl font-bold text-adv-slate mb-2">{t.emailUs}</h3>
+                  <p className="text-gray-500 mb-1">{t.generalInquiries}</p>
+                  <a href={`mailto:${settings.email}`} className="text-emerald-600 hover:text-emerald-500 font-bold transition-colors">
                     {settings.email}
                   </a>
                 </div>
@@ -227,30 +233,30 @@ export default function Contact() {
 
             {settings.phone && (
               <div className="flex gap-6 items-start">
-                <div className="w-14 h-14 bg-teal-500/10 rounded-2xl flex items-center justify-center shrink-0 border border-teal-500/20">
-                  <Phone className="w-6 h-6 text-teal-400" />
+                <div className="w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center shrink-0 border border-teal-100 shadow-2xs">
+                  <Phone className="w-6 h-6 text-teal-600" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white mb-2">{t.callUs}</h3>
-                  <p className="text-zinc-400 mb-1">{t.workHours}</p>
-                  <p className="text-emerald-400 font-medium">
+                  <h3 className="text-xl font-bold text-adv-slate mb-2">{t.callUs}</h3>
+                  <p className="text-gray-500 mb-1">{t.workHours}</p>
+                  <p className="text-emerald-600 font-bold">
                     {settings.phone}
                   </p>
                 </div>
               </div>
             )}
 
-            <div className="p-6 rounded-2xl bg-gradient-to-br from-teal-500/10 via-emerald-500/10 to-green-500/10 border border-white/5 mt-8 relative overflow-hidden">
-               <div className="absolute top-0 right-0 p-4 opacity-10">
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-teal-50/80 via-emerald-50/80 to-green-50/80 border border-emerald-100/80 mt-8 relative overflow-hidden shadow-xs">
+               <div className="absolute top-0 right-0 p-4 opacity-5 text-emerald-800">
                  <svg width="100" height="100" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
                </div>
-               <h3 className="text-lg font-bold text-white mb-2 relative z-10">{t.organizerSupport}</h3>
-               <p className="text-zinc-400 text-sm mb-4 relative z-10">
+               <h3 className="text-lg font-bold text-adv-slate mb-2 relative z-10">{t.organizerSupport}</h3>
+               <p className="text-gray-600 text-sm mb-4 relative z-10">
                  {t.organizerSupportDesc}
                </p>
                <a 
                  href={`mailto:${settings.email || 'ladomportal@gmail.com'}`}
-                 className="inline-flex items-center text-sm font-bold text-white hover:text-emerald-400 transition-colors relative z-10"
+                 className="inline-flex items-center text-sm font-bold text-emerald-600 hover:text-emerald-700 transition-colors relative z-10"
                >
                  {t.contactPartner} &rarr;
                </a>

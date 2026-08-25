@@ -7,6 +7,8 @@ import { LaoEvent, TicketTier } from '../data/events';
 import { useAuth } from '../AuthContext';
 import { useLanguage } from '../LanguageContext';
 import { useTheme } from '../ThemeContext';
+import SEO from '../components/SEO';
+import ETicketModal from '../components/ETicketModal';
 
 const translations = {
     en: {
@@ -168,15 +170,8 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
   const [showQrTicket, setShowQrTicket] = useState<PurchasedTicket | null>(null);
-  const [currentQrIndex, setCurrentQrIndex] = useState(0);
   const [refundTicket, setRefundTicket] = useState<PurchasedTicket | null>(null);
   const [isRefunding, setIsRefunding] = useState(false);
-
-  useEffect(() => {
-    if (showQrTicket) {
-      setCurrentQrIndex(0);
-    }
-  }, [showQrTicket]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -368,6 +363,11 @@ export default function Dashboard() {
     <div className={`min-h-screen transition-colors duration-300 pt-2 sm:pt-3 pb-6 sm:pb-8 px-4 sm:px-6 lg:px-8 ${
       theme === 'dark' ? 'bg-zinc-950 text-white' : 'bg-white text-adv-slate'
     }`}>
+      <SEO
+        title={t.dashboard}
+        description="View and manage your registered activity tickets, barcodes, and QR codes on Pasopkan."
+        noindex={true}
+      />
       <div className="max-w-7xl mx-auto pt-0">
         
         {/* Header */}
@@ -573,193 +573,14 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* QR Code Modal moved inside root div for valid JSX */}
-        <AnimatePresence>
-          {showQrTicket && (
-            <div 
-              className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-              onClick={() => setShowQrTicket(null)}
-            >
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black/80 backdrop-blur-md"
-              />
-              
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="relative w-full max-w-[310px] xs:max-w-[330px] my-auto overflow-hidden rounded-[24px] shadow-2xl flex flex-col bg-gradient-to-b from-[#ff5e00] via-[#eb580c] to-[#c2410c] text-white border border-orange-400/30 select-none max-h-[96vh]"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Top Header & Cover Image Card */}
-                <div className="p-3 xs:p-3.5 pb-1">
-                  <div className="relative w-full h-28 xs:h-32 rounded-[16px] overflow-hidden shadow-inner border border-white/20">
-                    <img 
-                      src={showQrTicket.event.image} 
-                      alt={showQrTicket.event.title} 
-                      className="w-full h-full object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
-                    
-                    {/* Share & Close Action Buttons */}
-                    <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
-                      <button 
-                        onClick={() => {
-                          if (navigator.share) {
-                            navigator.share({ title: showQrTicket.event.title, url: window.location.href }).catch(() => {});
-                          } else if (navigator.clipboard) {
-                            navigator.clipboard.writeText(window.location.href);
-                          }
-                        }}
-                        title={lang === 'lo' ? 'ແບ່ງປັນ' : 'Share'}
-                        className="w-7 h-7 rounded-full flex items-center justify-center bg-black/40 text-white hover:bg-black/60 transition-all backdrop-blur-md cursor-pointer border border-white/20"
-                      >
-                        <Share2 className="w-3.5 h-3.5" />
-                      </button>
-
-                      <button 
-                        onClick={() => setShowQrTicket(null)}
-                        className="w-7 h-7 rounded-full flex items-center justify-center bg-black/40 text-white hover:bg-black/60 transition-all backdrop-blur-md cursor-pointer border border-white/20"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Title & Organizer */}
-                  <div className="mt-2 px-0.5">
-                    <h3 className="text-base xs:text-lg font-black text-white leading-tight tracking-tight break-words line-clamp-1">
-                      {showQrTicket.event.title}
-                    </h3>
-                    <p className="text-[11px] font-semibold text-orange-100/80 mt-0.5 truncate">
-                      {lang === 'lo' ? 'ໂດຍ' : 'By'} {showQrTicket.event.organizer || 'Pasopkan Events'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Perforated Divider #1 with side cutouts */}
-                <div className="relative w-full py-0.5">
-                  <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/80 backdrop-blur-md z-10 border-r border-orange-500/30" />
-                  <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/80 backdrop-blur-md z-10 border-l border-orange-500/30" />
-                  <div className="border-t-2 border-dashed border-white/30 mx-5" />
-                </div>
-
-                {/* Middle Details Grid */}
-                <div className="px-4 xs:px-5 py-1.5 space-y-2">
-                  {/* Location */}
-                  <div>
-                    <div className="text-[9px] uppercase font-extrabold tracking-wider text-orange-200/80 mb-0.5">
-                      {lang === 'lo' ? 'ສະຖານທີ່' : 'Location'}
-                    </div>
-                    <div className="text-xs font-black text-white leading-tight truncate">
-                      {showQrTicket.event.venue || showQrTicket.event.location}
-                    </div>
-                  </div>
-
-                  {/* Name & Date */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <div className="text-[9px] uppercase font-extrabold tracking-wider text-orange-200/80 mb-0.5">
-                        {lang === 'lo' ? 'ຊື່' : 'Name'}
-                      </div>
-                      <div className="text-xs font-black text-white truncate">
-                        {user?.displayName || user?.email?.split('@')[0] || (lang === 'lo' ? 'ຜູ້ຖືບັດ' : 'Pass Holder')}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[9px] uppercase font-extrabold tracking-wider text-orange-200/80 mb-0.5">
-                        {lang === 'lo' ? 'ວັນທີ' : 'Date'}
-                      </div>
-                      <div className="text-xs font-black text-white truncate">
-                        {showQrTicket.selectedDate 
-                          ? new Date(showQrTicket.selectedDate).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' }) 
-                          : showQrTicket.event.date}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Time & Ticket Type */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <div className="text-[9px] uppercase font-extrabold tracking-wider text-orange-200/80 mb-0.5">
-                        {lang === 'lo' ? 'ເວລາ' : 'Time'}
-                      </div>
-                      <div className="text-xs font-black text-white truncate">
-                        {showQrTicket.selectedTime || showQrTicket.event.time || '18:00 PM'}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[9px] uppercase font-extrabold tracking-wider text-orange-200/80 mb-0.5">
-                        {lang === 'lo' ? 'ປະເພດ' : 'Type / Zone'}
-                      </div>
-                      <div className="text-xs font-black text-white truncate">
-                        {showQrTicket.tier.name}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Perforated Divider #2 with side cutouts */}
-                <div className="relative w-full py-0.5">
-                  <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/80 backdrop-blur-md z-10 border-r border-orange-500/30" />
-                  <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/80 backdrop-blur-md z-10 border-l border-orange-500/30" />
-                  <div className="border-t-2 border-dashed border-white/30 mx-5" />
-                </div>
-
-                {/* Bottom QR Code Section */}
-                <div className="p-3 pt-1.5 flex flex-col items-center">
-                  <div className="text-[9px] uppercase font-black tracking-[0.2em] text-orange-100/90 mb-1.5 text-center">
-                    {lang === 'lo' ? 'ສະແກນ QR CODE' : 'SCAN QR CODE'}
-                  </div>
-
-                  {/* Quantity Navigator */}
-                  {showQrTicket.quantity > 1 && (
-                    <div className="flex items-center justify-between w-full mb-1.5 px-2">
-                      <button
-                        type="button"
-                        disabled={currentQrIndex === 0}
-                        onClick={() => setCurrentQrIndex(prev => prev - 1)}
-                        className="w-6 h-6 rounded-full flex items-center justify-center transition-all bg-white/15 hover:bg-white/30 disabled:opacity-30 cursor-pointer"
-                      >
-                        <ChevronLeft className="w-3.5 h-3.5 text-white" />
-                      </button>
-                      <div className="text-[9px] font-black uppercase tracking-widest text-white/90">
-                        {t.ticketCount.replace('{current}', (currentQrIndex + 1).toString()).replace('{total}', showQrTicket.quantity.toString())}
-                      </div>
-                      <button
-                        type="button"
-                        disabled={currentQrIndex === showQrTicket.quantity - 1}
-                        onClick={() => setCurrentQrIndex(prev => prev + 1)}
-                        className="w-6 h-6 rounded-full flex items-center justify-center transition-all bg-white/15 hover:bg-white/30 disabled:opacity-30 cursor-pointer"
-                      >
-                        <ChevronRight className="w-3.5 h-3.5 text-white" />
-                      </button>
-                    </div>
-                  )}
-
-                  {/* QR Container */}
-                  <div className="bg-white p-2.5 rounded-xl shadow-xl text-black border border-white/40">
-                    <QRCodeSVG 
-                      value={showQrTicket.quantity > 1 ? `${showQrTicket.id}-${currentQrIndex + 1}` : showQrTicket.id} 
-                      size={110} 
-                      level="H" 
-                      includeMargin={false} 
-                    />
-                  </div>
-
-                  {/* Alphanumeric Code */}
-                  <div className="mt-1.5 font-mono text-[10px] uppercase font-black text-white/90 tracking-widest">
-                    {(showQrTicket.quantity > 1 ? `${showQrTicket.id}-${currentQrIndex + 1}` : showQrTicket.id).toUpperCase()}
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
+        {/* Redesigned E-Ticket Modal */}
+        <ETicketModal
+          ticket={showQrTicket}
+          onClose={() => setShowQrTicket(null)}
+          user={user}
+          lang={lang}
+          onNavigateHome={() => navigate('/')}
+        />
 
         {/* Refund Confirmation Modal */}
         <AnimatePresence>

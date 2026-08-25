@@ -1,5 +1,6 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
+import { HelmetProvider } from 'react-helmet-async';
 import App from './App.tsx';
 import { LanguageProvider } from './LanguageContext.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
@@ -72,9 +73,11 @@ if (typeof window !== 'undefined') {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <LanguageProvider>
-        <App />
-      </LanguageProvider>
+      <HelmetProvider>
+        <LanguageProvider>
+          <App />
+        </LanguageProvider>
+      </HelmetProvider>
     </ErrorBoundary>
   </StrictMode>,
 );
