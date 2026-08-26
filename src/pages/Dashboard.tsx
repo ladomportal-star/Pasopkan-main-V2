@@ -201,7 +201,9 @@ export default function Dashboard() {
           tier: { id: 't1', name: 'Standard Floor', price: 150000, available: 0 },
           quantity: 1,
           bookingDate: new Date().toISOString(),
-          status: 'upcoming'
+          status: 'upcoming',
+          selectedDate: formatDate(in48Hours),
+          selectedTime: formatTime(in48Hours)
         },
         {
           id: 'tk_refund_disabled',
@@ -220,7 +222,9 @@ export default function Dashboard() {
           tier: { id: 't2', name: 'General Admission', price: 50000, available: 0 },
           quantity: 2,
           bookingDate: new Date().toISOString(),
-          status: 'upcoming'
+          status: 'upcoming',
+          selectedDate: formatDate(in12Hours),
+          selectedTime: formatTime(in12Hours)
         },
         {
           id: 'tk_past_1',
@@ -240,7 +244,9 @@ export default function Dashboard() {
           quantity: 1,
           bookingDate: '2025-11-20T10:00:00Z',
           status: 'past',
-          scanned: true
+          scanned: true,
+          selectedDate: '2025-12-15',
+          selectedTime: '18:00'
         },
         {
           id: 'tk_past_2',
@@ -260,7 +266,9 @@ export default function Dashboard() {
           quantity: 3,
           bookingDate: '2026-01-05T14:30:00Z',
           status: 'past',
-          scanned: true
+          scanned: true,
+          selectedDate: '2026-01-10',
+          selectedTime: '10:00'
         }
       ];
 
@@ -282,6 +290,7 @@ export default function Dashboard() {
 
       if (location.state?.newTicket) {
         const { event, tier, quantity, selectedTiers, selectedDate, selectedTime } = location.state.newTicket;
+        const finalTime = selectedTime || event?.time || '';
         let newlyCreatedTickets: PurchasedTicket[] = [];
         if (selectedTiers && selectedTiers.length > 0) {
           newlyCreatedTickets = selectedTiers.map((st: { tier: TicketTier; quantity: number }) => ({
@@ -291,8 +300,8 @@ export default function Dashboard() {
             quantity: st.quantity,
             bookingDate: new Date().toISOString(),
             status: 'upcoming' as const,
-            selectedDate,
-            selectedTime
+            selectedDate: selectedDate || event?.date,
+            selectedTime: finalTime
           }));
         } else {
           newlyCreatedTickets = [{
@@ -302,8 +311,8 @@ export default function Dashboard() {
             quantity: quantity || 1,
             bookingDate: new Date().toISOString(),
             status: 'upcoming' as const,
-            selectedDate,
-            selectedTime
+            selectedDate: selectedDate || event?.date,
+            selectedTime: finalTime
           }];
         }
         

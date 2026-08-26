@@ -860,43 +860,6 @@ export default function CreateEvent() {
       }
     }
 
-    // --- Step 5: Payment Info ---
-    if (!bankName || !bankName.trim()) {
-      list.push({
-        id: 'bank-name',
-        step: 5,
-        stepTitleEn: 'Payment Info',
-        stepTitleLo: 'ຂໍ້ມູນການຮັບເງິນ',
-        fieldEn: 'Bank Name',
-        fieldLo: 'ຊື່ທະນາຄານ',
-        elementId: 'field-bank-name',
-      });
-    }
-
-    if (!accountHolder || !accountHolder.trim()) {
-      list.push({
-        id: 'account-holder',
-        step: 5,
-        stepTitleEn: 'Payment Info',
-        stepTitleLo: 'ຂໍ້ມູນການຮັບເງິນ',
-        fieldEn: 'Account Holder Name',
-        fieldLo: 'ຊື່ເຈົ້າຂອງບັນຊີ',
-        elementId: 'field-account-holder',
-      });
-    }
-
-    if (!accountNumber || !accountNumber.trim()) {
-      list.push({
-        id: 'account-number',
-        step: 5,
-        stepTitleEn: 'Payment Info',
-        stepTitleLo: 'ຂໍ້ມູນການຮັບເງິນ',
-        fieldEn: 'Bank Account Number',
-        fieldLo: 'ເລກບັນຊີທະນາຄານ',
-        elementId: 'field-account-number',
-      });
-    }
-
     return list;
   };
 
@@ -2063,8 +2026,8 @@ export default function CreateEvent() {
     setAttemptedSubmit(true);
     const allMissing = getMissingFieldsList();
 
-    // If on Step 1..4, validate current step fields first
-    if (activeStep < 5) {
+    // If on Step 1..3, validate current step fields first
+    if (activeStep < 4) {
       const currentStepMissing = allMissing.filter(m => m.step === activeStep);
       if (currentStepMissing.length > 0) {
         const first = currentStepMissing[0];
@@ -2082,7 +2045,7 @@ export default function CreateEvent() {
       return;
     }
 
-    // On Step 5 (Publish): validate all steps 1..5
+    // On Step 4 (Publish): validate all steps 1..4
     if (allMissing.length > 0) {
       const first = allMissing[0];
       setValidationError(
@@ -2105,7 +2068,7 @@ export default function CreateEvent() {
     setIsLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1500));
     setIsLoading(false);
-    if (activeStep < 5) {
+    if (activeStep < 4) {
       setActiveStep(activeStep + 1);
     } else {
       // Save payment info for organizer so they don't have to enter it again
@@ -2407,16 +2370,6 @@ export default function CreateEvent() {
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === 4 ? 'bg-adv-orange text-white' : 'bg-gray-100 text-gray-500'}`}>4</div>
                       <span className={`text-sm font-bold ${activeStep === 4 ? 'text-adv-slate' : 'text-gray-400'}`}>{t.step3}</span>
                     </button>
-                    <button 
-                      onClick={() => setActiveStep(5)}
-                      className={`flex-1 pb-4 flex items-center justify-center gap-2 transition-colors ${activeStep === 5 ? 'border-b-2 border-adv-orange translate-y-[1px]' : 'hover:bg-gray-50'}`}
-                    >
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${activeStep === 5 ? 'bg-adv-orange text-white' : 'bg-gray-100 text-gray-500'}`}>5</div>
-                      <span className={`text-sm font-bold ${activeStep === 5 ? 'text-adv-slate' : 'text-gray-400'}`}>{t.step4}</span>
-                      {attemptedSubmit && getMissingFieldsList().some(m => m.step === 5) && (
-                        <span className="w-2 h-2 rounded-full bg-adv-orange animate-pulse shrink-0" title="Missing fields" />
-                      )}
-                    </button>
                   </div>
 
                   <div className="flex items-center gap-3 ml-8 pb-4">
@@ -2529,7 +2482,7 @@ export default function CreateEvent() {
                       className="flex items-center justify-center gap-2 px-6 py-2 bg-adv-orange text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition-colors disabled:opacity-70 disabled:cursor-not-allowed min-w-[100px] shadow-sm"
                     >
                       {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                      {activeStep === 5 ? t.publish : t.continue}
+                      {activeStep === 4 ? t.publish : t.continue}
                     </button>
                   </div>
                 </div>
@@ -4438,96 +4391,6 @@ export default function CreateEvent() {
                 </div>
               )}
 
-              {activeStep === 5 && (
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-8">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-bold text-adv-slate">{t.paymentInfo}</h3>
-                    {(localEvents.length > 0 || !!safeStorage.getItem('organizer_payment_info')) && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-xs font-extrabold border border-emerald-100">
-                        <ShieldCheck className="w-4 h-4" />
-                        {lang === 'lo' ? 'ບັນທຶກໄວ້ແລ້ວ' : 'Saved On File'}
-                      </span>
-                    )}
-                  </div>
-
-                  {(localEvents.length > 0 || !!safeStorage.getItem('organizer_payment_info')) && (
-                    <div className="bg-emerald-50/90 border border-emerald-200/80 rounded-2xl p-5 flex items-start gap-3.5 mb-6 shadow-sm">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
-                        <ShieldCheck className="w-6 h-6" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-extrabold text-emerald-950">
-                            {lang === 'lo' ? 'ຂໍ້ມູນການຊຳລະເງິນໄດ້ຖືກບັນທຶກໄວ້ແລ້ວ' : 'Payment Information Already Saved'}
-                          </h4>
-                          <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                            {lang === 'lo' ? 'ອັດຕະໂນມັດ' : 'Auto-filled'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-emerald-800 font-medium mt-1 leading-relaxed">
-                          {lang === 'lo' 
-                            ? 'ເນື່ອງຈາກທ່ານເຄີຍສ້າງກິດຈະກຳມາກ່ອນ, ຂໍ້ມູນບັນຊີທະນາຄານຂອງທ່ານໄດ້ຖືກບັນທຶກ ແລະ ເຕີມໃຫ້ອັດຕະໂນມັດ. ທ່ານບໍ່ຈຳເປັນຕ້ອງປ້ອນໃໝ່ ເວັ້ນເສຍແຕ່ຕ້ອງການອັບເດດ.'
-                            : 'Because you have already created an event, your payout and bank details are securely saved and auto-filled. You do not need to resubmit them unless you want to update them.'}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="space-y-6 max-w-2xl">
-                    <div id="field-bank-name">
-                      <label className="block text-sm font-bold text-gray-600 mb-2">{t.bankName}</label>
-                      <div className="relative">
-                        <select 
-                          value={
-                            PAYMENT_BANKS.find(b => b.value === bankName || b.value.toLowerCase() === bankName.toLowerCase())?.value || ''
-                          }
-                          onChange={(e) => setBankName(e.target.value)}
-                          className="w-full bg-white border border-gray-200 text-adv-slate rounded-xl px-4 py-3.5 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all shadow-inner appearance-none cursor-pointer pr-10"
-                        >
-                          <option value="" disabled>
-                            {lang === 'lo' ? '-- ເລືອກທະນາຄານ --' : '-- Select Bank --'}
-                          </option>
-                          {PAYMENT_BANKS.map((b) => (
-                            <option key={b.value} value={b.value}>
-                              {lang === 'lo' ? b.labelLo : b.labelEn}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                          <ChevronDown className="w-4 h-4" />
-                        </div>
-                      </div>
-                    </div>
-                    <div id="field-account-holder">
-                      <label className="block text-sm font-bold text-gray-600 mb-2">{t.accountHolderName}</label>
-                      <input 
-                        type="text" 
-                        value={accountHolder}
-                        onChange={(e) => setAccountHolder(e.target.value.replace(/[0-9]/g, ''))}
-                        placeholder={t.accountHolderPlaceholder}
-                        className="w-full bg-white border border-gray-200 text-adv-slate rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all shadow-inner"
-                      />
-                    </div>
-                    <div id="field-account-number">
-                      <label className="block text-sm font-bold text-gray-600 mb-2">{t.accountNumber}</label>
-                      <input 
-                        type="text" 
-                        value={accountNumber}
-                        onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))}
-                        placeholder={t.accountNumberPlaceholder}
-                        className="w-full bg-white border border-gray-200 text-adv-slate rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all shadow-inner"
-                      />
-                      {attemptedSubmit && !eventName.trim() && (
-                        <p id="field-event-name-error" className="text-xs text-adv-orange font-bold mt-2 flex items-center gap-1.5">
-                          <AlertCircle className="w-3.5 h-3.5 shrink-0 text-adv-orange" />
-                          <span>{lang === 'lo' ? 'ກະລຸນາປ້ອນຊື່ກິດຈະກຳ' : 'Event name is required'}</span>
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* Navigation Buttons */}
               <div className="flex items-center justify-between mt-10">
                 <button
@@ -4549,7 +4412,7 @@ export default function CreateEvent() {
                     onClick={handleContinue}
                     className="px-10 py-3.5 bg-adv-orange hover:bg-orange-600 text-white font-bold rounded-2xl transition-all shadow-xl shadow-orange-100 flex items-center gap-2"
                   >
-                    {activeStep === 5 ? t.createEvent : t.continue}
+                    {activeStep === 4 ? (wasEditing ? (lang === 'lo' ? 'ອັບເດດກິດຈະກຳ' : 'Update Event') : t.publish) : t.continue}
                     <ArrowRight className="w-5 h-5" />
                   </button>
                 </div>
