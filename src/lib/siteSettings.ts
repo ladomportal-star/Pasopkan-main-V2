@@ -95,6 +95,135 @@ export interface OrganizerTermsSettings {
   sections: OrganizerTermItem[];
 }
 
+export interface SponsorItem {
+  id: string;
+  name: string;
+  logoUrl: string;
+  websiteUrl?: string;
+  isActive: boolean;
+  startDate?: string;
+  endDate?: string;
+  hasSchedule?: boolean;
+}
+
+export interface TicketSponsorSettings {
+  isEnabled: boolean;
+  label_en: string;
+  label_lo: string;
+  adName?: string;
+  adBannerUrl?: string;
+  adWebsiteUrl?: string;
+  isActive?: boolean;
+  hasSchedule?: boolean;
+  startDate?: string;
+  endDate?: string;
+  defaultBannerUrl?: string;
+  defaultWebsiteUrl?: string;
+  sponsors?: SponsorItem[];
+}
+
+export interface ResolvedTicketAd {
+  isDisplayed: boolean;
+  bannerUrl: string;
+  websiteUrl?: string;
+  name: string;
+  isDefaultFallback: boolean;
+  status: 'active_custom' | 'scheduled_future' | 'expired_fallback' | 'inactive_fallback' | 'default_fallback';
+  reason?: string;
+}
+
+/**
+ * Resolves the currently active ticket ad banner based on status, schedule time, and fallbacks.
+ * If over time / expired or no custom ad is active, automatically falls back to '/Pasopkan ads.png'.
+ */
+export function resolveTicketAd(settings?: TicketSponsorSettings | null): ResolvedTicketAd {
+  const DEFAULT_BANNER = '/Pasopkan ads.png';
+  const DEFAULT_NAME = 'Pasopkan';
+  const DEFAULT_LINK = 'https://pasopkan.com';
+
+  if (!settings || !settings.isEnabled) {
+    return {
+      isDisplayed: false,
+      bannerUrl: DEFAULT_BANNER,
+      websiteUrl: DEFAULT_LINK,
+      name: DEFAULT_NAME,
+      isDefaultFallback: true,
+      status: 'default_fallback'
+    };
+  }
+
+  // Retrieve single custom ad properties (supporting both top-level and first sponsor item)
+  const customName = settings.adName || settings.sponsors?.[0]?.name || '';
+  const customBannerUrl = settings.adBannerUrl || settings.sponsors?.[0]?.logoUrl || '';
+  const customWebsiteUrl = settings.adWebsiteUrl || settings.sponsors?.[0]?.websiteUrl || '';
+  const isCustomActive = settings.isActive !== undefined ? settings.isActive : (settings.sponsors?.[0]?.isActive ?? true);
+  const hasSchedule = settings.hasSchedule ?? (settings.sponsors?.[0]?.hasSchedule ?? false);
+  const startDate = settings.startDate || settings.sponsors?.[0]?.startDate;
+  const endDate = settings.endDate || settings.sponsors?.[0]?.endDate;
+
+  const fallbackBanner = settings.defaultBannerUrl || DEFAULT_BANNER;
+  const fallbackLink = settings.defaultWebsiteUrl || DEFAULT_LINK;
+
+  // If no custom banner image or custom ad is explicitly disabled:
+  if (!customBannerUrl || !isCustomActive) {
+    return {
+      isDisplayed: true,
+      bannerUrl: fallbackBanner,
+      websiteUrl: fallbackLink,
+      name: DEFAULT_NAME,
+      isDefaultFallback: true,
+      status: 'inactive_fallback'
+    };
+  }
+
+  // Check schedule validity
+  if (hasSchedule) {
+    const now = new Date().getTime();
+    
+    if (startDate) {
+      const startTime = new Date(startDate).getTime();
+      if (!isNaN(startTime) && now < startTime) {
+        // Not started yet
+        return {
+          isDisplayed: true,
+          bannerUrl: fallbackBanner,
+          websiteUrl: fallbackLink,
+          name: DEFAULT_NAME,
+          isDefaultFallback: true,
+          status: 'scheduled_future',
+          reason: 'Ad schedule has not started yet'
+        };
+      }
+    }
+
+    if (endDate) {
+      const endTime = new Date(endDate).getTime();
+      if (!isNaN(endTime) && now > endTime) {
+        // Over time / Expired -> Fallback to default Pasopkan ads
+        return {
+          isDisplayed: true,
+          bannerUrl: fallbackBanner,
+          websiteUrl: fallbackLink,
+          name: DEFAULT_NAME,
+          isDefaultFallback: true,
+          status: 'expired_fallback',
+          reason: 'Ad schedule has expired'
+        };
+      }
+    }
+  }
+
+  // Custom ad is active and within schedule!
+  return {
+    isDisplayed: true,
+    bannerUrl: customBannerUrl,
+    websiteUrl: customWebsiteUrl,
+    name: customName || 'Sponsor Ad',
+    isDefaultFallback: false,
+    status: 'active_custom'
+  };
+}
+
 // ==========================================
 // DEFAULT VALUE FALLBACKS (FROM ORIGINAL CODE)
 // ==========================================
@@ -345,6 +474,30 @@ export const DEFAULT_ORGANIZER_TERMS_SETTINGS: OrganizerTermsSettings = {
   ]
 };
 
+export const DEFAULT_TICKET_SPONSOR_SETTINGS: TicketSponsorSettings = {
+  isEnabled: true,
+  label_en: 'Sponsored by',
+  label_lo: 'ສະໜັບສະໜູນໂດຍ',
+  adName: 'LOCA Laos (Official Ride Partner)',
+  adBannerUrl: '/Loca banner.png',
+  adWebsiteUrl: 'https://loca.la',
+  isActive: true,
+  hasSchedule: false,
+  startDate: '',
+  endDate: '',
+  defaultBannerUrl: '/Pasopkan ads.png',
+  defaultWebsiteUrl: 'https://pasopkan.com',
+  sponsors: [
+    {
+      id: 'sp-loca',
+      name: 'LOCA Laos (Official Ride Partner)',
+      logoUrl: '/Loca banner.png',
+      websiteUrl: 'https://loca.la',
+      isActive: true
+    }
+  ]
+};
+
 // ==========================================
 // PERSISTENCE HELPER FUNCTIONS
 // ==========================================
@@ -440,4 +593,17 @@ export async function getHomeHeroSettings(): Promise<HomeHeroSettings> {
 export async function saveHomeHeroSettings(settings: HomeHeroSettings): Promise<void> {
   await saveSettings<HomeHeroSettings>('home_hero', settings);
 }
+
+// Ticket Sponsors Settings
+export async function getTicketSponsorSettings(): Promise<TicketSponsorSettings> {
+  return getSettings<TicketSponsorSettings>('ticket_sponsors', DEFAULT_TICKET_SPONSOR_SETTINGS);
+}
+
+export async function saveTicketSponsorSettings(settings: TicketSponsorSettings): Promise<void> {
+  await saveSettings<TicketSponsorSettings>('ticket_sponsors', settings);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('pasopkan_sponsors_updated', { detail: settings }));
+  }
+}
+
 

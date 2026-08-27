@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   Mail,
   Phone,
@@ -34,7 +35,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  Layers
+  Layers,
+  Award,
+  Building2,
+  ExternalLink,
+  Clock,
+  Calendar,
+  AlertTriangle
 } from 'lucide-react';
 import {
   getContactSettings,
@@ -49,6 +56,8 @@ import {
   saveOrganizerTermsSettings,
   getHomeHeroSettings,
   saveHomeHeroSettings,
+  getTicketSponsorSettings,
+  saveTicketSponsorSettings,
   ContactSettings,
   SupportSettings,
   TermsSettings,
@@ -60,8 +69,13 @@ import {
   PrivacySection,
   HomeHeroSettings,
   HeroSlide,
+  TicketSponsorSettings,
+  SponsorItem,
   DEFAULT_HOME_HERO_SETTINGS,
-  DEFAULT_HERO_SLIDES
+  DEFAULT_HERO_SLIDES,
+  DEFAULT_TICKET_SPONSOR_SETTINGS,
+  resolveTicketAd,
+  ResolvedTicketAd
 } from '../lib/siteSettings';
 import {
   TERM_ICON_LIST,
@@ -76,7 +90,7 @@ interface SiteSettingsTabProps {
   addActivityLog: (action: string, details: string) => void;
 }
 
-type SubTab = 'home_hero' | 'contact' | 'support' | 'terms' | 'organizer_terms' | 'privacy';
+type SubTab = 'home_hero' | 'ticket_sponsors' | 'contact' | 'support' | 'terms' | 'organizer_terms' | 'privacy';
 
 export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSettingsTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('home_hero');
@@ -88,6 +102,8 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
   // Form States
   const [homeHeroForm, setHomeHeroForm] = useState<HomeHeroSettings | null>(null);
   const [previewSlideIdx, setPreviewSlideIdx] = useState<number>(0);
+  const [ticketSponsorsForm, setTicketSponsorsForm] = useState<TicketSponsorSettings | null>(null);
+  const [adSubTab, setAdSubTab] = useState<'content' | 'schedule' | 'fallback'>('content');
   const [contactForm, setContactForm] = useState<ContactSettings | null>(null);
   const [supportForm, setSupportForm] = useState<SupportSettings | null>(null);
   const [termsForm, setTermsForm] = useState<TermsSettings | null>(null);
@@ -104,13 +120,14 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
     async function loadAllSettings() {
       try {
         setIsLoading(true);
-        const [contact, support, terms, privacy, organizerTerms, homeHero] = await Promise.all([
+        const [contact, support, terms, privacy, organizerTerms, homeHero, ticketSponsors] = await Promise.all([
           getContactSettings(),
           getSupportSettings(),
           getTermsSettings(),
           getPrivacySettings(),
           getOrganizerTermsSettings(),
-          getHomeHeroSettings()
+          getHomeHeroSettings(),
+          getTicketSponsorSettings()
         ]);
         setContactForm(contact);
         setSupportForm(support);
@@ -118,6 +135,7 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
         setPrivacyForm(privacy);
         setOrganizerTermsForm(organizerTerms);
         setHomeHeroForm(homeHero);
+        setTicketSponsorsForm(ticketSponsors);
       } catch (error) {
         console.error('Error loading site settings:', error);
         setErrorMessage(lang === 'en' ? 'Failed to load site settings. Please try again.' : 'ບໍ່ສາມາດໂຫຼດຂໍ້ມູນການຕັ້ງຄ່າເວັບໄຊໄດ້. ກະລຸນາລອງໃໝ່.');
@@ -247,6 +265,143 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
     });
     setPreviewSlideIdx(0);
     triggerSuccess(lang === 'en' ? 'Reset to default Laos landmark slides' : 'ຣີເຊັດເປັນຮູບພາບມາດຕະຖານແລ້ວ');
+  };
+
+  const handleSaveTicketSponsors = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ticketSponsorsForm) return;
+    try {
+      setIsSaving(true);
+      setErrorMessage(null);
+      // Ensure sync between single ad top-level fields and sponsors array for backward compatibility
+      const syncedForm: TicketSponsorSettings = {
+        ...ticketSponsorsForm,
+        adName: ticketSponsorsForm.adName || ticketSponsorsForm.sponsors?.[0]?.name || 'LOCA Laos',
+        adBannerUrl: ticketSponsorsForm.adBannerUrl || ticketSponsorsForm.sponsors?.[0]?.logoUrl || '/Loca banner.png',
+        adWebsiteUrl: ticketSponsorsForm.adWebsiteUrl || ticketSponsorsForm.sponsors?.[0]?.websiteUrl || 'https://loca.la',
+        isActive: ticketSponsorsForm.isActive !== undefined ? ticketSponsorsForm.isActive : (ticketSponsorsForm.sponsors?.[0]?.isActive ?? true),
+        hasSchedule: ticketSponsorsForm.hasSchedule ?? false,
+        startDate: ticketSponsorsForm.startDate || '',
+        endDate: ticketSponsorsForm.endDate || '',
+        defaultBannerUrl: ticketSponsorsForm.defaultBannerUrl || '/Pasopkan ads.png',
+        defaultWebsiteUrl: ticketSponsorsForm.defaultWebsiteUrl || 'https://pasopkan.com',
+        sponsors: [
+          {
+            id: ticketSponsorsForm.sponsors?.[0]?.id || 'sp-main',
+            name: ticketSponsorsForm.adName || ticketSponsorsForm.sponsors?.[0]?.name || 'LOCA Laos',
+            logoUrl: ticketSponsorsForm.adBannerUrl || ticketSponsorsForm.sponsors?.[0]?.logoUrl || '/Loca banner.png',
+            websiteUrl: ticketSponsorsForm.adWebsiteUrl || ticketSponsorsForm.sponsors?.[0]?.websiteUrl || 'https://loca.la',
+            isActive: ticketSponsorsForm.isActive !== undefined ? ticketSponsorsForm.isActive : (ticketSponsorsForm.sponsors?.[0]?.isActive ?? true),
+            hasSchedule: ticketSponsorsForm.hasSchedule ?? false,
+            startDate: ticketSponsorsForm.startDate || '',
+            endDate: ticketSponsorsForm.endDate || ''
+          }
+        ]
+      };
+      await saveTicketSponsorSettings(syncedForm);
+      setTicketSponsorsForm(syncedForm);
+      addActivityLog('Site settings updated', 'Updated ticket ad sponsor banner and schedule settings');
+      triggerSuccess(lang === 'en' ? 'Ticket ad banner & schedule settings saved successfully!' : 'ບັນທຶກໂຄສະນາ ແລະ ການຕັ້ງເວລາສະແດງເທິງປີ້ສຳເລັດແລ້ວ!');
+    } catch (err) {
+      setErrorMessage(lang === 'en' ? 'Failed to save settings.' : 'ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກ.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const applyAdPreset = (preset: { name: string; logoUrl: string; websiteUrl?: string }) => {
+    if (!ticketSponsorsForm) return;
+    setTicketSponsorsForm({
+      ...ticketSponsorsForm,
+      adName: preset.name,
+      adBannerUrl: preset.logoUrl,
+      adWebsiteUrl: preset.websiteUrl || '',
+      isActive: true,
+      sponsors: [
+        {
+          id: 'sp-main',
+          name: preset.name,
+          logoUrl: preset.logoUrl,
+          websiteUrl: preset.websiteUrl || '',
+          isActive: true,
+          hasSchedule: ticketSponsorsForm.hasSchedule,
+          startDate: ticketSponsorsForm.startDate,
+          endDate: ticketSponsorsForm.endDate
+        }
+      ]
+    });
+  };
+
+  const handleAdBannerUpload = (file: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage(lang === 'en' ? 'Please upload an image file (PNG, JPG, SVG, WebP).' : 'ກະລຸນາເລືອກໄຟລ໌ຮູບພາບ.');
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      setErrorMessage(lang === 'en' ? 'Image size is too large (maximum 3MB recommended).' : 'ຂະໜາດຮູບໃຫຍ່ເກີນໄປ (ສູງສຸດ 3MB).');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      if (dataUrl && ticketSponsorsForm) {
+        setTicketSponsorsForm({
+          ...ticketSponsorsForm,
+          adBannerUrl: dataUrl,
+          sponsors: [
+            {
+              id: ticketSponsorsForm.sponsors?.[0]?.id || 'sp-main',
+              name: ticketSponsorsForm.adName || 'Custom Ad',
+              logoUrl: dataUrl,
+              websiteUrl: ticketSponsorsForm.adWebsiteUrl || '',
+              isActive: ticketSponsorsForm.isActive ?? true,
+              hasSchedule: ticketSponsorsForm.hasSchedule,
+              startDate: ticketSponsorsForm.startDate,
+              endDate: ticketSponsorsForm.endDate
+            }
+          ]
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const setAdScheduleDurationHours = (hours: number) => {
+    if (!ticketSponsorsForm) return;
+    const now = new Date();
+    const pad = (n: number) => (n < 10 ? '0' + n : n);
+    const formatLocal = (d: Date) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    
+    const startStr = formatLocal(now);
+    const end = new Date(now.getTime() + hours * 60 * 60 * 1000);
+    const endStr = formatLocal(end);
+
+    setTicketSponsorsForm({
+      ...ticketSponsorsForm,
+      hasSchedule: true,
+      startDate: startStr,
+      endDate: endStr
+    });
+  };
+
+  const clearAdSchedule = () => {
+    if (!ticketSponsorsForm) return;
+    setTicketSponsorsForm({
+      ...ticketSponsorsForm,
+      hasSchedule: false,
+      startDate: '',
+      endDate: ''
+    });
+  };
+
+  const resetSponsorsToDefault = () => {
+    if (!ticketSponsorsForm) return;
+    setTicketSponsorsForm({
+      ...DEFAULT_TICKET_SPONSOR_SETTINGS
+    });
+    triggerSuccess(lang === 'en' ? 'Reset to default ad banner (Loca Laos / Pasopkan fallback)' : 'ຣີເຊັດເປັນຄ່າມາດຕະຖານແລ້ວ');
   };
 
   const handleSaveContact = async (e: React.FormEvent) => {
@@ -593,6 +748,19 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
         >
           <ImageIcon className="w-4 h-4" />
           {lang === 'en' ? 'Home Slide & Hero' : 'ສະໄລດ໌ & ຫົວຂໍ້ໜ້າຫຼັກ'}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setActiveSubTab('ticket_sponsors'); setErrorMessage(null); }}
+          className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all border ${
+            activeSubTab === 'ticket_sponsors'
+              ? 'bg-adv-orange border-adv-orange text-white shadow-md shadow-orange-100'
+              : 'bg-white border-gray-100 text-gray-500 hover:bg-gray-50'
+          }`}
+        >
+          <Award className="w-4 h-4" />
+          {lang === 'en' ? 'Ticket Sponsors' : 'ຜູ້ສະໜັບສະໜູນປີ້'}
         </button>
 
         <button
@@ -1055,6 +1223,787 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
             </div>
           </form>
         )}
+
+        {/* TICKET SPONSORS & ADS FORM */}
+        {activeSubTab === 'ticket_sponsors' && ticketSponsorsForm && (() => {
+          const resolvedPreviewAd = resolveTicketAd(ticketSponsorsForm);
+          const currentAdName = ticketSponsorsForm.adName || ticketSponsorsForm.sponsors?.[0]?.name || 'LOCA Laos';
+          const currentAdBanner = ticketSponsorsForm.adBannerUrl || ticketSponsorsForm.sponsors?.[0]?.logoUrl || '/Loca banner.png';
+          const currentAdLink = ticketSponsorsForm.adWebsiteUrl || ticketSponsorsForm.sponsors?.[0]?.websiteUrl || 'https://loca.la';
+          const isCustomActive = ticketSponsorsForm.isActive !== undefined ? ticketSponsorsForm.isActive : (ticketSponsorsForm.sponsors?.[0]?.isActive ?? true);
+
+          return (
+            <form onSubmit={handleSaveTicketSponsors} className="space-y-8">
+              {/* Header description & quick actions */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+                <div>
+                  <h3 className="text-base font-black text-adv-slate flex items-center gap-2 uppercase tracking-wide">
+                    <Award className="w-5 h-5 text-adv-orange" />
+                    {lang === 'en' ? 'E-Ticket Sponsor Ad & Schedule' : 'ໂຄສະນາຜູ້ສະໜັບສະໜູນ & ຕັ້ງເວລາເທິງປີ້ E-Ticket'}
+                  </h3>
+                  <p className="text-xs font-medium text-gray-400 mt-1">
+                    {lang === 'en'
+                      ? 'Configure a single sponsor ad banner and display schedule. If time is expired or over time, tickets automatically fall back to "Pasopkan ads.png".'
+                      : 'ຈັດການປ້າຍໂຄສະນາ 1 ຕຳແໜ່ງ ແລະ ຕັ້ງເວລາສະແດງ. ຖ້າໝົດເວລາ ລະບົບຈະສະແດງຮູບມາດຕະຖານ "Pasopkan ads.png" ອັດຕະໂນມັດ.'}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={resetSponsorsToDefault}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-all"
+                    title={lang === 'en' ? 'Reset to default ad banner' : 'ຣີເຊັດເປັນຄ່າມາດຕະຖານ'}
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-gray-500" />
+                    {lang === 'en' ? 'Reset Defaults' : 'ຣີເຊັດມາດຕະຖານ'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Master Toggle & General Configuration */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Left Column: Form Controls & Tabs */}
+                <div className="lg:col-span-6 space-y-5">
+                  {/* Master Switch Card */}
+                  <div className={`p-5 rounded-2xl border transition-all ${
+                    ticketSponsorsForm.isEnabled 
+                      ? 'bg-orange-50/40 border-orange-200 shadow-xs' 
+                      : 'bg-gray-50 border-gray-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${ticketSponsorsForm.isEnabled ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+                          <h4 className="text-sm font-black text-adv-slate">
+                            {lang === 'en' ? 'Show Ad Banner on E-Tickets' : 'ສະແດງປ້າຍໂຄສະນາເທິງປີ້ E-Ticket'}
+                          </h4>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {lang === 'en'
+                            ? 'When enabled, the sponsor ad banner is rendered underneath the QR code.'
+                            : 'ເມື່ອເປີດໃຊ້, ປ້າຍໂຄສະນາຈະສະແດງຢູ່ກ້ອງ QR Code.'}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setTicketSponsorsForm({ ...ticketSponsorsForm, isEnabled: !ticketSponsorsForm.isEnabled })}
+                        className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
+                          ticketSponsorsForm.isEnabled ? 'bg-adv-orange' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                            ticketSponsorsForm.isEnabled ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Setting Sub-Tabs (Content / Schedule / Fallback) */}
+                  <div className="flex items-center gap-1.5 p-1 bg-gray-100/80 rounded-2xl border border-gray-200/60">
+                    <button
+                      type="button"
+                      onClick={() => setAdSubTab('content')}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-black transition-all ${
+                        adSubTab === 'content'
+                          ? 'bg-white text-adv-slate shadow-xs border border-gray-150'
+                          : 'text-gray-500 hover:text-gray-800'
+                      }`}
+                    >
+                      <ImageIcon className="w-3.5 h-3.5 text-adv-orange" />
+                      <span>{lang === 'en' ? '1. Ad Content' : '1. ປ້າຍໂຄສະນາ'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setAdSubTab('schedule')}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-black transition-all ${
+                        adSubTab === 'schedule'
+                          ? 'bg-white text-adv-slate shadow-xs border border-gray-150'
+                          : 'text-gray-500 hover:text-gray-800'
+                      }`}
+                    >
+                      <Clock className="w-3.5 h-3.5 text-adv-orange" />
+                      <span>{lang === 'en' ? '2. Display Time' : '2. ຕັ້ງເວລາສະແດງ'}</span>
+                      {ticketSponsorsForm.hasSchedule && (
+                        <span className="w-2 h-2 rounded-full bg-adv-orange animate-ping" />
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setAdSubTab('fallback')}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-black transition-all ${
+                        adSubTab === 'fallback'
+                          ? 'bg-white text-adv-slate shadow-xs border border-gray-150'
+                          : 'text-gray-500 hover:text-gray-800'
+                      }`}
+                    >
+                      <Layers className="w-3.5 h-3.5 text-adv-orange" />
+                      <span>{lang === 'en' ? '3. Default Image' : '3. ຮູບມາດຕະຖານ'}</span>
+                    </button>
+                  </div>
+
+                  {/* TAB 1: AD BANNER & CONTENT */}
+                  {adSubTab === 'content' && (
+                    <div className="space-y-4">
+                      {/* Preset Fast-Select Buttons */}
+                      <div className="p-4 bg-gray-50/70 border border-gray-150 rounded-2xl space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-black text-adv-slate uppercase tracking-wider flex items-center gap-2">
+                            <Sparkles className="w-3.5 h-3.5 text-adv-orange" />
+                            {lang === 'en' ? 'Quick Choose Partner / Preset' : 'ເລືອກໂຄສະນາດ່ວນ'}
+                          </h4>
+                          <span className="text-[10px] font-bold text-gray-400">
+                            {lang === 'en' ? '1 Ad Slot Active' : 'ສະແດງ 1 ໂຄສະນາ'}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {[
+                            { name: 'LOCA Laos (Official Ride Partner)', logoUrl: '/Loca banner.png', websiteUrl: 'https://loca.la' },
+                            { name: 'Pasopkan Ads (Default)', logoUrl: '/Pasopkan ads.png', websiteUrl: 'https://pasopkan.com' },
+                          ].map((preset) => {
+                            const isSelected = currentAdBanner === preset.logoUrl;
+                            return (
+                              <button
+                                key={preset.logoUrl}
+                                type="button"
+                                onClick={() => applyAdPreset(preset)}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-2xs ${
+                                  isSelected
+                                    ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                                    : 'bg-white border-gray-200 text-gray-700 hover:border-adv-orange/50 hover:bg-orange-50/20'
+                                }`}
+                              >
+                                <img 
+                                  src={preset.logoUrl} 
+                                  alt={preset.name} 
+                                  className="h-3.5 w-auto object-contain" 
+                                  onError={(e) => {
+                                    (e.target as HTMLElement).style.display = 'none';
+                                  }}
+                                />
+                                <span className="truncate max-w-[130px]">{preset.name}</span>
+                                {isSelected ? (
+                                  <Check className="w-3 h-3 text-white shrink-0" />
+                                ) : (
+                                  <Plus className="w-3 h-3 text-adv-orange shrink-0" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Single Ad Details Card */}
+                      <div className="p-5 bg-white border border-gray-200 rounded-2xl space-y-4 shadow-xs">
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-lg bg-orange-100 text-adv-orange font-black text-xs flex items-center justify-center">
+                              #1
+                            </span>
+                            <span className="text-xs font-black text-adv-slate">
+                              {currentAdName || (lang === 'en' ? 'Sponsor Ad Slot' : 'ຊ່ອງໂຄສະນາ')}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newActive = !isCustomActive;
+                                setTicketSponsorsForm({
+                                  ...ticketSponsorsForm,
+                                  isActive: newActive,
+                                  sponsors: [
+                                    {
+                                      id: 'sp-main',
+                                      name: currentAdName,
+                                      logoUrl: currentAdBanner,
+                                      websiteUrl: currentAdLink,
+                                      isActive: newActive,
+                                      hasSchedule: ticketSponsorsForm.hasSchedule,
+                                      startDate: ticketSponsorsForm.startDate,
+                                      endDate: ticketSponsorsForm.endDate
+                                    }
+                                  ]
+                                });
+                              }}
+                              className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all ${
+                                isCustomActive
+                                  ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
+                                  : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200'
+                              }`}
+                            >
+                              {isCustomActive ? (lang === 'en' ? 'Custom Ad Enabled' : 'ເປີດໃຊ້ໂຄສະນານີ້') : (lang === 'en' ? 'Custom Ad Disabled' : 'ປິດໃຊ້')}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Partner Name Input */}
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 pl-1">
+                            {lang === 'en' ? 'Sponsor / Advertiser Name *' : 'ຊື່ຜູ້ສະໜັບສະໜູນ / ໂຄສະນາ *'}
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={currentAdName}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setTicketSponsorsForm({
+                                ...ticketSponsorsForm,
+                                adName: val,
+                                sponsors: [
+                                  {
+                                    id: 'sp-main',
+                                    name: val,
+                                    logoUrl: currentAdBanner,
+                                    websiteUrl: currentAdLink,
+                                    isActive: isCustomActive,
+                                    hasSchedule: ticketSponsorsForm.hasSchedule,
+                                    startDate: ticketSponsorsForm.startDate,
+                                    endDate: ticketSponsorsForm.endDate
+                                  }
+                                ]
+                              });
+                            }}
+                            placeholder="e.g. LOCA Laos (Official Ride Partner)"
+                            className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-adv-slate shadow-2xs focus:outline-none focus:border-adv-orange"
+                          />
+                        </div>
+
+                        {/* Target Website URL */}
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 pl-1">
+                            {lang === 'en' ? 'Target Website / Landing URL (Optional)' : 'ລິ້ງເວັບໄຊປາຍທາງ (ຖ້າມີ)'}
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="url"
+                              value={currentAdLink}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setTicketSponsorsForm({
+                                  ...ticketSponsorsForm,
+                                  adWebsiteUrl: val,
+                                  sponsors: [
+                                    {
+                                      id: 'sp-main',
+                                      name: currentAdName,
+                                      logoUrl: currentAdBanner,
+                                      websiteUrl: val,
+                                      isActive: isCustomActive,
+                                      hasSchedule: ticketSponsorsForm.hasSchedule,
+                                      startDate: ticketSponsorsForm.startDate,
+                                      endDate: ticketSponsorsForm.endDate
+                                    }
+                                  ]
+                                });
+                              }}
+                              placeholder="https://loca.la"
+                              className="w-full bg-white border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-medium text-adv-slate shadow-2xs focus:outline-none focus:border-adv-orange"
+                            />
+                            {currentAdLink && (
+                              <a
+                                href={currentAdLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-adv-orange"
+                                title="Open Website"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Banner Image URL and Upload */}
+                        <div>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 pl-1">
+                            {lang === 'en' ? 'Banner Image (URL or Upload)' : 'ຮູບປ້າຍໂຄສະນາ (URL ຫຼື ອັບໂຫຼດ)'}
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              required
+                              value={currentAdBanner}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setTicketSponsorsForm({
+                                  ...ticketSponsorsForm,
+                                  adBannerUrl: val,
+                                  sponsors: [
+                                    {
+                                      id: 'sp-main',
+                                      name: currentAdName,
+                                      logoUrl: val,
+                                      websiteUrl: currentAdLink,
+                                      isActive: isCustomActive,
+                                      hasSchedule: ticketSponsorsForm.hasSchedule,
+                                      startDate: ticketSponsorsForm.startDate,
+                                      endDate: ticketSponsorsForm.endDate
+                                    }
+                                  ]
+                                });
+                              }}
+                              placeholder="/Loca banner.png or https://..."
+                              className="flex-1 bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-mono text-adv-slate shadow-2xs focus:outline-none focus:border-adv-orange"
+                            />
+
+                            <label className="flex items-center gap-1.5 px-3.5 py-2 bg-orange-50 hover:bg-orange-100 text-adv-orange border border-orange-200 rounded-xl text-xs font-bold cursor-pointer transition-colors shrink-0">
+                              <UploadCloud className="w-3.5 h-3.5 text-adv-orange" />
+                              <span>{lang === 'en' ? 'Upload' : 'ອັບໂຫຼດ'}</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleAdBannerUpload(file);
+                                }}
+                              />
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* Banner Preview Box */}
+                        <div className="p-3 bg-gray-50 rounded-xl border border-gray-150 flex flex-col items-center justify-center min-h-[70px]">
+                          {currentAdBanner ? (
+                            <img
+                              src={currentAdBanner}
+                              alt={currentAdName}
+                              className="w-full max-h-16 object-contain rounded-lg drop-shadow-2xs"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.opacity = '0.3';
+                              }}
+                            />
+                          ) : (
+                            <div className="flex items-center gap-2 text-gray-400 text-xs">
+                              <ImageIcon className="w-4 h-4" />
+                              <span>No Banner Image Selected</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 2: DISPLAY TIME & SCHEDULE SETTINGS */}
+                  {adSubTab === 'schedule' && (
+                    <div className="p-5 bg-white border border-gray-200 rounded-2xl space-y-5 shadow-xs">
+                      {/* Schedule Master Toggle */}
+                      <div className={`p-4 rounded-xl border transition-all ${
+                        ticketSponsorsForm.hasSchedule 
+                          ? 'bg-orange-50/50 border-orange-200' 
+                          : 'bg-gray-50/80 border-gray-200'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Clock className={`w-4 h-4 ${ticketSponsorsForm.hasSchedule ? 'text-adv-orange' : 'text-gray-400'}`} />
+                              <h5 className="text-xs font-black text-adv-slate">
+                                {lang === 'en' ? 'Enable Time Schedule for Ad' : 'ເປີດການຕັ້ງເວລາສະແດງໂຄສະນາ'}
+                              </h5>
+                            </div>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                              {lang === 'en'
+                                ? 'If enabled, the ad will only show between Start & End dates. If over time, it reverts to "Pasopkan ads.png".'
+                                : 'ເມື່ອເປີດໃຊ້, ໂຄສະນາຈະສະແດງສະເພາະໄລຍະເວລາທີ່ກຳນົດ. ເມື່ອໝົດເວລາ ຈະກັບໄປໃຊ້ຮູບ "Pasopkan ads.png".'}
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newSched = !ticketSponsorsForm.hasSchedule;
+                              setTicketSponsorsForm({
+                                ...ticketSponsorsForm,
+                                hasSchedule: newSched
+                              });
+                            }}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                              ticketSponsorsForm.hasSchedule ? 'bg-adv-orange' : 'bg-gray-300'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                ticketSponsorsForm.hasSchedule ? 'translate-x-6' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Start and End Date Inputs */}
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 pl-1 flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-adv-orange" />
+                              {lang === 'en' ? 'Start Date & Time' : 'ວັນທີ & ເວລາເລີ່ມຕົ້ນ'}
+                            </label>
+                            <input
+                              type="datetime-local"
+                              disabled={!ticketSponsorsForm.hasSchedule}
+                              value={ticketSponsorsForm.startDate || ''}
+                              onChange={(e) => setTicketSponsorsForm({ ...ticketSponsorsForm, startDate: e.target.value })}
+                              className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-adv-slate disabled:bg-gray-100 disabled:text-gray-400 shadow-2xs focus:outline-none focus:border-adv-orange"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 pl-1 flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-adv-orange" />
+                              {lang === 'en' ? 'End Date & Time (Expiration)' : 'ວັນທີ & ເວລາສິ້ນສຸດ (ໝົດອາຍຸ)'}
+                            </label>
+                            <input
+                              type="datetime-local"
+                              disabled={!ticketSponsorsForm.hasSchedule}
+                              value={ticketSponsorsForm.endDate || ''}
+                              onChange={(e) => setTicketSponsorsForm({ ...ticketSponsorsForm, endDate: e.target.value })}
+                              className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-adv-slate disabled:bg-gray-100 disabled:text-gray-400 shadow-2xs focus:outline-none focus:border-adv-orange"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Quick Presets for Duration */}
+                        <div>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 pl-1">
+                            {lang === 'en' ? 'Quick Duration Helpers (From Now):' : 'ເລືອກໄລຍະເວລາດ່ວນ (ນັບຈາກຕອນນີ້):'}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {[
+                              { label: '+24 Hours', hours: 24 },
+                              { label: '+3 Days', hours: 72 },
+                              { label: '+7 Days', hours: 168 },
+                              { label: '+14 Days', hours: 336 },
+                              { label: '+30 Days', hours: 720 },
+                            ].map((dur) => (
+                              <button
+                                key={dur.label}
+                                type="button"
+                                onClick={() => setAdScheduleDurationHours(dur.hours)}
+                                className="px-2.5 py-1 bg-gray-50 hover:bg-orange-50 text-gray-700 hover:text-adv-orange border border-gray-200 hover:border-orange-200 rounded-lg text-xs font-bold transition-colors"
+                              >
+                                {dur.label}
+                              </button>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={clearAdSchedule}
+                              className="px-2.5 py-1 bg-gray-50 hover:bg-red-50 text-gray-500 hover:text-red-600 border border-gray-200 hover:border-red-200 rounded-lg text-xs font-bold transition-colors"
+                            >
+                              {lang === 'en' ? 'Clear' : 'ລ້າງ'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Live Schedule Status Card */}
+                      <div className={`p-4 rounded-xl border flex items-start gap-3 ${
+                        resolvedPreviewAd.status === 'active_custom'
+                          ? 'bg-green-50/70 border-green-200 text-green-900'
+                          : resolvedPreviewAd.status === 'expired_fallback'
+                          ? 'bg-red-50/70 border-red-200 text-red-900'
+                          : resolvedPreviewAd.status === 'scheduled_future'
+                          ? 'bg-yellow-50/70 border-yellow-200 text-yellow-900'
+                          : 'bg-gray-50 border-gray-200 text-gray-700'
+                      }`}>
+                        {resolvedPreviewAd.status === 'active_custom' && <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />}
+                        {resolvedPreviewAd.status === 'expired_fallback' && <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />}
+                        {resolvedPreviewAd.status === 'scheduled_future' && <Clock className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />}
+                        {resolvedPreviewAd.status === 'inactive_fallback' && <AlertCircle className="w-5 h-5 text-gray-500 shrink-0 mt-0.5" />}
+
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black uppercase tracking-wider">
+                              {resolvedPreviewAd.status === 'active_custom' && (lang === 'en' ? 'Status: Active (Within Schedule)' : 'ສະຖານະ: ກຳລັງສະແດງຜົນ (ຢູ່ໃນເວລາ)')}
+                              {resolvedPreviewAd.status === 'expired_fallback' && (lang === 'en' ? 'Status: Over Time (Expired)' : 'ສະຖານະ: ໝົດເວລາແລ້ວ (Over Time)')}
+                              {resolvedPreviewAd.status === 'scheduled_future' && (lang === 'en' ? 'Status: Scheduled (Upcoming)' : 'ສະຖານະ: ຕັ້ງເວລາໄວ້ (ຍັງບໍ່ຮອດເວລາ)')}
+                              {resolvedPreviewAd.status === 'inactive_fallback' && (lang === 'en' ? 'Status: Custom Ad Disabled' : 'ສະຖານະ: ປິດໃຊ້ໂຄສະນາ')}
+                            </span>
+                          </div>
+                          <p className="text-xs opacity-90 leading-relaxed">
+                            {resolvedPreviewAd.status === 'active_custom' && (
+                              lang === 'en' 
+                                ? `Displaying "${currentAdName}" custom banner on all E-tickets.` 
+                                : `ກຳລັງສະແດງປ້າຍໂຄສະນາ "${currentAdName}" ເທິງປີ້ E-ticket.`
+                            )}
+                            {resolvedPreviewAd.status === 'expired_fallback' && (
+                              lang === 'en' 
+                                ? 'The scheduled end time has passed. Tickets automatically fall back to "Pasopkan ads.png".' 
+                                : 'ກາຍເວລາທີ່ກຳນົດແລ້ວ! ລະບົບປີ້ E-ticket ຈະສະແດງຮູບພາບມາດຕະຖານ "Pasopkan ads.png" ແທນອັດຕະໂນມັດ.'
+                            )}
+                            {resolvedPreviewAd.status === 'scheduled_future' && (
+                              lang === 'en' 
+                                ? 'Start time is in the future. Tickets will display default "Pasopkan ads.png" until start date.' 
+                                : 'ຍັງບໍ່ຮອດເວລາເລີ່ມຕົ້ນ. ລະບົບຈະສະແດງຮູບມາດຕະຖານ "Pasopkan ads.png" ຈົນກວ່າຈະຮອດເວລາ.'
+                            )}
+                            {resolvedPreviewAd.status === 'inactive_fallback' && (
+                              lang === 'en' 
+                                ? 'Showing default "Pasopkan ads.png" fallback banner.' 
+                                : 'ກຳລັງສະແດງຮູບມາດຕະຖານ "Pasopkan ads.png".'
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 3: DEFAULT FALLBACK IMAGE */}
+                  {adSubTab === 'fallback' && (
+                    <div className="p-5 bg-white border border-gray-200 rounded-2xl space-y-4 shadow-xs">
+                      <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                        <Layers className="w-4 h-4 text-adv-orange" />
+                        <h4 className="text-xs font-black text-adv-slate uppercase tracking-wider">
+                          {lang === 'en' ? 'Default Fallback Banner ("Pasopkan ads.png")' : 'ຮູບພາບມາດຕະຖານ ("Pasopkan ads.png")'}
+                        </h4>
+                      </div>
+
+                      <p className="text-xs text-gray-500 leading-relaxed">
+                        {lang === 'en'
+                          ? 'This official default banner image is automatically presented whenever no custom ad is running or when a custom ad campaign has finished its scheduled time window.'
+                          : 'ຮູບປ້າຍນີ້ຈະສະແດງອັດຕະໂນມັດເມື່ອໂຄສະນາໝົດເວລາ (Over time), ປິດໃຊ້ງານ, ຫຼື ບໍ່ມີໂຄສະນາສະເພາະ.'}
+                      </p>
+
+                      <div className="p-4 bg-gray-50 rounded-2xl border border-gray-150 flex flex-col items-center justify-center space-y-2">
+                        <img 
+                          src={ticketSponsorsForm.defaultBannerUrl || '/Pasopkan ads.png'} 
+                          alt="Pasopkan Ads Default" 
+                          className="w-full max-h-24 object-contain rounded-xl drop-shadow-sm" 
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/pasopkan_logo.png';
+                          }}
+                        />
+                        <span className="text-[11px] font-mono font-bold text-gray-400">
+                          {ticketSponsorsForm.defaultBannerUrl || '/Pasopkan ads.png'}
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 pl-1">
+                          {lang === 'en' ? 'Default Fallback Target URL' : 'ລິ້ງປາຍທາງຮູບມາດຕະຖານ'}
+                        </label>
+                        <input
+                          type="url"
+                          value={ticketSponsorsForm.defaultWebsiteUrl || 'https://pasopkan.com'}
+                          onChange={(e) => setTicketSponsorsForm({ ...ticketSponsorsForm, defaultWebsiteUrl: e.target.value })}
+                          placeholder="https://pasopkan.com"
+                          className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-medium text-adv-slate shadow-2xs focus:outline-none focus:border-adv-orange"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Column: Live E-Ticket Sponsor Preview (White Theme) */}
+                <div className="lg:col-span-6">
+                  {/* Clean White Container as requested */}
+                  <div className="bg-white rounded-3xl p-4 sm:p-5 border border-gray-200/90 text-gray-900 shadow-xl space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                      <div className="flex items-center gap-2">
+                        <Eye className="w-4 h-4 text-adv-orange" />
+                        <span className="text-xs font-black uppercase tracking-wider text-adv-slate">
+                          {lang === 'en' ? 'Live E-Ticket Preview' : 'ຕົວຢ່າງສະແດງຜົນເທິງປີ້ E-Ticket ຕົວຈິງ'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+                          resolvedPreviewAd.status === 'active_custom'
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : resolvedPreviewAd.status === 'expired_fallback'
+                            ? 'bg-red-50 text-red-700 border-red-200'
+                            : resolvedPreviewAd.status === 'scheduled_future'
+                            ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                            : 'bg-gray-100 text-gray-600 border-gray-200'
+                        }`}>
+                          {resolvedPreviewAd.status === 'active_custom' && (lang === 'en' ? 'Custom Ad Live' : 'ໂຄສະນາສະແດງ')}
+                          {resolvedPreviewAd.status === 'expired_fallback' && (lang === 'en' ? 'Expired → Pasopkan Fallback' : 'ໝົດເວລາ → ຮູບມາດຕະຖານ')}
+                          {resolvedPreviewAd.status === 'scheduled_future' && (lang === 'en' ? 'Upcoming → Pasopkan Fallback' : 'ຕັ້ງເວລາ → ຮູບມາດຕະຖານ')}
+                          {resolvedPreviewAd.status === 'inactive_fallback' && (lang === 'en' ? 'Pasopkan Default' : 'ຮູບມາດຕະຖານ')}
+                          {resolvedPreviewAd.status === 'default_fallback' && (lang === 'en' ? 'Ad Bar Hidden' : 'ເຊື່ອງໄວ້')}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Full E-Ticket Mockup Frame Matching ETicketModal */}
+                    <div className="w-full max-w-[340px] sm:max-w-[360px] mx-auto rounded-[28px] bg-gradient-to-b from-[#FF5500] via-[#F24E00] to-[#E04500] text-white p-3.5 shadow-2xl flex flex-col justify-between overflow-hidden border border-orange-400/30">
+                      {/* Top Bar Header in Ticket */}
+                      <div className="flex items-center justify-between mb-2.5 px-1 pt-0.5 shrink-0">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center bg-black/15 text-white">
+                          <ChevronLeft className="w-4 h-4 stroke-[2.5]" />
+                        </div>
+                        <h2 className="text-sm font-bold text-white tracking-tight">
+                          {lang === 'lo' ? 'ປີ້ E-Ticket ຂອງທ່ານ' : 'Your E-Ticket'}
+                        </h2>
+                        <div className="w-7 h-7" />
+                      </div>
+
+                      {/* White E-Ticket Inner Card */}
+                      <div className="relative flex-1 flex flex-col justify-between bg-white rounded-[22px] text-gray-900 shadow-xl overflow-hidden pt-3.5 pb-3 px-4 min-h-0">
+                        {/* Top Ticket Details */}
+                        <div className="shrink-0">
+                          {/* Brand Logo Header Bar */}
+                          <div className="flex items-center justify-center pb-2 mb-2 border-b border-gray-100 shrink-0">
+                            <img 
+                              src="/pasopkan_logo.png" 
+                              alt="Pasopkan" 
+                              className="h-10 sm:h-11 w-auto max-w-[200px] object-contain drop-shadow-sm" 
+                              referrerPolicy="no-referrer"
+                            />
+                          </div>
+
+                          {/* Event Title */}
+                          <h1 className="text-base sm:text-lg font-black text-gray-950 leading-tight mb-2 tracking-tight line-clamp-1">
+                            Senglao Acoustic Night 2026
+                          </h1>
+
+                          {/* 2-Column Info Grid */}
+                          <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 mb-2">
+                            <div>
+                              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                                {lang === 'lo' ? 'ວັນທີ' : 'Date'}
+                              </p>
+                              <p className="text-xs font-bold text-gray-950 leading-tight">
+                                28 Aug 2026
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                                {lang === 'lo' ? 'ເວລາ' : 'Time'}
+                              </p>
+                              <p className="text-xs font-bold text-gray-950 leading-tight">
+                                19:00
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                                {lang === 'lo' ? 'ປະເພດການເຂົ້າ' : 'Check In Type'}
+                              </p>
+                              <p className="text-xs font-bold text-gray-950 leading-tight truncate">
+                                VIP Access
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                                {lang === 'lo' ? 'ລະຫັດອໍເດີ' : 'Order ID'}
+                              </p>
+                              <p className="text-xs font-bold text-gray-950 font-mono tracking-tight leading-tight">
+                                EBP948201AC
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Place / Venue */}
+                          <div>
+                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                              {lang === 'lo' ? 'ສະຖານທີ່' : 'Place'}
+                            </p>
+                            <p className="text-xs font-semibold text-gray-900 leading-snug truncate">
+                              National Convention Centre, Vientiane
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Perforated Divider with Circular Concave Cutouts */}
+                        <div className="relative my-2.5 -mx-4 py-1 flex items-center shrink-0">
+                          {/* Left Cutout */}
+                          <div className="absolute -left-3.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#F24E00] z-10" />
+                          
+                          {/* Dashed Perforation Line */}
+                          <div className="w-full border-t-2 border-dashed border-gray-200 mx-4" />
+
+                          {/* Right Cutout */}
+                          <div className="absolute -right-3.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#F24E00] z-10" />
+                        </div>
+
+                        {/* Direct QR Code Section */}
+                        <div className="pt-0.5 pb-1 flex flex-col items-center justify-center min-h-0">
+                          <div className="p-2 bg-white rounded-2xl border border-gray-150 shadow-md flex items-center justify-center">
+                            <QRCodeSVG
+                              value="PREVIEW-TICKET-EBP948201AC"
+                              size={120}
+                              className="w-24 h-24 sm:w-28 sm:h-28 max-h-[16vh] max-w-[16vh]"
+                              level="H"
+                              includeMargin={false}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Dynamic Sponsor Ad Banner under QR Code */}
+                        {ticketSponsorsForm.isEnabled && resolvedPreviewAd.isDisplayed && resolvedPreviewAd.bannerUrl ? (
+                          <div className="pt-2 pb-0.5 flex flex-col items-center justify-center shrink-0 border-t border-gray-100/80 mt-1 w-full">
+                            {/* Full-width sponsor banner */}
+                            <div className="w-full flex items-center justify-center rounded-xl overflow-hidden bg-white/50 border border-gray-100/80">
+                              <img 
+                                src={resolvedPreviewAd.bannerUrl} 
+                                alt={resolvedPreviewAd.name || 'Ad Banner'} 
+                                className="w-full h-auto max-h-16 object-contain rounded-lg hover:scale-[1.01] transition-transform" 
+                                referrerPolicy="no-referrer" 
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = '/Pasopkan ads.png';
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="pt-2 pb-1 text-center border-t border-gray-100 mt-1">
+                            <span className="text-[10px] italic font-medium text-gray-400">
+                              {lang === 'en' ? '(Ad banner disabled on E-Tickets)' : '(ປິດການສະແດງຜົນໂຄສະນາເທິງປີ້)'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-center pt-1">
+                      <p className="text-[11px] font-bold text-gray-600">
+                        {resolvedPreviewAd.status === 'active_custom' ? (
+                          <span className="text-green-600">● {lang === 'en' ? `Showing Custom Ad: ${resolvedPreviewAd.name}` : `ກຳລັງສະແດງ: ${resolvedPreviewAd.name}`}</span>
+                        ) : resolvedPreviewAd.status === 'expired_fallback' ? (
+                          <span className="text-red-600">● {lang === 'en' ? 'Time Expired → Reverted to default "Pasopkan ads.png"' : 'ໝົດເວລາ → ກັບໄປໃຊ້ "Pasopkan ads.png"'}</span>
+                        ) : resolvedPreviewAd.status === 'scheduled_future' ? (
+                          <span className="text-yellow-600">● {lang === 'en' ? 'Upcoming → Reverted to default "Pasopkan ads.png"' : 'ຍັງບໍ່ຮອດເວລາ → ໃຊ້ "Pasopkan ads.png"'}</span>
+                        ) : (
+                          <span className="text-gray-400">{lang === 'en' ? 'Showing Default "Pasopkan ads.png"' : 'ສະແດງຮູບມາດຕະຖານ "Pasopkan ads.png"'}</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Save Button */}
+              <div className="pt-6 border-t border-gray-100 flex items-center justify-end gap-4">
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-8 py-4 bg-adv-orange hover:bg-orange-600 text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-orange-100 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {lang === 'en' ? 'Saving Settings...' : 'ກຳລັງບັນທຶກ...'}
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      {lang === 'en' ? 'Save Ticket Ad & Schedule' : 'ບັນທຶກໂຄສະນາ & ການຕັ້ງເວລາ'}
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          );
+        })()}
 
         {/* CONTACT US FORM */}
         {activeSubTab === 'contact' && contactForm && (

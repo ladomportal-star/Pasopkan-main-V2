@@ -27,6 +27,21 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error inside React Tree:', error, errorInfo);
+    
+    // Check if error is due to stale dynamic import chunk
+    const isChunkLoadFailed = 
+      error?.message?.includes('Failed to fetch dynamically imported module') ||
+      error?.message?.includes('Importing a module script failed') ||
+      error?.message?.includes('Loading chunk') ||
+      error?.name === 'ChunkLoadError';
+
+    if (isChunkLoadFailed) {
+      const isRetried = sessionStorage.getItem('eb_chunk_retry') === 'true';
+      if (!isRetried) {
+        sessionStorage.setItem('eb_chunk_retry', 'true');
+        window.location.reload();
+      }
+    }
   }
 
   private handleReload = () => {

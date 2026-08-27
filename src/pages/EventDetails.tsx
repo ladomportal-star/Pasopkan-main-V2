@@ -1202,7 +1202,12 @@ export default function EventDetails() {
   const rawDescription = event.description ? event.description.replace(/<[^>]*>?/gm, '').trim() : '';
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] pb-6 lg:pb-8">
+    <motion.div 
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="min-h-screen bg-[#F9FAFB] pb-6 lg:pb-8"
+    >
       <SEO
         title={event.title}
         description={rawDescription ? rawDescription.substring(0, 160) : undefined}
@@ -2193,6 +2198,6 @@ export default function EventDetails() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }

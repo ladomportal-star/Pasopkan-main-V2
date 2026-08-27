@@ -568,6 +568,91 @@ export default function Checkout() {
     }
   }, [step, event, tier, quantity, state?.selectedDate, state?.selectedTime]);
 
+  const renderActivitySummary = () => (
+    <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-150/60 space-y-4">
+      <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+        <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest">{t.orderSummary}</h2>
+      </div>
+      <div className="flex gap-4 items-center">
+        <div 
+          className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden cursor-zoom-in shrink-0 border border-gray-100 group"
+          onClick={() => setFullscreenImage(event.image)}
+        >
+          <img src={event.image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-[9px] font-black uppercase tracking-widest text-adv-orange px-2 py-0.5 bg-orange-50 rounded-md inline-block mb-1">
+            {event.category || 'Activity'}
+          </span>
+          <h3 className="text-sm sm:text-base font-black text-adv-slate leading-snug truncate">{event.title}</h3>
+        </div>
+      </div>
+
+      {/* Event Date & Location Block */}
+      <div className="grid grid-cols-2 gap-3 bg-gray-50/80 p-3 rounded-xl border border-gray-100 text-xs">
+        <div className="space-y-0.5">
+          <span className="text-[9px] uppercase tracking-wider text-gray-400 font-bold block">
+            {lang === 'en' ? 'Date of Event' : 'ວັນທີກິດຈະກຳ'}
+          </span>
+          <div className="font-extrabold text-adv-slate flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-adv-orange shrink-0" />
+            <span>
+              {displayDate ? new Date(displayDate).toLocaleDateString(lang === 'en' ? 'en-US' : 'lo-LA', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+              }) : (lang === 'en' ? 'Flexible' : 'ວັນທີປ່ຽນແປງໄດ້')}
+            </span>
+          </div>
+        </div>
+        <div className="space-y-0.5 border-l border-gray-200/60 pl-3">
+          <span className="text-[9px] uppercase tracking-wider text-gray-400 font-bold block">
+            {lang === 'en' ? 'Venue' : 'ສະຖານທີ່'}
+          </span>
+          <div className="font-extrabold text-adv-slate flex items-center gap-1.5 truncate">
+            <MapPin className="w-3.5 h-3.5 text-adv-orange shrink-0" />
+            <span className="truncate" title={event.location}>{event.location}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-gray-100 pt-1 space-y-2 text-xs font-bold text-gray-600">
+        {selectedTiersList.length > 0 ? (
+          <div className="space-y-1.5">
+            {selectedTiersList.map(({ tier: tItem, quantity: qty }) => (
+              <div key={tItem.id} className="flex justify-between items-center text-adv-slate text-xs sm:text-sm font-extrabold">
+                <span>{qty}x {tItem.name}</span>
+                <span className="font-mono text-adv-orange">{(tItem.price * qty).toLocaleString()} {currency}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex justify-between items-center text-adv-slate text-sm font-extrabold">
+            <span>{quantity}x {itemName}</span>
+            <span>{subtotal.toLocaleString()} {currency}</span>
+          </div>
+        )}
+
+        {appliedCoupon && (
+          <div className="flex justify-between items-center text-adv-green text-xs font-semibold bg-emerald-50/50 px-2.5 py-1.5 rounded-lg border border-emerald-100/40">
+            <span className="flex items-center gap-1.5">
+              <Ticket className="w-3.5 h-3.5" />
+              <span>{t.discount} ({appliedCoupon.code})</span>
+            </span>
+            <span>-{discount.toLocaleString()} {currency}</span>
+          </div>
+        )}
+
+        <div className="border-t border-gray-150/50 pt-3 flex justify-between items-baseline">
+          <span className="text-xs font-black text-adv-slate uppercase tracking-wider">{t.total}</span>
+          <span className="text-xl sm:text-2xl font-black text-adv-orange">{total.toLocaleString()} {currency}</span>
+        </div>
+      </div>
+    </div>
+  );
+
   if (step === 'success') {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-8">
@@ -602,7 +687,12 @@ export default function Checkout() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] pt-1 sm:pt-2 pb-12 px-4 lg:px-8">
+    <motion.div 
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="min-h-screen bg-[#F9FAFB] pt-1 sm:pt-2 pb-12 px-4 lg:px-8"
+    >
       <SEO
         title={lang === 'lo' ? `ຊຳລະເງິນ - ${event?.title || 'ປີ້'}` : `Checkout - ${event?.title || 'Tickets'}`}
         description="Complete your secure ticket payment and registration on Pasopkan."
@@ -656,398 +746,328 @@ export default function Checkout() {
         </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
-          {/* Payment Terminal / Guest Information */}
-          <div className="lg:col-span-7 order-2 lg:order-1">
-             <AnimatePresence mode="wait">
-                {step === 'details' ? (
-                  <motion.div key="details" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                    <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-150/60">
-                      <div className="mb-4">
-                        <h3 className="text-lg sm:text-xl font-bold text-adv-slate mb-0.5">{t.ticketOwnerInfo}</h3>
-                        <p className="text-xs text-gray-500">{t.ticketOwnerDesc}</p>
-                      </div>
+          {step === 'details' ? (
+            <>
+              {/* 1. Guest Information (Mobile: 1st, Desktop: Left Column Top) */}
+              <div className="order-1 lg:order-none lg:col-span-7 lg:col-start-1 lg:row-start-1">
+                <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-150/60">
+                  <div className="mb-4">
+                    <h3 className="text-lg sm:text-xl font-bold text-adv-slate mb-0.5">{t.ticketOwnerInfo}</h3>
+                    <p className="text-xs text-gray-500">{t.ticketOwnerDesc}</p>
+                  </div>
 
-                      <div className="space-y-3">
-                        {ticketOwners.map((owner, idx) => (
-                          <div key={idx} className="p-3 sm:p-4 bg-gray-50/80 rounded-xl border border-gray-100 space-y-2.5">
-                            <div className="flex items-center justify-between">
-                               <span className="text-[10px] font-black text-adv-orange uppercase tracking-widest">
-                                 {event?.requireEveryTicketInfo === false ? (lang === 'en' ? 'Buyer Information' : 'ຂໍ້ມູນຜູ້ຊື້') : `${t.guest} ${idx + 1}`}
-                               </span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2.5">
-                              <div>
-                                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-0.5">{t.firstName}</label>
-                                <input 
-                                  type="text"
-                                  value={owner.firstName || ""}
-                                  onChange={(e) => handleTicketOwnerChange(idx, 'firstName', e.target.value)}
-                                  placeholder={lang === 'en' ? 'John' : 'ຊື່'}
-                                  className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-0.5">{t.lastName}</label>
-                                <input 
-                                  type="text"
-                                  value={owner.lastName || ""}
-                                  onChange={(e) => handleTicketOwnerChange(idx, 'lastName', e.target.value)}
-                                  placeholder={lang === 'en' ? 'Doe' : 'ນາມສະກຸນ'}
-                                  className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
-                                />
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                              <div>
-                                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-0.5">{t.phoneNumber}</label>
-                                <input 
-                                  type="tel"
-                                  inputMode="numeric"
-                                  maxLength={
-                                    owner.phone.startsWith('856020') ? 14 :
-                                    owner.phone.startsWith('85620') ? 13 :
-                                    owner.phone.startsWith('856') ? 14 :
-                                    owner.phone.startsWith('020') ? 11 : 10
-                                  }
-                                  value={owner.phone || ""}
-                                  onChange={(e) => handleTicketOwnerChange(idx, 'phone', e.target.value)}
-                                  placeholder="20XXXXXXXX"
-                                  className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-0.5">{t.email}</label>
-                                <input 
-                                  type="email"
-                                  value={owner.email || ""}
-                                  onChange={(e) => handleTicketOwnerChange(idx, 'email', e.target.value)}
-                                  placeholder="example@email.com"
-                                  className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
-                                />
-                              </div>
-                            </div>
-                            
-                            {event?.attendeeQuestions && event.attendeeQuestions.length > 0 && (
-                              <div className="pt-3 mt-3 border-t border-gray-200/50 space-y-3">
-                                {event.attendeeQuestions.map((q) => (
-                                  <div key={q.id}>
-                                    <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-0.5">
-                                      {q.label} {q.required && <span className="text-adv-orange">*</span>}
-                                    </label>
-                                    
-                                    {q.type === 'text' && (
-                                      <input 
-                                        type="text"
-                                        value={(owner.customAnswers?.[q.id] as string) || ""}
-                                        onChange={(e) => handleCustomAnswerChange(idx, q.id, e.target.value)}
-                                        className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
-                                        placeholder={lang === 'lo' ? 'ຄຳຕອບຂອງທ່ານ...' : 'Your answer...'}
-                                      />
-                                    )}
-                                    
-                                    {q.type === 'long_text' && (
-                                      <textarea 
-                                        value={(owner.customAnswers?.[q.id] as string) || ""}
-                                        onChange={(e) => handleCustomAnswerChange(idx, q.id, e.target.value)}
-                                        rows={4}
-                                        className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-2 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all resize-none"
-                                        placeholder={lang === 'lo' ? 'ຄຳຕອບຂອງທ່ານ...' : 'Your answer...'}
-                                      />
-                                    )}
-                                    
-                                    {q.type === 'url' && (
-                                      <input 
-                                        type="url"
-                                        value={(owner.customAnswers?.[q.id] as string) || ""}
-                                        onChange={(e) => handleCustomAnswerChange(idx, q.id, e.target.value)}
-                                        className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
-                                        placeholder={lang === 'lo' ? 'ລິ້ງ (URL)' : 'Link (URL)'}
-                                      />
-                                    )}
-                                    
-                                    {q.type === 'single_choice' && (
-                                      <select
-                                        value={(owner.customAnswers?.[q.id] as string) || ""}
-                                        onChange={(e) => handleCustomAnswerChange(idx, q.id, e.target.value)}
-                                        className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
-                                      >
-                                        <option value="" disabled>{lang === 'lo' ? 'ເລືອກ...' : 'Select...'}</option>
-                                        {q.options?.map((opt, i) => (
-                                          <option key={i} value={opt}>{opt}</option>
-                                        ))}
-                                      </select>
-                                    )}
-                                    
-                                    {(q.type === 'options' || q.type === 'multi_choice') && (
-                                      <MultiSelectDropdown
-                                        options={q.options || []}
-                                        selectedValues={(owner.customAnswers?.[q.id] as string[]) || []}
-                                        onChange={(values) => handleCustomAnswerChange(idx, q.id, values)}
-                                        lang={lang as 'lo' | 'en'}
-                                      />
-                                    )}
-                                    
-                                    {q.type === 'checkbox' && (
-                                      <label className="flex items-center gap-2 cursor-pointer mt-1">
-                                        <input
-                                          type="checkbox"
-                                          checked={((owner.customAnswers?.[q.id] as string) === 'true')}
-                                          onChange={(e) => handleCustomAnswerChange(idx, q.id, e.target.checked ? 'true' : 'false')}
-                                          className="w-3.5 h-3.5 text-adv-orange border-gray-300 rounded focus:ring-adv-orange"
-                                        />
-                                        <span className="text-xs text-gray-700">{lang === 'lo' ? 'ຢືນຢັນ' : 'Confirm'}</span>
-                                      </label>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
+                  <div className="space-y-3">
+                    {ticketOwners.map((owner, idx) => (
+                      <div key={idx} className="p-3 sm:p-4 bg-gray-50/80 rounded-xl border border-gray-100 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                           <span className="text-[10px] font-black text-adv-orange uppercase tracking-widest">
+                             {event?.requireEveryTicketInfo === false ? (lang === 'en' ? 'Buyer Information' : 'ຂໍ້ມູນຜູ້ຊື້') : `${t.guest} ${idx + 1}`}
+                           </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-0.5">{t.firstName}</label>
+                            <input 
+                              type="text"
+                              value={owner.firstName || ""}
+                              onChange={(e) => handleTicketOwnerChange(idx, 'firstName', e.target.value)}
+                              placeholder={lang === 'en' ? 'John' : 'ຊື່'}
+                              className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                            />
                           </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-150/60">
-                      <h3 className="text-lg sm:text-xl font-bold text-adv-slate mb-3 sm:mb-4">Payment Method</h3>
-                        <div className="space-y-2 mb-4">
-                          {LAOS_BANKS.map((bank) => (
-                            <button
-                              key={bank.id}
-                              onClick={() => setSelectedBank(bank.id)}
-                              className={`w-full flex items-center p-3 rounded-xl border-2 transition-all ${
-                                selectedBank === bank.id 
-                                ? 'border-adv-orange bg-orange-50/50' 
-                                : 'border-gray-50 hover:border-gray-100 bg-gray-50/50'
-                              }`}
-                            >
-                              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center mr-3 shrink-0 shadow-xs p-1">
-                                {bank.logo ? (
-                                  <img src={bank.logo} alt={bank.name} className="w-full h-full object-contain rounded-lg" />
-                                ) : (
-                                  <div className={`w-full h-full rounded-lg ${bank.color} flex items-center justify-center`}>
-                                    <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                                  </div>
+                          <div>
+                            <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-0.5">{t.lastName}</label>
+                            <input 
+                              type="text"
+                              value={owner.lastName || ""}
+                              onChange={(e) => handleTicketOwnerChange(idx, 'lastName', e.target.value)}
+                              placeholder={lang === 'en' ? 'Doe' : 'ນາມສະກຸນ'}
+                              className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-0.5">{t.phoneNumber}</label>
+                            <input 
+                              type="tel"
+                              inputMode="numeric"
+                              maxLength={
+                                owner.phone.startsWith('856020') ? 14 :
+                                owner.phone.startsWith('85620') ? 13 :
+                                owner.phone.startsWith('856') ? 14 :
+                                owner.phone.startsWith('020') ? 11 : 10
+                              }
+                              value={owner.phone || ""}
+                              onChange={(e) => handleTicketOwnerChange(idx, 'phone', e.target.value)}
+                              placeholder="20XXXXXXXX"
+                              className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-0.5">{t.email}</label>
+                            <input 
+                              type="email"
+                              value={owner.email || ""}
+                              onChange={(e) => handleTicketOwnerChange(idx, 'email', e.target.value)}
+                              placeholder="example@email.com"
+                              className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                            />
+                          </div>
+                        </div>
+                        
+                        {event?.attendeeQuestions && event.attendeeQuestions.length > 0 && (
+                          <div className="pt-3 mt-3 border-t border-gray-200/50 space-y-3">
+                            {event.attendeeQuestions.map((q) => (
+                              <div key={q.id}>
+                                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-0.5">
+                                  {q.label} {q.required && <span className="text-adv-orange">*</span>}
+                                </label>
+                                
+                                {q.type === 'text' && (
+                                  <input 
+                                    type="text"
+                                    value={(owner.customAnswers?.[q.id] as string) || ""}
+                                    onChange={(e) => handleCustomAnswerChange(idx, q.id, e.target.value)}
+                                    className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                                    placeholder={lang === 'lo' ? 'ຄຳຕອບຂອງທ່ານ...' : 'Your answer...'}
+                                  />
+                                )}
+                                
+                                {q.type === 'long_text' && (
+                                  <textarea 
+                                    value={(owner.customAnswers?.[q.id] as string) || ""}
+                                    onChange={(e) => handleCustomAnswerChange(idx, q.id, e.target.value)}
+                                    rows={4}
+                                    className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-2 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all resize-none"
+                                    placeholder={lang === 'lo' ? 'ຄຳຕອບຂອງທ່ານ...' : 'Your answer...'}
+                                  />
+                                )}
+                                
+                                {q.type === 'url' && (
+                                  <input 
+                                    type="url"
+                                    value={(owner.customAnswers?.[q.id] as string) || ""}
+                                    onChange={(e) => handleCustomAnswerChange(idx, q.id, e.target.value)}
+                                    className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                                    placeholder={lang === 'lo' ? 'ລິ້ງ (URL)' : 'Link (URL)'}
+                                  />
+                                )}
+                                
+                                {q.type === 'single_choice' && (
+                                  <select
+                                    value={(owner.customAnswers?.[q.id] as string) || ""}
+                                    onChange={(e) => handleCustomAnswerChange(idx, q.id, e.target.value)}
+                                    className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                                  >
+                                    <option value="" disabled>{lang === 'lo' ? 'ເລືອກ...' : 'Select...'}</option>
+                                    {q.options?.map((opt, i) => (
+                                      <option key={i} value={opt}>{opt}</option>
+                                    ))}
+                                  </select>
+                                )}
+                                
+                                {(q.type === 'options' || q.type === 'multi_choice') && (
+                                  <MultiSelectDropdown
+                                    options={q.options || []}
+                                    selectedValues={(owner.customAnswers?.[q.id] as string[]) || []}
+                                    onChange={(values) => handleCustomAnswerChange(idx, q.id, values)}
+                                    lang={lang as 'lo' | 'en'}
+                                  />
+                                )}
+                                
+                                {q.type === 'checkbox' && (
+                                  <label className="flex items-center gap-2 cursor-pointer mt-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={((owner.customAnswers?.[q.id] as string) === 'true')}
+                                      onChange={(e) => handleCustomAnswerChange(idx, q.id, e.target.checked ? 'true' : 'false')}
+                                      className="w-3.5 h-3.5 text-adv-orange border-gray-300 rounded focus:ring-adv-orange"
+                                    />
+                                    <span className="text-xs text-gray-700">{lang === 'lo' ? 'ຢືນຢັນ' : 'Confirm'}</span>
+                                  </label>
                                 )}
                               </div>
-                              <div className="flex-1 text-left">
-                                <h4 className="text-sm sm:text-base font-bold text-adv-slate">{bank.name}</h4>
-                                <p className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider">Mobile Banking</p>
-                              </div>
-                            </button>
-                          ))}
+                            ))}
+                          </div>
+                        )}
 
-                          <button
-                            key="credit_card"
-                            onClick={() => setSelectedBank('credit_card')}
-                            className={`w-full flex items-center p-3 rounded-xl border-2 transition-all ${
-                              selectedBank === 'credit_card' 
-                              ? 'border-adv-orange bg-orange-50/50' 
-                              : 'border-gray-50 hover:border-gray-100 bg-gray-50/50'
-                            }`}
-                          >
-                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center mr-3 shrink-0 shadow-xs p-1">
-                              <img src="/Card.png" alt="Credit Card" className="w-full h-full object-contain rounded-lg" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Activity Summary (Mobile: 2nd, Desktop: Right Column Sticky) */}
+              <div className="order-2 lg:order-none lg:col-span-5 lg:col-start-8 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-4">
+                {renderActivitySummary()}
+              </div>
+
+              {/* 3. Payment Method (Mobile: 3rd, Desktop: Left Column Bottom) */}
+              <div className="order-3 lg:order-none lg:col-span-7 lg:col-start-1 lg:row-start-2 space-y-4">
+                <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-150/60">
+                  <h3 className="text-lg sm:text-xl font-bold text-adv-slate mb-3 sm:mb-4">
+                    {lang === 'en' ? 'Payment Method' : 'ວິທີການຊຳລະເງິນ'}
+                  </h3>
+                  <div className="space-y-2 mb-4">
+                    {LAOS_BANKS.map((bank) => (
+                      <button
+                        key={bank.id}
+                        onClick={() => setSelectedBank(bank.id)}
+                        className={`w-full flex items-center p-3 rounded-xl border-2 transition-all ${
+                          selectedBank === bank.id 
+                          ? 'border-adv-orange bg-orange-50/50' 
+                          : 'border-gray-50 hover:border-gray-100 bg-gray-50/50'
+                        }`}
+                      >
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center mr-3 shrink-0 shadow-xs p-1">
+                          {bank.logo ? (
+                            <img src={bank.logo} alt={bank.name} className="w-full h-full object-contain rounded-lg" />
+                          ) : (
+                            <div className={`w-full h-full rounded-lg ${bank.color} flex items-center justify-center`}>
+                              <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                             </div>
-                            <div className="flex-1 text-left">
-                              <h4 className="text-sm sm:text-base font-bold text-adv-slate">{lang === 'en' ? 'Credit Card' : 'ບັດເຄຣດິດ'}</h4>
-                              <p className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider">Visa / Mastercard (3DS)</p>
-                            </div>
-                          </button>
+                          )}
                         </div>
-                      </div>
-
-                      <button 
-                        disabled={!isDetailsValid || !selectedBank || isProcessing}
-                        onClick={handleBankSelection}
-                        className="w-full py-3 bg-adv-orange text-white rounded-xl font-bold text-sm sm:text-base hover:bg-orange-600 transition-all flex items-center justify-center gap-2 shadow-md shadow-orange-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isProcessing ? <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" /> : t.checkout}
+                        <div className="flex-1 text-left">
+                          <h4 className="text-sm sm:text-base font-bold text-adv-slate">{bank.name}</h4>
+                          <p className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider">Mobile Banking</p>
+                        </div>
                       </button>
-                   </motion.div>
-                 ) : (
-                   <motion.div key="qr" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-150/60 flex flex-col items-center">
-                      {selectedBank === 'credit_card' ? (
-                        <>
-                          <div className="text-center mb-8">
-                            <h3 className="text-2xl font-bold text-adv-slate mb-3">
-                              {lang === 'en' ? 'Credit Card Checkout' : 'ຊຳລະດ້ວຍບັດເຄຣດິດ'}
-                            </h3>
-                            <p className="text-gray-500 text-sm font-medium">
-                              {lang === 'en' 
-                                ? 'Complete your payment securely via our Visa/Mastercard gateway.' 
-                                : 'ຊຳລະເງິນຢ່າງປອດໄພຜ່ານລະບົບ Visa/Mastercard ຂອງພວກເຮົາ.'}
-                            </p>
-                          </div>
-                          
-                          <div className="p-6 bg-gray-50 rounded-3xl w-full flex flex-col items-center border border-gray-100 mb-8">
-                             <div className="flex justify-between w-full mb-6 text-xs font-bold uppercase tracking-widest">
-                                <span className="text-adv-green flex items-center gap-2">
-                                   <div className="w-2 h-2 bg-adv-green rounded-full animate-pulse" /> Gateway Secure
-                                </span>
-                                <span className="text-red-500">{Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}</span>
-                             </div>
-                             
-                             <div className="w-full bg-white rounded-2xl p-6 border border-gray-100 text-center space-y-6">
-                               <div className="w-16 h-16 bg-white border border-gray-150 rounded-2xl flex items-center justify-center mx-auto p-2 shadow-xs">
-                                 <img src="/Card.png" alt="Credit Card" className="w-full h-full object-contain" />
-                               </div>
-                               
-                               <div className="space-y-2">
-                                 <h4 className="font-extrabold text-adv-slate text-base">
-                                   {lang === 'en' ? 'Secure Payment Portal Ready' : 'ຊ່ອງທາງການຊຳລະເງິນປອດໄພພ້ອມແລ້ວ'}
-                                 </h4>
-                                 <p className="text-xs text-gray-400 font-semibold max-w-xs mx-auto leading-relaxed">
-                                   {lang === 'en' 
-                                     ? 'Click the button below to open the secure banking page and complete your transaction. Only 3D Secure (3DS) cards are supported.' 
-                                     : 'ກະລຸນາຄລິກປຸ່ມລຸ່ມນີ້ເພື່ອເປີດໜ້າຊຳລະເງິນຂອງທະນາຄານຢ່າງປອດໄພ. ຮອງຮັບສະເພາະບັດທີ່ມີລະບົບ 3D Secure (3DS) ເທົ່ານັ້ນ.'}
-                                 </p>
-                               </div>
+                    ))}
 
-                               {creditCardUrl && (
-                                 <a 
-                                   href={creditCardUrl}
-                                   target="_blank"
-                                   rel="noopener noreferrer"
-                                   className="inline-flex w-full py-4 px-6 bg-adv-orange hover:bg-orange-600 text-white rounded-2xl font-extrabold text-sm uppercase tracking-wider transition-all items-center justify-center gap-2 shadow-lg shadow-orange-100 active:scale-[0.98]"
-                                 >
-                                   <span>{lang === 'en' ? 'Open Payment Portal' : 'ເປີດໜ້າຊຳລະເງິນ'}</span>
-                                   <Zap className="w-4 h-4 text-white" />
-                                 </a>
-                               )}
-                             </div>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="text-center mb-6">
-                            {(() => {
-                              const bObj = LAOS_BANKS.find(b => b.id === selectedBank);
-                              return bObj?.logo ? (
-                                <div className="w-14 h-14 mx-auto mb-3 bg-white p-1.5 rounded-2xl shadow-xs border border-gray-150 flex items-center justify-center">
-                                  <img src={bObj.logo} alt={bObj.name} className="w-full h-full object-contain rounded-xl" />
-                                </div>
-                              ) : null;
-                            })()}
-                            <h3 className="text-2xl font-bold text-adv-slate mb-2">{t.scanToPay}</h3>
-                            <p className="text-gray-500 text-sm font-medium">{t.openAppToScan.replace('{bankName}', LAOS_BANKS.find(b => b.id === selectedBank)?.name || '')}</p>
-                          </div>
-                          
-                          <div className="p-6 bg-gray-50 rounded-3xl w-full flex flex-col items-center border border-gray-100 mb-8">
-                             <div className="flex justify-between w-full mb-4 text-xs font-bold uppercase tracking-widest">
-                                <span className="text-adv-green flex items-center gap-2">
-                                   <div className="w-2 h-2 bg-adv-green rounded-full animate-pulse" /> Link Active
-                                </span>
-                                <span className="text-red-500">{Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}</span>
-                             </div>
-                             <div className="w-full aspect-square bg-white rounded-2xl flex items-center justify-center p-6 shadow-inner relative overflow-hidden">
-                                {qrCodeData && <QRCodeSVG value={qrCodeData} size={256} className="w-full h-full" />}
-                             </div>
-                          </div>
-                        </>
-                      )}
-
-                      <button 
-                        onClick={() => setIsProcessing(true)} 
-                        className="w-full py-4 bg-adv-slate text-white rounded-2xl font-bold flex items-center justify-center gap-3 group transition-all hover:bg-black"
-                      >
-                         {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : t.completedPayment}
-                         <Zap className="w-4 h-4 text-adv-orange" />
-                      </button>
-                   </motion.div>
-                 )}
-               </AnimatePresence>
-          </div>
-
-          {/* Manifest Summary (Sticky Sidebar) */}
-          <div className="lg:col-span-5 lg:sticky lg:top-4 order-1 lg:order-2">
-             <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-150/60 space-y-4">
-                <div className="flex justify-between items-center pb-2 border-b border-gray-100">
-                   <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest">{t.orderSummary}</h2>
-                </div>
-                <div className="flex gap-4 items-center">
-                   <div 
-                     className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden cursor-zoom-in shrink-0 border border-gray-100 group"
-                     onClick={() => setFullscreenImage(event.image)}
-                   >
-                     <img src={event.image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                   </div>
-                   <div className="flex-1 min-w-0">
-                      <span className="text-[9px] font-black uppercase tracking-widest text-adv-orange px-2 py-0.5 bg-orange-50 rounded-md inline-block mb-1">
-                         {event.category || 'Activity'}
-                      </span>
-                      <h3 className="text-sm sm:text-base font-black text-adv-slate leading-snug truncate">{event.title}</h3>
-                   </div>
-                </div>
-
-                {/* Event Date & Location Block */}
-                <div className="grid grid-cols-2 gap-3 bg-gray-50/80 p-3 rounded-xl border border-gray-100 text-xs">
-                   <div className="space-y-0.5">
-                      <span className="text-[9px] uppercase tracking-wider text-gray-400 font-bold block">
-                         {lang === 'en' ? 'Date of Event' : 'ວັນທີກິດຈະກຳ'}
-                      </span>
-                      <div className="font-extrabold text-adv-slate flex items-center gap-1.5">
-                         <Calendar className="w-3.5 h-3.5 text-adv-orange shrink-0" />
-                         <span>
-                            {displayDate ? new Date(displayDate).toLocaleDateString(lang === 'en' ? 'en-US' : 'lo-LA', {
-                              weekday: 'short',
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            }) : (lang === 'en' ? 'Flexible' : 'ວັນທີປ່ຽນແປງໄດ້')}
-                         </span>
+                    <button
+                      key="credit_card"
+                      onClick={() => setSelectedBank('credit_card')}
+                      className={`w-full flex items-center p-3 rounded-xl border-2 transition-all ${
+                        selectedBank === 'credit_card' 
+                        ? 'border-adv-orange bg-orange-50/50' 
+                        : 'border-gray-50 hover:border-gray-100 bg-gray-50/50'
+                      }`}
+                    >
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center mr-3 shrink-0 shadow-xs p-1">
+                        <img src="/Card.png" alt="Credit Card" className="w-full h-full object-contain rounded-lg" />
                       </div>
-                   </div>
-                   <div className="space-y-0.5 border-l border-gray-200/60 pl-3">
-                      <span className="text-[9px] uppercase tracking-wider text-gray-400 font-bold block">
-                         {lang === 'en' ? 'Venue' : 'ສະຖານທີ່'}
-                      </span>
-                      <div className="font-extrabold text-adv-slate flex items-center gap-1.5 truncate">
-                         <MapPin className="w-3.5 h-3.5 text-adv-orange shrink-0" />
-                         <span className="truncate" title={event.location}>{event.location}</span>
+                      <div className="flex-1 text-left">
+                        <h4 className="text-sm sm:text-base font-bold text-adv-slate">{lang === 'en' ? 'Credit Card' : 'ບັດເຄຣດິດ'}</h4>
+                        <p className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider">Visa / Mastercard (3DS)</p>
                       </div>
-                   </div>
+                    </button>
+                  </div>
                 </div>
 
-
-
-                <div className="border-t border-gray-100 pt-1 space-y-2 text-xs font-bold text-gray-600">
-                   {selectedTiersList.length > 0 ? (
-                     <div className="space-y-1.5">
-                       {selectedTiersList.map(({ tier: tItem, quantity: qty }) => (
-                         <div key={tItem.id} className="flex justify-between items-center text-adv-slate text-xs sm:text-sm font-extrabold">
-                           <span>{qty}x {tItem.name}</span>
-                           <span className="font-mono text-adv-orange">{(tItem.price * qty).toLocaleString()} {currency}</span>
+                <button 
+                  disabled={!isDetailsValid || !selectedBank || isProcessing}
+                  onClick={handleBankSelection}
+                  className="w-full py-3 bg-adv-orange text-white rounded-xl font-bold text-sm sm:text-base hover:bg-orange-600 transition-all flex items-center justify-center gap-2 shadow-md shadow-orange-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isProcessing ? <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" /> : t.checkout}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* QR / Credit Card Gateway view */}
+              <div className="order-1 lg:order-none lg:col-span-7 lg:col-start-1 lg:row-start-1">
+                <motion.div key="qr" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-150/60 flex flex-col items-center">
+                  {selectedBank === 'credit_card' ? (
+                    <>
+                      <div className="text-center mb-8">
+                        <h3 className="text-2xl font-bold text-adv-slate mb-3">
+                          {lang === 'en' ? 'Credit Card Checkout' : 'ຊຳລະດ້ວຍບັດເຄຣດິດ'}
+                        </h3>
+                        <p className="text-gray-500 text-sm font-medium">
+                          {lang === 'en' 
+                            ? 'Complete your payment securely via our Visa/Mastercard gateway.' 
+                            : 'ຊຳລະເງິນຢ່າງປອດໄພຜ່ານລະບົບ Visa/Mastercard ຂອງພວກເຮົາ.'}
+                        </p>
+                      </div>
+                      
+                      <div className="p-6 bg-gray-50 rounded-3xl w-full flex flex-col items-center border border-gray-100 mb-8">
+                         <div className="flex justify-between w-full mb-6 text-xs font-bold uppercase tracking-widest">
+                            <span className="text-adv-green flex items-center gap-2">
+                               <div className="w-2 h-2 bg-adv-green rounded-full animate-pulse" /> Gateway Secure
+                            </span>
+                            <span className="text-red-500">{Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}</span>
                          </div>
-                       ))}
-                     </div>
-                   ) : (
-                     <div className="flex justify-between items-center text-adv-slate text-sm font-extrabold">
-                        <span>{quantity}x {itemName}</span>
-                        <span>{subtotal.toLocaleString()} {currency}</span>
-                     </div>
-                   )}
+                         
+                         <div className="w-full bg-white rounded-2xl p-6 border border-gray-100 text-center space-y-6">
+                           <div className="w-16 h-16 bg-white border border-gray-150 rounded-2xl flex items-center justify-center mx-auto p-2 shadow-xs">
+                             <img src="/Card.png" alt="Credit Card" className="w-full h-full object-contain" />
+                           </div>
+                           
+                           <div className="space-y-2">
+                             <h4 className="font-extrabold text-adv-slate text-base">
+                               {lang === 'en' ? 'Secure Payment Portal Ready' : 'ຊ່ອງທາງການຊຳລະເງິນປອດໄພພ້ອມແລ້ວ'}
+                             </h4>
+                             <p className="text-xs text-gray-400 font-semibold max-w-xs mx-auto leading-relaxed">
+                               {lang === 'en' 
+                                 ? 'Click the button below to open the secure banking page and complete your transaction. Only 3D Secure (3DS) cards are supported.' 
+                                 : 'ກະລຸນາຄລິກປຸ່ມລຸ່ມນີ້ເພື່ອເປີດໜ້າຊຳລະເງິນຂອງທະນາຄານຢ່າງປອດໄພ. ຮອງຮັບສະເພາະບັດທີ່ມີລະບົບ 3D Secure (3DS) ເທົ່ານັ້ນ.'}
+                             </p>
+                           </div>
 
-                   {appliedCoupon && (
-                      <div className="flex justify-between items-center text-adv-green text-xs font-semibold bg-emerald-50/50 px-2.5 py-1.5 rounded-lg border border-emerald-100/40">
-                         <span className="flex items-center gap-1.5">
-                            <Ticket className="w-3.5 h-3.5" />
-                            <span>{t.discount} ({appliedCoupon.code})</span>
-                         </span>
-                         <span>-{discount.toLocaleString()} {currency}</span>
+                           {creditCardUrl && (
+                             <a 
+                               href={creditCardUrl}
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               className="inline-flex w-full py-4 px-6 bg-adv-orange hover:bg-orange-600 text-white rounded-2xl font-extrabold text-sm uppercase tracking-wider transition-all items-center justify-center gap-2 shadow-lg shadow-orange-100 active:scale-[0.98]"
+                             >
+                               <span>{lang === 'en' ? 'Open Payment Portal' : 'ເປີດໜ້າຊຳລະເງິນ'}</span>
+                               <Zap className="w-4 h-4 text-white" />
+                             </a>
+                           )}
+                         </div>
                       </div>
-                   )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-center mb-6">
+                        {(() => {
+                          const bObj = LAOS_BANKS.find(b => b.id === selectedBank);
+                          return bObj?.logo ? (
+                            <div className="w-14 h-14 mx-auto mb-3 bg-white p-1.5 rounded-2xl shadow-xs border border-gray-150 flex items-center justify-center">
+                              <img src={bObj.logo} alt={bObj.name} className="w-full h-full object-contain rounded-xl" />
+                            </div>
+                          ) : null;
+                        })()}
+                        <h3 className="text-2xl font-bold text-adv-slate mb-2">{t.scanToPay}</h3>
+                        <p className="text-gray-500 text-sm font-medium">{t.openAppToScan.replace('{bankName}', LAOS_BANKS.find(b => b.id === selectedBank)?.name || '')}</p>
+                      </div>
+                      
+                      <div className="p-6 bg-gray-50 rounded-3xl w-full flex flex-col items-center border border-gray-100 mb-8">
+                         <div className="flex justify-between w-full mb-4 text-xs font-bold uppercase tracking-widest">
+                            <span className="text-adv-green flex items-center gap-2">
+                               <div className="w-2 h-2 bg-adv-green rounded-full animate-pulse" /> Link Active
+                            </span>
+                            <span className="text-red-500">{Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}</span>
+                         </div>
+                         <div className="w-full aspect-square bg-white rounded-2xl flex items-center justify-center p-6 shadow-inner relative overflow-hidden">
+                            {qrCodeData && <QRCodeSVG value={qrCodeData} size={256} className="w-full h-full" />}
+                         </div>
+                      </div>
+                    </>
+                  )}
 
-                   <div className="border-t border-gray-150/50 pt-3 flex justify-between items-baseline">
-                      <span className="text-xs font-black text-adv-slate uppercase tracking-wider">{t.total}</span>
-                      <span className="text-xl sm:text-2xl font-black text-adv-orange">{total.toLocaleString()} {currency}</span>
-                   </div>
-                </div>
-             </div>
-          </div>
+                  <button 
+                    onClick={() => setIsProcessing(true)} 
+                    className="w-full py-4 bg-adv-slate text-white rounded-2xl font-bold flex items-center justify-center gap-3 group transition-all hover:bg-black"
+                  >
+                     {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : t.completedPayment}
+                     <Zap className="w-4 h-4 text-adv-orange" />
+                  </button>
+                </motion.div>
+              </div>
+
+              {/* 2. Activity Summary in QR state */}
+              <div className="order-2 lg:order-none lg:col-span-5 lg:col-start-8 lg:row-start-1 lg:sticky lg:top-4">
+                {renderActivitySummary()}
+              </div>
+            </>
+          )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
