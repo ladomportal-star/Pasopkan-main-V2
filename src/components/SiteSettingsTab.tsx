@@ -1853,13 +1853,13 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                             <img 
                               src="/pasopkan_logo.png" 
                               alt="Pasopkan" 
-                              className="h-10 sm:h-11 w-auto max-w-[200px] object-contain drop-shadow-sm" 
+                              className="h-12 sm:h-14 md:h-16 w-auto max-w-[260px] object-contain drop-shadow-sm transition-transform" 
                               referrerPolicy="no-referrer"
                             />
                           </div>
 
                           {/* Event Title */}
-                          <h1 className="text-base sm:text-lg font-black text-gray-950 leading-tight mb-2 tracking-tight line-clamp-1">
+                          <h1 className="text-base sm:text-lg md:text-xl font-black text-gray-950 leading-tight mb-2 tracking-tight line-clamp-1">
                             Senglao Acoustic Night 2026
                           </h1>
 
@@ -1926,12 +1926,12 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                         </div>
 
                         {/* Direct QR Code Section */}
-                        <div className="pt-0.5 pb-1 flex flex-col items-center justify-center min-h-0">
-                          <div className="p-2 bg-white rounded-2xl border border-gray-150 shadow-md flex items-center justify-center">
+                        <div className="py-1 flex-1 flex flex-col items-center justify-center min-h-0">
+                          <div className="p-3 sm:p-4 bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-md flex items-center justify-center shrink-0">
                             <QRCodeSVG
                               value="PREVIEW-TICKET-EBP948201AC"
-                              size={120}
-                              className="w-24 h-24 sm:w-28 sm:h-28 max-h-[16vh] max-w-[16vh]"
+                              size={300}
+                              className="w-52 h-52 sm:w-60 sm:h-60 md:w-64 md:h-64"
                               level="H"
                               includeMargin={false}
                             />
@@ -1942,11 +1942,11 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                         {ticketSponsorsForm.isEnabled && resolvedPreviewAd.isDisplayed && resolvedPreviewAd.bannerUrl ? (
                           <div className="pt-2 pb-0.5 flex flex-col items-center justify-center shrink-0 border-t border-gray-100/80 mt-1 w-full">
                             {/* Full-width sponsor banner */}
-                            <div className="w-full flex items-center justify-center rounded-xl overflow-hidden bg-white/50 border border-gray-100/80">
+                            <div className="w-full h-14 rounded-xl overflow-hidden bg-gray-50 border border-gray-200/80 shadow-2xs">
                               <img 
                                 src={resolvedPreviewAd.bannerUrl} 
                                 alt={resolvedPreviewAd.name || 'Ad Banner'} 
-                                className="w-full h-auto max-h-16 object-contain rounded-lg hover:scale-[1.01] transition-transform" 
+                                className="w-full h-full object-cover object-center rounded-xl hover:scale-[1.02] transition-transform duration-200" 
                                 referrerPolicy="no-referrer" 
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).src = '/Pasopkan ads.png';

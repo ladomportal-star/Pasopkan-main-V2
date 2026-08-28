@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
-import { Calendar, Folder, FileText, Plus, User, Users, Mail, ChevronDown, Inbox, Ticket, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, Image as ImageIcon, Video, MapPin, Loader2, Trash2, X, Check, QrCode, LogOut, Edit, ShieldCheck, DollarSign, RefreshCcw, FileCheck, BookOpen, AlertCircle, ShieldAlert, ArrowLeft, ArrowRight, Globe, Clock, Settings, Lock, Eye, UploadCloud, ExternalLink, Monitor, Smartphone, CheckCircle2, Sparkles, Paperclip, Search, Quote, Minus, Heading1, Heading2, Link as LinkIcon, Award } from 'lucide-react';
+import { Calendar, Undo, Redo, Heading3, FileImage, Folder, FileText, Plus, User, Users, Mail, ChevronDown, ChevronLeft, ChevronRight, Inbox, Ticket, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, Image as ImageIcon, Video, MapPin, Loader2, Trash2, X, Check, QrCode, LogOut, Edit, ShieldCheck, DollarSign, RefreshCcw, FileCheck, BookOpen, AlertCircle, ShieldAlert, ArrowLeft, ArrowRight, Globe, Clock, Settings, Lock, Eye, UploadCloud, ExternalLink, Monitor, Smartphone, CheckCircle2, Sparkles, Paperclip, Search, Quote, Minus, Heading1, Heading2, Link as LinkIcon, Award, Unlink, Superscript, Subscript, Strikethrough, RemoveFormatting, MessageSquare, Type, Palette } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { safeStorage } from '../lib/storage';
@@ -884,115 +884,15 @@ export default function CreateEvent() {
   const [showPrivacyDropdown, setShowPrivacyDropdown] = useState(false);
   const privacyDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Block inserter state for rich editor
-  const [showBlockMenu, setShowBlockMenu] = useState(false);
-  const [blockSearchQuery, setBlockSearchQuery] = useState('');
-  const blockMenuRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (privacyDropdownRef.current && !privacyDropdownRef.current.contains(e.target as Node)) {
         setShowPrivacyDropdown(false);
       }
-      if (blockMenuRef.current && !blockMenuRef.current.contains(e.target as Node)) {
-        setShowBlockMenu(false);
-      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const handleEditorAttachmentUpload = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip';
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        const sizeKb = Math.round(file.size / 1024);
-        const sizeStr = sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`;
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          if (event.target?.result) {
-            const dataUrl = event.target.result.toString();
-            const attachmentHtml = `
-              <div contenteditable="false" class="my-3 p-3.5 bg-gray-50 border border-gray-200 rounded-2xl flex items-center justify-between gap-3 shadow-xs">
-                <div class="flex items-center gap-3 overflow-hidden">
-                  <div class="w-10 h-10 rounded-xl bg-orange-100 text-adv-orange flex items-center justify-center shrink-0 font-bold text-xs uppercase">
-                    ${file.name.split('.').pop() || 'FILE'}
-                  </div>
-                  <div class="truncate">
-                    <div class="font-bold text-sm text-adv-slate truncate">${file.name}</div>
-                    <div class="text-xs text-gray-400">${sizeStr}</div>
-                  </div>
-                </div>
-                <a href="${dataUrl}" download="${file.name}" class="px-3.5 py-1.5 bg-adv-orange hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition-colors shrink-0 flex items-center gap-1.5">
-                  Download
-                </a>
-              </div>
-              <p><br></p>
-            `;
-            execCommand('insertHTML', attachmentHtml);
-          }
-        };
-        reader.readAsDataURL(file as File);
-      }
-    };
-    input.click();
-  };
-
-  const handleInsertBlock = (blockId: string) => {
-    setShowBlockMenu(false);
-    setBlockSearchQuery('');
-    if (editorRef.current) {
-      editorRef.current.focus();
-    }
-
-    switch (blockId) {
-      case 'h1':
-        execCommand('insertHTML', '<h2 class="text-2xl font-extrabold text-adv-slate my-3">Heading</h2><p><br></p>');
-        break;
-      case 'h2':
-        execCommand('insertHTML', '<h3 class="text-lg font-bold text-adv-slate my-2">Subheading</h3><p><br></p>');
-        break;
-      case 'image':
-        handleEditorImageUpload();
-        break;
-      case 'blockquote':
-        execCommand('insertHTML', '<blockquote class="border-l-4 border-adv-orange pl-4 py-2 my-3 italic text-gray-600 bg-orange-50/60 rounded-r-xl">"Quote text..."</blockquote><p><br></p>');
-        break;
-      case 'divider':
-        execCommand('insertHTML', '<hr class="my-5 border-t border-gray-200" /><p><br></p>');
-        break;
-      case 'list':
-        execCommand('insertUnorderedList');
-        break;
-      case 'numbered_list':
-        execCommand('insertOrderedList');
-        break;
-      case 'attachment':
-        handleEditorAttachmentUpload();
-        break;
-      case 'link': {
-        const urlPrompt = window.prompt(lang === 'lo' ? 'ກະລຸນາປ້ອນທີ່ຢູ່ລິ້ງ (URL):' : 'Enter link URL:');
-        if (urlPrompt && urlPrompt.trim()) {
-          let formattedUrl = urlPrompt.trim();
-          if (!/^https?:\/\//i.test(formattedUrl) && !formattedUrl.startsWith('mailto:') && !formattedUrl.startsWith('tel:')) {
-            formattedUrl = `https://${formattedUrl}`;
-          }
-          const textPrompt = window.prompt(lang === 'lo' ? 'ຂໍ້ຄວາມສະແດງ (ຫຼື ປະໄວ້ຫວ່າງ):' : 'Display text (optional):') || formattedUrl;
-          const linkHtml = `<a href="${formattedUrl}" target="_blank" rel="noopener noreferrer" class="text-adv-orange underline hover:text-orange-600 font-semibold transition-colors">${textPrompt.trim()}</a>&nbsp;`;
-          execCommand('insertHTML', linkHtml);
-          if (editorRef.current) {
-            setEditorContent(editorRef.current.innerHTML);
-          }
-        }
-        break;
-      }
-      default:
-        break;
-    }
-  };
 
   const [attendeeMessage, setAttendeeMessage] = useState('');
   const [showRemainingTickets, setShowRemainingTickets] = useState(true);
@@ -1010,8 +910,10 @@ export default function CreateEvent() {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
   const [previewDeviceMode, setPreviewDeviceMode] = useState<'desktop' | 'mobile'>('desktop');
+  const [previewImageIndex, setPreviewImageIndex] = useState(0);
 
   const handleOpenPreview = () => {
+    setPreviewImageIndex(0);
     const preview = {
       id: editingEventId || 'preview-temp-id',
       title: eventName.trim() || (lang === 'lo' ? 'ຊື່ກິດຈະກຳຕົວຢ່າງ' : 'Sample Event Name'),
@@ -1160,6 +1062,7 @@ export default function CreateEvent() {
   
   const [verticalImage, setVerticalImage] = useState<string | null>(null);
   const [horizontalImage, setHorizontalImage] = useState<string | null>(null);
+  const [coverFitMode, setCoverFitMode] = useState<'contain' | 'cover'>('contain');
   const [verticalUploadProgress, setVerticalUploadProgress] = useState<number | null>(null);
   const [horizontalUploadProgress, setHorizontalUploadProgress] = useState<number | null>(null);
   const [organizerLogo, setOrganizerLogo] = useState<string | null>(null);
@@ -1221,35 +1124,113 @@ export default function CreateEvent() {
   // Rich Text Editor state
   const editorRef = useRef<HTMLDivElement>(null);
   const [editorContent, setEditorContent] = useState<string | null>(null);
-  const [plusButtonPos, setPlusButtonPos] = useState<{ top: number; left: number } | null>(null);
-  const [selectionMenuPos, setSelectionMenuPos] = useState<{ top: number; left: number } | null>(null);
-  const [showLinkInput, setShowLinkInput] = useState(false);
-  const [linkUrl, setLinkUrl] = useState('');
   const [savedSelectionRange, setSavedSelectionRange] = useState<Range | null>(null);
 
-  const applyFloatingLink = () => {
-    if (linkUrl.trim() && savedSelectionRange) {
-      let formattedUrl = linkUrl.trim();
+  // Event Information Toolbar Reference State
+  const [selectedFont, setSelectedFont] = useState('Inter');
+  const [selectedFontSize, setSelectedFontSize] = useState('18');
+  const [selectedTextColor, setSelectedTextColor] = useState('#EF4444');
+  const [selectedAlign, setSelectedAlign] = useState<'left' | 'center' | 'right' | 'justify'>('left');
+  const [showFontMenu, setShowFontMenu] = useState(false);
+  const [showFontSizeMenu, setShowFontSizeMenu] = useState(false);
+  const [showColorMenu, setShowColorMenu] = useState(false);
+  const [showAlignMenu, setShowAlignMenu] = useState(false);
+  const [showToolbarLinkModal, setShowToolbarLinkModal] = useState(false);
+  const [toolbarLinkUrl, setToolbarLinkUrl] = useState('');
+
+  const fontOptions = [
+    { label: 'Inter', value: 'Inter, sans-serif' },
+    { label: 'Noto Sans Lao', value: "'Noto Sans Lao', sans-serif" },
+    { label: 'Playfair Display', value: "'Playfair Display', serif" },
+    { label: 'Plus Jakarta Sans', value: "'Plus Jakarta Sans', sans-serif" },
+    { label: 'Space Grotesk', value: "'Space Grotesk', sans-serif" },
+    { label: 'Arial', value: 'Arial, sans-serif' },
+    { label: 'Courier New', value: "'Courier New', monospace" }
+  ];
+
+  const fontSizeOptions = ['12', '14', '16', '18', '20', '24', '28', '32', '36'];
+
+  const colorPalette = [
+    { label: 'Charcoal', value: '#1E293B' },
+    { label: 'Red', value: '#EF4444' },
+    { label: 'Orange', value: '#FF5500' },
+    { label: 'Amber', value: '#F59E0B' },
+    { label: 'Emerald', value: '#10B981' },
+    { label: 'Blue', value: '#3B82F6' },
+    { label: 'Purple', value: '#8B5CF6' },
+    { label: 'Pink', value: '#EC4899' },
+    { label: 'Gray', value: '#64748B' }
+  ];
+
+  const applyToolbarFont = (fontName: string, fontVal: string) => {
+    setSelectedFont(fontName);
+    setShowFontMenu(false);
+    document.execCommand('fontName', false, fontVal);
+    if (editorRef.current) setEditorContent(editorRef.current.innerHTML);
+  };
+
+  const applyToolbarFontSize = (sizePx: string) => {
+    setSelectedFontSize(sizePx);
+    setShowFontSizeMenu(false);
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+      document.execCommand('fontSize', false, '7');
+      if (editorRef.current) {
+        const fontElements = editorRef.current.querySelectorAll('font[size="7"]');
+        fontElements.forEach((el) => {
+          el.removeAttribute('size');
+          (el as HTMLElement).style.fontSize = `${sizePx}px`;
+        });
+        setEditorContent(editorRef.current.innerHTML);
+      }
+    } else {
+      document.execCommand('fontSize', false, '4');
+    }
+  };
+
+  const applyToolbarTextColor = (color: string) => {
+    setSelectedTextColor(color);
+    setShowColorMenu(false);
+    document.execCommand('foreColor', false, color);
+    if (editorRef.current) setEditorContent(editorRef.current.innerHTML);
+  };
+
+  const applyToolbarAlign = (align: 'left' | 'center' | 'right' | 'justify') => {
+    setSelectedAlign(align);
+    setShowAlignMenu(false);
+    if (align === 'left') execCommand('justifyLeft');
+    else if (align === 'center') execCommand('justifyCenter');
+    else if (align === 'right') execCommand('justifyRight');
+    else if (align === 'justify') execCommand('justifyFull');
+  };
+
+  const applyToolbarLink = () => {
+    if (toolbarLinkUrl.trim()) {
+      let formattedUrl = toolbarLinkUrl.trim();
       if (!/^https?:\/\//i.test(formattedUrl) && !formattedUrl.startsWith('mailto:') && !formattedUrl.startsWith('tel:')) {
         formattedUrl = `https://${formattedUrl}`;
       }
-      const sel = window.getSelection();
-      sel?.removeAllRanges();
-      sel?.addRange(savedSelectionRange);
       document.execCommand('createLink', false, formattedUrl);
-
       if (editorRef.current) {
         const anchors = editorRef.current.querySelectorAll('a');
         anchors.forEach(a => {
           a.setAttribute('target', '_blank');
           a.setAttribute('rel', 'noopener noreferrer');
+          a.className = 'text-adv-orange underline hover:text-orange-600 font-semibold transition-colors';
         });
         setEditorContent(editorRef.current.innerHTML);
       }
     }
-    setShowLinkInput(false);
-    setLinkUrl('');
-    setSavedSelectionRange(null);
+    setShowToolbarLinkModal(false);
+    setToolbarLinkUrl('');
+  };
+
+  const insertCalloutBlock = () => {
+    const calloutHtml = `<blockquote class="border-l-4 border-adv-orange pl-4 py-2.5 my-3 italic text-gray-700 bg-orange-50/70 rounded-r-2xl shadow-xs font-medium">“${lang === 'lo' ? 'ເພີ່ມຂໍ້ຄວາມໝາຍເຫດ ຫຼື ຄຳເວົ້າພິເສດຢູ່ທີ່ນີ້...' : 'Add your special note, quote, or highlight here...'}”</blockquote><p><br></p>`;
+    execCommand('insertHTML', calloutHtml);
+    if (editorRef.current) {
+      setEditorContent(editorRef.current.innerHTML);
+    }
   };
 
   const handleEditorPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
@@ -1292,106 +1273,6 @@ export default function CreateEvent() {
       }
     }
   };
-  
-  const showLinkInputRef = useRef(false);
-  useEffect(() => {
-    showLinkInputRef.current = showLinkInput;
-  }, [showLinkInput]);
-
-  const updateSelectionMenuPosition = React.useCallback(() => {
-    if (showLinkInputRef.current) return;
-    if (!editorRef.current) {
-      setSelectionMenuPos(null);
-      return;
-    }
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
-      setSelectionMenuPos(null);
-      return;
-    }
-    const range = sel.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-
-    if (rect && rect.width > 0) {
-      setSelectionMenuPos({
-        top: Math.max(0, rect.top - 48), // 48px above the selection in viewport
-        left: rect.left + (rect.width / 2) - 100 // roughly center
-      });
-    } else {
-      setSelectionMenuPos(null);
-    }
-  }, []);
-
-  const updatePlusButtonPosition = React.useCallback(() => {
-    if (!editorRef.current) {
-      setPlusButtonPos(null);
-      return;
-    }
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) {
-      setPlusButtonPos(null);
-      return;
-    }
-
-    const range = sel.getRangeAt(0);
-    let node: Node | null = range.startContainer;
-    if (node.nodeType === Node.TEXT_NODE) {
-      node = node.parentNode;
-    }
-
-    let blockEl: HTMLElement | null = node as HTMLElement;
-    while (
-      blockEl &&
-      blockEl !== editorRef.current &&
-      !['P', 'H1', 'H2', 'H3', 'DIV', 'LI', 'BLOCKQUOTE'].includes(blockEl.tagName)
-    ) {
-      blockEl = blockEl.parentElement;
-    }
-
-    const containerEl = editorRef.current.parentElement;
-    if (!containerEl) {
-      setPlusButtonPos(null);
-      return;
-    }
-
-    const containerBounds = containerEl.getBoundingClientRect();
-
-    if (!blockEl || blockEl === editorRef.current || !editorRef.current.contains(blockEl)) {
-      const text = editorRef.current.innerText.replace(/\u8203|\u200B/g, '').trim();
-      if (text === '') {
-        const editorBounds = editorRef.current.getBoundingClientRect();
-        setPlusButtonPos({
-          top: editorBounds.top - containerBounds.top + 16,
-          left: 16
-        });
-      } else {
-        setPlusButtonPos(null);
-      }
-      return;
-    }
-
-    const text = blockEl.textContent?.replace(/\u8203|\u200B/g, '').trim() || '';
-    if (text === '') {
-      const blockBounds = blockEl.getBoundingClientRect();
-      setPlusButtonPos({
-        top: Math.max(12, blockBounds.top - containerBounds.top + (blockBounds.height > 0 ? (blockBounds.height - 28) / 2 : 2)),
-        left: 16
-      });
-    } else {
-      setPlusButtonPos(null);
-    }
-  }, []);
-
-  useEffect(() => {
-    const handleSelectionChange = () => {
-      if (document.activeElement === editorRef.current || editorRef.current?.contains(document.activeElement)) {
-        updatePlusButtonPosition();
-        updateSelectionMenuPosition();
-      }
-    };
-    document.addEventListener('selectionchange', handleSelectionChange);
-    return () => document.removeEventListener('selectionchange', handleSelectionChange);
-  }, [updatePlusButtonPosition, updateSelectionMenuPosition]);
   
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null);
   const [imageRect, setImageRect] = useState<{top: number, left: number, width: number, height: number} | null>(null);
@@ -1465,7 +1346,6 @@ export default function CreateEvent() {
     } else {
       setSelectedImage(null);
     }
-    setTimeout(updatePlusButtonPosition, 10);
   };
 
   const handleEditorInput = () => {
@@ -1474,7 +1354,6 @@ export default function CreateEvent() {
     } else {
       setTimeout(updateImageRect, 10);
     }
-    updatePlusButtonPosition();
   };
 
   const startResize = (e: React.MouseEvent) => {
@@ -2633,38 +2512,71 @@ export default function CreateEvent() {
                             <span className="text-xs text-gray-500 font-bold">{Math.round(Math.min(horizontalUploadProgress, 100))}%</span>
                           </div>
                         ) : horizontalImage || verticalImage ? (
-                          <>
+                          <div className="absolute inset-0 w-full h-full bg-slate-950 flex items-center justify-center overflow-hidden">
+                            {/* Ambient blurred backdrop so the frame is completely and smoothly filled with matching colors */}
+                            <img 
+                              src={horizontalImage || verticalImage || ''} 
+                              alt="" 
+                              className="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-45 brightness-75 pointer-events-none filter" 
+                            />
+                            <div className="absolute inset-0 bg-slate-950/20 backdrop-blur-xs pointer-events-none" />
+                            {/* Foreground image - object-contain fits full in frame uncropped */}
                             <img 
                               src={horizontalImage || verticalImage || ''} 
                               alt="Main cover preview" 
-                              className="absolute inset-0 w-full h-full object-cover" 
+                              className={`w-full h-full relative z-10 transition-all duration-300 pointer-events-none ${
+                                coverFitMode === 'contain' ? 'object-contain drop-shadow-xl p-1' : 'object-cover'
+                              }`} 
                             />
                             {/* Cover Badge */}
-                            <div className="absolute top-3 left-3 bg-adv-slate/90 text-white text-[11px] font-extrabold px-3 py-1 rounded-full backdrop-blur-md shadow-md flex items-center gap-1.5 border border-white/20">
+                            <div className="absolute top-3 left-3 z-20 bg-adv-slate/90 text-white text-[11px] font-extrabold px-3 py-1 rounded-full backdrop-blur-md shadow-md flex items-center gap-1.5 border border-white/20">
                               <Sparkles className="w-3.5 h-3.5 text-adv-orange" />
                               <span>{lang === 'lo' ? 'ຮູບໜ້າປົກຫຼັກ' : 'Main Cover Photo'}</span>
                             </div>
 
+                            {/* Fit Mode Toggle Badge */}
+                            <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCoverFitMode(prev => prev === 'contain' ? 'cover' : 'contain');
+                                }}
+                                className="bg-black/60 hover:bg-black/80 text-white text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-md border border-white/20 transition-all flex items-center gap-1 cursor-pointer shadow-sm active:scale-95"
+                                title={coverFitMode === 'contain' ? 'Showing full image (Fit Full)' : 'Filling frame (Crop)'}
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-adv-orange" />
+                                <span>{coverFitMode === 'contain' ? (lang === 'lo' ? 'ສະແດງເຕັມຮູບ (Fit Full)' : 'Fit: Full in Frame') : (lang === 'lo' ? 'ເຕັມກອບ (Fill)' : 'Fill: Crop')}</span>
+                              </button>
+                            </div>
+
                             {/* Action Overlay */}
-                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 p-4">
+                            <div className="absolute inset-0 z-30 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2.5 p-4">
                               <button 
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); document.getElementById('main-cover-upload')?.click(); }}
-                                className="text-white font-bold bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl backdrop-blur-md transition-colors text-xs flex items-center gap-1.5 border border-white/30"
+                                className="text-white font-bold bg-white/20 hover:bg-white/30 px-3.5 py-2 rounded-xl backdrop-blur-md transition-colors text-xs flex items-center gap-1.5 border border-white/30 cursor-pointer"
                               >
                                 <RefreshCcw className="w-3.5 h-3.5" />
                                 {lang === 'lo' ? 'ປ່ຽນຮູບ' : 'Change Cover'}
                               </button>
                               <button 
                                 type="button"
+                                onClick={(e) => { e.stopPropagation(); setCoverFitMode(prev => prev === 'contain' ? 'cover' : 'contain'); }}
+                                className="text-white font-bold bg-white/20 hover:bg-white/30 px-3 py-2 rounded-xl backdrop-blur-md transition-colors text-xs flex items-center gap-1.5 border border-white/30 cursor-pointer"
+                              >
+                                <span>{coverFitMode === 'contain' ? (lang === 'lo' ? 'ຕັດໃຫ້ເຕັມກອບ' : 'Fill Frame') : (lang === 'lo' ? 'ສະແດງເຕັມຮູບ' : 'Fit Full')}</span>
+                              </button>
+                              <button 
+                                type="button"
                                 onClick={(e) => { e.stopPropagation(); handleRemoveCover(); }}
-                                className="text-white font-bold bg-rose-500/80 hover:bg-rose-600 px-4 py-2 rounded-xl backdrop-blur-md transition-colors text-xs flex items-center gap-1.5 shadow-md"
+                                className="text-white font-bold bg-rose-500/80 hover:bg-rose-600 px-3.5 py-2 rounded-xl backdrop-blur-md transition-colors text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                                 {lang === 'lo' ? 'ລຶບ' : 'Remove'}
                               </button>
                             </div>
-                          </>
+                          </div>
                         ) : (
                           <>
                             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 transition-colors ${
@@ -2772,31 +2684,38 @@ export default function CreateEvent() {
                               return (
                                 <div 
                                   key={index} 
-                                  className={`relative aspect-video rounded-xl overflow-hidden border-2 transition-all group bg-gray-100 shadow-xs ${
+                                  className={`relative aspect-video rounded-xl overflow-hidden border-2 transition-all group bg-slate-950 shadow-xs flex items-center justify-center ${
                                     isCover ? 'border-adv-orange ring-2 ring-adv-orange/30' : 'border-gray-200/80 hover:border-gray-300'
                                   }`}
                                 >
+                                  {/* Ambient blurred backdrop for slide thumbnail */}
+                                  <img 
+                                    src={imgUrl} 
+                                    alt="" 
+                                    className="absolute inset-0 w-full h-full object-cover blur-xl scale-125 opacity-40 pointer-events-none filter" 
+                                  />
+                                  {/* Full in frame image (object-contain) */}
                                   <img 
                                     src={imgUrl} 
                                     alt={`Slide ${index + 1}`} 
-                                    className="w-full h-full object-cover" 
+                                    className="w-full h-full object-contain relative z-10 pointer-events-none drop-shadow-sm p-0.5" 
                                   />
 
                                   {/* Slide Badge */}
-                                  <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] font-black px-2 py-0.5 rounded-md backdrop-blur-xs">
+                                  <div className="absolute top-2 left-2 z-20 bg-black/60 text-white text-[10px] font-black px-2 py-0.5 rounded-md backdrop-blur-xs">
                                     #{index + 1}
                                   </div>
 
                                   {/* Is Cover Indicator */}
                                   {isCover && (
-                                    <div className="absolute top-2 right-2 bg-adv-orange text-white text-[10px] font-black px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1">
+                                    <div className="absolute top-2 right-2 z-20 bg-adv-orange text-white text-[10px] font-black px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1">
                                       <Sparkles className="w-2.5 h-2.5" />
                                       <span>Cover</span>
                                     </div>
                                   )}
 
                                   {/* Overlay Controls */}
-                                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2 text-center">
+                                  <div className="absolute inset-0 z-30 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2 text-center">
                                     {!isCover && (
                                       <button
                                         type="button"
@@ -3137,212 +3056,171 @@ export default function CreateEvent() {
                   <span className="text-adv-orange font-bold">*</span>
                   <span className="text-adv-slate font-bold text-sm">{t.eventInfo}</span>
                 </div>
-                
-                <div className="border border-gray-200 rounded-xl bg-white shadow-sm relative focus-within:ring-2 focus-within:ring-adv-orange/20 focus-within:border-adv-orange transition-all overflow-hidden">
-                  <div className="p-4 relative">
-                    {/* Floating Inline Luma-style + Button on Empty Paragraphs */}
-                    {plusButtonPos && (
-                      <div
-                        style={{ top: `${plusButtonPos.top}px`, left: `${plusButtonPos.left}px` }}
-                        className="absolute z-20 flex items-center gap-2 pointer-events-auto transition-all duration-150"
-                      >
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowBlockMenu(!showBlockMenu);
-                          }}
-                          className="w-6 h-6 rounded-md bg-white hover:bg-gray-50 text-gray-500 hover:text-gray-800 flex items-center justify-center transition-all cursor-pointer font-bold border border-gray-200 shadow-sm"
-                          title="Add block"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                        <span
-                          onClick={() => setShowBlockMenu(true)}
-                          className="text-gray-400 hover:text-gray-600 text-sm font-medium cursor-pointer select-none transition-colors"
-                        >
-                          {lang === 'lo' ? 'ໃຜຄວນມາຮ່ວມ? ງານນີ້ກ່ຽວກັບຫຍັງ?' : "Who should come? What's the event about?"}
-                        </span>
-                      </div>
-                    )}
 
-                    {/* Block Selection Menu Dropdown */}
-                    {showBlockMenu && (
-                      <div 
-                        ref={blockMenuRef}
-                        style={{
-                          top: `${(plusButtonPos?.top || 12) + 32}px`,
-                          left: `${plusButtonPos?.left || 16}px`
-                        }}
-                        className="absolute z-50 w-72 bg-white text-gray-800 rounded-xl shadow-xl border border-gray-200 p-2 animate-in fade-in zoom-in-95 duration-150"
-                      >
-                        {/* Search Box */}
-                        <div className="relative mb-2 px-1 pt-1">
-                          <input
-                            type="text"
-                            placeholder="Search"
-                            value={blockSearchQuery}
-                            onChange={(e) => setBlockSearchQuery(e.target.value)}
-                            className="w-full bg-gray-50 text-sm text-gray-800 px-3 py-2 rounded-lg border border-gray-200 outline-none placeholder:text-gray-400 focus:border-adv-orange focus:ring-1 focus:ring-adv-orange transition-all"
-                            autoFocus
-                          />
-                        </div>
-
-                        <div className="space-y-0.5 max-h-[300px] overflow-y-auto custom-scrollbar">
-                          {[
-                            { id: 'link', label: lang === 'lo' ? 'ເພີ່ມລິ້ງ (Hyperlink)' : 'Insert Link', icon: LinkIcon },
-                            { id: 'h1', label: 'Heading', icon: Heading1 },
-                            { id: 'h2', label: 'Subheading', icon: Heading2 },
-                            { id: 'attachment', label: 'Image', icon: ImageIcon },
-                            { id: 'blockquote', label: 'Blockquote', icon: Quote },
-                            { id: 'divider', label: 'Divider', icon: Minus },
-                            { id: 'list', label: 'List', icon: List },
-                            { id: 'numbered_list', label: 'Numbered List', icon: ListOrdered },
-                            { id: 'attachment_doc', label: 'Attachment', icon: Paperclip },
-                          ]
-                            .filter(item => item.label.toLowerCase().includes(blockSearchQuery.toLowerCase()))
-                            .map((item) => {
-                              const IconComp = item.icon;
-                              return (
-                                <button
-                                  key={item.id}
-                                  type="button"
-                                  onClick={() => handleInsertBlock(item.id)}
-                                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-900 flex items-center transition-colors cursor-pointer group gap-3"
-                                >
-                                  <div className="text-gray-400 group-hover:text-gray-600">
-                                    <IconComp className="w-4 h-4" />
-                                  </div>
-                                  <span className="text-sm font-medium">{item.label}</span>
-                                </button>
-                              );
-                            })}
-                        </div>
-                      </div>
-                    )}
+                {/* Refined Comprehensive Rich-Text Editor Toolbar */}
+                <div className="w-full bg-[#F6F4EF] border border-[#E8E5DC] rounded-[20px] p-2.5 mb-4 shadow-sm select-none">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                     
-                    {/* Formatting Selection Menu */}
-                    {selectionMenuPos && (
-                      <div
-                        style={{
-                          top: `${selectionMenuPos.top}px`,
-                          left: `${selectionMenuPos.left}px`,
-                        }}
-                        className="fixed z-[100] flex items-center bg-[#1C1C1E] text-zinc-300 rounded-xl shadow-2xl border border-white/10 px-2 py-2 animate-in fade-in zoom-in-95 duration-150 gap-1"
-                        onMouseDown={(e) => {
-                          if (!showLinkInput) {
-                            e.preventDefault();
-                          }
-                        }}
-                      >
-                        {showLinkInput ? (
-                          <div className="flex items-center gap-2 px-1 w-64" onMouseDown={(e) => e.stopPropagation()}>
-                            <input
-                              type="url"
-                              value={linkUrl}
-                              onChange={(e) => setLinkUrl(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  applyFloatingLink();
-                                } else if (e.key === 'Escape') {
-                                  e.preventDefault();
-                                  setShowLinkInput(false);
-                                  setLinkUrl('');
-                                  setSavedSelectionRange(null);
-                                }
-                              }}
-                              placeholder="Enter link URL"
-                              className="flex-1 bg-transparent text-sm text-white placeholder-zinc-500 outline-none border-none py-1"
-                              autoFocus
-                            />
-                            <button
-                              type="button"
-                              onClick={applyFloatingLink}
-                              className="w-7 h-7 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors shrink-0"
-                            >
-                              <Check className="w-4 h-4" />
+                    {/* History */}
+                    <div className="h-8 bg-[#EAE8E2] rounded-xl p-0.5 flex items-center gap-0.5 shadow-xs border border-black/5">
+                      <button type="button" onClick={() => document.execCommand('undo')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Undo">
+                        <Undo className="w-3.5 h-3.5" />
+                      </button>
+                      <button type="button" onClick={() => document.execCommand('redo')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Redo">
+                        <Redo className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="w-px h-5 bg-gray-300 mx-0.5"></div>
+
+                    {/* Font Dropdown */}
+                    <div className="relative">
+                      <button type="button" onClick={() => { setShowFontMenu(!showFontMenu); setShowFontSizeMenu(false); setShowColorMenu(false); setShowToolbarLinkModal(false); }} className="h-8 bg-[#EAE8E2] hover:bg-[#E2DFD8] active:scale-95 text-gray-800 text-xs font-semibold px-2.5 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-xs border border-black/5" title="Font Family">
+                        <span className="truncate max-w-[70px]">{selectedFont}</span>
+                        <ChevronDown className="w-3 h-3 text-gray-500 shrink-0" />
+                      </button>
+                      {showFontMenu && (
+                        <div className="absolute top-full left-0 mt-1 w-44 bg-white rounded-xl shadow-xl border border-gray-150 py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+                          {fontOptions.map((f) => (
+                            <button key={f.label} type="button" onClick={() => applyToolbarFont(f.label, f.value)} className={`w-full text-left px-3 py-1.5 text-xs hover:bg-orange-50 hover:text-adv-orange flex items-center justify-between transition-colors ${selectedFont === f.label ? 'text-adv-orange font-bold bg-orange-50/50' : 'text-gray-700'}`} style={{ fontFamily: f.value }}>
+                              <span>{f.label}</span>
+                              {selectedFont === f.label && <Check className="w-3 h-3 text-adv-orange" />}
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShowLinkInput(false);
-                                setLinkUrl('');
-                                setSavedSelectionRange(null);
-                              }}
-                              className="w-7 h-7 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors shrink-0"
-                            >
-                              <Trash2 className="w-4 h-4" />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Size Dropdown */}
+                    <div className="relative">
+                      <button type="button" onClick={() => { setShowFontSizeMenu(!showFontSizeMenu); setShowFontMenu(false); setShowColorMenu(false); setShowToolbarLinkModal(false); }} className="h-8 bg-[#EAE8E2] hover:bg-[#E2DFD8] active:scale-95 text-gray-800 text-xs font-semibold px-2 rounded-xl flex items-center gap-1 transition-all cursor-pointer shadow-xs border border-black/5" title="Font Size">
+                        <span>{selectedFontSize}</span>
+                        <ChevronDown className="w-3 h-3 text-gray-500 shrink-0" />
+                      </button>
+                      {showFontSizeMenu && (
+                        <div className="absolute top-full left-0 mt-1 w-20 bg-white rounded-xl shadow-xl border border-gray-150 py-1 z-50 max-h-48 overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95 duration-100">
+                          {fontSizeOptions.map((sz) => (
+                            <button key={sz} type="button" onClick={() => applyToolbarFontSize(sz)} className={`w-full text-left px-3 py-1.5 text-xs hover:bg-orange-50 hover:text-adv-orange flex items-center justify-between transition-colors ${selectedFontSize === sz ? 'text-adv-orange font-bold bg-orange-50/50' : 'text-gray-700'}`}>
+                              <span>{sz}</span>
+                              {selectedFontSize === sz && <Check className="w-3 h-3 text-adv-orange" />}
                             </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Color Picker */}
+                    <div className="relative">
+                      <button type="button" onClick={() => { setShowColorMenu(!showColorMenu); setShowFontMenu(false); setShowFontSizeMenu(false); setShowToolbarLinkModal(false); }} className="h-8 bg-[#EAE8E2] hover:bg-[#E2DFD8] active:scale-95 text-gray-800 rounded-xl px-2 flex items-center gap-1 transition-all cursor-pointer shadow-xs border border-black/5" title="Text Color">
+                        <div className="flex flex-col items-center justify-center leading-none">
+                          <span className="font-extrabold text-[12px] leading-tight text-gray-800">T</span>
+                          <span className="w-3 h-[3px] rounded-full mt-0.5 shadow-xs" style={{ backgroundColor: selectedTextColor }} />
+                        </div>
+                        <ChevronDown className="w-3 h-3 text-gray-500 shrink-0" />
+                      </button>
+                      {showColorMenu && (
+                        <div className="absolute top-full left-0 mt-1 w-44 bg-white rounded-xl shadow-xl border border-gray-150 p-2.5 z-50 animate-in fade-in zoom-in-95 duration-100 space-y-2">
+                          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Select Color</div>
+                          <div className="grid grid-cols-5 gap-1.5">
+                            {colorPalette.map((col) => (
+                              <button key={col.value} type="button" onClick={() => applyToolbarTextColor(col.value)} className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-transform hover:scale-110 ${selectedTextColor === col.value ? 'border-gray-800 ring-2 ring-adv-orange/40 scale-105' : 'border-gray-200'}`} style={{ backgroundColor: col.value }} title={col.label}>
+                                {selectedTextColor === col.value && <Check className="w-3 h-3 text-white drop-shadow-xs" />}
+                              </button>
+                            ))}
                           </div>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => execCommand('formatBlock', 'H2')}
-                              className="w-8 h-8 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors font-semibold"
-                              title="Heading 1"
-                            >
-                              H1
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => execCommand('formatBlock', 'H3')}
-                              className="w-8 h-8 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors font-semibold"
-                              title="Heading 2"
-                            >
-                              H2
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => execCommand('bold')}
-                              className="w-8 h-8 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors font-bold text-lg"
-                              title="Bold"
-                            >
-                              B
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => execCommand('italic')}
-                              className="w-8 h-8 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors font-serif italic text-lg"
-                              title="Italic"
-                            >
-                              I
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                const sel = window.getSelection();
-                                if (!sel || sel.rangeCount === 0) return;
-                                setSavedSelectionRange(sel.getRangeAt(0).cloneRange());
-                                setShowLinkInput(true);
-                                setLinkUrl('');
-                              }}
-                              className="w-8 h-8 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors"
-                              title="Link"
-                            >
-                              <LinkIcon className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                try {
-                                  execCommand('formatBlock', 'blockquote');
-                                } catch (e) {
-                                  execCommand('formatBlock', 'BLOCKQUOTE');
-                                }
-                              }}
-                              className="w-8 h-8 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors font-serif text-lg leading-none pt-1"
-                              title="Blockquote"
-                            >
-                              &rdquo;
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-                    
+                          <div className="pt-1 border-t border-gray-100 flex items-center gap-1.5">
+                            <input type="color" value={selectedTextColor} onChange={(e) => applyToolbarTextColor(e.target.value)} className="w-6 h-6 rounded border-0 cursor-pointer p-0 bg-transparent" title="Custom color" />
+                            <span className="text-[11px] text-gray-600 font-mono">{selectedTextColor}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="w-px h-5 bg-gray-300 mx-0.5"></div>
+
+                    {/* Headings & Quote */}
+                    <div className="h-8 bg-[#EAE8E2] rounded-xl p-0.5 flex items-center gap-0.5 shadow-xs border border-black/5">
+                      <button type="button" onClick={() => execCommand('formatBlock', 'H2')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Heading 1">
+                        <Heading1 className="w-3.5 h-3.5" />
+                      </button>
+                      <button type="button" onClick={() => execCommand('formatBlock', 'H3')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Heading 2">
+                        <Heading2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button type="button" onClick={() => { try { execCommand('formatBlock', 'blockquote'); } catch(e) { execCommand('formatBlock', 'BLOCKQUOTE'); } }} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Blockquote">
+                        <Quote className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="w-px h-5 bg-gray-300 mx-0.5"></div>
+
+                    {/* Inline Formats */}
+                    <div className="h-8 bg-[#EAE8E2] rounded-xl p-0.5 flex items-center gap-0.5 shadow-xs border border-black/5">
+                      <button type="button" onClick={() => execCommand('bold')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-800 hover:text-black flex items-center justify-center font-bold text-xs transition-all cursor-pointer" title="Bold">B</button>
+                      <button type="button" onClick={() => execCommand('italic')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-800 hover:text-black flex items-center justify-center font-serif italic text-xs transition-all cursor-pointer" title="Italic">I</button>
+                      <button type="button" onClick={() => execCommand('underline')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-800 hover:text-black flex items-center justify-center font-semibold underline text-xs transition-all cursor-pointer" title="Underline">U</button>
+                      <button type="button" onClick={() => execCommand('strikethrough')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-800 hover:text-black flex items-center justify-center font-semibold line-through text-xs transition-all cursor-pointer" title="Strikethrough">S</button>
+                    </div>
+
+                    {/* Script */}
+                    <div className="h-8 bg-[#EAE8E2] rounded-xl p-0.5 flex items-center gap-0.5 shadow-xs border border-black/5">
+                      <button type="button" onClick={() => execCommand('superscript')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center text-xs font-bold transition-all cursor-pointer" title="Superscript"><span className="text-[11px] font-bold">T<sup className="text-[8px]">↑</sup></span></button>
+                      <button type="button" onClick={() => execCommand('subscript')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center text-xs font-bold transition-all cursor-pointer" title="Subscript"><span className="text-[11px] font-bold">T<sub className="text-[8px]">↓</sub></span></button>
+                    </div>
+
+                    <div className="w-px h-5 bg-gray-300 mx-0.5"></div>
+
+                    {/* Alignment */}
+                    <div className="h-8 bg-[#EAE8E2] rounded-xl p-0.5 flex items-center gap-0.5 shadow-xs border border-black/5">
+                      <button type="button" onClick={() => execCommand('justifyLeft')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Align Left"><AlignLeft className="w-3.5 h-3.5" /></button>
+                      <button type="button" onClick={() => execCommand('justifyCenter')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Align Center"><AlignCenter className="w-3.5 h-3.5" /></button>
+                      <button type="button" onClick={() => execCommand('justifyRight')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Align Right"><AlignRight className="w-3.5 h-3.5" /></button>
+                      <button type="button" onClick={() => execCommand('justifyFull')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Justify"><AlignJustify className="w-3.5 h-3.5" /></button>
+                    </div>
+
+                    <div className="w-px h-5 bg-gray-300 mx-0.5"></div>
+
+                    {/* Lists */}
+                    <div className="h-8 bg-[#EAE8E2] rounded-xl p-0.5 flex items-center gap-0.5 shadow-xs border border-black/5">
+                      <button type="button" onClick={() => execCommand('insertUnorderedList')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Bullet List"><List className="w-3.5 h-3.5" /></button>
+                      <button type="button" onClick={() => execCommand('insertOrderedList')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Numbered List"><ListOrdered className="w-3.5 h-3.5" /></button>
+                    </div>
+
+                    <div className="w-px h-5 bg-gray-300 mx-0.5"></div>
+
+                    {/* Inserts & Links */}
+                    <div className="h-8 bg-[#EAE8E2] rounded-xl p-0.5 flex items-center gap-0.5 shadow-xs border border-black/5 relative">
+                      {/* Link Modal Popup inside the group */}
+                      {showToolbarLinkModal && (
+                        <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-150 p-2.5 z-50 animate-in fade-in zoom-in-95 duration-100 space-y-2">
+                          <input type="url" value={toolbarLinkUrl} onChange={(e) => setToolbarLinkUrl(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyToolbarLink(); } else if (e.key === 'Escape') { setShowToolbarLinkModal(false); } }} placeholder="https://example.com" className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-adv-orange focus:ring-1 focus:ring-adv-orange" autoFocus />
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button type="button" onClick={() => setShowToolbarLinkModal(false)} className="px-2 py-1 text-[11px] text-gray-500 hover:text-gray-800 rounded-md">Cancel</button>
+                            <button type="button" onClick={applyToolbarLink} className="px-2.5 py-1 text-[11px] bg-adv-orange text-white font-bold rounded-md shadow-xs hover:bg-orange-600">Apply</button>
+                          </div>
+                        </div>
+                      )}
+                      <button type="button" onClick={() => { const sel = window.getSelection(); if (sel && sel.rangeCount > 0) { setSavedSelectionRange(sel.getRangeAt(0).cloneRange()); } setShowToolbarLinkModal(true); setShowColorMenu(false); setShowFontMenu(false); setShowFontSizeMenu(false); }} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Insert Link"><LinkIcon className="w-3.5 h-3.5" /></button>
+                      <button type="button" onClick={() => execCommand('unlink')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Remove Link"><Unlink className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" /></button>
+                      
+                      <div className="w-px h-4 bg-gray-300 mx-0.5"></div>
+                      
+                      <button type="button" onClick={handleEditorImageUpload} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Insert Image"><ImageIcon className="w-3.5 h-3.5" /></button>
+                      <button type="button" onClick={() => execCommand('insertHorizontalRule')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Divider Line"><Minus className="w-3.5 h-3.5" /></button>
+                      <button type="button" onClick={insertCalloutBlock} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Insert Callout Note"><MessageSquare className="w-3.5 h-3.5" /></button>
+                    </div>
+
+                    <div className="flex-1"></div>
+
+                    {/* Clear Format */}
+                    <div className="h-8 bg-[#EAE8E2] rounded-xl p-0.5 flex items-center shadow-xs border border-black/5">
+                      <button type="button" onClick={() => execCommand('removeFormat')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Clear Formatting"><RemoveFormatting className="w-3.5 h-3.5" /></button>
+                    </div>
+
+                  </div>
+                </div>
+                
+<div className="border border-gray-200 rounded-xl bg-white shadow-sm relative focus-within:ring-2 focus-within:ring-adv-orange/20 focus-within:border-adv-orange transition-all overflow-hidden">
+                  <div className="p-4 relative">
                     {/* Editor Area */}
                     <div 
                       ref={editorRef}
@@ -4524,18 +4402,6 @@ export default function CreateEvent() {
                   <div className="space-y-4 mb-8">
                     <div className="bg-orange-50 border border-orange-100 p-5 rounded-2xl flex gap-4">
                       <div className="shrink-0 mt-0.5">
-                        <AlertCircle className="w-5 h-5 text-adv-orange" />
-                      </div>
-                      <p className="text-gray-700 text-sm leading-relaxed">
-                        {lang === 'en' ? 
-                          "Please " + t.notification1 : 
-                          "ກະລຸນາ " + t.notification1
-                        }
-                      </p>
-                    </div>
-
-                    <div className="bg-orange-50 border border-orange-100 p-5 rounded-2xl flex gap-4">
-                      <div className="shrink-0 mt-0.5">
                         <ShieldAlert className="w-5 h-5 text-adv-orange" />
                       </div>
                       <p className="text-gray-700 text-sm leading-relaxed">
@@ -4595,9 +4461,12 @@ export default function CreateEvent() {
                            <ImageIcon className="w-5 h-5 text-adv-orange" />
                            Vertical Banner (720x958)
                          </h4>
-                         <div className="aspect-[3/4] bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden">
+                         <div className="aspect-[3/4] bg-slate-950 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden relative">
                            {verticalImage ? (
-                             <img src={verticalImage} className="w-full h-full object-cover" alt="Preview" />
+                             <>
+                               <img src={verticalImage} className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 filter scale-110" alt="" />
+                               <img src={verticalImage} className="w-full h-full object-contain relative z-10 p-1 drop-shadow-md" alt="Preview" />
+                             </>
                            ) : (
                              <div className="text-center p-6 text-gray-400">
                                <p className="text-sm font-bold uppercase tracking-widest text-adv-slate/20">Main Poster</p>
@@ -4610,9 +4479,12 @@ export default function CreateEvent() {
                            <ImageIcon className="w-5 h-5 text-adv-orange" />
                            Horizontal Background (1280x720)
                          </h4>
-                         <div className="aspect-video bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden">
+                         <div className="aspect-video bg-slate-950 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden relative">
                            {horizontalImage ? (
-                             <img src={horizontalImage} className="w-full h-full object-cover" alt="Preview" />
+                             <>
+                               <img src={horizontalImage} className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 filter scale-110" alt="" />
+                               <img src={horizontalImage} className="w-full h-full object-contain relative z-10 p-1 drop-shadow-md" alt="Preview" />
+                             </>
                            ) : (
                              <div className="text-center p-6 text-gray-400">
                                <p className="text-sm font-bold uppercase tracking-widest text-adv-slate/20">Page Cover</p>
@@ -4628,26 +4500,10 @@ export default function CreateEvent() {
           </AnimatePresence>
             {activeTab === 'myEvents' && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-2xl font-bold text-adv-slate mb-2">{t.myEvents}</h2>
                     <p className="text-gray-500 font-medium">{t.manageEventsDesc}</p>
-                  </div>
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                  <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
-                    <h3 className="text-gray-400 font-bold text-xs uppercase tracking-wider mb-2">{t.totalEvents}</h3>
-                    <div className="text-3xl font-extrabold text-adv-slate">{localEvents.length}</div>
-                  </div>
-                  <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
-                    <h3 className="text-gray-400 font-bold text-xs uppercase tracking-wider mb-2">{t.totalTicketsSold}</h3>
-                    <div className="text-3xl font-extrabold text-adv-slate">{(localEvents.length * 450).toLocaleString()}</div>
-                  </div>
-                  <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
-                    <h3 className="text-gray-400 font-bold text-xs uppercase tracking-wider mb-2">{t.totalRevenue}</h3>
-                    <div className="text-3xl font-extrabold text-adv-orange">{(localEvents.length * 15000000).toLocaleString()} {currency}</div>
                   </div>
                 </div>
 
@@ -4659,7 +4515,6 @@ export default function CreateEvent() {
                         <tr>
                           <th className="p-4 font-bold text-gray-500 uppercase tracking-wider text-xs">{t.eventName}</th>
                           <th className="p-4 font-bold text-gray-500 uppercase tracking-wider text-xs">{t.date}</th>
-                          <th className="p-4 font-bold text-gray-500 uppercase tracking-wider text-xs">{lang === 'lo' ? 'ລາຄາປີ້' : 'Ticket Price'}</th>
                           <th className="p-4 font-bold text-gray-500 uppercase tracking-wider text-xs">{t.status}</th>
                           <th className="p-4 font-bold text-gray-500 uppercase tracking-wider text-xs">{t.sales}</th>
                           <th className="p-4 font-bold text-gray-500 uppercase tracking-wider text-xs text-right">{t.actions}</th>
@@ -4671,7 +4526,6 @@ export default function CreateEvent() {
                           const daysUntil = getDaysUntilEvent(event.date);
                           const isFlexible = event.dateType === 'flexible';
                           const canEdit = isFlexible || daysUntil >= 7;
-                          const displayPrice = event.price || (event.ticketTiers && event.ticketTiers[0]?.price ? `${(Number(String(event.ticketTiers[0].price).replace(/,/g, '')) || 0).toLocaleString()} ${currency}` : `0 ${currency}`);
                           return (
                             <tr 
                               key={event.id} 
@@ -4707,18 +4561,13 @@ export default function CreateEvent() {
                                       </>
                                     )}
                                   </div>
-                                  {(event.time || event.endTime) && (
+                                  {event.time && (
                                     <div className="text-xs text-gray-400 font-bold flex items-center gap-1">
                                       <Clock className="w-3.5 h-3.5 text-gray-400" />
-                                      {event.time || '00:00'} - {event.endTime || '23:59'}
+                                      {event.time}
                                     </div>
                                   )}
                                 </div>
-                              </td>
-                              <td className="p-4 font-black text-adv-orange text-xs whitespace-nowrap">
-                                <span className="px-2.5 py-1 bg-orange-50 text-adv-orange rounded-lg border border-orange-100/60 inline-block">
-                                  {displayPrice}
-                                </span>
                               </td>
                               <td className="p-4">
                                 {event.status === 'pending' ? (
@@ -4869,21 +4718,6 @@ export default function CreateEvent() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 shadow-sm">
-                      <h4 className="text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">{lang === 'lo' ? 'ຜູ້ຈັດງານ' : 'Organizer'}</h4>
-                      <p className="text-adv-slate font-extrabold text-lg">{selectedEvent.organizer || 'Unknown'}</p>
-                    </div>
-                    <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 shadow-sm">
-                      <h4 className="text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">{lang === 'lo' ? 'ຍອດຂາຍ' : 'Sales'}</h4>
-                      <p className="text-adv-slate font-extrabold text-2xl">{Math.floor(Math.random() * 500) + 50}</p>
-                    </div>
-                    <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100 shadow-sm">
-                      <h4 className="text-xs font-bold text-adv-orange/60 mb-2 uppercase tracking-wider">{lang === 'lo' ? 'ລາຍຮັບ' : 'Revenue'}</h4>
-                      <p className="text-adv-orange font-extrabold text-2xl">{(Math.floor(Math.random() * 50000000)).toLocaleString()} {currency}</p>
-                    </div>
-                  </div>
-
                   {/* Ticket Price & Tiers Information */}
                   <div className="bg-gray-50/80 p-6 rounded-[24px] border border-gray-100 space-y-4 shadow-sm">
                     <div className="flex items-center justify-between">
@@ -4982,69 +4816,6 @@ export default function CreateEvent() {
                     </div>
                   </div>
 
-                  {/* Event Features Configuration (Read-Only for Organizers) */}
-                    <div className="bg-gray-50 p-6 rounded-[24px] border border-gray-100 space-y-4 shadow-sm">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-adv-slate flex items-center gap-2">
-                          <Settings className="w-4 h-4 text-adv-orange" />
-                          {lang === 'lo' ? 'ການຕັ້ງຄ່າຄຸນສົມບັດ Event' : 'Event Features Configuration'}
-                        </h4>
-                        <span className="text-[10px] bg-amber-50 text-amber-700 font-extrabold px-2.5 py-1 rounded-full border border-amber-200 uppercase tracking-wider flex items-center gap-1">
-                          <Lock className="w-3 h-3 text-amber-600" />
-                          {lang === 'lo' ? 'ເບິ່ງຢ່າງດຽວ' : 'Read-Only'}
-                        </span>
-                      </div>
-
-                      <div className="p-3 bg-amber-50/80 border border-amber-100 rounded-xl flex items-center gap-2 text-xs text-amber-800 font-semibold">
-                        <Lock className="w-4 h-4 text-amber-600 shrink-0" />
-                        <span>
-                          {lang === 'lo'
-                            ? 'ການຕັ້ງຄ່າ Event ຖືກລັອກຫຼັງຈາກສົ່ງ. ຕິດຕໍ່ Admin ຖ້າຕ້ອງການປ່ຽນແປງ.'
-                            : 'Event settings are read-only after submission. Contact admin to reconfigure.'}
-                        </span>
-                      </div>
-                      
-                      {selectedEvent.dateType === 'fixed' && (
-                        <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-150/50 shadow-sm">
-                          <div>
-                            <h5 className="text-sm font-bold text-adv-slate flex items-center gap-1.5">
-                              ⏱️ {t.enableCountdown}
-                            </h5>
-                            <p className="text-xs text-gray-400 font-semibold mt-1 max-w-xl">
-                              {t.enableCountdownDesc}
-                            </p>
-                          </div>
-                          <button 
-                            onClick={() => setShowEditBlockedModal(true)}
-                            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors text-xs font-bold border border-gray-200 flex items-center gap-1.5 shrink-0"
-                            title={lang === 'lo' ? 'ຕິດຕໍ່ Admin ເພື່ອແກ້ໄຂ' : 'Contact Admin to Edit'}
-                          >
-                            <Lock className="w-3.5 h-3.5 text-amber-600" />
-                            <span>{selectedEvent.enableCountdown !== false ? (lang === 'lo' ? 'ເປີດ' : 'Enabled') : (lang === 'lo' ? 'ປິດ' : 'Disabled')}</span>
-                          </button>
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-150/50 shadow-sm">
-                        <div>
-                          <h5 className="text-sm font-bold text-adv-slate flex items-center gap-1.5">
-                            👥 {t.requireEveryTicketInfo}
-                          </h5>
-                          <p className="text-xs text-gray-400 font-semibold mt-1 max-w-xl">
-                            {t.requireEveryTicketInfoDesc}
-                          </p>
-                        </div>
-                        <button 
-                          onClick={() => setShowEditBlockedModal(true)}
-                          className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors text-xs font-bold border border-gray-200 flex items-center gap-1.5 shrink-0"
-                          title={lang === 'lo' ? 'ຕິດຕໍ່ Admin ເພື່ອແກ້ໄຂ' : 'Contact Admin to Edit'}
-                        >
-                          <Lock className="w-3.5 h-3.5 text-amber-600" />
-                          <span>{selectedEvent.requireEveryTicketInfo !== false ? (lang === 'lo' ? 'ເປີດ' : 'Enabled') : (lang === 'lo' ? 'ປິດ' : 'Disabled')}</span>
-                        </button>
-                      </div>
-                    </div>
-
                   {/* Schedule and Location */}
                   <div className="grid grid-cols-1 md:grid-cols-1 gap-6 bg-gray-50/50 p-6 rounded-[24px] border border-gray-100">
                     <div className="space-y-4">
@@ -5067,10 +4838,10 @@ export default function CreateEvent() {
                             </>
                           )}
                         </p>
-                        {(selectedEvent.time || selectedEvent.endTime) && (
+                        {selectedEvent.time && (
                           <p className="text-sm text-gray-500 font-bold flex items-center gap-1.5">
                             <Clock className="w-4 h-4 text-gray-400" />
-                            {selectedEvent.time || '00:00'} - {selectedEvent.endTime || '23:59'}
+                            {selectedEvent.time}
                           </p>
                         )}
                       </div>
@@ -5259,36 +5030,118 @@ export default function CreateEvent() {
                  )}
                  <div className={previewDeviceMode === 'mobile' ? 'flex-1 overflow-y-auto px-4 py-8 space-y-6 scrollbar-hide' : 'space-y-8'}>
 
-                {/* Hero Banner Cover */}
-                <div className="relative rounded-3xl overflow-hidden bg-slate-800 aspect-[21/9] min-h-[260px] shadow-2xl border border-gray-200">
-                  <img 
-                    src={previewData.horizontalImage || previewData.image} 
-                    alt={previewData.title} 
-                    className="w-full h-full object-cover"
-                  />
-                  <div className={`absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent flex flex-col justify-end p-6 ${previewDeviceMode === 'desktop' ? 'md:p-10' : ''}`}>
-                    <div className="flex flex-wrap items-center gap-2 mb-3">
-                      <span className="px-3 py-1 bg-adv-orange text-white text-xs font-black uppercase tracking-wider rounded-lg shadow-md">
-                        {previewData.category}
-                      </span>
-                      <span className="px-3 py-1 bg-white/20 backdrop-blur-md text-white text-xs font-bold rounded-lg border border-white/30">
-                        {previewData.eventType === 'online' ? 'Online Event' : (previewData.province || 'Offline Event')}
-                      </span>
-                      {previewData.dateType === 'flexible' && (
-                        <span className="px-3 py-1 bg-amber-400 text-slate-950 text-xs font-black rounded-lg uppercase tracking-wider">
-                          Flexible Date
-                        </span>
-                      )}
-                    </div>
-                    <h1 className={`font-extrabold text-white tracking-tight mb-2 text-2xl ${previewDeviceMode === 'desktop' ? 'md:text-4xl' : ''}`}>
-                      {previewData.title}
-                    </h1>
-                    <p className="text-slate-300 text-sm font-medium flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-adv-orange shrink-0" />
-                      {previewData.venue} • {previewData.district}, {previewData.province}
-                    </p>
-                  </div>
-                </div>
+                 {/* Hero Banner Cover with Image Slide Carousel */}
+                 {(() => {
+                   const previewImages: string[] = [
+                     previewData.horizontalImage,
+                     previewData.image,
+                     ...(previewData.exampleImages || [])
+                   ].filter((img, idx, arr) => Boolean(img) && arr.indexOf(img) === idx);
+                   const currentHeroImg = previewImages[previewImageIndex] || previewData.horizontalImage || previewData.image;
+
+                   return (
+                     <div className="relative rounded-3xl overflow-hidden bg-slate-950 aspect-[21/9] min-h-[260px] shadow-2xl border border-gray-200 group/slider select-none">
+                       <AnimatePresence mode="wait">
+                         <motion.div 
+                           key={previewImageIndex}
+                           initial={{ opacity: 0.7 }}
+                           animate={{ opacity: 1 }}
+                           exit={{ opacity: 0.5 }}
+                           transition={{ duration: 0.3 }}
+                           className="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
+                         >
+                           {/* Ambient Blurred Background to frame non-16:9 images */}
+                           <img 
+                             src={currentHeroImg} 
+                             alt="" 
+                             className="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-40 brightness-75 pointer-events-none filter" 
+                           />
+                           {/* Full In-Frame Image */}
+                           <img 
+                             src={currentHeroImg} 
+                             alt={previewData.title} 
+                             className="w-full h-full object-contain relative z-10 drop-shadow-2xl pointer-events-none" 
+                           />
+                         </motion.div>
+                       </AnimatePresence>
+
+                       {/* Slider Left / Right Navigation Controls */}
+                       {previewImages.length > 1 && (
+                         <>
+                           <button 
+                             type="button"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               setPreviewImageIndex(prev => (prev === 0 ? previewImages.length - 1 : prev - 1));
+                             }}
+                             className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-md flex items-center justify-center text-white z-20 active:scale-95 transition-all cursor-pointer shadow-lg border border-white/20"
+                             aria-label="Previous slide image"
+                           >
+                             <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+                           </button>
+                           <button 
+                             type="button"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               setPreviewImageIndex(prev => (prev === previewImages.length - 1 ? 0 : prev + 1));
+                             }}
+                             className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-md flex items-center justify-center text-white z-20 active:scale-95 transition-all cursor-pointer shadow-lg border border-white/20"
+                             aria-label="Next slide image"
+                           >
+                             <ChevronRight className="w-5 h-5 stroke-[2.5]" />
+                           </button>
+
+                           {/* Slide Counter & Dots */}
+                           <div className="absolute top-4 right-4 z-20 bg-black/50 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-white border border-white/20">
+                             {previewImageIndex + 1} / {previewImages.length}
+                           </div>
+
+                           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
+                             {previewImages.map((_, idx) => (
+                               <button
+                                 key={idx}
+                                 type="button"
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   setPreviewImageIndex(idx);
+                                 }}
+                                 className={`transition-all rounded-full cursor-pointer ${
+                                   idx === previewImageIndex 
+                                     ? 'w-5 h-2 bg-adv-orange' 
+                                     : 'w-2 h-2 bg-white/60 hover:bg-white'
+                                 }`}
+                                 aria-label={`Slide ${idx + 1}`}
+                               />
+                             ))}
+                           </div>
+                         </>
+                       )}
+
+                       <div className={`absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/40 to-transparent flex flex-col justify-end p-6 ${previewDeviceMode === 'desktop' ? 'md:p-10' : ''} pointer-events-none`}>
+                         <div className="flex flex-wrap items-center gap-2 mb-3 pointer-events-auto">
+                           <span className="px-3 py-1 bg-adv-orange text-white text-xs font-black uppercase tracking-wider rounded-lg shadow-md">
+                             {previewData.category}
+                           </span>
+                           <span className="px-3 py-1 bg-white/20 backdrop-blur-md text-white text-xs font-bold rounded-lg border border-white/30">
+                             {previewData.eventType === 'online' ? 'Online Event' : (previewData.province || 'Offline Event')}
+                           </span>
+                           {previewData.dateType === 'flexible' && (
+                             <span className="px-3 py-1 bg-amber-400 text-slate-950 text-xs font-black rounded-lg uppercase tracking-wider">
+                               Flexible Date
+                             </span>
+                           )}
+                         </div>
+                         <h1 className={`font-extrabold text-white tracking-tight mb-2 text-2xl ${previewDeviceMode === 'desktop' ? 'md:text-4xl' : ''}`}>
+                           {previewData.title}
+                         </h1>
+                         <p className="text-slate-300 text-sm font-medium flex items-center gap-2">
+                           <MapPin className="w-4 h-4 text-adv-orange shrink-0" />
+                           {previewData.venue} • {previewData.district}, {previewData.province}
+                         </p>
+                       </div>
+                     </div>
+                   );
+                 })()}
 
                 {/* Main Content Grid */}
                 <div className={`grid grid-cols-1 gap-8 ${previewDeviceMode === 'desktop' ? 'lg:grid-cols-3' : ''}`}>
@@ -5318,7 +5171,7 @@ export default function CreateEvent() {
                         <div>
                           <div className="text-xs text-gray-400 font-bold uppercase">{lang === 'lo' ? 'ເວລາ' : 'Time'}</div>
                           <div className="text-sm font-bold text-adv-slate">
-                            {previewData.time || '00:00'} {previewData.endTime ? `- ${previewData.endTime}` : ''}
+                            {previewData.time || '18:00'}
                           </div>
                         </div>
                       </div>
@@ -5342,11 +5195,28 @@ export default function CreateEvent() {
                       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
                         <h3 className="text-lg font-bold text-adv-slate flex items-center gap-2">
                           <ImageIcon className="w-5 h-5 text-adv-orange" />
-                          {lang === 'lo' ? 'ຮູບພາບປະກອບ' : 'Event Gallery'}
+                          {lang === 'lo' ? 'ຮູບພາບປະກອບ (ກົດເພື່ອປ່ຽນສະໄລດ໌)' : 'Event Gallery (Click to view)'}
                         </h3>
                         <div className={`grid grid-cols-2 gap-3 ${previewDeviceMode === 'desktop' ? 'sm:grid-cols-3' : ''}`}>
                           {previewData.exampleImages.map((img: string, idx: number) => (
-                            <img key={idx} src={img} alt={`Gallery ${idx}`} className="w-full h-32 object-cover rounded-xl border border-gray-100 shadow-sm" />
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                const allImgs: string[] = [
+                                  previewData.horizontalImage,
+                                  previewData.image,
+                                  ...(previewData.exampleImages || [])
+                                ].filter((im, i, a) => Boolean(im) && a.indexOf(im) === i);
+                                const matchIdx = allImgs.indexOf(img);
+                                if (matchIdx !== -1) setPreviewImageIndex(matchIdx);
+                              }}
+                              className="relative group/thumb overflow-hidden rounded-xl border border-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-adv-orange bg-slate-950 h-32 flex items-center justify-center"
+                            >
+                              <img src={img} alt="" className="absolute inset-0 w-full h-full object-cover blur-md opacity-40 filter scale-110 pointer-events-none" />
+                              <img src={img} alt={`Gallery ${idx}`} className="w-full h-full object-contain relative z-10 group-hover/thumb:scale-105 transition-transform duration-300 drop-shadow-sm p-1 pointer-events-none" />
+                              <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-colors z-20" />
+                            </button>
                           ))}
                         </div>
                       </div>

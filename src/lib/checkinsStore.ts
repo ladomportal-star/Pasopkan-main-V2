@@ -302,14 +302,7 @@ export function getAllCheckins(): CheckinRecord[] {
 
 export function getCheckinsForEvent(eventId: string): CheckinRecord[] {
   const all = getAllCheckins();
-  const filtered = all.filter(c => String(c.eventId) === String(eventId));
-  if (filtered.length > 0) return filtered;
-
-  // If no checkins for this event yet, auto seed and save
-  const newMocks = generateMockCheckinsForEvent(String(eventId));
-  const updatedAll = [...newMocks, ...all];
-  saveAllCheckins(updatedAll);
-  return newMocks;
+  return all.filter(c => String(c.eventId) === String(eventId));
 }
 
 export function saveAllCheckins(records: CheckinRecord[]): void {
