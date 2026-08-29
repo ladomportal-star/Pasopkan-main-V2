@@ -2631,7 +2631,7 @@ export default function AdminDashboard() {
                       </span>
                       {selectedEvent.dateType === 'flexible' && (
                         <span className="px-3 py-1 bg-amber-400 text-slate-950 text-xs font-black rounded-lg uppercase tracking-wider">
-                          Flexible Date
+                          {lang === 'lo' ? 'ວັນທີຈັດງານ' : 'Event Date'}
                         </span>
                       )}
                     </div>
@@ -2660,7 +2660,7 @@ export default function AdminDashboard() {
                           <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{lang === 'lo' ? 'ວັນທີ' : 'Date'}</div>
                           <div className="text-sm font-bold text-adv-slate">
                             {selectedEvent.dateType === 'flexible' ? (
-                              'Flexible Date'
+                              (lang === 'lo' ? 'ວັນທີຈັດງານ' : 'Event Date')
                             ) : selectedEvent.date ? (
                               new Date(selectedEvent.date).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
                             ) : 'TBA'}
@@ -2676,7 +2676,7 @@ export default function AdminDashboard() {
                         <div>
                           <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{lang === 'lo' ? 'ເວລາ' : 'Time'}</div>
                           <div className="text-sm font-bold text-adv-slate">
-                            {selectedEvent.time || 'TBA'} {selectedEvent.endTime && ` - ${selectedEvent.endTime}`}
+                            {selectedEvent.time || 'TBA'}
                           </div>
                         </div>
                       </div>

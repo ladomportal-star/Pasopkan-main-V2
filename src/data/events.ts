@@ -23,7 +23,9 @@ export interface Coupon {
   code: string;
   discount: number;
   type: 'percentage' | 'fixed';
+  maxDiscountAmount?: number; // Maximum discount cap in currency when type is 'percentage'
   maxUses?: number;
+  maxUsesPerUser?: number; // Maximum times a single user/account can redeem this coupon
   validFrom?: string;
   validUntil?: string;
   isActive: boolean;

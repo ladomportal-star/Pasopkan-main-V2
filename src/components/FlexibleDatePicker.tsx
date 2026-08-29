@@ -6,7 +6,7 @@ import { ScrollTimePicker } from './ScrollTimePicker';
 interface AvailableDate {
   date: string; // YYYY-MM-DD
   startTime: string;
-  endTime: string;
+  endTime?: string;
 }
 
 interface FlexibleDatePickerProps {
@@ -17,16 +17,30 @@ interface FlexibleDatePickerProps {
 }
 
 export function FlexibleDatePicker({ availableDates, onChange, lang, theme }: FlexibleDatePickerProps) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  // Event date must be created at least 5 days from current date
+  const minAllowedDate = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 5);
+    return d;
+  }, []);
+
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 5);
+    return d;
+  });
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('17:00');
 
   const t = {
-    addSlot: lang === 'lo' ? 'ເພີ່ມຊ່ວງເວລາ' : 'Add Time Slot',
+    addSlot: lang === 'lo' ? 'ເພີ່ມເວລາ' : 'Add Time',
     startTime: lang === 'lo' ? 'ເວລາເລີ່ມ' : 'Start Time',
-    endTime: lang === 'lo' ? 'ເວລາສິ້ນສຸດ' : 'End Time',
     selectDateMsg: lang === 'lo' ? 'ເລືອກວັນທີໃນປະຕິທິນເພື່ອເພີ່ມເວລາ' : 'Select a date on the calendar to set times',
+    minDateNotice: lang === 'lo'
+      ? `ສາມາດສ້າງ Event ໄດ້ລ່ວງໜ້າຢ່າງໜ້ອຍ 5 ວັນ (ເລີ່ມຈາກ ${minAllowedDate.toLocaleDateString('lo-LA', { day: 'numeric', month: 'short', year: 'numeric' })} ເປັນຕົ້ນໄປ)`
+      : `Events must be scheduled at least 5 days from today (available from ${minAllowedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} onwards)`,
   };
 
   const getDaysInMonth = (year: number, month: number) => {
@@ -37,7 +51,14 @@ export function FlexibleDatePicker({ availableDates, onChange, lang, theme }: Fl
     return new Date(year, month, 1).getDay();
   };
 
+  const isPrevMonthDisabled = useMemo(() => {
+    const prevMonthDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+    const minMonthDate = new Date(minAllowedDate.getFullYear(), minAllowedDate.getMonth(), 1);
+    return prevMonthDate.getTime() < minMonthDate.getTime();
+  }, [currentMonth, minAllowedDate]);
+
   const prevMonth = () => {
+    if (isPrevMonthDisabled) return;
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
   };
 
@@ -59,23 +80,29 @@ export function FlexibleDatePicker({ availableDates, onChange, lang, theme }: Fl
   }
 
   const handleDateClick = (day: number) => {
+    const dayDate = new Date(year, month, day, 0, 0, 0, 0);
+    if (dayDate.getTime() < minAllowedDate.getTime()) return;
+
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     setSelectedDate(dateStr);
     setStartTime('09:00');
-    setEndTime('17:00');
   };
 
   const handleSaveSlot = () => {
-    if (!selectedDate || !startTime || !endTime) return;
+    if (!selectedDate || !startTime) return;
+
+    const slotDate = new Date(selectedDate);
+    slotDate.setHours(0, 0, 0, 0);
+    if (slotDate.getTime() < minAllowedDate.getTime()) return;
     
-    const exists = availableDates.some(d => d.date === selectedDate && d.startTime === startTime && d.endTime === endTime);
+    const exists = availableDates.some(d => d.date === selectedDate && d.startTime === startTime);
     if (!exists) {
-      onChange([...availableDates, { date: selectedDate, startTime, endTime }]);
+      onChange([...availableDates, { date: selectedDate, startTime }]);
     }
   };
 
-  const handleRemoveSlot = (dateStr: string, start: string, end: string) => {
-    onChange(availableDates.filter(d => !(d.date === dateStr && d.startTime === start && d.endTime === end)));
+  const handleRemoveSlot = (dateStr: string, start: string) => {
+    onChange(availableDates.filter(d => !(d.date === dateStr && d.startTime === start)));
   };
 
   const handleRemoveAllForDate = (dateStr: string) => {
@@ -86,7 +113,13 @@ export function FlexibleDatePicker({ availableDates, onChange, lang, theme }: Fl
   };
 
   return (
-    <div className={`p-4 rounded-2xl border ${theme === 'dark' ? 'bg-[#2B303A] border-zinc-700' : 'bg-gray-50/80 border-gray-200/80'} shadow-sm`}>
+    <div className={`p-4 sm:p-5 rounded-2xl border ${theme === 'dark' ? 'bg-[#2B303A] border-zinc-700' : 'bg-gray-50/80 border-gray-200/80'} shadow-sm space-y-4`}>
+      {/* 5-day advance policy notice */}
+      <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-2.5 text-xs text-amber-900">
+        <Clock className="w-4 h-4 text-adv-orange shrink-0 mt-0.5" />
+        <span className="font-semibold">{t.minDateNotice}</span>
+      </div>
+
       <div className="flex flex-col md:flex-row gap-6">
         {/* Calendar View */}
         <div className={`flex-1 rounded-xl p-4 ${theme === 'dark' ? 'bg-[#2B303A]' : 'bg-white shadow-sm border border-gray-100'}`}>
@@ -94,7 +127,12 @@ export function FlexibleDatePicker({ availableDates, onChange, lang, theme }: Fl
             <button 
               type="button" 
               onClick={prevMonth}
-              className={`p-1.5 rounded-lg ${theme === 'dark' ? 'hover:bg-white/10 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
+              disabled={isPrevMonthDisabled}
+              className={`p-1.5 rounded-lg transition-colors ${
+                isPrevMonthDisabled 
+                  ? 'opacity-20 cursor-not-allowed text-gray-400' 
+                  : (theme === 'dark' ? 'hover:bg-white/10 text-gray-300' : 'hover:bg-gray-100 text-gray-600')
+              }`}
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -122,6 +160,8 @@ export function FlexibleDatePicker({ availableDates, onChange, lang, theme }: Fl
             {days.map((day, idx) => {
               if (day === null) return <div key={`empty-${idx}`} />;
               
+              const dayDate = new Date(year, month, day, 0, 0, 0, 0);
+              const isDisabled = dayDate.getTime() < minAllowedDate.getTime();
               const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
               const isSelected = selectedDate === dateStr;
               const hasEvent = availableDates.some(d => d.date === dateStr);
@@ -130,16 +170,21 @@ export function FlexibleDatePicker({ availableDates, onChange, lang, theme }: Fl
                 <button
                   key={day}
                   type="button"
+                  disabled={isDisabled}
                   onClick={() => handleDateClick(day)}
                   className={`
                     relative h-9 rounded-lg flex flex-col items-center justify-center text-xs font-medium transition-all
-                    ${isSelected ? 'border border-adv-orange bg-adv-orange/10 text-adv-orange' : 
-                      hasEvent ? (theme === 'dark' ? 'text-white hover:bg-white/5' : 'text-gray-800 hover:bg-gray-100') : 
-                      (theme === 'dark' ? 'text-gray-400 hover:bg-white/5' : 'text-gray-500 hover:bg-gray-100')}
+                    ${isDisabled 
+                      ? 'opacity-25 cursor-not-allowed bg-transparent text-gray-400 line-through' 
+                      : isSelected 
+                        ? 'border border-adv-orange bg-adv-orange/10 text-adv-orange font-bold' 
+                        : hasEvent 
+                          ? (theme === 'dark' ? 'text-white hover:bg-white/5' : 'text-gray-800 hover:bg-gray-100 font-bold') 
+                          : (theme === 'dark' ? 'text-gray-400 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100')}
                   `}
                 >
                   <span>{String(day).padStart(2, '0')}</span>
-                  {hasEvent && (
+                  {hasEvent && !isDisabled && (
                     <div className="absolute bottom-1.5 w-4 h-1 rounded-full bg-adv-orange" />
                   )}
                 </button>
@@ -179,17 +224,20 @@ export function FlexibleDatePicker({ availableDates, onChange, lang, theme }: Fl
                   {availableDates.filter(d => d.date === selectedDate).length > 0 && (
                     <div className="flex flex-col gap-2 mb-2">
                       <span className="text-[11px] font-bold text-gray-500 uppercase">
-                        {lang === 'en' ? 'Added Time Slots' : 'ຊ່ວງເວລາທີ່ເພີ່ມແລ້ວ'}
+                        {lang === 'en' ? 'Added Time' : 'ເວລາທີ່ເພີ່ມແລ້ວ'}
                       </span>
                       <div className="space-y-2 max-h-[120px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-200">
                         {availableDates.filter(d => d.date === selectedDate).map((slot, idx) => (
                           <div key={idx} className={`flex items-center justify-between p-2 rounded-lg border ${theme === 'dark' ? 'bg-[#2B303A] border-zinc-700' : 'bg-gray-50 border-gray-200'}`}>
-                            <span className={`text-xs font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                              {slot.startTime} - {slot.endTime}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-3.5 h-3.5 text-adv-orange" />
+                              <span className={`text-xs font-bold ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                                {slot.startTime}
+                              </span>
+                            </div>
                             <button
                               type="button"
-                              onClick={() => handleRemoveSlot(slot.date, slot.startTime, slot.endTime)}
+                              onClick={() => handleRemoveSlot(slot.date, slot.startTime)}
                               className="text-gray-400 hover:text-red-500 p-1 rounded-md hover:bg-red-50 transition-colors"
                             >
                               <X className="w-3.5 h-3.5" />
@@ -200,27 +248,15 @@ export function FlexibleDatePicker({ availableDates, onChange, lang, theme }: Fl
                     </div>
                   )}
 
-                  <div className="flex gap-3 mt-auto">
-                    <div className="flex-1">
-                      <span className="text-[11px] font-bold text-gray-500 mb-1.5 block">
-                        {t.startTime}
-                      </span>
-                      <ScrollTimePicker 
-                        value={startTime}
-                        onChange={setStartTime}
-                        placeholder="09:00"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <span className="text-[11px] font-bold text-gray-500 mb-1.5 block">
-                        {t.endTime}
-                      </span>
-                      <ScrollTimePicker 
-                        value={endTime}
-                        onChange={setEndTime}
-                        placeholder="17:00"
-                      />
-                    </div>
+                  <div className="mt-auto">
+                    <span className="text-[11px] font-bold text-gray-500 mb-1.5 block">
+                      {t.startTime}
+                    </span>
+                    <ScrollTimePicker 
+                      value={startTime}
+                      onChange={setStartTime}
+                      placeholder="09:00"
+                    />
                   </div>
                   
                   <div className="pt-2">

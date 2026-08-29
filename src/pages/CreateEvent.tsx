@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
-import { Calendar, Undo, Redo, Heading3, FileImage, Folder, FileText, Plus, User, Users, Mail, ChevronDown, ChevronLeft, ChevronRight, Inbox, Ticket, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, Image as ImageIcon, Video, MapPin, Loader2, Trash2, X, Check, QrCode, LogOut, Edit, ShieldCheck, DollarSign, RefreshCcw, FileCheck, BookOpen, AlertCircle, ShieldAlert, ArrowLeft, ArrowRight, Globe, Clock, Settings, Lock, Eye, UploadCloud, ExternalLink, Monitor, Smartphone, CheckCircle2, Sparkles, Paperclip, Search, Quote, Minus, Heading1, Heading2, Link as LinkIcon, Award, Unlink, Superscript, Subscript, Strikethrough, RemoveFormatting, MessageSquare, Type, Palette } from 'lucide-react';
+import { Calendar, Undo, Redo, Heading3, FileImage, Folder, FileText, Plus, User, Users, Mail, Phone, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Inbox, Ticket, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, Image as ImageIcon, Video, MapPin, Loader2, Trash2, X, Check, QrCode, LogOut, Edit, ShieldCheck, DollarSign, RefreshCcw, FileCheck, BookOpen, AlertCircle, ShieldAlert, ArrowLeft, ArrowRight, Globe, Clock, Settings, Lock, Eye, UploadCloud, ExternalLink, Monitor, Smartphone, CheckCircle2, Sparkles, Paperclip, Search, Quote, Minus, Heading1, Heading2, Link as LinkIcon, Award, Unlink, Superscript, Subscript, Strikethrough, RemoveFormatting, MessageSquare, Type, Palette, GripVertical } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { safeStorage } from '../lib/storage';
@@ -11,6 +11,8 @@ import { EventMapPicker } from '../components/EventMapPicker';
 import { ScrollTimePicker } from '../components/ScrollTimePicker';
 import { FlexibleDatePicker } from '../components/FlexibleDatePicker';
 import { CalendarPicker } from '../components/CalendarPicker';
+import { DateInputDDMMYYYY, formatToDDMMYYYY } from '../components/DateInputDDMMYYYY';
+import { AdaptiveImage } from '../components/AdaptiveImage';
 import SocialLinksForm, { SocialLinks } from '../components/SocialLinksForm';
 import {
   getOrganizerTermsSettings,
@@ -106,7 +108,9 @@ const translations = {
     percentage: 'Percentage (%)',
     fixedAmount: 'Fixed Amount (Kip)',
     discount: 'Discount',
+    maxDiscountAmount: 'Max Discount Amount',
     maxUses: 'Max Uses',
+    maxUsesPerUser: 'Max Uses Per User',
     validUntil: 'Valid Until',
     validFrom: 'Valid From',
     unlimited: 'Unlimited',
@@ -188,8 +192,8 @@ const translations = {
     tierNamePlaceholder: 'e.g. Early Bird, VIP',
     priceWithCurrency: 'Price (Kip)',
     quantity: 'Quantity',
-    saleStarts: 'Sale Starts (Optional)',
-    saleEndsOptional: 'Sale Ends (Optional)',
+    saleStarts: 'Sale Starts',
+    saleEndsOptional: 'Sale Ends',
     showRemainingTickets: 'Show Remaining Tickets',
     showRemainingTicketsDesc: 'Display the number of available tickets on the event page.',
     requireEveryTicketInfo: 'Require Guest Info for Every Ticket',
@@ -204,10 +208,10 @@ const translations = {
     ticketsUnit: 'Tickets',
     dateType: 'Date Type',
     fixedDate: 'Fixed Date',
-    flexibleDate: 'Flexible Date',
-    flexibleDesc: 'Flexible Date Description',
+    flexibleDate: 'Event Date',
+    flexibleDesc: 'Event Date Description',
     flexibleDescPlaceholder: 'e.g. Valid for any day in July, Every weekend',
-    flexibleTimeDesc: 'Set the daily operating hours or time slot for this flexible event range.',
+    flexibleTimeDesc: 'Set the daily operating hours or time slot for this event.',
     paymentInfo: 'Payment Information',
     bankName: 'Bank Name',
     bankNamePlaceholder: 'e.g. BCEL, JDB',
@@ -345,7 +349,9 @@ const translations = {
     percentage: 'ເປີເຊັນ (%)',
     fixedAmount: 'ຈຳນວນເງິນຄົງທີ່ (ກີບ)',
     discount: 'ສ່ວນຫຼຸດ',
-    maxUses: 'ຈຳນວນການນຳໃຊ້ສູງສຸດ',
+    maxDiscountAmount: 'ມູນຄ່າສ່ວນຫຼຸດສູງສຸດ',
+    maxUses: 'ນຳໃຊ້ສູງສຸດ',
+    maxUsesPerUser: 'ນຳໃຊ້ສູງສຸດຕໍ່ບັນຊີ',
     validUntil: 'ໃຊ້ໄດ້ເຖິງ',
     validFrom: 'ໃຊ້ໄດ້ຕັ້ງແຕ່',
     unlimited: 'ບໍ່ຈຳກັດ',
@@ -427,8 +433,8 @@ const translations = {
     tierNamePlaceholder: 'ເຊັ່ນ: Early Bird, VIP',
     priceWithCurrency: 'ລາຄາ (ກີບ)',
     quantity: 'ຈຳນວນ',
-    saleStarts: 'ເລີ່ມຕົ້ນການຂາຍ (ທາງເລືອກ)',
-    saleEndsOptional: 'ສິ້ນສຸດການຂາຍ (ທາງເລືອກ)',
+    saleStarts: 'ເລີ່ມຕົ້ນຂາຍ',
+    saleEndsOptional: 'ສິ້ນສຸດການຂາຍ',
     showRemainingTickets: 'ສະແດງຈຳນວນປີ້ທີ່ເຫຼືອ',
     showRemainingTicketsDesc: 'ສະແດງຈຳນວນປີ້ທີ່ຍັງສາມາດຊື້ໄດ້ໃນໜ້າ event.',
     requireEveryTicketInfo: 'ຕ້ອງການຂໍ້ມູນແຂກສຳລັບທຸກໆປີ້',
@@ -443,10 +449,10 @@ const translations = {
     ticketsUnit: 'ປີ້',
     dateType: 'ປະເພດວັນທີ',
     fixedDate: 'ວັນທີຄົງທີ່',
-    flexibleDate: 'ວັນທີປ່ຽນແປງໄດ້',
-    flexibleDesc: 'ຄຳອະທິບາຍວັນທີທີ່ປ່ຽນແປງໄດ້',
+    flexibleDate: 'ວັນທີຈັດງານ',
+    flexibleDesc: 'ຄຳອະທິບາຍວັນທີຈັດງານ',
     flexibleDescPlaceholder: 'ເຊັ່ນ: ໃຊ້ໄດ້ທຸກມື້ໃນເດືອນກໍລະກົດ, ທຸກໆທ້າຍອາທິດ',
-    flexibleTimeDesc: 'ກຳນົດເວລາເປີດບໍລິການປະຈຳວັນ ຫຼື ຊ່ວງເວລາສຳລັບ event ທີ່ປ່ຽນແປງໄດ້ນີ້.',
+    flexibleTimeDesc: 'ກຳນົດເວລາເປີດບໍລິການປະຈຳວັນ ຫຼື ຊ່ວງເວລາສຳລັບ event ນີ້.',
     paymentInfo: 'ຂໍ້ມູນການຈ່າຍເງິນ',
     bankName: 'ຊື່ທະນາຄານ',
     bankNamePlaceholder: 'ເຊັ່ນ: BCEL, JDB',
@@ -609,6 +615,16 @@ export default function CreateEvent() {
   const [onlinePasscode, setOnlinePasscode] = useState('');
   const [onlineInstructions, setOnlineInstructions] = useState('');
   const [attendeeQuestions, setAttendeeQuestions] = useState<AttendeeQuestion[]>([]);
+  const [draggedQuestionIndex, setDraggedQuestionIndex] = useState<number | null>(null);
+  const [dragOverQuestionIndex, setDragOverQuestionIndex] = useState<number | null>(null);
+
+  const moveQuestion = (fromIdx: number, toIdx: number) => {
+    if (toIdx < 0 || toIdx >= attendeeQuestions.length || fromIdx === toIdx) return;
+    const next = [...attendeeQuestions];
+    const [removed] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, removed);
+    setAttendeeQuestions(next);
+  };
   const [dateType, setDateType] = useState('flexible'); // 'fixed' or 'flexible' or 'booking'
   const [flexibleDateDesc, setFlexibleDateDesc] = useState('');
   
@@ -763,18 +779,30 @@ export default function CreateEvent() {
       });
     }
 
+    const digitsOnlyPhone = (organizerPhone || '').replace(/\D/g, '');
     if (!organizerPhone || !organizerPhone.trim()) {
       list.push({
         id: 'organizer-phone',
         step: 1,
         stepTitleEn: 'Event Info',
         stepTitleLo: 'ຂໍ້ມູນກິດຈະກຳ',
-        fieldEn: 'Organizer Phone Number',
-        fieldLo: 'ເບີໂທຜູ້ຈັດງານ',
+        fieldEn: 'Organizer Phone Number (Numbers only)',
+        fieldLo: 'ເບີໂທຜູ້ຈັດງານ (ຕົວເລກເທົ່ານັ້ນ)',
+        elementId: 'field-organizer-phone',
+      });
+    } else if (digitsOnlyPhone.length < 6) {
+      list.push({
+        id: 'organizer-phone-invalid',
+        step: 1,
+        stepTitleEn: 'Event Info',
+        stepTitleLo: 'ຂໍ້ມູນກິດຈະກຳ',
+        fieldEn: 'Valid Organizer Phone Number (at least 6 digits)',
+        fieldLo: 'ເບີໂທຜູ້ຈັດງານທີ່ຖືກຕ້ອງ (ຢ່າງໜ້ອຍ 6 ຕົວເລກ)',
         elementId: 'field-organizer-phone',
       });
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!organizerEmail || !organizerEmail.trim()) {
       list.push({
         id: 'organizer-email',
@@ -783,6 +811,16 @@ export default function CreateEvent() {
         stepTitleLo: 'ຂໍ້ມູນກິດຈະກຳ',
         fieldEn: 'Organizer Email',
         fieldLo: 'ອີເມວຜູ້ຈັດງານ',
+        elementId: 'field-organizer-email',
+      });
+    } else if (!emailRegex.test(organizerEmail.trim())) {
+      list.push({
+        id: 'organizer-email-invalid',
+        step: 1,
+        stepTitleEn: 'Event Info',
+        stepTitleLo: 'ຂໍ້ມູນກິດຈະກຳ',
+        fieldEn: 'Valid Organizer Email (e.g. name@example.com)',
+        fieldLo: 'ອີເມວຜູ້ຈັດງານທີ່ຖືກຕ້ອງ (ຕົວຢ່າງ: name@example.com)',
         elementId: 'field-organizer-email',
       });
     }
@@ -800,7 +838,40 @@ export default function CreateEvent() {
     }
 
     // --- Step 2: Time & Tickets ---
-    if (dateType === 'fixed') {
+    const minAdvanceDate = new Date();
+    minAdvanceDate.setHours(0, 0, 0, 0);
+    minAdvanceDate.setDate(minAdvanceDate.getDate() + 5);
+
+    if (dateType === 'flexible') {
+      if (!availableDates || availableDates.length === 0) {
+        list.push({
+          id: 'available-dates-empty',
+          step: 2,
+          stepTitleEn: 'Time & Tickets',
+          stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+          fieldEn: 'At least 1 Event Date & Time',
+          fieldLo: 'ຢ່າງໜ້ອຍ 1 ວັນທີ ແລະ ເວລາຈັດງານ',
+          elementId: 'field-flexible-dates',
+        });
+      } else {
+        const hasTooEarlyDate = availableDates.some(d => {
+          const dt = new Date(d.date);
+          dt.setHours(0, 0, 0, 0);
+          return dt.getTime() < minAdvanceDate.getTime();
+        });
+        if (hasTooEarlyDate) {
+          list.push({
+            id: 'available-dates-min-5-days',
+            step: 2,
+            stepTitleEn: 'Time & Tickets',
+            stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+            fieldEn: `Event date must be at least 5 days from today (from ${minAdvanceDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} onwards)`,
+            fieldLo: `ວັນທີຈັດງານຕ້ອງເລືອກລ່ວງໜ້າຢ່າງໜ້ອຍ 5 ວັນ (ເລີ່ມຈາກ ${minAdvanceDate.toLocaleDateString('lo-LA', { day: 'numeric', month: 'short', year: 'numeric' })} ເປັນຕົ້ນໄປ)`,
+            elementId: 'field-flexible-dates',
+          });
+        }
+      }
+    } else if (dateType === 'fixed') {
       if (!startDate) {
         list.push({
           id: 'start-date',
@@ -811,6 +882,20 @@ export default function CreateEvent() {
           fieldLo: 'ວັນທີເລີ່ມຕົ້ນກິດຈະກຳ',
           elementId: 'field-start-date',
         });
+      } else {
+        const dt = new Date(startDate);
+        dt.setHours(0, 0, 0, 0);
+        if (dt.getTime() < minAdvanceDate.getTime()) {
+          list.push({
+            id: 'start-date-min-5-days',
+            step: 2,
+            stepTitleEn: 'Time & Tickets',
+            stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+            fieldEn: `Event date must be at least 5 days from today (from ${minAdvanceDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} onwards)`,
+            fieldLo: `ວັນທີຈັດງານຕ້ອງເລືອກລ່ວງໜ້າຢ່າງໜ້ອຍ 5 ວັນ (ເລີ່ມຈາກ ${minAdvanceDate.toLocaleDateString('lo-LA', { day: 'numeric', month: 'short', year: 'numeric' })} ເປັນຕົ້ນໄປ)`,
+            elementId: 'field-start-date',
+          });
+        }
       }
       if (!startTime) {
         list.push({
@@ -847,16 +932,40 @@ export default function CreateEvent() {
           elementId: 'field-ticket-tiers',
         });
       }
-      if (ticketTiers.some(t => t.quantity === '' || t.quantity === null || t.quantity === undefined)) {
-        list.push({
-          id: 'ticket-tier-qty',
-          step: 2,
-          stepTitleEn: 'Time & Tickets',
-          stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
-          fieldEn: 'Ticket Tier Quantity',
-          fieldLo: 'ຈຳນວນບັດ',
-          elementId: 'field-ticket-tiers',
-        });
+      if (dateType !== 'booking') {
+        if (ticketTiers.some(t => t.quantity === '' || t.quantity === null || t.quantity === undefined)) {
+          list.push({
+            id: 'ticket-tier-qty',
+            step: 2,
+            stepTitleEn: 'Time & Tickets',
+            stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+            fieldEn: 'Ticket Tier Quantity',
+            fieldLo: 'ຈຳນວນບັດ',
+            elementId: 'field-ticket-tiers',
+          });
+        }
+        if (ticketTiers.some(t => !t.saleStartDate || !t.saleStartDate.trim())) {
+          list.push({
+            id: 'ticket-tier-sale-start',
+            step: 2,
+            stepTitleEn: 'Time & Tickets',
+            stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+            fieldEn: 'Ticket Tier Sale Start Date',
+            fieldLo: 'ວັນທີເລີ່ມຂາຍບັດ',
+            elementId: 'field-ticket-tiers',
+          });
+        }
+        if (ticketTiers.some(t => !t.saleEndDate || !t.saleEndDate.trim())) {
+          list.push({
+            id: 'ticket-tier-sale-end',
+            step: 2,
+            stepTitleEn: 'Time & Tickets',
+            stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+            fieldEn: 'Ticket Tier Sale End Date',
+            fieldLo: 'ວັນທີສິ້ນສຸດການຂາຍບັດ',
+            elementId: 'field-ticket-tiers',
+          });
+        }
       }
     }
 
@@ -1111,7 +1220,7 @@ export default function CreateEvent() {
 
   const [hasTimeSelection, setHasTimeSelection] = useState(false);
   const [timeSlots, setTimeSlots] = useState<string[]>([]);
-  const [availableDates, setAvailableDates] = useState<{ date: string, startTime: string, endTime: string }[]>([]);
+  const [availableDates, setAvailableDates] = useState<{ date: string, startTime: string, endTime?: string }[]>([]);
   const [newTimeSlot, setNewTimeSlot] = useState('');
   const [flexTimeStart, setFlexTimeStart] = useState('09:00');
   const [flexTimeEnd, setFlexTimeEnd] = useState('17:00');
@@ -1502,6 +1611,8 @@ export default function CreateEvent() {
         if (parsed.district) setDistrict(parsed.district);
         if (parsed.streetAddress) setStreetAddress(parsed.streetAddress);
         if (parsed.organizerName) setOrganizerName(parsed.organizerName);
+        if (parsed.organizerPhone) setOrganizerPhone(parsed.organizerPhone);
+        if (parsed.organizerEmail) setOrganizerEmail(parsed.organizerEmail);
         if (parsed.organizerInfo) setOrganizerInfo(parsed.organizerInfo);
         if (parsed.organizerContact) setOrganizerContact(parsed.organizerContact);
         if (parsed.organizerLogo) setOrganizerLogo(parsed.organizerLogo);
@@ -1596,6 +1707,8 @@ export default function CreateEvent() {
       district,
       streetAddress,
       organizerName,
+      organizerPhone,
+      organizerEmail,
       organizerInfo,
       organizerContact,
       organizerLogo,
@@ -1833,16 +1946,6 @@ export default function CreateEvent() {
         setVerticalImage(null);
       }
     }
-  };
-
-  const generateTestCoupons = () => {
-    const testCoupons = [
-      { id: Date.now(), code: 'PASOPKAN10', discount: '10', type: 'percentage', maxUses: '100', validFrom: '2026-05-01', validUntil: '2026-12-31', isActive: true },
-      { id: Date.now() + 1, code: 'WELCOME2026', discount: '50000', type: 'fixed', maxUses: '50', validFrom: '2026-01-01', validUntil: '2026-12-31', isActive: true },
-      { id: Date.now() + 2, code: 'EARLYBIRD', discount: '15', type: 'percentage', maxUses: '20', validFrom: '2026-05-01', validUntil: '2026-06-01', isActive: false },
-    ];
-    setCoupons(testCoupons);
-    setEnableCoupons(true);
   };
 
   const resetForm = () => {
@@ -2477,13 +2580,9 @@ export default function CreateEvent() {
                     <div className="space-y-3" id="field-cover-image">
                       <div className="flex items-center justify-between">
                         <label className="text-xs font-extrabold text-adv-slate uppercase tracking-wider flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-adv-orange" />
                           <span>{lang === 'lo' ? 'ຮູບໜ້າປົກກິດຈະກຳ (Cover Event Image)' : 'Main Event Cover Photo'}</span>
                           <span className="text-adv-orange">*</span>
                         </label>
-                        <span className="text-[11px] font-semibold text-gray-400">
-                          (1280 x 720 px recommended)
-                        </span>
                       </div>
 
                       <div 
@@ -2512,44 +2611,12 @@ export default function CreateEvent() {
                             <span className="text-xs text-gray-500 font-bold">{Math.round(Math.min(horizontalUploadProgress, 100))}%</span>
                           </div>
                         ) : horizontalImage || verticalImage ? (
-                          <div className="absolute inset-0 w-full h-full bg-slate-950 flex items-center justify-center overflow-hidden">
-                            {/* Ambient blurred backdrop so the frame is completely and smoothly filled with matching colors */}
-                            <img 
-                              src={horizontalImage || verticalImage || ''} 
-                              alt="" 
-                              className="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-45 brightness-75 pointer-events-none filter" 
-                            />
-                            <div className="absolute inset-0 bg-slate-950/20 backdrop-blur-xs pointer-events-none" />
-                            {/* Foreground image - object-contain fits full in frame uncropped */}
-                            <img 
-                              src={horizontalImage || verticalImage || ''} 
-                              alt="Main cover preview" 
-                              className={`w-full h-full relative z-10 transition-all duration-300 pointer-events-none ${
-                                coverFitMode === 'contain' ? 'object-contain drop-shadow-xl p-1' : 'object-cover'
-                              }`} 
-                            />
-                            {/* Cover Badge */}
-                            <div className="absolute top-3 left-3 z-20 bg-adv-slate/90 text-white text-[11px] font-extrabold px-3 py-1 rounded-full backdrop-blur-md shadow-md flex items-center gap-1.5 border border-white/20">
-                              <Sparkles className="w-3.5 h-3.5 text-adv-orange" />
-                              <span>{lang === 'lo' ? 'ຮູບໜ້າປົກຫຼັກ' : 'Main Cover Photo'}</span>
-                            </div>
-
-                            {/* Fit Mode Toggle Badge */}
-                            <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setCoverFitMode(prev => prev === 'contain' ? 'cover' : 'contain');
-                                }}
-                                className="bg-black/60 hover:bg-black/80 text-white text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-md border border-white/20 transition-all flex items-center gap-1 cursor-pointer shadow-sm active:scale-95"
-                                title={coverFitMode === 'contain' ? 'Showing full image (Fit Full)' : 'Filling frame (Crop)'}
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full bg-adv-orange" />
-                                <span>{coverFitMode === 'contain' ? (lang === 'lo' ? 'ສະແດງເຕັມຮູບ (Fit Full)' : 'Fit: Full in Frame') : (lang === 'lo' ? 'ເຕັມກອບ (Fill)' : 'Fill: Crop')}</span>
-                              </button>
-                            </div>
-
+                          <AdaptiveImage
+                            src={horizontalImage || verticalImage}
+                            alt="Main cover preview"
+                            fitMode={coverFitMode}
+                            className="absolute inset-0 w-full h-full"
+                          >
                             {/* Action Overlay */}
                             <div className="absolute inset-0 z-30 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2.5 p-4">
                               <button 
@@ -2576,7 +2643,7 @@ export default function CreateEvent() {
                                 {lang === 'lo' ? 'ລຶບ' : 'Remove'}
                               </button>
                             </div>
-                          </div>
+                          </AdaptiveImage>
                         ) : (
                           <>
                             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 transition-colors ${
@@ -2682,25 +2749,14 @@ export default function CreateEvent() {
                             {galleryImages.map((imgUrl, index) => {
                               const isCover = (horizontalImage === imgUrl || verticalImage === imgUrl);
                               return (
-                                <div 
-                                  key={index} 
-                                  className={`relative aspect-video rounded-xl overflow-hidden border-2 transition-all group bg-slate-950 shadow-xs flex items-center justify-center ${
+                                <AdaptiveImage 
+                                  key={index}
+                                  src={imgUrl}
+                                  fitMode="contain"
+                                  className={`relative aspect-video rounded-xl overflow-hidden border-2 transition-all group shadow-xs ${
                                     isCover ? 'border-adv-orange ring-2 ring-adv-orange/30' : 'border-gray-200/80 hover:border-gray-300'
                                   }`}
                                 >
-                                  {/* Ambient blurred backdrop for slide thumbnail */}
-                                  <img 
-                                    src={imgUrl} 
-                                    alt="" 
-                                    className="absolute inset-0 w-full h-full object-cover blur-xl scale-125 opacity-40 pointer-events-none filter" 
-                                  />
-                                  {/* Full in frame image (object-contain) */}
-                                  <img 
-                                    src={imgUrl} 
-                                    alt={`Slide ${index + 1}`} 
-                                    className="w-full h-full object-contain relative z-10 pointer-events-none drop-shadow-sm p-0.5" 
-                                  />
-
                                   {/* Slide Badge */}
                                   <div className="absolute top-2 left-2 z-20 bg-black/60 text-white text-[10px] font-black px-2 py-0.5 rounded-md backdrop-blur-xs">
                                     #{index + 1}
@@ -2735,7 +2791,7 @@ export default function CreateEvent() {
                                       <span>{lang === 'lo' ? 'ລຶບອອກ' : 'Remove'}</span>
                                     </button>
                                   </div>
-                                </div>
+                                </AdaptiveImage>
                               );
                             })}
 
@@ -3405,32 +3461,49 @@ export default function CreateEvent() {
                         <label className="flex items-center gap-1 mb-1.5 text-xs font-bold text-adv-slate">
                           {lang === 'en' ? 'Organizer Phone' : 'ເບີໂທຜູ້ຈັດງານ'} <span className="text-adv-orange">*</span>
                         </label>
-                        <input 
-                          type="tel"
-                          value={organizerPhone}
-                          onChange={(e) => {
-                            setOrganizerPhone(e.target.value);
-                            setValidationError(null);
-                          }}
-                          placeholder="+856 20 ..."
-                          className="w-full bg-gray-50/80 border border-gray-200 text-adv-slate rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-adv-orange/20 focus:border-adv-orange transition-all placeholder:text-gray-300"
-                        />
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                            <Phone className="w-4 h-4" />
+                          </div>
+                          <input 
+                            type="tel"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={organizerPhone}
+                            onChange={(e) => {
+                              // Only allow numeric digits
+                              const numeric = e.target.value.replace(/\D/g, '');
+                              setOrganizerPhone(numeric);
+                              setValidationError(null);
+                            }}
+                            placeholder={lang === 'en' ? 'e.g. 020 99887766' : 'ຕົວຢ່າງ: 020 99887766'}
+                            className="w-full bg-gray-50/80 border border-gray-200 text-adv-slate rounded-xl pl-9 pr-3.5 py-2.5 text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-adv-orange/20 focus:border-adv-orange transition-all placeholder:text-gray-300 font-mono tracking-wide"
+                          />
+                        </div>
                       </div>
 
                       <div id="field-organizer-email">
                         <label className="flex items-center gap-1 mb-1.5 text-xs font-bold text-adv-slate">
                           {lang === 'en' ? 'Organizer Email' : 'ອີເມວຜູ້ຈັດງານ'} <span className="text-adv-orange">*</span>
                         </label>
-                        <input 
-                          type="email"
-                          value={organizerEmail}
-                          onChange={(e) => {
-                            setOrganizerEmail(e.target.value);
-                            setValidationError(null);
-                          }}
-                          placeholder="organizer@domain.com"
-                          className="w-full bg-gray-50/80 border border-gray-200 text-adv-slate rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-adv-orange/20 focus:border-adv-orange transition-all placeholder:text-gray-300"
-                        />
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                            <Mail className="w-4 h-4" />
+                          </div>
+                          <input 
+                            type="email"
+                            inputMode="email"
+                            autoCapitalize="none"
+                            spellCheck={false}
+                            value={organizerEmail}
+                            onChange={(e) => {
+                              setOrganizerEmail(e.target.value.trim().toLowerCase());
+                              setValidationError(null);
+                            }}
+                            placeholder="organizer@domain.com"
+                            className="w-full bg-gray-50/80 border border-gray-200 text-adv-slate rounded-xl pl-9 pr-3.5 py-2.5 text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-adv-orange/20 focus:border-adv-orange transition-all placeholder:text-gray-300"
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -3510,144 +3583,239 @@ export default function CreateEvent() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {attendeeQuestions.map((q, idx) => (
-                        <div key={q.id} className="p-5 border border-gray-200 rounded-xl bg-white shadow-sm space-y-4 relative group">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const next = [...attendeeQuestions];
-                              next.splice(idx, 1);
-                              setAttendeeQuestions(next);
+                      {attendeeQuestions.map((q, idx) => {
+                        const isDragging = draggedQuestionIndex === idx;
+                        const isDragOver = dragOverQuestionIndex === idx && draggedQuestionIndex !== idx;
+
+                        return (
+                          <motion.div
+                            layout
+                            key={q.id}
+                            draggable
+                            onDragStart={(e) => {
+                              setDraggedQuestionIndex(idx);
+                              e.dataTransfer.effectAllowed = 'move';
+                              e.dataTransfer.setData('text/plain', idx.toString());
                             }}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = 'move';
+                              if (dragOverQuestionIndex !== idx) {
+                                setDragOverQuestionIndex(idx);
+                              }
+                            }}
+                            onDragEnter={(e) => {
+                              e.preventDefault();
+                              setDragOverQuestionIndex(idx);
+                            }}
+                            onDragLeave={() => {
+                              if (dragOverQuestionIndex === idx) {
+                                setDragOverQuestionIndex(null);
+                              }
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              if (draggedQuestionIndex !== null && draggedQuestionIndex !== idx) {
+                                moveQuestion(draggedQuestionIndex, idx);
+                              }
+                              setDraggedQuestionIndex(null);
+                              setDragOverQuestionIndex(null);
+                            }}
+                            onDragEnd={() => {
+                              setDraggedQuestionIndex(null);
+                              setDragOverQuestionIndex(null);
+                            }}
+                            className={`p-5 border rounded-xl bg-white shadow-sm space-y-4 relative transition-all duration-150 ${
+                              isDragging
+                                ? 'opacity-40 border-dashed border-2 border-adv-orange bg-orange-50/40 scale-[0.99]'
+                                : isDragOver
+                                ? 'ring-2 ring-adv-orange ring-offset-2 border-adv-orange bg-orange-50/20 shadow-md'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                          
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pr-10">
-                            <div>
-                              <label className="block text-[11px] font-bold text-gray-500 mb-1">
-                                {lang === 'lo' ? 'ປະເພດຄຳຖາມ' : 'Question Type'}
-                              </label>
-                              <div className="relative">
-                                <select
-                                  value={q.type}
-                                  onChange={(e) => {
-                                    const next = [...attendeeQuestions];
-                                    const newType = e.target.value as any;
-                                    next[idx].type = newType;
-                                    if (['single_choice', 'multi_choice', 'options'].includes(newType)) {
-                                      if (!next[idx].options || next[idx].options.length === 0) {
-                                        next[idx].options = ['Option 1', 'Option 2'];
-                                      }
-                                    } else {
-                                      delete next[idx].options;
-                                    }
-                                    setAttendeeQuestions(next);
-                                  }}
-                                  className="w-full bg-gray-50 border border-gray-200 text-adv-slate rounded-xl px-4 py-2.5 text-sm font-semibold appearance-none focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all pr-10"
+                            {/* Card Header with Drag Handle, Order Badge, Move Buttons and Delete */}
+                            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="cursor-grab active:cursor-grabbing p-1.5 -ml-1.5 text-gray-400 hover:text-adv-slate hover:bg-gray-100 rounded-lg flex items-center gap-1 transition-colors"
+                                  title={lang === 'lo' ? 'ລາກເພື່ອປ່ຽນລຳດັບ' : 'Drag to reorder'}
                                 >
-                                  <option value="text">Short Text</option>
-                                  <option value="long_text">Long Text</option>
-                                  <option value="single_choice">Single Choice</option>
-                                  <option value="multi_choice">Multiple Choice</option>
-                                  <option value="checkbox">Checkbox</option>
-                                  <option value="url">URL / Link</option>
-                                </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                  <GripVertical className="w-4 h-4" />
+                                  <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
+                                    #{idx + 1}
+                                  </span>
+                                </div>
+                                <span className="text-xs font-medium text-gray-400 hidden sm:inline">
+                                  {lang === 'lo' ? 'ລາກຍ້າຍຕຳແໜ່ງໄດ້' : 'Drag to move position'}
+                                </span>
                               </div>
-                            </div>
-                            
-                            <div>
-                              <label className="block text-[11px] font-bold text-gray-500 mb-1">
-                                {lang === 'lo' ? 'ຄຳຖາມ' : 'Question Label'}
-                              </label>
-                              <input
-                                type="text"
-                                value={q.label}
-                                onChange={(e) => {
-                                  const next = [...attendeeQuestions];
-                                  next[idx].label = e.target.value;
-                                  setAttendeeQuestions(next);
-                                }}
-                                placeholder={lang === 'lo' ? 'ເຊັ່ນ: ຂະໜາດເສື້ອ...' : 'e.g. T-shirt size...'}
-                                className="w-full bg-gray-50 border border-gray-200 text-adv-slate rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all"
-                              />
-                            </div>
-                          </div>
-                          
-                          {(['single_choice', 'multi_choice', 'options'].includes(q.type)) && (
-                            <div className="pt-2 border-t border-gray-100">
-                              <label className="block text-[11px] font-bold text-gray-500 mb-2">
-                                {lang === 'lo' ? 'ຕົວເລືອກ (Options)' : 'Options'}
-                              </label>
-                              <div className="space-y-2">
-                                {(q.options || []).map((opt, optIdx) => (
-                                  <div key={optIdx} className="flex items-center gap-2">
-                                    <input
-                                      type="text"
-                                      value={opt}
-                                      onChange={(e) => {
-                                        const next = [...attendeeQuestions];
-                                        if (next[idx].options) {
-                                          next[idx].options![optIdx] = e.target.value;
-                                          setAttendeeQuestions(next);
-                                        }
-                                      }}
-                                      placeholder={lang === 'lo' ? 'ຕົວເລືອກ...' : 'Option...'}
-                                      className="flex-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-adv-orange/50 transition-all text-sm"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const next = [...attendeeQuestions];
-                                        next[idx].options = next[idx].options!.filter((_, i) => i !== optIdx);
-                                        setAttendeeQuestions(next);
-                                      }}
-                                      disabled={(q.options || []).length <= 1}
-                                      className="p-2 text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors"
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                ))}
+
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    moveQuestion(idx, idx - 1);
+                                  }}
+                                  disabled={idx === 0}
+                                  title={lang === 'lo' ? 'ຍ້າຍຂຶ້ນ' : 'Move up'}
+                                  className="p-1.5 text-gray-400 hover:text-adv-slate hover:bg-gray-100 disabled:opacity-30 disabled:pointer-events-none rounded-lg transition-colors"
+                                >
+                                  <ChevronUp className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    moveQuestion(idx, idx + 1);
+                                  }}
+                                  disabled={idx === attendeeQuestions.length - 1}
+                                  title={lang === 'lo' ? 'ຍ້າຍລົງ' : 'Move down'}
+                                  className="p-1.5 text-gray-400 hover:text-adv-slate hover:bg-gray-100 disabled:opacity-30 disabled:pointer-events-none rounded-lg transition-colors"
+                                >
+                                  <ChevronDown className="w-4 h-4" />
+                                </button>
+                                <div className="h-4 w-[1px] bg-gray-200 mx-1" />
                                 <button
                                   type="button"
                                   onClick={() => {
                                     const next = [...attendeeQuestions];
-                                    if (next[idx].options) {
-                                      next[idx].options!.push(`Option ${(next[idx].options!.length + 1)}`);
-                                      setAttendeeQuestions(next);
-                                    }
+                                    next.splice(idx, 1);
+                                    setAttendeeQuestions(next);
                                   }}
-                                  className="text-xs font-bold text-adv-orange hover:text-orange-600 transition-colors flex items-center gap-1 mt-2"
+                                  className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
+                                  title={lang === 'lo' ? 'ລຶບຄຳຖາມ' : 'Delete question'}
                                 >
-                                  <Plus className="w-3 h-3" />
-                                  {lang === 'lo' ? 'ເພີ່ມຕົວເລືອກ' : 'Add Option'}
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               </div>
                             </div>
-                          )}
-                          
-                          <div className="pt-2">
-                            <label className="flex items-center gap-2 cursor-pointer w-fit">
-                              <input
-                                type="checkbox"
-                                checked={q.required}
-                                onChange={(e) => {
-                                  const next = [...attendeeQuestions];
-                                  next[idx].required = e.target.checked;
-                                  setAttendeeQuestions(next);
-                                }}
-                                className="w-4 h-4 text-adv-orange border-gray-300 rounded focus:ring-adv-orange focus:ring-offset-0"
-                              />
-                              <span className="text-sm font-medium text-gray-700">
-                                {lang === 'lo' ? 'ຈຳເປັນຕ້ອງຕອບ (Required)' : 'Required question'}
-                              </span>
-                            </label>
-                          </div>
-                        </div>
-                      ))}
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-[11px] font-bold text-gray-500 mb-1">
+                                  {lang === 'lo' ? 'ປະເພດຄຳຖາມ' : 'Question Type'}
+                                </label>
+                                <div className="relative">
+                                  <select
+                                    value={q.type}
+                                    onChange={(e) => {
+                                      const next = [...attendeeQuestions];
+                                      const newType = e.target.value as any;
+                                      next[idx].type = newType;
+                                      if (['single_choice', 'multi_choice', 'options'].includes(newType)) {
+                                        if (!next[idx].options || next[idx].options.length === 0) {
+                                          next[idx].options = ['Option 1', 'Option 2'];
+                                        }
+                                      } else {
+                                        delete next[idx].options;
+                                      }
+                                      setAttendeeQuestions(next);
+                                    }}
+                                    className="w-full bg-gray-50 border border-gray-200 text-adv-slate rounded-xl px-4 py-2.5 text-sm font-semibold appearance-none focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all pr-10"
+                                  >
+                                    <option value="text">Short Text</option>
+                                    <option value="long_text">Long Text</option>
+                                    <option value="single_choice">Single Choice</option>
+                                    <option value="multi_choice">Multiple Choice</option>
+                                    <option value="checkbox">Checkbox</option>
+                                    <option value="url">URL / Link</option>
+                                  </select>
+                                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                </div>
+                              </div>
+                              
+                              <div>
+                                <label className="block text-[11px] font-bold text-gray-500 mb-1">
+                                  {lang === 'lo' ? 'ຄຳຖາມ' : 'Question Label'}
+                                </label>
+                                <input
+                                  type="text"
+                                  value={q.label}
+                                  onChange={(e) => {
+                                    const next = [...attendeeQuestions];
+                                    next[idx].label = e.target.value;
+                                    setAttendeeQuestions(next);
+                                  }}
+                                  placeholder={lang === 'lo' ? 'ເຊັ່ນ: ຂະໜາດເສື້ອ...' : 'e.g. T-shirt size...'}
+                                  className="w-full bg-gray-50 border border-gray-200 text-adv-slate rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all"
+                                />
+                              </div>
+                            </div>
+                            
+                            {(['single_choice', 'multi_choice', 'options'].includes(q.type)) && (
+                              <div className="pt-2 border-t border-gray-100">
+                                <label className="block text-[11px] font-bold text-gray-500 mb-2">
+                                  {lang === 'lo' ? 'ຕົວເລືອກ (Options)' : 'Options'}
+                                </label>
+                                <div className="space-y-2">
+                                  {(q.options || []).map((opt, optIdx) => (
+                                    <div key={optIdx} className="flex items-center gap-2">
+                                      <input
+                                        type="text"
+                                        value={opt}
+                                        onChange={(e) => {
+                                          const next = [...attendeeQuestions];
+                                          if (next[idx].options) {
+                                            next[idx].options![optIdx] = e.target.value;
+                                            setAttendeeQuestions(next);
+                                          }
+                                        }}
+                                        placeholder={lang === 'lo' ? 'ຕົວເລືອກ...' : 'Option...'}
+                                        className="flex-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-adv-orange/50 transition-all text-sm"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const next = [...attendeeQuestions];
+                                          next[idx].options = next[idx].options!.filter((_, i) => i !== optIdx);
+                                          setAttendeeQuestions(next);
+                                        }}
+                                        disabled={(q.options || []).length <= 1}
+                                        className="p-2 text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors"
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const next = [...attendeeQuestions];
+                                      if (next[idx].options) {
+                                        next[idx].options!.push(`Option ${(next[idx].options!.length + 1)}`);
+                                        setAttendeeQuestions(next);
+                                      }
+                                    }}
+                                    className="text-xs font-bold text-adv-orange hover:text-orange-600 transition-colors flex items-center gap-1 mt-2"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    {lang === 'lo' ? 'ເພີ່ມຕົວເລືອກ' : 'Add Option'}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                            
+                            <div className="pt-2">
+                              <label className="flex items-center gap-2 cursor-pointer w-fit">
+                                <input
+                                  type="checkbox"
+                                  checked={q.required}
+                                  onChange={(e) => {
+                                    const next = [...attendeeQuestions];
+                                    next[idx].required = e.target.checked;
+                                    setAttendeeQuestions(next);
+                                  }}
+                                  className="w-4 h-4 text-adv-orange border-gray-300 rounded focus:ring-adv-orange focus:ring-offset-0"
+                                />
+                                <span className="text-sm font-medium text-gray-700">
+                                  {lang === 'lo' ? 'ຈຳເປັນຕ້ອງຕອບ (Required)' : 'Required question'}
+                                </span>
+                              </label>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -3701,6 +3869,7 @@ export default function CreateEvent() {
                     {/* Operating Time Slots Configuration for Flexible Date */}
                     {dateType === "flexible" && (
                       <motion.div 
+                        id="field-flexible-dates"
                         initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-4"
@@ -3863,9 +4032,13 @@ export default function CreateEvent() {
                                   <span className="text-xs text-gray-500">{Math.round(Math.min(zoneImageProgress, 100))}%</span>
                                 </div>
                               ) : zoneImage ? (
-                                <>
-                                  <img src={zoneImage} alt="Seating map preview" className="absolute inset-0 w-full h-full object-contain bg-gray-50" />
-                                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                                <AdaptiveImage
+                                  src={zoneImage}
+                                  alt="Seating map preview"
+                                  fitMode="contain"
+                                  className="absolute inset-0 w-full h-full"
+                                >
+                                  <div className="absolute inset-0 z-20 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
                                     <button 
                                       type="button"
                                       onClick={(e) => { e.stopPropagation(); document.getElementById('zone-image-upload')?.click(); }}
@@ -3881,7 +4054,7 @@ export default function CreateEvent() {
                                       <X className="w-3 h-3" /> {t.remove}
                                     </button>
                                   </div>
-                                </>
+                                </AdaptiveImage>
                               ) : (
                                 <>
                                   <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-colors ${isDraggingZoneImage ? 'bg-adv-orange/20' : 'bg-gray-100 group-hover:bg-adv-orange/10 group-hover:text-adv-orange'}`}>
@@ -3894,10 +4067,11 @@ export default function CreateEvent() {
                           </div>
                         )}
                       </div>
-                    <div className="pt-6 border-t border-gray-100">
+                    <div id="field-ticket-tiers" className="pt-6 border-t border-gray-100">
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="text-lg font-bold text-adv-slate">{t.ticketTiers}</h4>
                         <button 
+                          type="button"
                           onClick={() => setTicketTiers([...ticketTiers, { id: Date.now(), name: '', price: '', quantity: '', saleStartDate: '', saleStartTime: '', saleEndDate: '', saleEndTime: '' }])}
                           className="flex items-center gap-2 text-adv-orange hover:text-orange-600 text-sm font-bold"
                         >
@@ -3908,9 +4082,11 @@ export default function CreateEvent() {
                       
                       <div className="space-y-4">
                         {ticketTiers.map((tier, index) => (
-                          <div key={tier.id} className="flex flex-col md:flex-row gap-4 p-4 bg-gray-50 rounded-lg border border-gray-100 relative shadow-sm">
-                            <div className="flex-1">
-                              <label className="block text-xs font-bold text-gray-500 mb-1">{t.tierName}</label>
+                          <div key={tier.id} className="flex flex-col lg:flex-row items-stretch lg:items-end gap-3 p-4 bg-gray-50/90 rounded-2xl border border-gray-150 relative shadow-sm hover:z-30 focus-within:z-40">
+                            <div className="flex-1 min-w-[130px]">
+                              <label className="block text-xs font-bold text-gray-500 mb-1.5 whitespace-nowrap truncate" title={t.tierName}>
+                                {t.tierName} <span className="text-adv-orange">*</span>
+                              </label>
                               <input 
                                 type="text" 
                                 value={tier.name}
@@ -3920,11 +4096,13 @@ export default function CreateEvent() {
                                   setTicketTiers(newTiers);
                                 }}
                                 placeholder={t.tierNamePlaceholder}
-                                className="w-full bg-white border border-gray-200 text-adv-slate rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all"
+                                className="w-full h-10 bg-white border border-gray-200 text-adv-slate rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all"
                               />
                             </div>
-                            <div className="w-full md:w-36">
-                              <label className="block text-xs font-bold text-gray-500 mb-1">{t.priceWithCurrency}</label>
+                            <div className="w-full lg:w-32 shrink-0">
+                              <label className="block text-xs font-bold text-gray-500 mb-1.5 whitespace-nowrap truncate" title={t.priceWithCurrency}>
+                                {t.priceWithCurrency}
+                              </label>
                               <input 
                                 type="text" 
                                 inputMode="numeric"
@@ -3935,57 +4113,76 @@ export default function CreateEvent() {
                                   setTicketTiers(newTiers);
                                 }}
                                 placeholder="0"
-                                className="w-full bg-white border border-gray-200 text-adv-slate rounded-xl px-3 py-2.5 text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all"
+                                className="w-full h-10 bg-white border border-gray-200 text-adv-slate rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all"
                               />
                             </div>
-                            <div className="w-full md:w-32">
-                              <label className="block text-xs font-bold text-gray-500 mb-1">{t.quantity}</label>
-                              <input 
-                                type="text"
-                                inputMode="numeric" 
-                                value={tier.quantity}
-                                onChange={(e) => {
-                                  const newTiers = [...ticketTiers];
-                                  newTiers[index].quantity = formatNumberWithCommas(e.target.value);
-                                  setTicketTiers(newTiers);
-                                }}
-                                placeholder="100"
-                                className="w-full bg-white border border-gray-200 text-adv-slate rounded-xl px-3 py-2.5 text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all"
-                              />
-                            </div>
-                            <div className="w-full md:w-32">
-                              <label className="block text-xs font-bold text-gray-500 mb-1">{t.saleStarts}</label>
-                              <input 
-                                type="date" 
-                                value={tier.saleStartDate || ''}
-                                onChange={(e) => {
-                                  const newTiers = [...ticketTiers];
-                                  newTiers[index].saleStartDate = e.target.value;
-                                  setTicketTiers(newTiers);
-                                }}
-                                className="w-full bg-white border border-gray-200 text-adv-slate rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-adv-orange"
-                              />
-                            </div>
-                            <div className="w-full md:w-32">
-                              <label className="block text-xs font-bold text-gray-500 mb-1">{t.saleEndsOptional}</label>
-                              <input 
-                                type="date" 
-                                value={tier.saleEndDate || ''}
-                                onChange={(e) => {
-                                  const newTiers = [...ticketTiers];
-                                  newTiers[index].saleEndDate = e.target.value;
-                                  setTicketTiers(newTiers);
-                                }}
-                                className="w-full bg-white border border-gray-200 text-adv-slate rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-adv-orange"
-                              />
-                            </div>
+                            {dateType !== 'booking' && (
+                              <div className="w-full lg:w-28 shrink-0">
+                                <label className="block text-xs font-bold text-gray-500 mb-1.5 whitespace-nowrap truncate" title={t.quantity}>
+                                  {t.quantity} <span className="text-adv-orange">*</span>
+                                </label>
+                                <input 
+                                  type="text"
+                                  inputMode="numeric" 
+                                  value={tier.quantity}
+                                  onChange={(e) => {
+                                    const newTiers = [...ticketTiers];
+                                    newTiers[index].quantity = formatNumberWithCommas(e.target.value);
+                                    setTicketTiers(newTiers);
+                                  }}
+                                  placeholder="100"
+                                  className="w-full h-10 bg-white border border-gray-200 text-adv-slate rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-4 focus:ring-adv-orange/10 focus:border-adv-orange transition-all"
+                                />
+                              </div>
+                            )}
+                            {dateType !== 'booking' && (
+                              <>
+                                <div className="w-full lg:w-40 shrink-0">
+                                  <label className="block text-xs font-bold text-gray-500 mb-1.5 whitespace-nowrap truncate" title={t.saleStarts}>
+                                    {t.saleStarts} <span className="text-adv-orange">*</span>
+                                  </label>
+                                  <DateInputDDMMYYYY
+                                    value={tier.saleStartDate || ''}
+                                    onChange={(val) => {
+                                      const newTiers = [...ticketTiers];
+                                      newTiers[index].saleStartDate = val;
+                                      setTicketTiers(newTiers);
+                                    }}
+                                    lang={lang}
+                                    placeholder="DD/MM/YYYY"
+                                    align="auto"
+                                  />
+                                </div>
+                                <div className="w-full lg:w-40 shrink-0">
+                                  <label className="block text-xs font-bold text-gray-500 mb-1.5 whitespace-nowrap truncate" title={t.saleEndsOptional}>
+                                    {t.saleEndsOptional} <span className="text-adv-orange">*</span>
+                                  </label>
+                                  <DateInputDDMMYYYY
+                                    value={tier.saleEndDate || ''}
+                                    onChange={(val) => {
+                                      const newTiers = [...ticketTiers];
+                                      newTiers[index].saleEndDate = val;
+                                      setTicketTiers(newTiers);
+                                    }}
+                                    minDate={tier.saleStartDate || undefined}
+                                    lang={lang}
+                                    placeholder="DD/MM/YYYY"
+                                    align="right"
+                                  />
+                                </div>
+                              </>
+                            )}
                             {ticketTiers.length > 1 && (
-                              <button 
-                                onClick={() => setTicketTiers(ticketTiers.filter((_, i) => i !== index))}
-                                className="absolute top-2 right-2 md:static md:mt-6 text-gray-400 hover:text-red-500 transition-colors"
-                              >
-                                <Trash2 className="w-5 h-5" />
-                              </button>
+                              <div className="shrink-0 flex items-center justify-end">
+                                <button 
+                                  type="button"
+                                  onClick={() => setTicketTiers(ticketTiers.filter((_, i) => i !== index))}
+                                  className="h-10 w-10 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-100"
+                                  title={lang === 'lo' ? 'ລຶບປະເພດປີ້' : 'Delete Tier'}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             )}
                           </div>
                         ))}
@@ -4013,64 +4210,37 @@ export default function CreateEvent() {
                         >
                           <div className="flex items-center justify-between mb-4">
                             <h4 className="text-lg font-bold text-adv-slate">{t.couponsDiscounts}</h4>
-                            <div className="flex items-center gap-2">
-                              <button 
-                                onClick={generateTestCoupons}
-                                className="flex items-center gap-2 text-gray-500 hover:text-adv-slate text-sm font-bold bg-gray-100 px-4 py-2 rounded-xl transition-colors"
-                              >
-                                {lang === 'en' ? 'Generate Test' : 'ສ້າງຊຸດທົດລອງ'}
-                              </button>
-                              <button 
-                                onClick={() => setCoupons([...coupons, { id: Date.now(), code: '', discount: '', type: 'percentage', maxUses: '', validFrom: '', validUntil: '', isActive: true }])}
-                                className="flex items-center gap-2 text-adv-orange hover:text-orange-600 text-sm font-bold bg-adv-orange/5 px-4 py-2 rounded-xl transition-colors"
-                              >
-                                <Plus className="w-4 h-4" />
-                                {t.addCoupon}
-                              </button>
-                            </div>
+                            <button 
+                              type="button"
+                              onClick={() => setCoupons([...coupons, { id: Date.now(), code: '', discount: '', type: 'percentage', maxUses: '', validFrom: '', validUntil: '', isActive: true }])}
+                              className="flex items-center gap-2 text-adv-orange hover:text-orange-600 text-sm font-bold bg-adv-orange/5 hover:bg-adv-orange/10 px-4 py-2 rounded-xl transition-colors"
+                            >
+                              <Plus className="w-4 h-4" />
+                              {t.addCoupon}
+                            </button>
                           </div>
                           
                           <div className="space-y-4">
                             {coupons.map((coupon, index) => (
                               <div key={coupon.id} className="flex flex-col gap-4 p-5 bg-white rounded-xl border border-gray-200 relative shadow-sm hover:shadow-md transition-shadow group">
-                                {/* Top row: Code and Status */}
-                                <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-                                  <div className="flex-1 w-full">
-                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">{t.couponCode}</label>
-                                    <div className="relative">
-                                      <input 
-                                        type="text" 
-                                        value={coupon.code}
-                                        onChange={(e) => {
-                                          const newCoupons = [...coupons];
-                                          newCoupons[index].code = e.target.value.toUpperCase();
-                                          setCoupons(newCoupons);
-                                        }}
-                                        placeholder="e.g. DISCOUNT2026"
-                                        className="w-full bg-white border border-gray-200 text-adv-slate rounded-lg px-3 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange uppercase tracking-widest pl-10"
-                                      />
-                                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                                        <Ticket className="w-4 h-4" />
-                                      </div>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="w-full md:w-48">
-                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">{t.couponStatus}</label>
-                                    <button
-                                      onClick={() => {
+                                {/* Top row: Code */}
+                                <div>
+                                  <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">{t.couponCode}</label>
+                                  <div className="relative">
+                                    <input 
+                                      type="text" 
+                                      value={coupon.code}
+                                      onChange={(e) => {
                                         const newCoupons = [...coupons];
-                                        newCoupons[index].isActive = !newCoupons[index].isActive;
+                                        newCoupons[index].code = e.target.value.toUpperCase();
                                         setCoupons(newCoupons);
                                       }}
-                                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg border transition-all text-sm font-bold ${coupon.isActive ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-gray-100 border-gray-200 text-gray-500'}`}
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <div className={`w-2 h-2 rounded-full ${coupon.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
-                                        {coupon.isActive ? t.active : t.inactive}
-                                      </div>
-                                      <RefreshCcw className={`w-3.5 h-3.5 transition-transform ${coupon.isActive ? 'rotate-180' : ''}`} />
-                                    </button>
+                                      placeholder="e.g. DISCOUNT2026"
+                                      className="w-full bg-white border border-gray-200 text-adv-slate rounded-lg px-3 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange uppercase tracking-widest pl-10"
+                                    />
+                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                      <Ticket className="w-4 h-4" />
+                                    </div>
                                   </div>
                                 </div>
 
@@ -4102,8 +4272,8 @@ export default function CreateEvent() {
                                     </div>
                                   </div>
 
-                                  <div className="w-full md:w-32">
-                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">{t.discount}</label>
+                                  <div className="w-full md:w-36 lg:w-40">
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider whitespace-nowrap truncate" title={t.discount}>{t.discount}</label>
                                     <div className="relative">
                                       <input 
                                         type="text"
@@ -4123,8 +4293,35 @@ export default function CreateEvent() {
                                     </div>
                                   </div>
 
-                                  <div className="w-full md:w-32">
-                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">{t.maxUses}</label>
+                                  {/* Max Discount Amount Cap for Percentage Type */}
+                                  {coupon.type === 'percentage' && (
+                                    <div className="w-full md:w-36 lg:w-44">
+                                      <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider whitespace-nowrap truncate" title={t.maxDiscountAmount}>
+                                        {t.maxDiscountAmount}
+                                      </label>
+                                      <div className="relative">
+                                        <input 
+                                          type="text"
+                                          inputMode="numeric" 
+                                          value={coupon.maxDiscountAmount ? formatNumberWithCommas(coupon.maxDiscountAmount) : ''}
+                                          onChange={(e) => {
+                                            const rawVal = e.target.value.replace(/[^0-9]/g, '');
+                                            const newCoupons = [...coupons];
+                                            newCoupons[index].maxDiscountAmount = rawVal ? Number(rawVal) : undefined;
+                                            setCoupons(newCoupons);
+                                          }}
+                                          placeholder={t.unlimited}
+                                          className="w-full bg-white border border-gray-200 text-adv-slate rounded-lg px-3 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange"
+                                        />
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] font-bold">
+                                          {currency}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  <div className="w-full md:w-36 lg:w-40">
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider whitespace-nowrap truncate" title={t.maxUses}>{t.maxUses}</label>
                                     <input 
                                       type="number" 
                                       value={coupon.maxUses}
@@ -4137,42 +4334,63 @@ export default function CreateEvent() {
                                       className="w-full bg-white border border-gray-200 text-adv-slate rounded-lg px-3 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange"
                                     />
                                   </div>
+
+                                  <div className="w-full md:w-36 lg:w-40">
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider whitespace-nowrap truncate" title={t.maxUsesPerUser}>{t.maxUsesPerUser}</label>
+                                    <input 
+                                      type="number" 
+                                      min="1"
+                                      value={coupon.maxUsesPerUser || ''}
+                                      onChange={(e) => {
+                                        const raw = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                                        const newCoupons = [...coupons];
+                                        newCoupons[index].maxUsesPerUser = raw;
+                                        setCoupons(newCoupons);
+                                      }}
+                                      placeholder="1"
+                                      className="w-full bg-white border border-gray-200 text-adv-slate rounded-lg px-3 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange"
+                                    />
+                                  </div>
                                 </div>
 
                                 {/* Bottom row: Validity Period */}
                                 <div className="flex flex-col md:flex-row gap-4 items-end">
-                                  <div className="flex-1 w-full grid grid-cols-2 gap-4">
+                                  <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
-                                      <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">{t.validFrom}</label>
-                                      <input 
-                                        type="date" 
+                                      <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">{t.validFrom}</label>
+                                      <DateInputDDMMYYYY
                                         value={coupon.validFrom || ''}
-                                        onChange={(e) => {
+                                        onChange={(val) => {
                                           const newCoupons = [...coupons];
-                                          newCoupons[index].validFrom = e.target.value;
+                                          newCoupons[index].validFrom = val;
                                           setCoupons(newCoupons);
                                         }}
-                                        className="w-full bg-white border border-gray-200 text-adv-slate rounded-lg px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-adv-orange"
+                                        lang={lang}
+                                        placeholder="DD/MM/YYYY"
+                                        align="auto"
                                       />
                                     </div>
                                     <div>
-                                      <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">{t.validUntil}</label>
-                                      <input 
-                                        type="date" 
+                                      <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">{t.validUntil}</label>
+                                      <DateInputDDMMYYYY
                                         value={coupon.validUntil || ''}
-                                        onChange={(e) => {
+                                        onChange={(val) => {
                                           const newCoupons = [...coupons];
-                                          newCoupons[index].validUntil = e.target.value;
+                                          newCoupons[index].validUntil = val;
                                           setCoupons(newCoupons);
                                         }}
-                                        className="w-full bg-white border border-gray-200 text-adv-slate rounded-lg px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-adv-orange"
+                                        minDate={coupon.validFrom || undefined}
+                                        lang={lang}
+                                        placeholder="DD/MM/YYYY"
+                                        align="auto"
                                       />
                                     </div>
                                   </div>
 
                                   <button 
+                                    type="button"
                                     onClick={() => setCoupons(coupons.filter((_, i) => i !== index))}
-                                    className="p-2.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all group-hover:bg-red-50/50"
+                                    className="p-2.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all group-hover:bg-red-50/50 shrink-0"
                                     title={t.remove}
                                   >
                                     <Trash2 className="w-5 h-5" />
@@ -4461,12 +4679,9 @@ export default function CreateEvent() {
                            <ImageIcon className="w-5 h-5 text-adv-orange" />
                            Vertical Banner (720x958)
                          </h4>
-                         <div className="aspect-[3/4] bg-slate-950 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden relative">
+                         <div className="aspect-[3/4] rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden relative">
                            {verticalImage ? (
-                             <>
-                               <img src={verticalImage} className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 filter scale-110" alt="" />
-                               <img src={verticalImage} className="w-full h-full object-contain relative z-10 p-1 drop-shadow-md" alt="Preview" />
-                             </>
+                             <AdaptiveImage src={verticalImage} fitMode="contain" className="w-full h-full" />
                            ) : (
                              <div className="text-center p-6 text-gray-400">
                                <p className="text-sm font-bold uppercase tracking-widest text-adv-slate/20">Main Poster</p>
@@ -4479,12 +4694,9 @@ export default function CreateEvent() {
                            <ImageIcon className="w-5 h-5 text-adv-orange" />
                            Horizontal Background (1280x720)
                          </h4>
-                         <div className="aspect-video bg-slate-950 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden relative">
+                         <div className="aspect-video rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden relative">
                            {horizontalImage ? (
-                             <>
-                               <img src={horizontalImage} className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 filter scale-110" alt="" />
-                               <img src={horizontalImage} className="w-full h-full object-contain relative z-10 p-1 drop-shadow-md" alt="Preview" />
-                             </>
+                             <AdaptiveImage src={horizontalImage} fitMode="contain" className="w-full h-full" />
                            ) : (
                              <div className="text-center p-6 text-gray-400">
                                <p className="text-sm font-bold uppercase tracking-widest text-adv-slate/20">Page Cover</p>
@@ -4788,13 +5000,19 @@ export default function CreateEvent() {
                                 </div>
 
                                 <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] font-semibold text-gray-400">
-                                  <span className="flex items-center gap-1">
-                                    📦 {lang === 'lo' ? 'ຈຳນວນ:' : 'Qty:'} <strong className="text-adv-slate font-bold">{tier.quantity || tier.available || 'Unlimited'}</strong>
-                                  </span>
-                                  {(tier.saleStartDate || tier.saleEndDate) && (
+                                  {dateType !== 'booking' ? (
+                                    <span className="flex items-center gap-1">
+                                      📦 {lang === 'lo' ? 'ຈຳນວນ:' : 'Qty:'} <strong className="text-adv-slate font-bold">{tier.quantity || tier.available || 'Unlimited'}</strong>
+                                    </span>
+                                  ) : (
+                                    <span className="flex items-center gap-1 text-adv-orange font-bold">
+                                      ✨ {lang === 'lo' ? 'ການຈອງຕາມນັດໝາຍ' : 'Booking Service'}
+                                    </span>
+                                  )}
+                                  {dateType !== 'booking' && (tier.saleStartDate || tier.saleEndDate) && (
                                     <span className="text-[10px] text-gray-400 font-medium">
-                                      🗓️ {tier.saleStartDate ? new Date(tier.saleStartDate).toLocaleDateString() : ''} 
-                                      {tier.saleEndDate ? ` - ${new Date(tier.saleEndDate).toLocaleDateString()}` : ''}
+                                      🗓️ {tier.saleStartDate ? formatToDDMMYYYY(tier.saleStartDate) : ''} 
+                                      {tier.saleEndDate ? ` - ${formatToDDMMYYYY(tier.saleEndDate)}` : ''}
                                     </span>
                                   )}
                                 </div>
@@ -5040,7 +5258,7 @@ export default function CreateEvent() {
                    const currentHeroImg = previewImages[previewImageIndex] || previewData.horizontalImage || previewData.image;
 
                    return (
-                     <div className="relative rounded-3xl overflow-hidden bg-slate-950 aspect-[21/9] min-h-[260px] shadow-2xl border border-gray-200 group/slider select-none">
+                     <div className="relative rounded-3xl overflow-hidden aspect-[21/9] min-h-[260px] shadow-2xl border border-gray-200 group/slider select-none">
                        <AnimatePresence mode="wait">
                          <motion.div 
                            key={previewImageIndex}
@@ -5048,19 +5266,13 @@ export default function CreateEvent() {
                            animate={{ opacity: 1 }}
                            exit={{ opacity: 0.5 }}
                            transition={{ duration: 0.3 }}
-                           className="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
+                           className="absolute inset-0 w-full h-full"
                          >
-                           {/* Ambient Blurred Background to frame non-16:9 images */}
-                           <img 
-                             src={currentHeroImg} 
-                             alt="" 
-                             className="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-40 brightness-75 pointer-events-none filter" 
-                           />
-                           {/* Full In-Frame Image */}
-                           <img 
-                             src={currentHeroImg} 
-                             alt={previewData.title} 
-                             className="w-full h-full object-contain relative z-10 drop-shadow-2xl pointer-events-none" 
+                           <AdaptiveImage
+                             src={currentHeroImg}
+                             alt={previewData.title}
+                             fitMode="contain"
+                             className="w-full h-full"
                            />
                          </motion.div>
                        </AnimatePresence>
@@ -5127,7 +5339,7 @@ export default function CreateEvent() {
                            </span>
                            {previewData.dateType === 'flexible' && (
                              <span className="px-3 py-1 bg-amber-400 text-slate-950 text-xs font-black rounded-lg uppercase tracking-wider">
-                               Flexible Date
+                               {t.flexibleDate}
                              </span>
                            )}
                          </div>
@@ -5211,10 +5423,9 @@ export default function CreateEvent() {
                                 const matchIdx = allImgs.indexOf(img);
                                 if (matchIdx !== -1) setPreviewImageIndex(matchIdx);
                               }}
-                              className="relative group/thumb overflow-hidden rounded-xl border border-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-adv-orange bg-slate-950 h-32 flex items-center justify-center"
+                              className="relative group/thumb overflow-hidden rounded-xl border border-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-adv-orange h-32 flex items-center justify-center cursor-pointer"
                             >
-                              <img src={img} alt="" className="absolute inset-0 w-full h-full object-cover blur-md opacity-40 filter scale-110 pointer-events-none" />
-                              <img src={img} alt={`Gallery ${idx}`} className="w-full h-full object-contain relative z-10 group-hover/thumb:scale-105 transition-transform duration-300 drop-shadow-sm p-1 pointer-events-none" />
+                              <AdaptiveImage src={img} alt={`Gallery ${idx}`} fitMode="contain" className="w-full h-full" />
                               <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-colors z-20" />
                             </button>
                           ))}
@@ -5229,8 +5440,8 @@ export default function CreateEvent() {
                           <MapPin className="w-5 h-5 text-adv-orange" />
                           {lang === 'lo' ? 'ແຜນຜັງໂຊນບ່ອນນັ່ງ' : 'Zone Seating Map'}
                         </h3>
-                        <div className="rounded-xl overflow-hidden border border-gray-200 max-h-[400px] flex justify-center bg-gray-50">
-                          <img src={previewData.zoneImage} alt="Seating Map" className="w-full object-contain" />
+                        <div className="rounded-xl overflow-hidden border border-gray-200 max-h-[400px] flex justify-center">
+                          <AdaptiveImage src={previewData.zoneImage} alt="Seating Map" fitMode="contain" className="w-full min-h-[220px]" />
                         </div>
                       </div>
                     )}
@@ -5294,7 +5505,9 @@ export default function CreateEvent() {
                             <div key={idx} className="p-3 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-between">
                               <div>
                                 <div className="font-bold text-xs text-adv-slate">{tier.name || `Tier ${idx + 1}`}</div>
-                                <div className="text-[10px] text-gray-400 font-medium">Qty: {tier.quantity || 'Unlimited'}</div>
+                                {dateType !== 'booking' && (
+                                  <div className="text-[10px] text-gray-400 font-medium">Qty: {tier.quantity || 'Unlimited'}</div>
+                                )}
                               </div>
                               <div className="font-extrabold text-xs text-adv-orange">
                                 {tier.price ? `${(Number(String(tier.price).replace(/,/g, '')) || 0).toLocaleString()} ${currency}` : `0 ${currency}`}

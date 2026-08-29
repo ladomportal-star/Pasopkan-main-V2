@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ExternalLink, Link as LinkIcon, AlertTriangle, Loader2, CheckCircle2, MapPin } from 'lucide-react';
+import { Link as LinkIcon, AlertTriangle, Loader2, CheckCircle2 } from 'lucide-react';
 
 interface EventMapPickerProps {
   address?: string;
@@ -133,17 +133,6 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
 
   const iframeSrc = getIframeSrc();
 
-  const getMapTargetUrl = () => {
-    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
-      return url;
-    }
-    if (googleMapUrl && (googleMapUrl.startsWith('http://') || googleMapUrl.startsWith('https://'))) {
-      return googleMapUrl;
-    }
-    const searchAddr = address || [district, province].filter(Boolean).join(', ') || 'Vientiane';
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchAddr)}`;
-  };
-
   if (isReadOnly) {
     return (
       <iframe 
@@ -191,18 +180,6 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
       </div>
 
       <div className="rounded-[16px] h-[300px] overflow-hidden border border-gray-200 shadow-sm relative bg-gray-100 group mt-4">
-        {/* Open Map button overlay replacing top-left iframe box */}
-        <a
-          href={getMapTargetUrl()}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="absolute top-3 right-3 z-10 inline-flex items-center gap-2 px-3.5 py-2 bg-white/95 hover:bg-white text-adv-slate rounded-xl text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all border border-gray-200 backdrop-blur-md cursor-pointer group/mapbtn"
-        >
-          <MapPin className="w-4 h-4 text-adv-orange group-hover/mapbtn:scale-110 transition-transform" />
-          <span>{lang === 'lo' ? 'ເປີດແຜນທີ່' : 'Open map'}</span>
-          <ExternalLink className="w-3.5 h-3.5 text-gray-400 group-hover/mapbtn:text-adv-orange transition-colors" />
-        </a>
-
         <iframe 
           key={iframeSrc}
           style={{ border: 0 }} 

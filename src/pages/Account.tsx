@@ -5,12 +5,13 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { safeStorage } from '../lib/storage';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
-import { events, SeatingZone } from '../data/events';
+import { events, SeatingZone, Coupon } from '../data/events';
 import { useAuth } from '../AuthContext';
 import { useLanguage } from '../LanguageContext';
 import { useTheme } from '../ThemeContext';
 import { CheckinRecord, useCheckins } from '../lib/checkinsStore';
 import SEO from '../components/SEO';
+import ManageCouponsSection from '../components/ManageCouponsSection';
 
 const LazyScanner = React.lazy(() => 
   import('@yudiel/react-qr-scanner')
@@ -775,6 +776,26 @@ export default function Account() {
     ));
   };
 
+  const handleUpdateEventCoupons = (updatedCoupons: Coupon[]) => {
+    setMyEvents(prev => {
+      const updated = prev.map(e => {
+        if (String(e.id) === String(selectedEvent.id)) {
+          return {
+            ...e,
+            coupons: updatedCoupons,
+          };
+        }
+        return e;
+      });
+      try {
+        safeStorage.setItem('organizer_events', JSON.stringify(updated));
+      } catch (err) {
+        console.error('Failed to save organizer events:', err);
+      }
+      return updated;
+    });
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -1138,6 +1159,15 @@ export default function Account() {
                   )}
                 </div>
               </div>
+
+              {/* Coupons & Discounts Management (Manage existing coupons created with event) */}
+              <ManageCouponsSection
+                eventId={String(selectedEvent.id)}
+                coupons={selectedEvent.coupons || []}
+                onUpdateCoupons={handleUpdateEventCoupons}
+                theme={theme}
+                lang={lang}
+              />
 
               {/* Seating Map (Only visible if event has one) */}
               {selectedEvent.hasSeating && (

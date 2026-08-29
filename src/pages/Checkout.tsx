@@ -282,7 +282,11 @@ export default function Checkout() {
     const discountVal = Number(appliedCoupon.discount);
     
     if (appliedCoupon.type === 'percentage') {
-      return (subtotal * discountVal) / 100;
+      const calculated = (subtotal * discountVal) / 100;
+      if (appliedCoupon.maxDiscountAmount && appliedCoupon.maxDiscountAmount > 0) {
+        return Math.min(calculated, appliedCoupon.maxDiscountAmount);
+      }
+      return calculated;
     }
     return discountVal;
   };
@@ -493,6 +497,35 @@ export default function Checkout() {
         };
         userTickets.push(newTicketObj);
         localStorage.setItem('pasopkan_user_tickets', JSON.stringify(userTickets));
+
+        // Save coupon redemption details if a coupon was applied
+        if (appliedCoupon) {
+          try {
+            const existingRedemptionsRaw = localStorage.getItem('pasopkan_coupon_redemptions');
+            const redemptionsList = existingRedemptionsRaw ? JSON.parse(existingRedemptionsRaw) : [];
+            const activeUsr = user || auth.currentUser;
+            redemptionsList.push({
+              id: `red_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+              couponId: String(appliedCoupon.id || appliedCoupon.code),
+              couponCode: appliedCoupon.code,
+              eventId: String(event.id),
+              eventTitle: typeof event.title === 'string' ? event.title : 'Event',
+              userId: activeUsr?.uid || 'usr_guest',
+              userName: activeUsr?.displayName || user?.name || (activeUsr?.email ? activeUsr.email.split('@')[0] : 'Attendee'),
+              userEmail: activeUsr?.email || user?.email || 'attendee@pasopkan.la',
+              userPhone: (activeUsr as any)?.phoneNumber || user?.phone || '+856 20 5555 1234',
+              userAvatar: (activeUsr as any)?.photoURL || user?.avatar,
+              orderId: transactionId || `ord_${Date.now()}`,
+              tierName: selectedTiersList.length > 0 ? selectedTiersList.map(i => `${i.quantity}x ${i.tier.name}`).join(', ') : (tier?.name || 'Standard'),
+              discountSaved: discount,
+              totalPaid: total,
+              usedAt: new Date().toISOString()
+            });
+            localStorage.setItem('pasopkan_coupon_redemptions', JSON.stringify(redemptionsList));
+          } catch (err) {
+            console.error('Error saving coupon redemption:', err);
+          }
+        }
       } catch (e) {
         console.error('Error saving purchased event ID:', e);
       }
