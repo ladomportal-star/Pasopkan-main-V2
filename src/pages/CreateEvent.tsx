@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
-import { Calendar, Undo, Redo, Heading3, FileImage, Folder, FileText, Plus, User, Users, Mail, Phone, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Inbox, Ticket, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, Image as ImageIcon, Video, MapPin, Loader2, Trash2, X, Check, QrCode, LogOut, Edit, ShieldCheck, DollarSign, RefreshCcw, FileCheck, BookOpen, AlertCircle, ShieldAlert, ArrowLeft, ArrowRight, Globe, Clock, Settings, Lock, Eye, UploadCloud, ExternalLink, Monitor, Smartphone, CheckCircle2, Sparkles, Paperclip, Search, Quote, Minus, Heading1, Heading2, Link as LinkIcon, Award, Unlink, Superscript, Subscript, Strikethrough, RemoveFormatting, MessageSquare, Type, Palette, GripVertical } from 'lucide-react';
+import { Calendar, Undo, Redo, Heading3, FileImage, Folder, FileText, Plus, User, Users, Mail, Phone, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Inbox, Ticket, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, Image as ImageIcon, Video, MapPin, Loader2, Trash2, X, Check, QrCode, LogOut, Edit, ShieldCheck, DollarSign, RefreshCcw, FileCheck, BookOpen, AlertCircle, ShieldAlert, ArrowLeft, ArrowRight, Globe, Clock, Settings, Lock, Eye, UploadCloud, ExternalLink, Monitor, Smartphone, CheckCircle2, Sparkles, Paperclip, Search, Quote, Minus, Heading1, Heading2, Link as LinkIcon, Award, Unlink, Superscript, Subscript, Strikethrough, RemoveFormatting, MessageSquare, Type, Palette, GripVertical, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { safeStorage } from '../lib/storage';
@@ -11,7 +11,7 @@ import { EventMapPicker } from '../components/EventMapPicker';
 import { ScrollTimePicker } from '../components/ScrollTimePicker';
 import { FlexibleDatePicker } from '../components/FlexibleDatePicker';
 import { CalendarPicker } from '../components/CalendarPicker';
-import { DateInputDDMMYYYY, formatToDDMMYYYY } from '../components/DateInputDDMMYYYY';
+import { DateInputDDMMYYYY, formatToDDMMYYYY, parseDDMMYYYYToDate } from '../components/DateInputDDMMYYYY';
 import { AdaptiveImage } from '../components/AdaptiveImage';
 import SocialLinksForm, { SocialLinks } from '../components/SocialLinksForm';
 import {
@@ -114,6 +114,7 @@ const translations = {
     validUntil: 'Valid Until',
     validFrom: 'Valid From',
     unlimited: 'Unlimited',
+    notApplicableFixed: 'Not applicable (Fixed Amount)',
     noCoupons: 'No coupons added yet.',
     couponStatus: 'Status',
     active: 'Active',
@@ -209,6 +210,14 @@ const translations = {
     dateType: 'Date Type',
     fixedDate: 'Fixed Date',
     flexibleDate: 'Event Date',
+    bookingDate: 'Booking',
+    singleDateTypeRule: 'Single Schedule Type Rule',
+    singleDateTypeNote: 'An event can only have 1 schedule type: either specific Event Dates or Booking. You cannot create or combine both schedule types in the same event.',
+    bookingScheduleDisabledNote: 'Note: Event Dates schedule is currently active. Booking settings are inactive and will not be applied.',
+    eventDatesDisabledNote: 'Note: Booking schedule is currently active. Specific Event Dates are inactive and will not be applied.',
+    selectEventDateFirstForSaleDates: 'Please select event date(s) above first before setting ticket sale start and end dates.',
+    selectEventDateFirstForCoupons: 'Please select event date(s) above first before setting coupon validity start and end dates.',
+    selectEventDateFirstPlaceholder: 'Select event date first',
     flexibleDesc: 'Event Date Description',
     flexibleDescPlaceholder: 'e.g. Valid for any day in July, Every weekend',
     flexibleTimeDesc: 'Set the daily operating hours or time slot for this event.',
@@ -355,6 +364,7 @@ const translations = {
     validUntil: 'ໃຊ້ໄດ້ເຖິງ',
     validFrom: 'ໃຊ້ໄດ້ຕັ້ງແຕ່',
     unlimited: 'ບໍ່ຈຳກັດ',
+    notApplicableFixed: 'ບໍ່ຈຳເປັນ (ສ່ວນຫຼຸດຄົງທີ່)',
     noCoupons: 'ຍັງບໍ່ມີຄູປອງ.',
     couponStatus: 'ສະຖານະ',
     active: 'ເປີດໃຊ້',
@@ -450,6 +460,14 @@ const translations = {
     dateType: 'ປະເພດວັນທີ',
     fixedDate: 'ວັນທີຄົງທີ່',
     flexibleDate: 'ວັນທີຈັດງານ',
+    bookingDate: 'ການຈອງ',
+    singleDateTypeRule: 'ກົດລະບຽບປະເພດວັນທີ (ເລືອກໄດ້ 1 ປະເພດ)',
+    singleDateTypeNote: 'ຜູ້ຈັດງານສາມາດສ້າງວັນທີໄດ້ພຽງ 1 ປະເພດເທົ່ານັ້ນ (ວັນທີຈັດງານ ຫຼື ການຈອງ) ບໍ່ສາມາດສ້າງທັງ 2 ປະເພດພ້ອມກັນໃນ event ດຽວກັນໄດ້.',
+    bookingScheduleDisabledNote: 'ໝາຍເຫດ: ຕາຕະລາງວັນທີຈັດງານກຳລັງເປີດໃຊ້ງານຢູ່. ການຕັ້ງຄ່າການຈອງຈະບໍ່ຖືກນຳໃຊ້.',
+    eventDatesDisabledNote: 'ໝາຍເຫດ: ຕາຕະລາງການຈອງກຳລັງເປີດໃຊ້ງານຢູ່. ວັນທີຈັດງານສະເພາະຈະບໍ່ຖືກນຳໃຊ້.',
+    selectEventDateFirstForSaleDates: 'ກະລຸນາເລືອກວັນທີຈັດງານຂ້າງເທິງກ່ອນ ເພື່ອກຳນົດວັນທີເລີ່ມຕົ້ນ ແລະ ສິ້ນສຸດການຂາຍບັດ.',
+    selectEventDateFirstForCoupons: 'ກະລຸນາເລືອກວັນທີຈັດງານຂ້າງເທິງກ່ອນ ເພື່ອກຳນົດວັນທີເລີ່ມຕົ້ນ ແລະ ສິ້ນສຸດການນຳໃຊ້ຄູປອງ.',
+    selectEventDateFirstPlaceholder: 'ເລືອກວັນທີງານກ່ອນ',
     flexibleDesc: 'ຄຳອະທິບາຍວັນທີຈັດງານ',
     flexibleDescPlaceholder: 'ເຊັ່ນ: ໃຊ້ໄດ້ທຸກມື້ໃນເດືອນກໍລະກົດ, ທຸກໆທ້າຍອາທິດ',
     flexibleTimeDesc: 'ກຳນົດເວລາເປີດບໍລິການປະຈຳວັນ ຫຼື ຊ່ວງເວລາສຳລັບ event ນີ້.',
@@ -629,8 +647,8 @@ export default function CreateEvent() {
   const [flexibleDateDesc, setFlexibleDateDesc] = useState('');
   
   // Booking specific states
-  const [bookingAvailableDays, setBookingAvailableDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
-  const [bookingTimeSlots, setBookingTimeSlots] = useState<string[]>(['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00']);
+  const [bookingAvailableDays, setBookingAvailableDays] = useState<string[]>([]);
+  const [bookingTimeSlots, setBookingTimeSlots] = useState<string[]>([]);
   const [newBookingTimeSlot, setNewBookingTimeSlot] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [activeStep, setActiveStep] = useState(1);
@@ -681,6 +699,29 @@ export default function CreateEvent() {
     loadTerms();
   }, []);
 
+
+  // Helper to get today's date in YYYY-MM-DD
+  const getTodayDateStr = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Helper to get the event's end date (either the latest date in availableDates, or endDate, or startDate)
+  const getEventEndDateStr = () => {
+    if (dateType === 'flexible' && availableDates && availableDates.length > 0) {
+      const validDates = availableDates.map(d => d.date).filter(Boolean);
+      if (validDates.length > 0) {
+        const sorted = [...validDates].sort();
+        return sorted[sorted.length - 1];
+      }
+    }
+    if (endDate) return endDate;
+    if (startDate) return startDate;
+    return '';
+  };
 
   // Helper to extract missing required fields across steps
   const getMissingFieldsList = () => {
@@ -871,6 +912,29 @@ export default function CreateEvent() {
           });
         }
       }
+    } else if (dateType === 'booking') {
+      if (!bookingAvailableDays || bookingAvailableDays.length === 0) {
+        list.push({
+          id: 'booking-days-empty',
+          step: 2,
+          stepTitleEn: 'Time & Tickets',
+          stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+          fieldEn: 'At least 1 Booking Available Day',
+          fieldLo: 'ຢ່າງໜ້ອຍ 1 ມື້ທີ່ເປີດໃຫ້ຈອງ',
+          elementId: 'field-booking-days',
+        });
+      }
+      if (!bookingTimeSlots || bookingTimeSlots.length === 0) {
+        list.push({
+          id: 'booking-slots-empty',
+          step: 2,
+          stepTitleEn: 'Time & Tickets',
+          stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+          fieldEn: 'At least 1 Booking Time Slot',
+          fieldLo: 'ຢ່າງໜ້ອຍ 1 ຮອບເວລາການຈອງ',
+          elementId: 'field-booking-slots',
+        });
+      }
     } else if (dateType === 'fixed') {
       if (!startDate) {
         list.push({
@@ -944,27 +1008,149 @@ export default function CreateEvent() {
             elementId: 'field-ticket-tiers',
           });
         }
-        if (ticketTiers.some(t => !t.saleStartDate || !t.saleStartDate.trim())) {
-          list.push({
-            id: 'ticket-tier-sale-start',
-            step: 2,
-            stepTitleEn: 'Time & Tickets',
-            stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
-            fieldEn: 'Ticket Tier Sale Start Date',
-            fieldLo: 'ວັນທີເລີ່ມຂາຍບັດ',
-            elementId: 'field-ticket-tiers',
-          });
+        if (getEventEndDateStr()) {
+          if (ticketTiers.some(t => !t.saleStartDate || !t.saleStartDate.trim())) {
+            list.push({
+              id: 'ticket-tier-sale-start',
+              step: 2,
+              stepTitleEn: 'Time & Tickets',
+              stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+              fieldEn: 'Ticket Tier Sale Start Date',
+              fieldLo: 'ວັນທີເລີ່ມຂາຍບັດ',
+              elementId: 'field-ticket-tiers',
+            });
+          } else {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const hasPastStart = ticketTiers.some(t => {
+              const d = parseDDMMYYYYToDate(t.saleStartDate);
+              return d && d.getTime() < today.getTime();
+            });
+            if (hasPastStart) {
+              list.push({
+                id: 'ticket-tier-sale-start-past',
+                step: 2,
+                stepTitleEn: 'Time & Tickets',
+                stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+                fieldEn: 'Ticket Sale Starts must be from today onwards',
+                fieldLo: 'ວັນທີເລີ່ມຕົ້ນຂາຍບັດຕ້ອງເລີ່ມຈາກມື້ປັດຈຸບັນເປັນຕົ້ນໄປ',
+                elementId: 'field-ticket-tiers',
+              });
+            }
+          }
+
+          if (ticketTiers.some(t => !t.saleEndDate || !t.saleEndDate.trim())) {
+            list.push({
+              id: 'ticket-tier-sale-end',
+              step: 2,
+              stepTitleEn: 'Time & Tickets',
+              stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+              fieldEn: 'Ticket Tier Sale End Date',
+              fieldLo: 'ວັນທີສິ້ນສຸດການຂາຍບັດ',
+              elementId: 'field-ticket-tiers',
+            });
+          } else {
+            const evEnd = getEventEndDateStr();
+            const evEndDateObj = evEnd ? parseDDMMYYYYToDate(evEnd) : null;
+            if (evEndDateObj) {
+              evEndDateObj.setHours(23, 59, 59, 999);
+              const hasLateSaleEnd = ticketTiers.some(t => {
+                const d = parseDDMMYYYYToDate(t.saleEndDate);
+                return d && d.getTime() > evEndDateObj.getTime();
+              });
+              if (hasLateSaleEnd) {
+                list.push({
+                  id: 'ticket-tier-sale-end-after-event',
+                  step: 2,
+                  stepTitleEn: 'Time & Tickets',
+                  stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+                  fieldEn: 'Ticket Sale Ends cannot be after the end of event',
+                  fieldLo: 'ວັນທີສິ້ນສຸດການຂາຍບັດບໍ່ສາມາດເກີນວັນທີສິ້ນສຸດຂອງ Event ໄດ້',
+                  elementId: 'field-ticket-tiers',
+                });
+              }
+            }
+
+            const hasInvalidRange = ticketTiers.some(t => {
+              const s = parseDDMMYYYYToDate(t.saleStartDate);
+              const e = parseDDMMYYYYToDate(t.saleEndDate);
+              return s && e && s.getTime() > e.getTime();
+            });
+            if (hasInvalidRange) {
+              list.push({
+                id: 'ticket-tier-sale-range-invalid',
+                step: 2,
+                stepTitleEn: 'Time & Tickets',
+                stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+                fieldEn: 'Ticket Sale Start Date cannot be after Sale End Date',
+                fieldLo: 'ວັນທີເລີ່ມຕົ້ນຂາຍບັດບໍ່ສາມາດຢູ່ຫຼັງວັນທີສິ້ນສຸດການຂາຍໄດ້',
+                elementId: 'field-ticket-tiers',
+              });
+            }
+          }
         }
-        if (ticketTiers.some(t => !t.saleEndDate || !t.saleEndDate.trim())) {
-          list.push({
-            id: 'ticket-tier-sale-end',
-            step: 2,
-            stepTitleEn: 'Time & Tickets',
-            stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
-            fieldEn: 'Ticket Tier Sale End Date',
-            fieldLo: 'ວັນທີສິ້ນສຸດການຂາຍບັດ',
-            elementId: 'field-ticket-tiers',
+
+        // Coupon validity dates validation
+        if (enableCoupons && coupons && coupons.length > 0 && getEventEndDateStr()) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          const hasPastCouponStart = coupons.some(c => {
+            if (!c.validFrom) return false;
+            const d = parseDDMMYYYYToDate(c.validFrom);
+            return d && d.getTime() < today.getTime();
           });
+          if (hasPastCouponStart) {
+            list.push({
+              id: 'coupon-valid-from-past',
+              step: 2,
+              stepTitleEn: 'Time & Tickets',
+              stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+              fieldEn: 'Coupon Valid From must be from today onwards',
+              fieldLo: 'ວັນທີເລີ່ມຕົ້ນໃຊ້ຄູປອງຕ້ອງເລີ່ມຈາກມື້ປັດຈຸບັນເປັນຕົ້ນໄປ',
+              elementId: 'field-coupons',
+            });
+          }
+
+          const evEnd = getEventEndDateStr();
+          const evEndDateObj = evEnd ? parseDDMMYYYYToDate(evEnd) : null;
+          if (evEndDateObj) {
+            evEndDateObj.setHours(23, 59, 59, 999);
+            const hasLateCouponEnd = coupons.some(c => {
+              if (!c.validUntil) return false;
+              const d = parseDDMMYYYYToDate(c.validUntil);
+              return d && d.getTime() > evEndDateObj.getTime();
+            });
+            if (hasLateCouponEnd) {
+              list.push({
+                id: 'coupon-valid-until-after-event',
+                step: 2,
+                stepTitleEn: 'Time & Tickets',
+                stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+                fieldEn: 'Coupon Valid Until cannot be after the end of event',
+                fieldLo: 'ວັນທີສິ້ນສຸດການໃຊ້ຄູປອງບໍ່ສາມາດເກີນວັນທີສິ້ນສຸດຂອງ Event ໄດ້',
+                elementId: 'field-coupons',
+              });
+            }
+          }
+
+          const hasInvalidCouponRange = coupons.some(c => {
+            if (!c.validFrom || !c.validUntil) return false;
+            const s = parseDDMMYYYYToDate(c.validFrom);
+            const e = parseDDMMYYYYToDate(c.validUntil);
+            return s && e && s.getTime() > e.getTime();
+          });
+          if (hasInvalidCouponRange) {
+            list.push({
+              id: 'coupon-valid-range-invalid',
+              step: 2,
+              stepTitleEn: 'Time & Tickets',
+              stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+              fieldEn: 'Coupon Valid From Date cannot be after Valid Until Date',
+              fieldLo: 'ວັນທີເລີ່ມຕົ້ນໃຊ້ຄູປອງບໍ່ສາມາດຢູ່ຫຼັງວັນທີສິ້ນສຸດໄດ້',
+              elementId: 'field-coupons',
+            });
+          }
         }
       }
     }
@@ -1044,12 +1230,12 @@ export default function CreateEvent() {
       onlinePasscode: onlinePasscode,
       onlineInstructions: onlineInstructions,
       dateType: dateType,
-      flexibleDateDesc: flexibleDateDesc,
-      bookingAvailableDays: bookingAvailableDays,
-      bookingTimeSlots: bookingTimeSlots,
-      date: startDate || new Date().toISOString().split('T')[0],
-      time: startTime || '18:00',
-      endDate: endDate || startDate,
+      flexibleDateDesc: dateType === 'flexible' ? flexibleDateDesc : '',
+      bookingAvailableDays: dateType === 'booking' ? bookingAvailableDays : [],
+      bookingTimeSlots: dateType === 'booking' ? bookingTimeSlots : [],
+      date: dateType === 'flexible' && availableDates.length > 0 ? availableDates[0].date : (startDate || new Date().toISOString().split('T')[0]),
+      time: dateType === 'flexible' && availableDates.length > 0 && availableDates[0].timeSlots?.length > 0 ? availableDates[0].timeSlots[0] : (startTime || '18:00'),
+      endDate: dateType === 'flexible' && availableDates.length > 0 ? availableDates[availableDates.length - 1].date : (endDate || startDate || new Date().toISOString().split('T')[0]),
       endTime: endTime || '22:00',
       price: ticketTiers[0]?.price ? `${(Number(String(ticketTiers[0].price).replace(/,/g, '')) || 0).toLocaleString()} ${currency}` : `0 ${currency}`,
       currency: currency,
@@ -1061,9 +1247,9 @@ export default function CreateEvent() {
       coupons: enableCoupons ? coupons : [],
       hasSeating: hasSeating,
       zoneImage: zoneImage,
-      hasTimeSelection: hasTimeSelection,
-      timeSlots: timeSlots,
-      availableDates: availableDates,
+      hasTimeSelection: dateType === 'flexible',
+      timeSlots: dateType === 'flexible' ? timeSlots : [],
+      availableDates: dateType === 'flexible' ? availableDates : [],
       status: 'preview',
       requireEveryTicketInfo: requireEveryTicketInfo,
       enableCountdown: enableCountdown,
@@ -1114,8 +1300,8 @@ export default function CreateEvent() {
     setOnlineInstructions(event.onlineInstructions || '');
     setDateType(event.dateType || 'flexible');
     setFlexibleDateDesc(event.flexibleDateDesc || '');
-    setBookingAvailableDays(event.bookingAvailableDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
-    setBookingTimeSlots(event.bookingTimeSlots || ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00']);
+    setBookingAvailableDays(event.bookingAvailableDays || []);
+    setBookingTimeSlots(event.bookingTimeSlots || []);
     setStartDate(event.date || '');
     setStartTime(event.time || '');
     setEndDate(event.endDate || '');
@@ -1123,8 +1309,26 @@ export default function CreateEvent() {
     setDurationEn(event.durationEn || '');
     setDurationLo(event.durationLo || '');
     setSelectedLanguages(event.languages || ['Lao', 'English']);
-    setTicketTiers(event.ticketTiers || [{ id: 1, name: '', price: '', quantity: '', saleStartDate: '', saleStartTime: '', saleEndDate: '', saleEndTime: '' }]);
-    setCoupons(event.coupons || []);
+    const todayStr = getTodayDateStr();
+    const evEnd = event.endDate || (event.availableDates?.[event.availableDates.length - 1]?.date) || event.date || '';
+    setTicketTiers(
+      event.ticketTiers && event.ticketTiers.length > 0
+        ? event.ticketTiers.map((t: any) => ({
+            ...t,
+            saleStartDate: t.saleStartDate || todayStr,
+            saleEndDate: t.saleEndDate || evEnd || '',
+          }))
+        : [{ id: 1, name: '', price: '', quantity: '', saleStartDate: todayStr, saleStartTime: '', saleEndDate: evEnd || '', saleEndTime: '' }]
+    );
+    setCoupons(
+      event.coupons && event.coupons.length > 0
+        ? event.coupons.map((c: any) => ({
+            ...c,
+            validFrom: c.validFrom || (evEnd ? todayStr : ''),
+            validUntil: c.validUntil || evEnd || '',
+          }))
+        : []
+    );
     setEnableCoupons(event.coupons && event.coupons.length > 0 ? true : false);
     setHasSeating(event.hasSeating || false);
     setZoneImage(event.zoneImage || null);
@@ -1209,7 +1413,9 @@ export default function CreateEvent() {
   const [startTime, setStartTime] = useState('');
   const [endDate, setEndDate] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [ticketTiers, setTicketTiers] = useState([{ id: 1, name: '', price: '', quantity: '', saleStartDate: '', saleStartTime: '', saleEndDate: '', saleEndTime: '' }]);
+  const [ticketTiers, setTicketTiers] = useState(() => [
+    { id: 1, name: '', price: '', quantity: '', saleStartDate: '', saleStartTime: '', saleEndDate: '', saleEndTime: '' }
+  ]);
   const [coupons, setCoupons] = useState<any[]>([]);
   const [enableCoupons, setEnableCoupons] = useState(false);
   
@@ -1224,6 +1430,91 @@ export default function CreateEvent() {
   const [newTimeSlot, setNewTimeSlot] = useState('');
   const [flexTimeStart, setFlexTimeStart] = useState('09:00');
   const [flexTimeEnd, setFlexTimeEnd] = useState('17:00');
+
+  // Automatically ensure ticket tier sale dates and coupon valid dates default to current date and end of event when event date is set
+  useEffect(() => {
+    if (dateType === 'booking') return;
+    const evEnd = getEventEndDateStr();
+    const today = getTodayDateStr();
+
+    if (!evEnd) {
+      // If event date is not set, keep sale start/end and coupon validity dates empty
+      setTicketTiers(prev => {
+        let hasChanges = false;
+        const updated = prev.map(tier => {
+          if (tier.saleStartDate || tier.saleEndDate) {
+            hasChanges = true;
+            return { ...tier, saleStartDate: '', saleEndDate: '' };
+          }
+          return tier;
+        });
+        return hasChanges ? updated : prev;
+      });
+
+      setCoupons(prev => {
+        let hasChanges = false;
+        const updated = prev.map(coupon => {
+          if (coupon.validFrom || coupon.validUntil) {
+            hasChanges = true;
+            return { ...coupon, validFrom: '', validUntil: '' };
+          }
+          return coupon;
+        });
+        return hasChanges ? updated : prev;
+      });
+      return;
+    }
+
+    setTicketTiers(prev => {
+      let hasChanges = false;
+      const updated = prev.map(tier => {
+        let newStartDate = tier.saleStartDate;
+        let newEndDate = tier.saleEndDate;
+
+        if (!newStartDate || !newStartDate.trim()) {
+          newStartDate = today;
+          hasChanges = true;
+        }
+
+        if (!newEndDate || !newEndDate.trim()) {
+          newEndDate = evEnd;
+          hasChanges = true;
+        }
+
+        if (hasChanges) {
+          return { ...tier, saleStartDate: newStartDate, saleEndDate: newEndDate };
+        }
+        return tier;
+      });
+
+      return hasChanges ? updated : prev;
+    });
+
+    setCoupons(prev => {
+      let hasChanges = false;
+      const updated = prev.map(coupon => {
+        let newValidFrom = coupon.validFrom;
+        let newValidUntil = coupon.validUntil;
+
+        if (!newValidFrom || !newValidFrom.trim()) {
+          newValidFrom = today;
+          hasChanges = true;
+        }
+
+        if (!newValidUntil || !newValidUntil.trim()) {
+          newValidUntil = evEnd;
+          hasChanges = true;
+        }
+
+        if (hasChanges) {
+          return { ...coupon, validFrom: newValidFrom, validUntil: newValidUntil };
+        }
+        return coupon;
+      });
+
+      return hasChanges ? updated : prev;
+    });
+  }, [availableDates, startDate, endDate, dateType]);
 
   // Step 4 state
   const [bankName, setBankName] = useState('');
@@ -1964,6 +2255,9 @@ export default function CreateEvent() {
     setEventType('offline');
     setDateType('flexible');
     setFlexibleDateDesc('');
+    setBookingAvailableDays([]);
+    setBookingTimeSlots([]);
+    setAvailableDates([]);
     setStartDate('');
     setStartTime('');
     setEndDate('');
@@ -3840,30 +4134,77 @@ export default function CreateEvent() {
                   </AnimatePresence>
                   
                   <div className="space-y-6">
+                    {/* Single Schedule Type Rule Info - Only show when organizer has selected data from both types */}
+                    {(availableDates.length > 0 && (bookingAvailableDays.length > 0 || bookingTimeSlots.length > 0)) && (
+                      <div className="p-3.5 bg-amber-50/90 border border-amber-200/90 rounded-2xl flex items-start justify-between gap-3 text-amber-900 text-xs shadow-xs animate-in fade-in duration-200">
+                        <div className="flex items-start gap-2.5">
+                          <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                          <div className="space-y-1">
+                            <div className="font-bold text-amber-950 flex items-center gap-1.5">
+                              <span>{t.singleDateTypeRule}</span>
+                              <span className="text-[10px] uppercase font-black bg-amber-200/70 text-amber-900 px-2 py-0.5 rounded-full">
+                                {lang === 'en' ? '1 Type Only' : 'ເລືອກໄດ້ 1 ປະເພດ'}
+                              </span>
+                            </div>
+                            <p className="text-amber-800/90 leading-relaxed font-medium">
+                              {t.singleDateTypeNote}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (dateType === 'flexible') {
+                              setBookingAvailableDays([]);
+                              setBookingTimeSlots([]);
+                            } else {
+                              setAvailableDates([]);
+                            }
+                          }}
+                          className="shrink-0 text-[11px] font-bold text-amber-800 hover:text-amber-950 underline underline-offset-2 px-2 py-1 hover:bg-amber-100/60 rounded-lg transition-colors"
+                        >
+                          {dateType === 'flexible'
+                            ? (lang === 'en' ? 'Clear Inactive Booking Data' : 'ລຶບຂໍ້ມູນການຈອງທີ່ບໍ່ໃຊ້')
+                            : (lang === 'en' ? 'Clear Inactive Event Dates' : 'ລຶບວັນທີຈັດງານທີ່ບໍ່ໃຊ້')}
+                        </button>
+                      </div>
+                    )}
+
                     {/* Date Type Selection */}
-                    <div className="flex gap-2 p-1 bg-gray-100/80 rounded-2xl border border-gray-200/60 w-fit">
-                      <button 
-                        type="button"
-                        onClick={() => setDateType('flexible')}
-                        className={`px-5 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${
-                          dateType === 'flexible' 
-                            ? 'bg-white text-adv-orange shadow-sm' 
-                            : 'text-gray-500 hover:text-adv-slate'
-                        }`}
-                      >
-                        {t.flexibleDate}
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => setDateType('booking')}
-                        className={`px-5 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${
-                          dateType === 'booking' 
-                            ? 'bg-white text-adv-orange shadow-sm' 
-                            : 'text-gray-500 hover:text-adv-slate'
-                        }`}
-                      >
-                        {lang === 'en' ? 'Booking' : 'ການຈອງ'}
-                      </button>
+                    <div>
+                      <label className="block text-xs font-bold text-adv-slate mb-2">
+                        {t.dateType} <span className="text-adv-orange">*</span>
+                      </label>
+                      <div className="flex gap-2 p-1 bg-gray-100/80 rounded-2xl border border-gray-200/60 w-fit">
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setDateType('flexible');
+                            setValidationError(null);
+                          }}
+                          className={`px-5 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${
+                            dateType === 'flexible' 
+                              ? 'bg-white text-adv-orange shadow-sm' 
+                              : 'text-gray-500 hover:text-adv-slate'
+                          }`}
+                        >
+                          {t.flexibleDate}
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setDateType('booking');
+                            setValidationError(null);
+                          }}
+                          className={`px-5 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${
+                            dateType === 'booking' 
+                              ? 'bg-white text-adv-orange shadow-sm' 
+                              : 'text-gray-500 hover:text-adv-slate'
+                          }`}
+                        >
+                          {lang === 'en' ? 'Booking' : 'ການຈອງ'}
+                        </button>
+                      </div>
                     </div>
 
                     {/* Operating Time Slots Configuration for Flexible Date */}
@@ -3886,11 +4227,12 @@ export default function CreateEvent() {
                     {/* Booking Configuration */}
                     {dateType === 'booking' && (
                       <motion.div 
+                        id="field-booking-settings"
                         initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-6"
                       >
-                        <div className="p-5 rounded-2xl bg-amber-50/50 border border-amber-200/60 space-y-5">
+                        <div id="field-booking-days" className="p-5 rounded-2xl bg-amber-50/50 border border-amber-200/60 space-y-5">
                           <h4 className="text-sm font-bold text-amber-900 flex items-center gap-2">
                             <Calendar className="w-4 h-4 text-amber-600" />
                             {lang === 'en' ? 'Booking Availability Settings' : 'ຕັ້ງຄ່າການຈອງ'}
@@ -3939,7 +4281,7 @@ export default function CreateEvent() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-4">
+                        <div id="field-booking-slots" className="grid grid-cols-1 gap-4">
                           <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-4">
                             <h4 className="text-xs font-bold text-adv-slate flex items-center gap-1.5 uppercase tracking-wide">
                               <Calendar className="w-4 h-4 text-adv-orange" />
@@ -4072,7 +4414,24 @@ export default function CreateEvent() {
                         <h4 className="text-lg font-bold text-adv-slate">{t.ticketTiers}</h4>
                         <button 
                           type="button"
-                          onClick={() => setTicketTiers([...ticketTiers, { id: Date.now(), name: '', price: '', quantity: '', saleStartDate: '', saleStartTime: '', saleEndDate: '', saleEndTime: '' }])}
+                          onClick={() => {
+                            const isDateSet = Boolean(getEventEndDateStr());
+                            const today = isDateSet ? getTodayDateStr() : '';
+                            const evEnd = isDateSet ? getEventEndDateStr() : '';
+                            setTicketTiers([
+                              ...ticketTiers, 
+                              { 
+                                id: Date.now(), 
+                                name: '', 
+                                price: '', 
+                                quantity: '', 
+                                saleStartDate: today, 
+                                saleStartTime: '', 
+                                saleEndDate: evEnd || '', 
+                                saleEndTime: '' 
+                              }
+                            ]);
+                          }}
                           className="flex items-center gap-2 text-adv-orange hover:text-orange-600 text-sm font-bold"
                         >
                           <Plus className="w-4 h-4" />
@@ -4081,7 +4440,9 @@ export default function CreateEvent() {
                       </div>
                       
                       <div className="space-y-4">
-                        {ticketTiers.map((tier, index) => (
+                        {ticketTiers.map((tier, index) => {
+                          const isEventDateSet = Boolean(getEventEndDateStr());
+                          return (
                           <div key={tier.id} className="flex flex-col lg:flex-row items-stretch lg:items-end gap-3 p-4 bg-gray-50/90 rounded-2xl border border-gray-150 relative shadow-sm hover:z-30 focus-within:z-40">
                             <div className="flex-1 min-w-[130px]">
                               <label className="block text-xs font-bold text-gray-500 mb-1.5 whitespace-nowrap truncate" title={t.tierName}>
@@ -4142,14 +4503,17 @@ export default function CreateEvent() {
                                     {t.saleStarts} <span className="text-adv-orange">*</span>
                                   </label>
                                   <DateInputDDMMYYYY
-                                    value={tier.saleStartDate || ''}
+                                    value={isEventDateSet ? (tier.saleStartDate || getTodayDateStr()) : ''}
                                     onChange={(val) => {
                                       const newTiers = [...ticketTiers];
                                       newTiers[index].saleStartDate = val;
                                       setTicketTiers(newTiers);
                                     }}
+                                    disabled={!isEventDateSet}
+                                    minDate={getTodayDateStr()}
+                                    maxDate={tier.saleEndDate || getEventEndDateStr() || undefined}
                                     lang={lang}
-                                    placeholder="DD/MM/YYYY"
+                                    placeholder={isEventDateSet ? 'DD/MM/YYYY' : t.selectEventDateFirstPlaceholder}
                                     align="auto"
                                   />
                                 </div>
@@ -4158,15 +4522,17 @@ export default function CreateEvent() {
                                     {t.saleEndsOptional} <span className="text-adv-orange">*</span>
                                   </label>
                                   <DateInputDDMMYYYY
-                                    value={tier.saleEndDate || ''}
+                                    value={isEventDateSet ? (tier.saleEndDate || getEventEndDateStr() || '') : ''}
                                     onChange={(val) => {
                                       const newTiers = [...ticketTiers];
                                       newTiers[index].saleEndDate = val;
                                       setTicketTiers(newTiers);
                                     }}
-                                    minDate={tier.saleStartDate || undefined}
+                                    disabled={!isEventDateSet}
+                                    minDate={tier.saleStartDate || getTodayDateStr()}
+                                    maxDate={getEventEndDateStr() || undefined}
                                     lang={lang}
-                                    placeholder="DD/MM/YYYY"
+                                    placeholder={isEventDateSet ? 'DD/MM/YYYY' : t.selectEventDateFirstPlaceholder}
                                     align="right"
                                   />
                                 </div>
@@ -4185,7 +4551,7 @@ export default function CreateEvent() {
                               </div>
                             )}
                           </div>
-                        ))}
+                        );})}
                       </div>
                     </div>
                     <div className="pt-6 border-t border-gray-100">
@@ -4204,6 +4570,7 @@ export default function CreateEvent() {
 
                       {enableCoupons && (
                         <motion.div 
+                          id="field-coupons"
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           className="space-y-6 overflow-hidden"
@@ -4212,7 +4579,24 @@ export default function CreateEvent() {
                             <h4 className="text-lg font-bold text-adv-slate">{t.couponsDiscounts}</h4>
                             <button 
                               type="button"
-                              onClick={() => setCoupons([...coupons, { id: Date.now(), code: '', discount: '', type: 'percentage', maxUses: '', validFrom: '', validUntil: '', isActive: true }])}
+                              onClick={() => {
+                                const isDateSet = Boolean(getEventEndDateStr());
+                                const today = isDateSet ? getTodayDateStr() : '';
+                                const evEnd = isDateSet ? getEventEndDateStr() : '';
+                                setCoupons([
+                                  ...coupons, 
+                                  { 
+                                    id: Date.now(), 
+                                    code: '', 
+                                    discount: '', 
+                                    type: 'percentage', 
+                                    maxUses: '', 
+                                    validFrom: today, 
+                                    validUntil: evEnd, 
+                                    isActive: true 
+                                  }
+                                ]);
+                              }}
                               className="flex items-center gap-2 text-adv-orange hover:text-orange-600 text-sm font-bold bg-adv-orange/5 hover:bg-adv-orange/10 px-4 py-2 rounded-xl transition-colors"
                             >
                               <Plus className="w-4 h-4" />
@@ -4221,62 +4605,89 @@ export default function CreateEvent() {
                           </div>
                           
                           <div className="space-y-4">
-                            {coupons.map((coupon, index) => (
+                            {coupons.map((coupon, index) => {
+                              const isEventDateSet = Boolean(getEventEndDateStr());
+                              return (
                               <div key={coupon.id} className="flex flex-col gap-4 p-5 bg-white rounded-xl border border-gray-200 relative shadow-sm hover:shadow-md transition-shadow group">
-                                {/* Top row: Code */}
-                                <div>
-                                  <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">{t.couponCode}</label>
-                                  <div className="relative">
-                                    <input 
-                                      type="text" 
-                                      value={coupon.code}
-                                      onChange={(e) => {
-                                        const newCoupons = [...coupons];
-                                        newCoupons[index].code = e.target.value.toUpperCase();
-                                        setCoupons(newCoupons);
-                                      }}
-                                      placeholder="e.g. DISCOUNT2026"
-                                      className="w-full bg-white border border-gray-200 text-adv-slate rounded-lg px-3 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange uppercase tracking-widest pl-10"
-                                    />
-                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                                      <Ticket className="w-4 h-4" />
+                                {/* Header: Coupon Index & Remove */}
+                                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-lg bg-adv-orange/10 text-adv-orange flex items-center justify-center font-black text-xs">
+                                      #{index + 1}
                                     </div>
+                                    <span className="text-xs font-black text-adv-slate uppercase tracking-wider">
+                                      {coupon.code ? coupon.code : `${t.couponCode} #${index + 1}`}
+                                    </span>
                                   </div>
+                                  <button 
+                                    type="button"
+                                    onClick={() => setCoupons(coupons.filter((_, i) => i !== index))}
+                                    className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                    title={t.remove}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span>{t.remove}</span>
+                                  </button>
                                 </div>
 
-                                {/* Middle row: Discount Type, Amount, Max Uses */}
-                                <div className="flex flex-col md:flex-row gap-4">
-                                  <div className="flex-1">
+                                {/* Row 1: 3 equal columns: Code, Discount Type, Discount Value */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                  {/* Col 1: Code */}
+                                  <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">{t.couponCode}</label>
+                                    <div className="relative">
+                                      <input 
+                                        type="text" 
+                                        value={coupon.code}
+                                        onChange={(e) => {
+                                          const newCoupons = [...coupons];
+                                          newCoupons[index].code = e.target.value.toUpperCase();
+                                          setCoupons(newCoupons);
+                                        }}
+                                        placeholder="e.g. DISCOUNT2026"
+                                        className="w-full bg-white border border-gray-200 text-adv-slate rounded-lg px-3 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange uppercase tracking-widest pl-10"
+                                      />
+                                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                        <Ticket className="w-4 h-4" />
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Col 2: Discount Type Toggle */}
+                                  <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">{t.discountType}</label>
                                     <div className="grid grid-cols-2 gap-2">
                                       <button
+                                        type="button"
                                         onClick={() => {
                                           const newCoupons = [...coupons];
                                           newCoupons[index].type = 'percentage';
                                           setCoupons(newCoupons);
                                         }}
-                                        className={`px-3 py-2 rounded-lg border text-xs font-bold transition-all ${coupon.type === 'percentage' ? 'bg-adv-orange text-white border-adv-orange shadow-sm' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                                        className={`px-3 py-2.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${coupon.type === 'percentage' ? 'bg-adv-orange text-white border-adv-orange shadow-sm' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}
                                       >
                                         {t.percentage}
                                       </button>
                                       <button
+                                        type="button"
                                         onClick={() => {
                                           const newCoupons = [...coupons];
                                           newCoupons[index].type = 'fixed';
                                           setCoupons(newCoupons);
                                         }}
-                                        className={`px-3 py-2 rounded-lg border text-xs font-bold transition-all ${coupon.type === 'fixed' ? 'bg-adv-orange text-white border-adv-orange shadow-sm' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                                        className={`px-3 py-2.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${coupon.type === 'fixed' ? 'bg-adv-orange text-white border-adv-orange shadow-sm' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}
                                       >
                                         {t.fixedAmount}
                                       </button>
                                     </div>
                                   </div>
 
-                                  <div className="w-full md:w-36 lg:w-40">
+                                  {/* Col 3: Discount Value */}
+                                  <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider whitespace-nowrap truncate" title={t.discount}>{t.discount}</label>
                                     <div className="relative">
                                       <input 
-                                        type="text"
+                                        type="text" 
                                         inputMode="numeric" 
                                         value={coupon.discount}
                                         onChange={(e) => {
@@ -4285,42 +4696,55 @@ export default function CreateEvent() {
                                           setCoupons(newCoupons);
                                         }}
                                         placeholder={coupon.type === 'percentage' ? '20' : '50,000'}
-                                        className="w-full bg-white border border-gray-200 text-adv-slate rounded-lg px-3 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange"
+                                        className="w-full bg-white border border-gray-200 text-adv-slate rounded-lg px-3 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange pr-12"
                                       />
-                                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] font-bold">
+                                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold pointer-events-none">
                                         {coupon.type === 'percentage' ? '%' : currency}
                                       </div>
                                     </div>
                                   </div>
+                                </div>
 
-                                  {/* Max Discount Amount Cap for Percentage Type */}
-                                  {coupon.type === 'percentage' && (
-                                    <div className="w-full md:w-36 lg:w-44">
-                                      <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider whitespace-nowrap truncate" title={t.maxDiscountAmount}>
-                                        {t.maxDiscountAmount}
-                                      </label>
-                                      <div className="relative">
+                                {/* Row 2: 3 equal columns: Max Discount Amount (Cap), Max Uses, Max Uses Per User */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                  {/* Col 1: Max Discount Amount Cap */}
+                                  <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider whitespace-nowrap truncate" title={t.maxDiscountAmount}>
+                                      {t.maxDiscountAmount}
+                                    </label>
+                                    <div className="relative">
+                                      {coupon.type === 'percentage' ? (
+                                        <>
+                                          <input 
+                                            type="text" 
+                                            inputMode="numeric" 
+                                            value={coupon.maxDiscountAmount ? formatNumberWithCommas(coupon.maxDiscountAmount) : ''}
+                                            onChange={(e) => {
+                                              const rawVal = e.target.value.replace(/[^0-9]/g, '');
+                                              const newCoupons = [...coupons];
+                                              newCoupons[index].maxDiscountAmount = rawVal ? Number(rawVal) : undefined;
+                                              setCoupons(newCoupons);
+                                            }}
+                                            placeholder={t.unlimited}
+                                            className="w-full bg-white border border-gray-200 text-adv-slate rounded-lg px-3 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange pr-12"
+                                          />
+                                          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] font-bold pointer-events-none">
+                                            {currency}
+                                          </div>
+                                        </>
+                                      ) : (
                                         <input 
-                                          type="text"
-                                          inputMode="numeric" 
-                                          value={coupon.maxDiscountAmount ? formatNumberWithCommas(coupon.maxDiscountAmount) : ''}
-                                          onChange={(e) => {
-                                            const rawVal = e.target.value.replace(/[^0-9]/g, '');
-                                            const newCoupons = [...coupons];
-                                            newCoupons[index].maxDiscountAmount = rawVal ? Number(rawVal) : undefined;
-                                            setCoupons(newCoupons);
-                                          }}
-                                          placeholder={t.unlimited}
-                                          className="w-full bg-white border border-gray-200 text-adv-slate rounded-lg px-3 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange"
+                                          type="text" 
+                                          disabled
+                                          value={t.notApplicableFixed}
+                                          className="w-full bg-gray-50/80 border border-gray-200 text-gray-400 rounded-lg px-3 py-2.5 text-xs font-medium cursor-not-allowed select-none"
                                         />
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] font-bold">
-                                          {currency}
-                                        </div>
-                                      </div>
+                                      )}
                                     </div>
-                                  )}
+                                  </div>
 
-                                  <div className="w-full md:w-36 lg:w-40">
+                                  {/* Col 2: Max Uses (Total) */}
+                                  <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider whitespace-nowrap truncate" title={t.maxUses}>{t.maxUses}</label>
                                     <input 
                                       type="number" 
@@ -4335,7 +4759,8 @@ export default function CreateEvent() {
                                     />
                                   </div>
 
-                                  <div className="w-full md:w-36 lg:w-40">
+                                  {/* Col 3: Max Uses Per User */}
+                                  <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider whitespace-nowrap truncate" title={t.maxUsesPerUser}>{t.maxUsesPerUser}</label>
                                     <input 
                                       type="number" 
@@ -4353,51 +4778,45 @@ export default function CreateEvent() {
                                   </div>
                                 </div>
 
-                                {/* Bottom row: Validity Period */}
-                                <div className="flex flex-col md:flex-row gap-4 items-end">
-                                  <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                      <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">{t.validFrom}</label>
-                                      <DateInputDDMMYYYY
-                                        value={coupon.validFrom || ''}
-                                        onChange={(val) => {
-                                          const newCoupons = [...coupons];
-                                          newCoupons[index].validFrom = val;
-                                          setCoupons(newCoupons);
-                                        }}
-                                        lang={lang}
-                                        placeholder="DD/MM/YYYY"
-                                        align="auto"
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">{t.validUntil}</label>
-                                      <DateInputDDMMYYYY
-                                        value={coupon.validUntil || ''}
-                                        onChange={(val) => {
-                                          const newCoupons = [...coupons];
-                                          newCoupons[index].validUntil = val;
-                                          setCoupons(newCoupons);
-                                        }}
-                                        minDate={coupon.validFrom || undefined}
-                                        lang={lang}
-                                        placeholder="DD/MM/YYYY"
-                                        align="auto"
-                                      />
-                                    </div>
+                                {/* Row 3: Validity Period: 2 columns */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                                  <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">{t.validFrom}</label>
+                                    <DateInputDDMMYYYY
+                                      value={isEventDateSet ? (coupon.validFrom || getTodayDateStr()) : ''}
+                                      onChange={(val) => {
+                                        const newCoupons = [...coupons];
+                                        newCoupons[index].validFrom = val;
+                                        setCoupons(newCoupons);
+                                      }}
+                                      disabled={!isEventDateSet}
+                                      minDate={getTodayDateStr()}
+                                      maxDate={coupon.validUntil || getEventEndDateStr() || undefined}
+                                      lang={lang}
+                                      placeholder={isEventDateSet ? 'DD/MM/YYYY' : t.selectEventDateFirstPlaceholder}
+                                      align="auto"
+                                    />
                                   </div>
-
-                                  <button 
-                                    type="button"
-                                    onClick={() => setCoupons(coupons.filter((_, i) => i !== index))}
-                                    className="p-2.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all group-hover:bg-red-50/50 shrink-0"
-                                    title={t.remove}
-                                  >
-                                    <Trash2 className="w-5 h-5" />
-                                  </button>
+                                  <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">{t.validUntil}</label>
+                                    <DateInputDDMMYYYY
+                                      value={isEventDateSet ? (coupon.validUntil || getEventEndDateStr() || '') : ''}
+                                      onChange={(val) => {
+                                        const newCoupons = [...coupons];
+                                        newCoupons[index].validUntil = val;
+                                        setCoupons(newCoupons);
+                                      }}
+                                      disabled={!isEventDateSet}
+                                      minDate={coupon.validFrom || getTodayDateStr()}
+                                      maxDate={getEventEndDateStr() || undefined}
+                                      lang={lang}
+                                      placeholder={isEventDateSet ? 'DD/MM/YYYY' : t.selectEventDateFirstPlaceholder}
+                                      align="auto"
+                                    />
+                                  </div>
                                 </div>
                               </div>
-                            ))}
+                            );})}
                             {coupons.length === 0 && (
                               <div className="text-center py-6 bg-gray-50 rounded-lg border border-gray-100 border-dashed">
                                 <p className="text-sm text-gray-400 font-medium">{t.noCoupons}</p>
