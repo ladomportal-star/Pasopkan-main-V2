@@ -17,7 +17,7 @@ const translations = {
     featuresSubtitle: 'Everything you need to successfully launch events and fill seats.',
     
     feature1Title: 'Create & Customize Events',
-    feature1Desc: 'Design fully detailed event pages with ease. Support for both fixed dates and flexible date ranges, custom categories, elegant markdown descriptions, and interactive high-fidelity maps for exact venue coordinates.',
+    feature1Desc: 'Design fully detailed event pages with ease. Support for event dates and slot bookings, custom categories, elegant markdown descriptions, and interactive high-fidelity maps for exact venue coordinates.',
     
     feature2Title: 'Sell Tickets & Track Orders',
     feature2Desc: 'Setup multiple ticket tiers, offer promo coupons, and track transaction histories in real time. Attendees get automated secure booking confirmations, printable PDF tickets, and personalized QR codes.',

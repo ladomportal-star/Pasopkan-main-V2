@@ -281,7 +281,7 @@ export default function Dashboard() {
         if (savedTicketsRaw) {
           const savedTickets = JSON.parse(savedTicketsRaw);
           if (Array.isArray(savedTickets)) {
-            // Deduplicate by ID
+            // Deduplicate by ID - User's real purchased tickets take precedence
             const savedTicketIds = new Set(savedTickets.map(t => t.id));
             loadedTickets = [...savedTickets, ...loadedTickets.filter(t => !savedTicketIds.has(t.id))];
           }
@@ -293,6 +293,7 @@ export default function Dashboard() {
       if (location.state?.newTicket) {
         const { event, tier, quantity, selectedTiers, selectedDate, selectedTime } = location.state.newTicket;
         const finalTime = selectedTime || event?.time || '';
+        const eventStartDate = selectedDate || event?.date || new Date().toISOString().split('T')[0];
         let newlyCreatedTickets: PurchasedTicket[] = [];
         if (selectedTiers && selectedTiers.length > 0) {
           newlyCreatedTickets = selectedTiers.map((st: { tier: TicketTier; quantity: number }) => ({
@@ -302,7 +303,7 @@ export default function Dashboard() {
             quantity: st.quantity,
             bookingDate: new Date().toISOString(),
             status: 'upcoming' as const,
-            selectedDate: selectedDate || event?.date,
+            selectedDate: eventStartDate,
             selectedTime: finalTime
           }));
         } else {
@@ -313,7 +314,7 @@ export default function Dashboard() {
             quantity: quantity || 1,
             bookingDate: new Date().toISOString(),
             status: 'upcoming' as const,
-            selectedDate: selectedDate || event?.date,
+            selectedDate: eventStartDate,
             selectedTime: finalTime
           }];
         }
@@ -330,44 +331,85 @@ export default function Dashboard() {
     return () => clearTimeout(timer);
   }, [location.state]);
 
-  const isTicketPast = (ticket: PurchasedTicket): boolean => {
-    if (ticket.status === 'past') return true;
-
-    const dateStr = ticket.selectedDate || ticket.event?.endDate || ticket.event?.date;
-    if (!dateStr) return false;
-
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    // If standard YYYY-MM-DD
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) {
-      if (dateStr.trim() < todayStr) return true;
-      if (dateStr.trim() > todayStr) return false;
-
-      // If today, check event/selected time
-      const timeStr = ticket.selectedTime || ticket.event?.time;
-      if (timeStr && /^\d{1,2}:\d{2}/.test(timeStr.trim())) {
-        const now = new Date();
-        const currentHours = now.getHours();
-        const currentMinutes = now.getMinutes();
-        const [ticketH, ticketM] = timeStr.trim().split(':').map(Number);
-        if (ticketH < currentHours || (ticketH === currentHours && ticketM < currentMinutes)) {
-          return true;
-        }
+  // Helper to format event date cleanly without UTC timezone shift
+  const formatTicketEventDate = (dateStr?: string, fallback = '') => {
+    if (!dateStr) return fallback;
+    try {
+      const clean = dateStr.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+        const [year, month, day] = clean.split('-').map(Number);
+        const d = new Date(year, month - 1, day);
+        return d.toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric'
+        });
       }
+      const d = new Date(clean);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric'
+        });
+      }
+      return clean;
+    } catch {
+      return dateStr || fallback;
+    }
+  };
+
+  /**
+   * Determine whether a ticket belongs in 'past' vs 'upcoming'.
+   * CRITICAL: We evaluate the EVENT'S start/end date, NOT the ticket purchase/booking date!
+   * A ticket purchased today for an event today or in the future is strictly UPCOMING.
+   */
+  const isTicketPast = (ticket: PurchasedTicket): boolean => {
+    // 1. Explicit historical past mock tickets
+    if (ticket.id === 'tk_past_1' || ticket.id === 'tk_past_2') {
+      return true;
+    }
+
+    // 2. Identify the Event's Date (event start or selected slot or event end date)
+    const eventDateStr = ticket.selectedDate || ticket.event?.endDate || ticket.event?.date;
+    if (!eventDateStr) {
+      return ticket.status === 'past';
+    }
+
+    // Get current local date in YYYY-MM-DD
+    const now = new Date();
+    const curY = now.getFullYear();
+    const curM = String(now.getMonth() + 1).padStart(2, '0');
+    const curD = String(now.getDate()).padStart(2, '0');
+    const todayLocal = `${curY}-${curM}-${curD}`;
+
+    const cleanDate = eventDateStr.trim();
+
+    // Standard ISO format (YYYY-MM-DD)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
+      // Event concluded on a previous calendar day
+      if (cleanDate < todayLocal) {
+        return true;
+      }
+      // Event is happening today or in the future -> UPCOMING!
       return false;
     }
 
+    // Fallback parser for other date formats
     try {
-      const timeStr = ticket.selectedTime || ticket.event?.time || '23:59';
-      const parsed = new Date(`${dateStr} ${timeStr}`);
+      const parsed = new Date(cleanDate);
       if (!isNaN(parsed.getTime())) {
-        return parsed.getTime() < Date.now();
+        const pY = parsed.getFullYear();
+        const pM = String(parsed.getMonth() + 1).padStart(2, '0');
+        const pD = String(parsed.getDate()).padStart(2, '0');
+        const parsedLocal = `${pY}-${pM}-${pD}`;
+        return parsedLocal < todayLocal;
       }
     } catch (e) {
       // ignore
     }
 
-    return false;
+    return ticket.status === 'past';
   };
 
   const getEffectiveStatus = (ticket: PurchasedTicket): 'upcoming' | 'past' => {
@@ -532,7 +574,7 @@ export default function Dashboard() {
                             <div className="flex items-center gap-1 text-gray-400 text-[10px] sm:text-xs font-semibold">
                               <Calendar className="w-3 h-3 text-adv-orange shrink-0" />
                               <span>
-                                {ticket.selectedDate ? new Date(ticket.selectedDate).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : ticket.event.date}
+                                {formatTicketEventDate(ticket.selectedDate || ticket.event?.date, ticket.event?.date || '')}
                               </span>
                             </div>
                             {ticket.selectedTime && (

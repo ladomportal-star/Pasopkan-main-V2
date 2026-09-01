@@ -20,6 +20,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  Users,
   Map as MapIcon,
   Star,
   MessageSquare,
@@ -50,6 +51,7 @@ import {
 import { events, LaoEvent, TicketTier } from '../data/events';
 import { useLanguage } from '../LanguageContext';
 import { EventMapPicker } from '../components/EventMapPicker';
+import { AdaptiveImage } from '../components/AdaptiveImage';
 import { CountdownTimer } from '../components/CountdownTimer';
 import DotsLoader from '../components/DotsLoader';
 import { safeStorage } from '../lib/storage';
@@ -213,12 +215,16 @@ function InlineCalendar({
   onDateChange, 
   dateType, 
   eventDate, 
+  availableDates,
+  bookingAvailableDays,
   lang 
 }: { 
   selectedDate: string; 
   onDateChange: (date: string) => void; 
-  dateType: 'fixed' | 'flexible' | 'booking'; 
+  dateType: 'flexible' | 'booking' | 'fixed' | 'event'; 
   eventDate?: string; 
+  availableDates?: { date: string; startTime?: string; endTime?: string }[];
+  bookingAvailableDays?: string[];
   lang: 'en' | 'lo'; 
 }) {
   const today = new Date();
@@ -226,42 +232,53 @@ function InlineCalendar({
   const todayMonth = today.getMonth();
   const todayDateStr = formatDateString(todayYear, todayMonth, today.getDate());
 
-  const maxDate = new Date();
-  maxDate.setDate(maxDate.getDate() + 30);
-  const maxYear = maxDate.getFullYear();
-  const maxMonth = maxDate.getMonth();
-  const maxDateStr = formatDateString(maxYear, maxMonth, maxDate.getDate());
-
-  const [currentYear, setCurrentYear] = useState(todayYear);
-  const [currentMonth, setCurrentMonth] = useState(todayMonth);
-
-  useEffect(() => {
-    const targetDate = dateType === 'fixed' ? eventDate : selectedDate;
-    if (targetDate) {
-      const parts = targetDate.split('-');
+  // Determine initial year and month to display
+  const firstTargetDate = selectedDate || (availableDates && availableDates.length > 0 ? availableDates[0].date : '') || eventDate || todayDateStr;
+  const parseTargetYearMonth = (dStr?: string) => {
+    if (dStr && dStr.includes('-')) {
+      const parts = dStr.split('-');
       if (parts.length === 3) {
         const y = parseInt(parts[0], 10);
         const m = parseInt(parts[1], 10) - 1;
-        setCurrentYear(y);
-        setCurrentMonth(m);
+        if (!isNaN(y) && !isNaN(m)) return { year: y, month: m };
       }
     }
-  }, [selectedDate, eventDate, dateType]);
+    return { year: todayYear, month: todayMonth };
+  };
+
+  const initialYM = parseTargetYearMonth(firstTargetDate);
+  const [currentYear, setCurrentYear] = useState(initialYM.year);
+  const [currentMonth, setCurrentMonth] = useState(initialYM.month);
+
+  useEffect(() => {
+    const targetDate = selectedDate || (availableDates && availableDates.length > 0 ? availableDates[0].date : '') || eventDate;
+    if (targetDate) {
+      const ym = parseTargetYearMonth(targetDate);
+      setCurrentYear(ym.year);
+      setCurrentMonth(ym.month);
+    }
+  }, [selectedDate, eventDate, availableDates]);
+
+  // Dynamic max year/month
+  let maxYear = todayYear + 1;
+  let maxMonth = 11;
+  if (eventDate && eventDate.includes('-')) {
+    const evY = parseInt(eventDate.split('-')[0], 10);
+    if (!isNaN(evY) && evY > maxYear) {
+      maxYear = evY + 1;
+    }
+  }
 
   const handlePrevMonth = () => {
-    if (dateType === 'fixed') return;
-    if (currentYear > todayYear || (currentYear === todayYear && currentMonth > todayMonth)) {
-      if (currentMonth === 0) {
-        setCurrentMonth(11);
-        setCurrentYear(prev => prev - 1);
-      } else {
-        setCurrentMonth(prev => prev - 1);
-      }
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(prev => prev - 1);
+    } else {
+      setCurrentMonth(prev => prev - 1);
     }
   };
 
   const handleNextMonth = () => {
-    if (dateType === 'fixed') return;
     if (currentYear < maxYear || (currentYear === maxYear && currentMonth < maxMonth)) {
       if (currentMonth === 11) {
         setCurrentMonth(0);
@@ -283,6 +300,9 @@ function InlineCalendar({
     daysArray.push(i);
   }
 
+  const dayNamesShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dayNamesFull = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
   return (
     <div className="bg-gray-50/50 border border-gray-150/80 rounded-2xl p-4 space-y-3.5 shadow-inner">
       {/* Month Year Header */}
@@ -290,24 +310,22 @@ function InlineCalendar({
         <span className="font-bold text-sm text-adv-slate">
           {calendarMonths[lang][currentMonth]} {currentYear}
         </span>
-        {(dateType === 'flexible' || dateType === 'booking') && (
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={handlePrevMonth}
-              disabled={currentYear === todayYear && currentMonth === todayMonth}
-              className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleNextMonth}
-              disabled={currentYear > maxYear || (currentYear === maxYear && currentMonth >= maxMonth)}
-              className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={handlePrevMonth}
+            disabled={currentYear === todayYear && currentMonth === todayMonth}
+            className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleNextMonth}
+            disabled={currentYear > maxYear || (currentYear === maxYear && currentMonth >= maxMonth)}
+            className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Weekday Labels */}
@@ -327,18 +345,32 @@ function InlineCalendar({
           }
 
           const dateStr = formatDateString(currentYear, currentMonth, day);
+          const dayDate = new Date(currentYear, currentMonth, day);
+          const dayOfWeekIdx = dayDate.getDay();
+          const dayShort = dayNamesShort[dayOfWeekIdx];
+          const dayFull = dayNamesFull[dayOfWeekIdx];
           
           let isSelectable = false;
           let isSelected = false;
           let isToday = dateStr === todayDateStr;
 
-          if (dateType === 'flexible' || dateType === 'booking') {
-            isSelectable = dateStr >= todayDateStr && dateStr <= maxDateStr;
+          if (dateType === 'booking') {
+            const withinRange = dateStr >= todayDateStr;
+            const matchesDay = (!bookingAvailableDays || bookingAvailableDays.length === 0) ||
+              bookingAvailableDays.includes(dayShort) ||
+              bookingAvailableDays.includes(dayFull);
+            isSelectable = withinRange && matchesDay;
             isSelected = dateStr === selectedDate;
           } else {
-            // Fixed event date
-            isSelectable = dateStr === eventDate;
-            isSelected = dateStr === eventDate;
+            // Event Date
+            if (availableDates && availableDates.length > 0) {
+              isSelectable = availableDates.some(d => d.date === dateStr);
+            } else if (eventDate) {
+              isSelectable = dateStr === eventDate;
+            } else {
+              isSelectable = dateStr >= todayDateStr;
+            }
+            isSelected = dateStr === selectedDate;
           }
 
           return (
@@ -357,9 +389,6 @@ function InlineCalendar({
               }`}
             >
               <span>{day}</span>
-              {isToday && !isSelected && (
-                <span className="absolute bottom-1 w-1 h-1 rounded-full bg-adv-orange" />
-              )}
             </button>
           );
         })}
@@ -369,14 +398,12 @@ function InlineCalendar({
       <div className="flex items-center justify-between text-[10px] font-semibold text-gray-400 border-t border-gray-150/50 pt-2.5">
         <div className="flex items-center gap-1.5">
           <div className="w-2.5 h-2.5 rounded-full bg-adv-orange" />
-          <span>{dateType === 'fixed' ? (lang === 'en' ? 'Event Day' : 'ວັນທີກິດຈະກຳ') : (lang === 'en' ? 'Selected' : 'ເລືອກແລ້ວ')}</span>
+          <span>{lang === 'en' ? 'Selected' : 'ເລືອກແລ້ວ'}</span>
         </div>
-        {(dateType === 'flexible' || dateType === 'booking') && (
-          <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full border border-adv-orange/40 bg-orange-50/10" />
-            <span>{lang === 'en' ? 'Today' : 'ມື້ນີ້'}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full border border-adv-orange/40 bg-orange-50/10" />
+          <span>{lang === 'en' ? 'Today' : 'ມື້ນີ້'}</span>
+        </div>
       </div>
     </div>
   );
@@ -542,7 +569,7 @@ export default function EventDetails() {
   const [event, setEvent] = useState<LaoEvent | null>(null);
   const [selectedTier, setSelectedTier] = useState<TicketTier | null>(null);
   const [tierQuantities, setTierQuantities] = useState<Record<string, number>>({});
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(0);
   const [selectedVisitDate, setSelectedVisitDate] = useState('');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState('');
   const [promoCode, setPromoCode] = useState('');
@@ -1000,24 +1027,29 @@ export default function EventDetails() {
 
       if (foundEvent.ticketTiers && foundEvent.ticketTiers.length > 0) {
         const initialQuantities: Record<string, number> = {};
-        const firstAvailable = foundEvent.ticketTiers.find(tier => (tier.available ?? Infinity) > 0) || foundEvent.ticketTiers[0];
         foundEvent.ticketTiers.forEach(t => {
-          initialQuantities[t.id] = t.id === firstAvailable.id ? 1 : 0;
+          initialQuantities[t.id] = 0;
         });
         setTierQuantities(initialQuantities);
       }
+      setQuantity(0);
 
-      // Auto-initialize the date selection
-      if (foundEvent.dateType === 'flexible') {
+      // Auto-initialize the date selection (auto-select the first day of the event)
+      let firstEventDate = '';
+      if (foundEvent.availableDates && foundEvent.availableDates.length > 0) {
+        firstEventDate = foundEvent.availableDates[0].date;
+      } else if (foundEvent.date) {
+        firstEventDate = foundEvent.date;
+      } else if (foundEvent.dateType === 'flexible' || foundEvent.dateType === 'booking') {
         const today = new Date();
-        const initialDateStr = formatDateString(today.getFullYear(), today.getMonth(), today.getDate());
-        setSelectedVisitDate(initialDateStr);
-      } else {
-        setSelectedVisitDate(foundEvent.date);
+        firstEventDate = formatDateString(today.getFullYear(), today.getMonth(), today.getDate());
       }
+      setSelectedVisitDate(firstEventDate);
 
       // Auto-initialize time slot selection
-      if (foundEvent.hasTimeSelection && foundEvent.timeSlots && foundEvent.timeSlots.length > 0) {
+      if (foundEvent.dateType === 'booking' && foundEvent.bookingTimeSlots && foundEvent.bookingTimeSlots.length > 0) {
+        setSelectedTimeSlot(foundEvent.bookingTimeSlots[0]);
+      } else if (foundEvent.hasTimeSelection && foundEvent.timeSlots && foundEvent.timeSlots.length > 0) {
         setSelectedTimeSlot(foundEvent.timeSlots[0]);
       } else {
         setSelectedTimeSlot(foundEvent.time || '');
@@ -1025,8 +1057,24 @@ export default function EventDetails() {
     }
   }, [id]);
 
+  const selectedSlotCapacity = useMemo(() => {
+    if (!event) return null;
+    if (event.dateType === 'booking') {
+      if (selectedTimeSlot && event.bookingSlotCapacities && event.bookingSlotCapacities[selectedTimeSlot] !== undefined) {
+        return event.bookingSlotCapacities[selectedTimeSlot];
+      }
+      if (event.bookingCapacity) {
+        const parsed = parseInt(String(event.bookingCapacity), 10);
+        if (!isNaN(parsed) && parsed > 0) return parsed;
+      }
+      return 10;
+    }
+    return null;
+  }, [event, selectedTimeSlot]);
+
   const parsedMaxTickets = event?.maxTickets ? parseInt(String(event.maxTickets), 10) : 4;
-  const effectiveMaxTickets = isNaN(parsedMaxTickets) || parsedMaxTickets <= 0 ? 4 : parsedMaxTickets;
+  const baseMaxTickets = isNaN(parsedMaxTickets) || parsedMaxTickets <= 0 ? 4 : parsedMaxTickets;
+  const effectiveMaxTickets = selectedSlotCapacity !== null ? Math.min(baseMaxTickets, selectedSlotCapacity) : baseMaxTickets;
   const tierAvailable = selectedTier?.available !== undefined ? selectedTier.available : Infinity;
   const maxAllowedTickets = Math.min(effectiveMaxTickets, tierAvailable);
 
@@ -1043,7 +1091,7 @@ export default function EventDetails() {
       price: event.price || 0,
       available: event.availableTickets || 100
     };
-    return [{ tier: defaultTier, quantity }];
+    return quantity > 0 ? [{ tier: defaultTier, quantity }] : [];
   }, [event, tierQuantities, selectedTier, quantity]);
 
   const totalQuantity = useMemo(() => {
@@ -1107,7 +1155,7 @@ export default function EventDetails() {
 
   useEffect(() => {
     if (event && quantity > maxAllowedTickets) {
-      setQuantity(Math.max(1, maxAllowedTickets));
+      setQuantity(Math.max(0, maxAllowedTickets));
     }
   }, [selectedTier, event, maxAllowedTickets, quantity]);
 
@@ -1120,11 +1168,11 @@ export default function EventDetails() {
   }
 
   const handleCheckout = () => {
-    if (event.dateType === 'flexible' && !selectedVisitDate) {
+    if ((event.dateType === 'flexible' || event.dateType === 'booking') && !selectedVisitDate) {
       alert(t.pleaseSelectDate);
       return;
     }
-    if (event.hasTimeSelection && !selectedTimeSlot) {
+    if (((event.dateType === 'booking' && event.bookingTimeSlots && event.bookingTimeSlots.length > 0) || event.hasTimeSelection) && !selectedTimeSlot) {
       alert(t.pleaseSelectTime);
       return;
     }
@@ -1349,76 +1397,76 @@ export default function EventDetails() {
                      onTouchStart={handleMobileTouchStart}
                      onTouchMove={handleMobileTouchMove}
                      onTouchEnd={handleMobileTouchEnd}
+                     onClick={() => setFullscreenImageIndex(activeImageIndex)}
                    >
-                     <motion.img 
+                     <AdaptiveImage
                        key={activeImageIndex}
-                       initial={{ opacity: 0.8, scale: 0.98 }}
-                       animate={{ opacity: 1, scale: 1 }}
-                       transition={{ duration: 0.25 }}
                        src={galleryImages[activeImageIndex]} 
                        alt={event.title} 
-                       className="w-full h-full object-cover pointer-events-none"
-                     />
-                     {/* Subtle dark gradient overlay at top and bottom */}
-                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/30 pointer-events-none" />
-
-                     {/* Round White Back Button */}
-                     <button 
-                       onClick={handleBack} 
-                       className="absolute top-4 left-4 w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center text-adv-slate hover:bg-gray-50 active:scale-95 transition-all z-20 cursor-pointer"
+                       fitMode="contain"
+                       className="w-full h-full"
                      >
-                       <ArrowLeft className="w-5 h-5 text-gray-800" />
-                     </button>
+                       {/* Subtle dark gradient overlay at top and bottom */}
+                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/40 pointer-events-none z-10" />
 
-                     {/* Round White Action Buttons: Share */}
-                     <div className="absolute top-4 right-4 flex items-center gap-2.5 z-20">
+                       {/* Round White Back Button */}
                        <button 
-                         onClick={handleShare} 
-                         className="w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center text-adv-slate hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
-                         title={t.share}
+                         onClick={(e) => { e.stopPropagation(); handleBack(); }} 
+                         className="absolute top-4 left-4 w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center text-adv-slate hover:bg-gray-50 active:scale-95 transition-all z-20 cursor-pointer pointer-events-auto"
                        >
-                         <Share2 className="w-5 h-5 text-gray-800" />
+                         <ArrowLeft className="w-5 h-5 text-gray-800" />
                        </button>
-                     </div>
 
-                     {/* Mobile Left / Right Chevron Controls */}
-                     {galleryImages.length > 1 && (
-                       <>
+                       {/* Round White Action Buttons: Share */}
+                       <div className="absolute top-4 right-4 flex items-center gap-2.5 z-20 pointer-events-auto">
                          <button 
-                           onClick={(e) => {
-                             e.stopPropagation();
-                             setActiveImageIndex(prev => (prev === 0 ? galleryImages.length - 1 : prev - 1));
-                           }}
-                           className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/35 hover:bg-black/50 backdrop-blur-xs flex items-center justify-center text-white z-20 active:scale-90 transition-all cursor-pointer shadow-md"
-                           aria-label="Previous image"
+                           onClick={(e) => { e.stopPropagation(); handleShare(); }} 
+                           className="w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center text-adv-slate hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
+                           title={t.share}
                          >
-                           <ChevronLeft className="w-5 h-5" />
+                           <Share2 className="w-5 h-5 text-gray-800" />
                          </button>
-                         <button 
-                           onClick={(e) => {
-                             e.stopPropagation();
-                             setActiveImageIndex(prev => (prev === galleryImages.length - 1 ? 0 : prev + 1));
-                           }}
-                           className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/35 hover:bg-black/50 backdrop-blur-xs flex items-center justify-center text-white z-20 active:scale-90 transition-all cursor-pointer shadow-md"
-                           aria-label="Next image"
-                         >
-                           <ChevronRight className="w-5 h-5" />
-                         </button>
-                       </>
-                     )}
-
-                     {/* Bottom Center Dots Carousel Indicators */}
-                     {galleryImages.length > 1 && (
-                       <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20 bg-black/25 px-3 py-1.5 rounded-full backdrop-blur-xs">
-                         {galleryImages.map((_, idx) => (
-                           <button
-                             key={idx}
-                             onClick={() => setActiveImageIndex(idx)}
-                             className={`h-2 rounded-full transition-all duration-300 ${idx === activeImageIndex ? 'bg-white w-4' : 'bg-white/50 w-2'}`}
-                           />
-                         ))}
                        </div>
-                     )}
+
+                       {/* Mobile Left / Right Chevron Controls */}
+                       {galleryImages.length > 1 && (
+                         <>
+                           <button 
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               setActiveImageIndex(prev => (prev === 0 ? galleryImages.length - 1 : prev - 1));
+                             }}
+                             className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/35 hover:bg-black/50 backdrop-blur-xs flex items-center justify-center text-white z-20 active:scale-90 transition-all cursor-pointer shadow-md pointer-events-auto"
+                             aria-label="Previous image"
+                           >
+                             <ChevronLeft className="w-5 h-5" />
+                           </button>
+                           <button 
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               setActiveImageIndex(prev => (prev === galleryImages.length - 1 ? 0 : prev + 1));
+                             }}
+                             className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/35 hover:bg-black/50 backdrop-blur-xs flex items-center justify-center text-white z-20 active:scale-90 transition-all cursor-pointer shadow-md pointer-events-auto"
+                             aria-label="Next image"
+                           >
+                             <ChevronRight className="w-5 h-5" />
+                           </button>
+                         </>
+                       )}
+
+                       {/* Bottom Center Dots Carousel Indicators */}
+                       {galleryImages.length > 1 && (
+                         <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20 bg-black/30 px-3 py-1.5 rounded-full backdrop-blur-xs pointer-events-auto">
+                           {galleryImages.map((_, idx) => (
+                             <button
+                               key={idx}
+                               onClick={(e) => { e.stopPropagation(); setActiveImageIndex(idx); }}
+                               className={`h-2 rounded-full transition-all duration-300 ${idx === activeImageIndex ? 'bg-white w-4' : 'bg-white/50 w-2'}`}
+                             />
+                           ))}
+                         </div>
+                       )}
+                     </AdaptiveImage>
                    </div>
 
                    {/* Mobile Horizontal Thumbnail Strip for quick tap/slide */}
@@ -1436,14 +1484,14 @@ export default function EventDetails() {
                                  : 'border-transparent opacity-60 hover:opacity-100'
                              }`}
                            >
-                             <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                             <AdaptiveImage src={img} alt={`Thumbnail ${idx + 1}`} fitMode="contain" className="w-full h-full" />
                            </button>
                          );
                        })}
                      </div>
                    )}
 
-                   {/* Title & Metadata Centered Section */}
+                    {/* Title & Metadata Centered Section */}
                    <div className="text-center space-y-4 px-4 py-6 border-b border-gray-100 bg-gray-50/20">
                      <div className="space-y-1.5">
                        <span className="inline-block bg-adv-orange/10 text-adv-orange px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-adv-orange/20">
@@ -1487,82 +1535,79 @@ export default function EventDetails() {
                    />
                    
                    <div 
-                     className="relative h-64 sm:h-[320px] md:h-[380px] lg:h-[420px] w-full cursor-zoom-in overflow-hidden rounded-3xl"
+                     className="relative h-72 sm:h-[360px] md:h-[420px] lg:h-[460px] w-full cursor-zoom-in overflow-hidden rounded-3xl"
                      onClick={() => setFullscreenImageIndex(activeImageIndex)}
                    >
-                     <motion.img 
+                     <AdaptiveImage
                        key={activeImageIndex}
-                       initial={{ opacity: 0.8 }}
-                       animate={{ opacity: 1 }}
-                       transition={{ duration: 0.3 }}
-                       src={galleryImages[activeImageIndex]} 
-                       alt={event.title} 
-                       className="w-full h-full object-cover transition-all duration-1000 ease-out group-hover/hero:scale-[1.04]"
-                     />
-                     <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-transparent" />
-                     <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent" />
-                     
-                     {/* Left/Right Arrows on Hover */}
-                     {galleryImages.length > 1 && (
-                       <>
-                         <button 
-                           className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/30 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/90 hover:text-white transition-all active:scale-90 z-20 md:opacity-0 md:group-hover/hero:opacity-100"
-                           onClick={(e) => {
-                             e.stopPropagation();
-                             setActiveImageIndex(prev => (prev === 0 ? galleryImages.length - 1 : prev - 1));
-                           }}
-                         >
-                           <ChevronLeft className="w-5 h-5" />
-                         </button>
-                         <button 
-                           className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/30 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/90 hover:text-white transition-all active:scale-90 z-20 md:opacity-0 md:group-hover/hero:opacity-100"
-                           onClick={(e) => {
-                             e.stopPropagation();
-                             setActiveImageIndex(prev => (prev === galleryImages.length - 1 ? 0 : prev + 1));
-                           }}
-                         >
-                           <ChevronRight className="w-5 h-5" />
-                         </button>
-                       </>
-                     )}
-
-                     {/* Overlay Title on Image to save space! */}
-                     <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 text-white flex flex-col justify-end h-full z-10 pointer-events-none">
-                       <div className="mb-2.5">
-                         <span className="inline-flex items-center gap-1 bg-adv-orange/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/10 border border-white/10">
-                           {event.category || 'Event'}
-                         </span>
-                       </div>
+                       src={galleryImages[activeImageIndex]}
+                       alt={event.title}
+                       fitMode="contain"
+                       className="w-full h-full"
+                     >
+                       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent pointer-events-none z-10" />
+                       <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent pointer-events-none z-10" />
                        
-                       <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight mb-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] font-sans text-white">
-                         {event.title}
-                       </h1>
+                       {/* Left/Right Arrows on Hover */}
+                       {galleryImages.length > 1 && (
+                         <>
+                           <button 
+                             className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/30 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/90 hover:text-white transition-all active:scale-90 z-20 md:opacity-0 md:group-hover/hero:opacity-100 pointer-events-auto"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               setActiveImageIndex(prev => (prev === 0 ? galleryImages.length - 1 : prev - 1));
+                             }}
+                           >
+                             <ChevronLeft className="w-5 h-5" />
+                           </button>
+                           <button 
+                             className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/30 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/90 hover:text-white transition-all active:scale-90 z-20 md:opacity-0 md:group-hover/hero:opacity-100 pointer-events-auto"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               setActiveImageIndex(prev => (prev === galleryImages.length - 1 ? 0 : prev + 1));
+                             }}
+                           >
+                             <ChevronRight className="w-5 h-5" />
+                           </button>
+                         </>
+                       )}
 
-                       {/* Ratings feature removed */}
-                       
-                       <div className="flex flex-wrap items-center gap-2.5 text-xs font-semibold font-sans">
-                          {event.dateType !== 'flexible' && (
-                            <span className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/10 shadow-lg text-white transition-all hover:bg-white/20">
-                              <Calendar className="w-3.5 h-3.5 text-white" />
-                              {new Date(event.date).toLocaleDateString()}
+                       {/* Overlay Title on Image */}
+                       <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 text-white flex flex-col justify-end h-full z-20 pointer-events-none">
+                         <div className="mb-2.5">
+                           <span className="inline-flex items-center gap-1 bg-adv-orange/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/10 border border-white/10">
+                             {event.category || 'Event'}
+                           </span>
+                         </div>
+                         
+                         <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight mb-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] font-sans text-white">
+                           {event.title}
+                         </h1>
+
+                         <div className="flex flex-wrap items-center gap-2.5 text-xs font-semibold font-sans">
+                            {event.dateType !== 'flexible' && (
+                              <span className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/10 shadow-lg text-white transition-all hover:bg-white/20">
+                                <Calendar className="w-3.5 h-3.5 text-white" />
+                                {new Date(event.date).toLocaleDateString()}
+                              </span>
+                            )}
+                            {event.dateType !== 'flexible' && event.time && (
+                              <span className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/10 shadow-lg text-white transition-all hover:bg-white/20">
+                                <Clock className="w-3.5 h-3.5 text-white animate-pulse" />
+                                {event.time}
+                              </span>
+                            )}
+                            <span className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/10 shadow-lg text-white">
+                              <MapPin className="w-3.5 h-3.5 text-white shrink-0" />
+                              <span>{event.location}</span>
                             </span>
-                          )}
-                          {event.dateType !== 'flexible' && event.time && (
-                            <span className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/10 shadow-lg text-white transition-all hover:bg-white/20">
-                              <Clock className="w-3.5 h-3.5 text-white animate-pulse" />
-                              {event.time}
-                            </span>
-                          )}
-                          <span className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/10 shadow-lg text-white">
-                            <MapPin className="w-3.5 h-3.5 text-white shrink-0" />
-                            <span>{event.location}</span>
-                          </span>
+                         </div>
                        </div>
-                     </div>
 
-                     <div className="absolute top-4 right-4 bg-black/20 hover:bg-white/20 backdrop-blur-md border border-white/15 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-all active:scale-95 group/btn z-10" title="Full Screen">
-                       <Maximize2 className="w-4 h-4 transition-transform duration-300 group-hover/btn:scale-110" />
-                     </div>
+                       <div className="absolute top-4 right-4 bg-black/20 hover:bg-white/20 backdrop-blur-md border border-white/15 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-all active:scale-95 group/btn z-20 pointer-events-auto" title="Full Screen">
+                         <Maximize2 className="w-4 h-4 transition-transform duration-300 group-hover/btn:scale-110" />
+                       </div>
+                     </AdaptiveImage>
                    </div>
 
                    {/* Thumbnail strip */}
@@ -1577,18 +1622,18 @@ export default function EventDetails() {
                                e.stopPropagation();
                                setActiveImageIndex(idx);
                              }}
-                             className={`relative w-20 h-14 sm:w-24 sm:h-16 rounded-2xl overflow-hidden flex-shrink-0 transition-all duration-300 border-2 ${
+                             className={`relative w-20 h-14 sm:w-24 sm:h-16 rounded-2xl overflow-hidden flex-shrink-0 transition-all duration-300 border-2 cursor-pointer ${
                                isActive 
                                  ? 'border-adv-orange ring-2 ring-orange-100 scale-[0.96] shadow-md shadow-orange-500/10' 
                                  : 'border-transparent hover:border-gray-200 hover:scale-[1.02] opacity-70 hover:opacity-100'
                              }`}
                            >
-                             <img 
+                             <AdaptiveImage 
                                src={img} 
                                alt={`Event thumbnail ${idx + 1}`} 
-                               className="w-full h-full object-cover"
+                               fitMode="contain"
+                               className="w-full h-full"
                              />
-
                            </button>
                          );
                        })}
@@ -1643,13 +1688,21 @@ export default function EventDetails() {
 
              {/* Public Map Venue Section */}
              {event.eventType !== 'online' && (
-               <div className="my-4 bg-white p-4 text-sm space-y-2 border-t border-gray-150/60 dark:border-zinc-800/60" id="event-map-venue">
-                 <h3 className="font-bold text-black dark:text-black">
-                   {lang === 'lo' ? 'ສະຖານທີ່' : 'Location'}
-                 </h3>
-                 <div className="text-black dark:text-black font-medium">
-                   {event.location}
+               <div className="my-4 bg-white p-4 sm:p-5 rounded-2xl border border-gray-150/80 shadow-xs space-y-3" id="event-map-venue">
+                 <div className="pb-2 border-b border-gray-100">
+                   <div className="flex items-center gap-2">
+                     <MapPin className="w-4 h-4 text-adv-orange shrink-0" />
+                     <h3 className="font-bold text-adv-slate text-sm sm:text-base">
+                       {lang === 'lo' ? 'ສະຖານທີ່ຈັດງານ' : 'Event Location & Venue'}
+                     </h3>
+                   </div>
+                   <p className="text-gray-700 text-xs sm:text-sm font-medium mt-1">
+                     {event.location}
+                     {event.district && `, ${event.district}`}
+                     {event.province && `, ${event.province}`}
+                   </p>
                  </div>
+
                  <EventMapPicker 
                    isReadOnly={true}
                    address={event.location}
@@ -1785,23 +1838,24 @@ export default function EventDetails() {
                {/* Calendar Selector */}
                <div className="space-y-2">
                  <label className="text-xs font-black uppercase tracking-wider text-adv-slate block flex items-center justify-between">
-                   <span>{event.dateType === 'flexible' ? t.selectVisitDate : event.dateType === 'booking' ? (lang === 'en' ? 'Select Booking Date' : 'ເລືອກວັນທີຈອງ') : (lang === 'en' ? 'Activity Date' : 'ວັນທີກິດຈະກຳ')}</span>
-                   {event.dateType === 'fixed' && (
-                     <span className="text-[10px] font-bold text-adv-orange bg-orange-50 px-2 py-0.5 rounded-md">
-                       {lang === 'en' ? 'Fixed Event Date' : 'ວັນທີກຳນົດ'}
-                     </span>
-                   )}
-                   {event.dateType === 'booking' && (
+                   <span>{event.dateType === 'booking' ? (lang === 'en' ? 'Select Booking Date' : 'ເລືອກວັນທີຈອງ') : (lang === 'en' ? 'Select Event Date' : 'ເລືອກວັນທີຈັດງານ')}</span>
+                   {event.dateType === 'booking' ? (
                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
                        {lang === 'en' ? 'Slot Booking' : 'ເປີດໃຫ້ຈອງ'}
+                     </span>
+                   ) : (
+                     <span className="text-[10px] font-bold text-adv-orange bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200/60">
+                       {lang === 'en' ? 'Event Date' : 'ວັນທີຈັດງານ'}
                      </span>
                    )}
                  </label>
                  <InlineCalendar
                    selectedDate={selectedVisitDate}
                    onDateChange={(date) => setSelectedVisitDate(date)}
-                   dateType={event.dateType || 'fixed'}
+                   dateType={event.dateType === 'booking' ? 'booking' : 'flexible'}
                    eventDate={event.date}
+                   availableDates={event.availableDates}
+                   bookingAvailableDays={event.bookingAvailableDays}
                    lang={lang}
                  />
                  {event.dateType === 'fixed' && event.time && (
@@ -1817,8 +1871,8 @@ export default function EventDetails() {
                    <div className="p-3 bg-amber-50/60 border border-amber-200/60 rounded-xl text-xs space-y-2">
                      {event.bookingCapacity && (
                        <div className="flex items-center justify-between text-amber-800 text-[11px]">
-                         <span>{lang === 'en' ? 'Max Capacity / Slot' : 'ຈຳນວນສູງສຸດ/ຮອບ'}:</span>
-                         <span className="font-bold">{event.bookingCapacity} {lang === 'en' ? 'guests' : 'ຄົນ'}</span>
+                         <span>{lang === 'en' ? 'Max Capacity / Slot / Day' : 'ຈຳນວນສູງສຸດ/ຮອບ/ວັນ'}:</span>
+                         <span className="font-bold">{event.bookingCapacity} {lang === 'en' ? 'guests/day' : 'ຄົນ/ວັນ'}</span>
                        </div>
                      )}
                      {event.bookingApprovalMode && (
@@ -1832,40 +1886,88 @@ export default function EventDetails() {
                </div>
 
                {/* Time Slot Selector */}
-               {event.hasTimeSelection && event.timeSlots && event.timeSlots.length > 0 && (
-                 <div className="space-y-2.5">
-                   <label className="text-xs font-black uppercase tracking-wider text-adv-slate block flex items-center gap-1.5">
-                     <Clock className="w-3.5 h-3.5 text-adv-orange" />
-                     {t.selectTimeSlot}
-                   </label>
-                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
-                     {event.timeSlots.map((slot) => {
-                       const isSelected = selectedTimeSlot === slot;
-                       return (
-                         <button
-                           key={slot}
-                           onClick={() => setSelectedTimeSlot(slot)}
-                           className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all duration-200 flex flex-col items-center justify-center gap-0.5 relative ${
-                             isSelected
-                               ? 'border-adv-orange bg-orange-50/90 text-adv-orange ring-2 ring-adv-orange/30 shadow-xs'
-                               : 'border-gray-200 bg-white text-adv-slate hover:border-gray-300 hover:bg-gray-50/60'
-                           }`}
-                         >
-                           <span className="font-mono font-black text-xs">{slot}</span>
-                           <span className="text-[9px] text-gray-400 font-extrabold uppercase tracking-wider">
-                             {parseInt(slot.split(':')[0], 10) < 12 
-                               ? (lang === 'en' ? 'Morning' : 'ຕອນເຊົ້າ') 
-                               : parseInt(slot.split(':')[0], 10) < 17 
-                                 ? (lang === 'en' ? 'Afternoon' : 'ຕອນບ່າຍ') 
-                                 : (lang === 'en' ? 'Evening' : 'ຕອນແລງ')
-                             }
-                           </span>
-                         </button>
-                       );
-                     })}
-                   </div>
-                 </div>
-               )}
+                {((event.dateType === 'booking' && event.bookingTimeSlots && event.bookingTimeSlots.length > 0) || 
+                  (event.hasTimeSelection && event.timeSlots && event.timeSlots.length > 0)) && (() => {
+                  const availableSlots = (event.dateType === 'booking' && event.bookingTimeSlots && event.bookingTimeSlots.length > 0)
+                    ? event.bookingTimeSlots
+                    : (event.timeSlots || []);
+
+                  return (
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-black uppercase tracking-wider text-adv-slate flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-adv-orange" />
+                          {t.selectTimeSlot}
+                        </label>
+                        {event.dateType === 'booking' && (
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                            {lang === 'en' ? 'Capacity / slot / day' : 'ຈຳນວນຄົນ/ຮອບ/ວັນ'}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
+                        {availableSlots.map((slot) => {
+                          const isSelected = selectedTimeSlot === slot;
+                          const slotCap = event.dateType === 'booking'
+                            ? (event.bookingSlotCapacities?.[slot] !== undefined 
+                                ? event.bookingSlotCapacities[slot] 
+                                : (Number(event.bookingCapacity) || 10))
+                            : null;
+
+                          return (
+                            <button
+                              key={slot}
+                              type="button"
+                              onClick={() => setSelectedTimeSlot(slot)}
+                              className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all duration-200 flex flex-col items-center justify-center gap-0.5 relative ${
+                                isSelected
+                                  ? 'border-adv-orange bg-orange-50/90 text-adv-orange ring-2 ring-adv-orange/30 shadow-xs'
+                                  : 'border-gray-200 bg-white text-adv-slate hover:border-gray-300 hover:bg-gray-50/60'
+                              }`}
+                            >
+                              <span className="font-mono font-black text-xs">{slot}</span>
+                              <span className="text-[9px] text-gray-400 font-extrabold uppercase tracking-wider">
+                                {parseInt(slot.split(':')[0], 10) < 12 
+                                  ? (lang === 'en' ? 'Morning' : 'ຕອນເຊົ້າ') 
+                                  : parseInt(slot.split(':')[0], 10) < 17 
+                                    ? (lang === 'en' ? 'Afternoon' : 'ຕອນບ່າຍ') 
+                                    : (lang === 'en' ? 'Evening' : 'ຕອນແລງ')
+                                }
+                              </span>
+                              {slotCap !== null && (
+                                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md mt-1 flex items-center gap-1 border ${
+                                  isSelected 
+                                    ? 'bg-orange-100 text-adv-orange border-orange-200' 
+                                    : 'bg-gray-100 text-gray-600 border-gray-200'
+                                }`}>
+                                  <Users className="w-2.5 h-2.5" />
+                                  <span>{slotCap} {lang === 'en' ? 'spots/day' : 'ຄົນ/ວັນ'}</span>
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {event.dateType === 'booking' && selectedSlotCapacity !== null && (
+                        <div className="p-2.5 bg-amber-50/80 border border-amber-200/80 rounded-xl flex items-center justify-between text-xs text-amber-900 font-semibold shadow-2xs">
+                          <div className="flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5 text-adv-orange" />
+                            <span>
+                              {lang === 'en' 
+                                ? `Daily slot limit for ${selectedTimeSlot || 'selected slot'}:` 
+                                : `ຄວາມຈຸຕໍ່ວັນສຳລັບຮອບ ${selectedTimeSlot || ''}:`}
+                            </span>
+                          </div>
+                          <span className="font-extrabold text-amber-950 bg-white px-2 py-0.5 rounded-md border border-amber-200 shadow-2xs">
+                            {selectedSlotCapacity} {lang === 'en' ? 'people max / day' : 'ຄົນສູງສຸດ / ວັນ'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                {/* Ticket Options (Multi-Tier Selection) */}
                {event.ticketTiers && event.ticketTiers.length > 0 ? (
@@ -1953,8 +2055,8 @@ export default function EventDetails() {
                    <div className="flex items-center gap-3 bg-gray-50/80 px-2 py-1.5 rounded-xl border border-gray-200/80 shadow-xs">
                      <button 
                        type="button"
-                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                       disabled={quantity <= 1}
+                       onClick={() => setQuantity(Math.max(0, quantity - 1))}
+                       disabled={quantity <= 0}
                        className="w-7 h-7 flex items-center justify-center bg-white rounded-lg border border-gray-200 text-gray-700 hover:border-adv-orange hover:text-adv-orange active:scale-95 transition-all disabled:opacity-40 disabled:hover:border-gray-200 disabled:hover:text-gray-700 disabled:cursor-not-allowed shadow-2xs cursor-pointer"
                      >
                        <Minus className="w-3.5 h-3.5" />

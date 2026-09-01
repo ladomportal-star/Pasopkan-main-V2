@@ -327,6 +327,7 @@ export default function StaffScanner() {
       bookingDate: bookingDate,
       alreadyCheckedIn: !!existingCheckin,
       checkedInRecord: existingCheckin,
+      customAnswers: foundUserTicket?.customAnswers || existingCheckin?.customAnswers,
       isValid: true
     });
 
@@ -704,6 +705,26 @@ export default function StaffScanner() {
                         <div className="text-xs font-black mt-0.5">{scannedTicket.zone} • {scannedTicket.seat}</div>
                       </div>
                     </div>
+
+                    {/* Questionnaire Answers on Scan */}
+                    {scannedTicket.customAnswers && Object.keys(scannedTicket.customAnswers).length > 0 && (
+                      <div className={`p-2.5 rounded-xl border ${
+                        theme === 'dark' ? 'bg-blue-950/20 border-blue-900/30 text-blue-200' : 'bg-blue-50/60 border-blue-100 text-blue-900'
+                      }`}>
+                        <div className="text-[9px] font-black uppercase tracking-wider text-blue-500 mb-1.5 flex items-center gap-1">
+                          <TicketIcon className="w-3 h-3" />
+                          <span>Questionnaire Info</span>
+                        </div>
+                        <div className="space-y-1">
+                          {Object.entries(scannedTicket.customAnswers).map(([k, v], qIdx) => (
+                            <div key={qIdx} className="text-[11px] flex justify-between gap-2">
+                              <span className="font-semibold opacity-75 truncate">{k}:</span>
+                              <span className="font-black text-right truncate">{Array.isArray(v) ? v.join(', ') : String(v)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Action Check-In Button */}
                     {!scannedTicket.alreadyCheckedIn ? (

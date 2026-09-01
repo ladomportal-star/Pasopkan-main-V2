@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link as LinkIcon, AlertTriangle, Loader2, CheckCircle2 } from 'lucide-react';
+import { Link as LinkIcon, AlertTriangle, Loader2, CheckCircle2, MapPin, ExternalLink } from 'lucide-react';
 
 interface EventMapPickerProps {
   address?: string;
@@ -20,6 +20,8 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
   province = '',
   district = '',
   isReadOnly = false,
+  latitude,
+  longitude,
   lang = 'en',
   googleMapUrl = '',
   onChangeGoogleMapUrl
@@ -102,6 +104,20 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
     }
   };
 
+  const getExternalMapUrl = () => {
+    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+      return url;
+    }
+    if (latitude && longitude) {
+      return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+    }
+    const fullQuery = [address, district, province].filter(Boolean).join(', ');
+    if (fullQuery) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullQuery)}`;
+    }
+    return 'https://www.google.com/maps/search/?api=1&query=Vientiane,Laos';
+  };
+
   const getIframeSrc = () => {
     if (resolvedEmbedSrc) return resolvedEmbedSrc;
 
@@ -128,24 +144,47 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
 
       return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
     }
-    return `https://maps.google.com/maps?q=${encodeURIComponent(address || 'Vientiane')}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
+
+    if (latitude && longitude) {
+      return `https://maps.google.com/maps?q=${latitude},${longitude}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
+    }
+
+    const queryLocation = [address, district, province].filter(Boolean).join(', ');
+    return `https://maps.google.com/maps?q=${encodeURIComponent(queryLocation || 'Vientiane, Laos')}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
   };
 
   const iframeSrc = getIframeSrc();
 
   if (isReadOnly) {
+    const externalMapLink = getExternalMapUrl();
     return (
-      <iframe 
-        key={iframeSrc}
-        src={iframeSrc}
-        width="100%" 
-        height="320" 
-        style={{ border: 0 }} 
-        allowFullScreen 
-        loading="lazy" 
-        referrerPolicy="no-referrer-when-downgrade"
-        className="rounded-xl overflow-hidden bg-white"
-      />
+      <div className="relative rounded-2xl overflow-hidden border border-gray-200/80 shadow-xs bg-gray-100 group">
+        <iframe 
+          key={iframeSrc}
+          src={iframeSrc}
+          width="100%" 
+          height="320" 
+          style={{ border: 0 }} 
+          allowFullScreen 
+          loading="lazy" 
+          referrerPolicy="no-referrer-when-downgrade"
+          className="w-full h-[320px] bg-white block"
+        />
+
+        {/* Floating "Open in Google Maps" button in top-right */}
+        <div className="absolute top-3 right-3 z-10">
+          <a
+            href={externalMapLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/95 hover:bg-white text-adv-slate hover:text-adv-orange text-xs font-bold rounded-xl shadow-md border border-gray-200/80 backdrop-blur-xs transition-all active:scale-95 cursor-pointer"
+          >
+            <MapPin className="w-3.5 h-3.5 text-adv-orange" />
+            <span>{lang === 'lo' ? 'ເປີດໃນ Google Maps' : 'Open in Google Maps'}</span>
+            <ExternalLink className="w-3 h-3 opacity-70" />
+          </a>
+        </div>
+      </div>
     );
   }
 

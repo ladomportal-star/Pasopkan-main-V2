@@ -111,7 +111,7 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
         </div>
 
         {/* Date Overlay Pill */}
-        {event.dateType === 'fixed' && event.date && (
+        {event.dateType !== 'booking' && event.date && (
           <div className="absolute bottom-2 left-2 z-10">
             <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/95 backdrop-blur-md text-adv-slate shadow-2xs border border-white/60 text-[10px] font-black">
               <Calendar className="w-3 h-3 text-adv-orange shrink-0" />

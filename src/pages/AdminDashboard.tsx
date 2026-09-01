@@ -2634,6 +2634,11 @@ export default function AdminDashboard() {
                           {lang === 'lo' ? 'ວັນທີຈັດງານ' : 'Event Date'}
                         </span>
                       )}
+                      {selectedEvent.dateType === 'booking' && (
+                        <span className="px-3 py-1 bg-amber-400 text-slate-950 text-xs font-black rounded-lg uppercase tracking-wider">
+                          {lang === 'lo' ? 'ການຈອງ' : 'Booking'}
+                        </span>
+                      )}
                     </div>
                     <h1 className="font-extrabold text-white tracking-tight mb-2 text-4xl">
                       {selectedEvent.title}
@@ -2661,6 +2666,8 @@ export default function AdminDashboard() {
                           <div className="text-sm font-bold text-adv-slate">
                             {selectedEvent.dateType === 'flexible' ? (
                               (lang === 'lo' ? 'ວັນທີຈັດງານ' : 'Event Date')
+                            ) : selectedEvent.dateType === 'booking' ? (
+                              (lang === 'lo' ? 'ການຈອງ (Slot Booking)' : 'Booking Available')
                             ) : selectedEvent.date ? (
                               new Date(selectedEvent.date).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
                             ) : 'TBA'}
@@ -2754,6 +2761,35 @@ export default function AdminDashboard() {
                       </div>
                     )}
 
+                    {/* Booking Time Slots & Daily Capacities */}
+                    {selectedEvent.dateType === 'booking' && selectedEvent.bookingTimeSlots && selectedEvent.bookingTimeSlots.length > 0 && (
+                      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-bold text-adv-slate flex items-center gap-2">
+                            <Clock className="w-5 h-5 text-adv-orange" />
+                            {lang === 'lo' ? 'ຮອບເວລາ & ຄວາມຈຸຕໍ່ຮອບ (ສຳລັບ 1 ວັນ)' : 'Booking Time Slots & Daily Capacities (For 1 Day)'}
+                          </h3>
+                          <span className="text-xs font-extrabold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                            {selectedEvent.bookingTimeSlots.length} {lang === 'lo' ? 'ຮອບ' : 'slots'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {selectedEvent.bookingTimeSlots.map((slot, idx) => {
+                            const cap = selectedEvent.bookingSlotCapacities?.[slot] || Number(selectedEvent.bookingCapacity) || 10;
+                            return (
+                              <div key={idx} className="p-3 bg-amber-50/60 border border-amber-100 rounded-xl text-center space-y-1">
+                                <div className="text-xs font-black text-adv-slate font-mono">{slot}</div>
+                                <div className="text-[10px] font-bold text-amber-800 flex items-center justify-center gap-1">
+                                  <Users className="w-3 h-3 text-adv-orange" />
+                                  <span>{cap} {lang === 'lo' ? 'ຄົນ/ຮອບ/ວັນ' : 'people/slot/day'}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Event Settings & Policies */}
                     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
                       <h3 className="text-lg font-bold text-adv-slate flex items-center gap-2">
@@ -2798,7 +2834,7 @@ export default function AdminDashboard() {
                         )}
                         <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
                           <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{lang === 'lo' ? 'ປະເພດວັນທີ' : 'Date Type'}</div>
-                          <div className="text-xs font-black text-adv-slate capitalize">{selectedEvent.dateType || 'Fixed'}</div>
+                          <div className="text-xs font-black text-adv-slate capitalize">{selectedEvent.dateType === 'booking' ? (lang === 'lo' ? 'ການຈອງ (Booking)' : 'Booking') : (lang === 'lo' ? 'ວັນທີຈັດງານ (Event Date)' : 'Event Date')}</div>
                         </div>
                         <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
                           <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{lang === 'lo' ? 'ອະນຸຍາດໃຫ້ຄືນເງິນ' : 'Allow Refunds'}</div>

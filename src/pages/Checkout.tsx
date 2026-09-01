@@ -21,6 +21,7 @@ import { useAuth } from '../AuthContext';
 import { QRCodeSVG } from 'qrcode.react';
 import { doc, setDoc, collection } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
+import { addEventAttendee } from '../lib/checkinsStore';
 import SEO from '../components/SEO';
 
 const translations = {
@@ -490,13 +491,48 @@ export default function Checkout() {
           tier: selectedTiersList.length > 0 ? selectedTiersList[0].tier : tier,
           quantity: totalQuantity,
           selectedTiers: selectedTiersList,
-          selectedDate: state.selectedDate,
-          selectedTime: state.selectedTime,
+          selectedDate: state.selectedDate || event?.date,
+          selectedTime: state.selectedTime || event?.time,
           status: 'upcoming',
+          bookingDate: new Date().toISOString(),
           purchaseDate: new Date().toISOString()
         };
         userTickets.push(newTicketObj);
         localStorage.setItem('pasopkan_user_tickets', JSON.stringify(userTickets));
+
+        // Save detailed attendee registration records with questionnaire answers for the Organizer
+        try {
+          ticketOwners.forEach((owner, idx) => {
+            const currentTicketId = totalQuantity > 1 ? `${transactionId || 'tk'}-${idx + 1}` : (transactionId || `tk_${Math.random().toString(36).substr(2, 9)}`);
+            const attendeeFirstName = owner.firstName.trim() || (user?.name ? user.name.split(' ')[0] : 'Attendee');
+            const attendeeLastName = owner.lastName.trim() || (user?.name ? user.name.split(' ').slice(1).join(' ') : `${idx + 1}`);
+            const tierInfo = selectedTiersList.length > 0 
+              ? (selectedTiersList[idx % selectedTiersList.length]?.tier || tier)
+              : tier;
+
+            addEventAttendee({
+              id: `att_${Date.now()}_${idx + 1}_${Math.random().toString(36).substr(2, 5)}`,
+              ticketId: currentTicketId,
+              orderId: transactionId || `ord_${Date.now()}`,
+              eventId: String(event.id),
+              firstName: attendeeFirstName,
+              lastName: attendeeLastName,
+              attendeeName: `${attendeeFirstName} ${attendeeLastName}`.trim() || user?.name || `Attendee ${idx + 1}`,
+              email: owner.email.trim() || user?.email || 'attendee@pasopkan.la',
+              phone: owner.phone.trim() || (user as any)?.phone || '+856 20 5555 1234',
+              ticketType: tierInfo?.name || 'Standard Pass',
+              tierId: tierInfo?.id,
+              zone: zone?.name || (event.hasSeating ? `Zone ${String.fromCharCode(65 + (idx % 3))}` : 'General Access'),
+              seat: (event.hasSeating ? `Row ${(idx % 8) + 1}, Seat ${(idx % 15) + 1}` : `Ticket #${idx + 1}`),
+              price: `${total.toLocaleString()} LAK`,
+              purchaseDate: new Date().toISOString(),
+              isCheckedIn: false,
+              customAnswers: owner.customAnswers || {}
+            });
+          });
+        } catch (attErr) {
+          console.error('Error saving attendee answers:', attErr);
+        }
 
         // Save coupon redemption details if a coupon was applied
         if (appliedCoupon) {
@@ -623,7 +659,7 @@ export default function Checkout() {
       </div>
 
       {/* Event Date & Location Block */}
-      <div className="grid grid-cols-2 gap-3 bg-gray-50/80 p-3 rounded-xl border border-gray-100 text-xs">
+      <div className={`grid ${selectedTime ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'} gap-3 bg-gray-50/80 p-3 rounded-xl border border-gray-100 text-xs`}>
         <div className="space-y-0.5">
           <span className="text-[9px] uppercase tracking-wider text-gray-400 font-bold block">
             {lang === 'en' ? 'Date of Event' : 'ວັນທີກິດຈະກຳ'}
@@ -640,7 +676,18 @@ export default function Checkout() {
             </span>
           </div>
         </div>
-        <div className="space-y-0.5 border-l border-gray-200/60 pl-3">
+        {selectedTime && (
+          <div className="space-y-0.5 border-t sm:border-t-0 sm:border-l border-gray-200/60 pt-2 sm:pt-0 sm:pl-3">
+            <span className="text-[9px] uppercase tracking-wider text-gray-400 font-bold block">
+              {lang === 'en' ? 'Time Slot' : 'ຮອບເວລາ'}
+            </span>
+            <div className="font-extrabold text-adv-slate flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-adv-orange shrink-0" />
+              <span>{selectedTime}</span>
+            </div>
+          </div>
+        )}
+        <div className={`space-y-0.5 ${selectedTime ? 'border-t sm:border-t-0 sm:border-l border-gray-200/60 pt-2 sm:pt-0 sm:pl-3' : 'border-l border-gray-200/60 pl-3'}`}>
           <span className="text-[9px] uppercase tracking-wider text-gray-400 font-bold block">
             {lang === 'en' ? 'Venue' : 'ສະຖານທີ່'}
           </span>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
-import { Calendar, Undo, Redo, Heading3, FileImage, Folder, FileText, Plus, User, Users, Mail, Phone, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Inbox, Ticket, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, Image as ImageIcon, Video, MapPin, Loader2, Trash2, X, Check, QrCode, LogOut, Edit, ShieldCheck, DollarSign, RefreshCcw, FileCheck, BookOpen, AlertCircle, ShieldAlert, ArrowLeft, ArrowRight, Globe, Clock, Settings, Lock, Eye, UploadCloud, ExternalLink, Monitor, Smartphone, CheckCircle2, Sparkles, Paperclip, Search, Quote, Minus, Heading1, Heading2, Link as LinkIcon, Award, Unlink, Superscript, Subscript, Strikethrough, RemoveFormatting, MessageSquare, Type, Palette, GripVertical, Info } from 'lucide-react';
+import { Calendar, Undo, Redo, Heading3, FileImage, Folder, FileText, Plus, User, Users, Mail, Phone, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Inbox, Ticket, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, Image as ImageIcon, Video, MapPin, Loader2, Trash2, X, Check, QrCode, LogOut, Edit, ShieldCheck, DollarSign, RefreshCcw, FileCheck, BookOpen, AlertCircle, ShieldAlert, ArrowLeft, ArrowRight, Globe, Clock, Settings, Lock, Eye, UploadCloud, ExternalLink, Monitor, Smartphone, CheckCircle2, Sparkles, Paperclip, Search, Quote, Minus, Heading1, Heading2, Link as LinkIcon, Award, Unlink, Superscript, Subscript, Strikethrough, RemoveFormatting, MessageSquare, MessageCircle, Type, Palette, GripVertical, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../LanguageContext';
 import { safeStorage } from '../lib/storage';
@@ -17,7 +17,10 @@ import SocialLinksForm, { SocialLinks } from '../components/SocialLinksForm';
 import {
   getOrganizerTermsSettings,
   OrganizerTermsSettings,
-  DEFAULT_ORGANIZER_TERMS_SETTINGS
+  DEFAULT_ORGANIZER_TERMS_SETTINGS,
+  getSupportSettings,
+  SupportSettings,
+  DEFAULT_SUPPORT_SETTINGS
 } from '../lib/siteSettings';
 import { renderTermIcon } from '../lib/termIcons';
 import SEO from '../components/SEO';
@@ -132,7 +135,8 @@ const translations = {
     actions: 'Actions',
     edit: 'Edit',
     editBlocked: 'Cannot Edit Event',
-    editBlockedDesc: 'Organizers cannot edit events or configurations after submission. If you need to make changes or configure this event, please contact system admin.',
+    editBlockedDesc: 'Organizers cannot edit events or configurations after submission. If you need to make changes or configure this event, please contact system admin on WhatsApp.',
+    contactAdminWhatsApp: 'Contact Admin on WhatsApp',
     close: 'Close',
     updateEventSuccessTitle: 'Event Updated Successfully!',
     updateEventSuccessDesc: 'Your event changes have been saved successfully and are pending review.',
@@ -221,6 +225,21 @@ const translations = {
     flexibleDesc: 'Event Date Description',
     flexibleDescPlaceholder: 'e.g. Valid for any day in July, Every weekend',
     flexibleTimeDesc: 'Set the daily operating hours or time slot for this event.',
+    bookingSlotCapacity: 'Capacity per Slot (Per 1 Day)',
+    bookingSlotCapacityDesc: 'Specify how many attendees or guests you can service in each time slot for 1 single day. Capacity resets fresh for each booked date.',
+    capacityPerDayExplainer: 'Capacity is calculated per day: On any date a customer books, each time slot has its own independent capacity limit (resets daily).',
+    capacityPerDayBadge: 'Per 1 Day',
+    peoplePerSlot: 'people / slot / day',
+    peoplePerDayUnit: 'people / day',
+    peopleUnit: 'people',
+    applyToAllSlots: 'Apply to all slots',
+    defaultSlotCapacity: 'Default capacity',
+    slotCapacityPlaceholder: 'e.g. 10',
+    timeSlotsAndCapacity: 'Time Slots & Daily Service Capacity (Per 1 Day)',
+    noBookingSlots: 'No booking slots added yet. Select a time and set capacity to add slots.',
+    slotCapacityInputLabel: 'Service Capacity (People per Slot for 1 Day)',
+    totalSlotsCount: 'Total Slots',
+    totalDailyCapacity: 'Total Capacity (Per 1 Day)',
     paymentInfo: 'Payment Information',
     bankName: 'Bank Name',
     bankNamePlaceholder: 'e.g. BCEL, JDB',
@@ -382,7 +401,8 @@ const translations = {
     actions: 'ການກະທຳ',
     edit: 'ແກ້ໄຂ',
     editBlocked: 'ບໍ່ສາມາດແກ້ໄຂ Event ໄດ້',
-    editBlockedDesc: 'ຜູ້ຈັດງານບໍ່ສາມາດແກ້ໄຂຂໍ້ມູນ ຫຼື ຕັ້ງຄ່າ Event ໄດ້ຫຼັງຈາກສົ່ງແລ້ວ. ຖ້າທ່ານຕ້ອງການແກ້ໄຂ ຫຼື ປ່ຽນແປງຂໍ້ມູນ Event, ກະລຸນາຕິດຕໍ່ Admin system.',
+    editBlockedDesc: 'ຜູ້ຈັດງານບໍ່ສາມາດແກ້ໄຂຂໍ້ມູນ ຫຼື ຕັ້ງຄ່າ Event ໄດ້ຫຼັງຈາກສົ່ງແລ້ວ. ຖ້າທ່ານຕ້ອງການແກ້ໄຂ ຫຼື ປ່ຽນແປງຂໍ້ມູນ Event, ກະລຸນາຕິດຕໍ່ Admin ຜ່ານ WhatsApp.',
+    contactAdminWhatsApp: 'ຕິດຕໍ່ Admin ຜ່ານ WhatsApp',
     close: 'ປິດ',
     updateEventSuccessTitle: 'ອັບເດດ event ສຳເລັດແລ້ວ!',
     updateEventSuccessDesc: 'ການປ່ຽນແປງຂອງ event ໄດ້ຮັບການບັນທຶກສຳເລັດແລ້ວ ແລະ ກຳລັງລໍຖ້າການກວດສອບ.',
@@ -471,6 +491,21 @@ const translations = {
     flexibleDesc: 'ຄຳອະທິບາຍວັນທີຈັດງານ',
     flexibleDescPlaceholder: 'ເຊັ່ນ: ໃຊ້ໄດ້ທຸກມື້ໃນເດືອນກໍລະກົດ, ທຸກໆທ້າຍອາທິດ',
     flexibleTimeDesc: 'ກຳນົດເວລາເປີດບໍລິການປະຈຳວັນ ຫຼື ຊ່ວງເວລາສຳລັບ event ນີ້.',
+    bookingSlotCapacity: 'ຈຳນວນຄົນຕໍ່ຮອບ (ສຳລັບ 1 ວັນ)',
+    bookingSlotCapacityDesc: 'ກຳນົດຈຳນວນຄົນທີ່ສາມາດຮອງຮັບໄດ້ໃນແຕ່ລະຮອບເວລາສຳລັບ 1 ວັນ. ຄວາມຈຸຈະເລີ່ມນັບໃໝ່ແຍກກັນໃນແຕ່ລະວັນທີ່ລູກຄ້າເລືອກຈອງ.',
+    capacityPerDayExplainer: 'ຄວາມຈຸແມ່ນຄິດໄລ່ຕໍ່ 1 ວັນ: ໃນແຕ່ລະວັນທີ່ລູກຄ້າເລືອກຈອງ, ແຕ່ລະຮອບເວລາຈະຮອງຮັບຄົນໄດ້ແຍກຕ່າງຫາກຕາມທີ່ຕັ້ງໄວ້ນີ້.',
+    capacityPerDayBadge: 'ຕໍ່ 1 ວັນ',
+    peoplePerSlot: 'ຄົນ / ຮອບ / ວັນ',
+    peoplePerDayUnit: 'ຄົນ / ວັນ',
+    peopleUnit: 'ຄົນ',
+    applyToAllSlots: 'ນຳໃຊ້ກັບທຸກຮອບ',
+    defaultSlotCapacity: 'ຈຳນວນຄົນເລີ່ມຕົ້ນ',
+    slotCapacityPlaceholder: 'ເຊັ່ນ: 10',
+    timeSlotsAndCapacity: 'ຮອບເວລາ & ຈຳນວນຄົນທີ່ຮັບໄດ້ຕໍ່ຮອບ (ສຳລັບ 1 ວັນ)',
+    noBookingSlots: 'ຍັງບໍ່ມີຮອບເວລາການຈອງ. ເລືອກເວລາ ແລະ ຈຳນວນຄົນຂ້າງເທິງເພື່ອເພີ່ມຮອບ.',
+    slotCapacityInputLabel: 'ຈຳນວນຄົນທີ່ຮັບໄດ້ (ຄົນ/ຮອບ ສຳລັບ 1 ວັນ)',
+    totalSlotsCount: 'ຮອບທັງໝົດ',
+    totalDailyCapacity: 'ຮອງຮັບໄດ້ທັງໝົດ (ຕໍ່ 1 ວັນ)',
     paymentInfo: 'ຂໍ້ມູນການຈ່າຍເງິນ',
     bankName: 'ຊື່ທະນາຄານ',
     bankNamePlaceholder: 'ເຊັ່ນ: BCEL, JDB',
@@ -649,7 +684,10 @@ export default function CreateEvent() {
   // Booking specific states
   const [bookingAvailableDays, setBookingAvailableDays] = useState<string[]>([]);
   const [bookingTimeSlots, setBookingTimeSlots] = useState<string[]>([]);
+  const [bookingSlotCapacities, setBookingSlotCapacities] = useState<Record<string, number>>({});
   const [newBookingTimeSlot, setNewBookingTimeSlot] = useState('');
+  const [newBookingSlotCapacity, setNewBookingSlotCapacity] = useState<number>(10);
+  const [defaultBookingCapacity, setDefaultBookingCapacity] = useState<number>(10);
   const [isLoading, setIsLoading] = useState(false);
   const [activeStep, setActiveStep] = useState(1);
   const [activeTab, setActiveTab] = useState('myEvents');
@@ -684,20 +722,38 @@ export default function CreateEvent() {
 
   // Dynamic Organizer Terms & Conditions from Site Settings
   const [organizerTerms, setOrganizerTerms] = useState<OrganizerTermsSettings>(DEFAULT_ORGANIZER_TERMS_SETTINGS);
+  // Dynamic Support Settings for WhatsApp contact
+  const [supportSettings, setSupportSettings] = useState<SupportSettings>(DEFAULT_SUPPORT_SETTINGS);
 
   useEffect(() => {
-    async function loadTerms() {
+    async function loadSiteConfig() {
       try {
-        const termsData = await getOrganizerTermsSettings();
+        const [termsData, supportData] = await Promise.all([
+          getOrganizerTermsSettings(),
+          getSupportSettings()
+        ]);
         if (termsData) {
           setOrganizerTerms(termsData);
         }
+        if (supportData) {
+          setSupportSettings(supportData);
+        }
       } catch (err) {
-        console.error('Failed to load organizer terms:', err);
+        console.error('Failed to load organizer terms/support:', err);
       }
     }
-    loadTerms();
+    loadSiteConfig();
   }, []);
+
+  const getWhatsAppAdminUrl = (targetEventTitle?: string) => {
+    const rawNumber = supportSettings.whatsappNumber || '8562091951529';
+    const cleanNumber = rawNumber.replace(/[^0-9]/g, '');
+    const title = targetEventTitle || selectedEvent?.title || eventName;
+    const message = title && title.trim()
+      ? `Hello Admin, I am an organizer on Pasopkan. I would like to request changes/edit for my event: "${title.trim()}".`
+      : `Hello Admin, I am an organizer on Pasopkan. I would like to request assistance with editing/configuring my event.`;
+    return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
+  };
 
 
   // Helper to get today's date in YYYY-MM-DD
@@ -883,7 +939,31 @@ export default function CreateEvent() {
     minAdvanceDate.setHours(0, 0, 0, 0);
     minAdvanceDate.setDate(minAdvanceDate.getDate() + 5);
 
-    if (dateType === 'flexible') {
+    if (dateType === 'booking') {
+      if (!bookingAvailableDays || bookingAvailableDays.length === 0) {
+        list.push({
+          id: 'booking-days-empty',
+          step: 2,
+          stepTitleEn: 'Time & Tickets',
+          stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+          fieldEn: 'At least 1 Booking Available Day',
+          fieldLo: 'ຢ່າງໜ້ອຍ 1 ມື້ທີ່ເປີດໃຫ້ຈອງ',
+          elementId: 'field-booking-days',
+        });
+      }
+      if (!bookingTimeSlots || bookingTimeSlots.length === 0) {
+        list.push({
+          id: 'booking-slots-empty',
+          step: 2,
+          stepTitleEn: 'Time & Tickets',
+          stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
+          fieldEn: 'At least 1 Booking Time Slot',
+          fieldLo: 'ຢ່າງໜ້ອຍ 1 ຮອບເວລາການຈອງ',
+          elementId: 'field-booking-slots',
+        });
+      }
+    } else {
+      // Event Date
       if (!availableDates || availableDates.length === 0) {
         list.push({
           id: 'available-dates-empty',
@@ -911,66 +991,6 @@ export default function CreateEvent() {
             elementId: 'field-flexible-dates',
           });
         }
-      }
-    } else if (dateType === 'booking') {
-      if (!bookingAvailableDays || bookingAvailableDays.length === 0) {
-        list.push({
-          id: 'booking-days-empty',
-          step: 2,
-          stepTitleEn: 'Time & Tickets',
-          stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
-          fieldEn: 'At least 1 Booking Available Day',
-          fieldLo: 'ຢ່າງໜ້ອຍ 1 ມື້ທີ່ເປີດໃຫ້ຈອງ',
-          elementId: 'field-booking-days',
-        });
-      }
-      if (!bookingTimeSlots || bookingTimeSlots.length === 0) {
-        list.push({
-          id: 'booking-slots-empty',
-          step: 2,
-          stepTitleEn: 'Time & Tickets',
-          stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
-          fieldEn: 'At least 1 Booking Time Slot',
-          fieldLo: 'ຢ່າງໜ້ອຍ 1 ຮອບເວລາການຈອງ',
-          elementId: 'field-booking-slots',
-        });
-      }
-    } else if (dateType === 'fixed') {
-      if (!startDate) {
-        list.push({
-          id: 'start-date',
-          step: 2,
-          stepTitleEn: 'Time & Tickets',
-          stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
-          fieldEn: 'Event Start Date',
-          fieldLo: 'ວັນທີເລີ່ມຕົ້ນກິດຈະກຳ',
-          elementId: 'field-start-date',
-        });
-      } else {
-        const dt = new Date(startDate);
-        dt.setHours(0, 0, 0, 0);
-        if (dt.getTime() < minAdvanceDate.getTime()) {
-          list.push({
-            id: 'start-date-min-5-days',
-            step: 2,
-            stepTitleEn: 'Time & Tickets',
-            stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
-            fieldEn: `Event date must be at least 5 days from today (from ${minAdvanceDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} onwards)`,
-            fieldLo: `ວັນທີຈັດງານຕ້ອງເລືອກລ່ວງໜ້າຢ່າງໜ້ອຍ 5 ວັນ (ເລີ່ມຈາກ ${minAdvanceDate.toLocaleDateString('lo-LA', { day: 'numeric', month: 'short', year: 'numeric' })} ເປັນຕົ້ນໄປ)`,
-            elementId: 'field-start-date',
-          });
-        }
-      }
-      if (!startTime) {
-        list.push({
-          id: 'start-time',
-          step: 2,
-          stepTitleEn: 'Time & Tickets',
-          stepTitleLo: 'ເວລາ & ບັດເຂົ້າຮ່ວມ',
-          fieldEn: 'Event Start Time',
-          fieldLo: 'ເວລາເລີ່ມຕົ້ນກິດຈະກຳ',
-          elementId: 'field-start-time',
-        });
       }
     }
 
@@ -1233,6 +1253,7 @@ export default function CreateEvent() {
       flexibleDateDesc: dateType === 'flexible' ? flexibleDateDesc : '',
       bookingAvailableDays: dateType === 'booking' ? bookingAvailableDays : [],
       bookingTimeSlots: dateType === 'booking' ? bookingTimeSlots : [],
+      bookingSlotCapacities: dateType === 'booking' ? bookingSlotCapacities : {},
       date: dateType === 'flexible' && availableDates.length > 0 ? availableDates[0].date : (startDate || new Date().toISOString().split('T')[0]),
       time: dateType === 'flexible' && availableDates.length > 0 && availableDates[0].timeSlots?.length > 0 ? availableDates[0].timeSlots[0] : (startTime || '18:00'),
       endDate: dateType === 'flexible' && availableDates.length > 0 ? availableDates[availableDates.length - 1].date : (endDate || startDate || new Date().toISOString().split('T')[0]),
@@ -1302,6 +1323,16 @@ export default function CreateEvent() {
     setFlexibleDateDesc(event.flexibleDateDesc || '');
     setBookingAvailableDays(event.bookingAvailableDays || []);
     setBookingTimeSlots(event.bookingTimeSlots || []);
+    const loadedCapacities: Record<string, number> = {};
+    if (event.bookingSlotCapacities) {
+      Object.assign(loadedCapacities, event.bookingSlotCapacities);
+    } else if (event.bookingTimeSlots && event.bookingTimeSlots.length > 0) {
+      const fallbackCap = Number(event.bookingCapacity) || 10;
+      event.bookingTimeSlots.forEach((slot: string) => {
+        loadedCapacities[slot] = fallbackCap;
+      });
+    }
+    setBookingSlotCapacities(loadedCapacities);
     setStartDate(event.date || '');
     setStartTime(event.time || '');
     setEndDate(event.endDate || '');
@@ -1915,6 +1946,9 @@ export default function CreateEvent() {
         if (parsed.onlineInstructions) setOnlineInstructions(parsed.onlineInstructions);
         if (parsed.dateType) setDateType(parsed.dateType);
         if (parsed.flexibleDateDesc) setFlexibleDateDesc(parsed.flexibleDateDesc);
+        if (parsed.bookingAvailableDays && Array.isArray(parsed.bookingAvailableDays)) setBookingAvailableDays(parsed.bookingAvailableDays);
+        if (parsed.bookingTimeSlots && Array.isArray(parsed.bookingTimeSlots)) setBookingTimeSlots(parsed.bookingTimeSlots);
+        if (parsed.bookingSlotCapacities && typeof parsed.bookingSlotCapacities === 'object') setBookingSlotCapacities(parsed.bookingSlotCapacities);
         if (parsed.activeStep) setActiveStep(parsed.activeStep);
         if (parsed.showRemainingTickets !== undefined) setShowRemainingTickets(parsed.showRemainingTickets);
         if (parsed.allowRefunds !== undefined) setAllowRefunds(parsed.allowRefunds);
@@ -2011,6 +2045,9 @@ export default function CreateEvent() {
       onlineInstructions,
       dateType,
       flexibleDateDesc,
+      bookingAvailableDays,
+      bookingTimeSlots,
+      bookingSlotCapacities,
       activeStep,
       showRemainingTickets,
       allowRefunds,
@@ -2257,6 +2294,9 @@ export default function CreateEvent() {
     setFlexibleDateDesc('');
     setBookingAvailableDays([]);
     setBookingTimeSlots([]);
+    setBookingSlotCapacities({});
+    setNewBookingSlotCapacity(10);
+    setDefaultBookingCapacity(10);
     setAvailableDates([]);
     setStartDate('');
     setStartTime('');
@@ -2387,13 +2427,15 @@ export default function CreateEvent() {
               onlinePasscode,
               onlineInstructions,
               dateType,
-              flexibleDateDesc,
-              bookingAvailableDays,
-              bookingTimeSlots,
-              date: startDate,
-              time: startTime,
-              endDate,
-              endTime,
+              flexibleDateDesc: dateType === 'flexible' ? flexibleDateDesc : '',
+              bookingAvailableDays: dateType === 'booking' ? bookingAvailableDays : [],
+              bookingTimeSlots: dateType === 'booking' ? bookingTimeSlots : [],
+              bookingSlotCapacities: dateType === 'booking' ? bookingSlotCapacities : {},
+              bookingCapacity: dateType === 'booking' ? (Object.values(bookingSlotCapacities).length > 0 ? Math.max(...Object.values(bookingSlotCapacities).map(v => Number(v) || 0)) : 10) : undefined,
+              date: dateType === 'flexible' && availableDates.length > 0 ? availableDates[0].date : (startDate || new Date().toISOString().split('T')[0]),
+              time: dateType === 'flexible' && availableDates.length > 0 && availableDates[0].startTime ? availableDates[0].startTime : (dateType === 'booking' && bookingTimeSlots.length > 0 ? bookingTimeSlots[0] : (startTime || '18:00')),
+              endDate: dateType === 'flexible' && availableDates.length > 0 ? availableDates[availableDates.length - 1].date : (endDate || startDate || new Date().toISOString().split('T')[0]),
+              endTime: endTime || '22:00',
               durationEn,
               durationLo,
               languages: selectedLanguages,
@@ -2407,8 +2449,8 @@ export default function CreateEvent() {
               coupons,
               hasSeating: hasSeating,
               zoneImage: zoneImage,
-              hasTimeSelection: dateType === 'flexible',
-              timeSlots: dateType === 'flexible' ? timeSlots : [],
+              hasTimeSelection: dateType === 'flexible' && availableDates.some(d => !!d.startTime),
+              timeSlots: dateType === 'flexible' ? Array.from(new Set(availableDates.map(d => d.startTime).filter(Boolean))) : [],
               availableDates: dateType === 'flexible' ? availableDates : [],
               image: verticalImage || horizontalImage || evt.image,
               exampleImages: galleryImages.length > 0 ? galleryImages : (verticalImage ? [verticalImage] : []),
@@ -2442,7 +2484,7 @@ export default function CreateEvent() {
           location: streetAddress,
           latitude,
           longitude,
-              googleMapUrl: googleMapsLink,
+          googleMapUrl: googleMapsLink,
           organizer: organizerName,
           organizerInfo,
           organizerContact,
@@ -2459,13 +2501,15 @@ export default function CreateEvent() {
           onlinePasscode,
           onlineInstructions,
           dateType,
-          flexibleDateDesc,
-          bookingAvailableDays,
-          bookingTimeSlots,
-          date: startDate,
-          time: startTime,
-          endDate,
-          endTime,
+          flexibleDateDesc: dateType === 'flexible' ? flexibleDateDesc : '',
+          bookingAvailableDays: dateType === 'booking' ? bookingAvailableDays : [],
+          bookingTimeSlots: dateType === 'booking' ? bookingTimeSlots : [],
+          bookingSlotCapacities: dateType === 'booking' ? bookingSlotCapacities : {},
+          bookingCapacity: dateType === 'booking' ? (Object.values(bookingSlotCapacities).length > 0 ? Math.max(...Object.values(bookingSlotCapacities).map(v => Number(v) || 0)) : 10) : undefined,
+          date: dateType === 'flexible' && availableDates.length > 0 ? availableDates[0].date : (startDate || new Date().toISOString().split('T')[0]),
+          time: dateType === 'flexible' && availableDates.length > 0 && availableDates[0].startTime ? availableDates[0].startTime : (dateType === 'booking' && bookingTimeSlots.length > 0 ? bookingTimeSlots[0] : (startTime || '18:00')),
+          endDate: dateType === 'flexible' && availableDates.length > 0 ? availableDates[availableDates.length - 1].date : (endDate || startDate || new Date().toISOString().split('T')[0]),
+          endTime: endTime || '22:00',
           durationEn,
           durationLo,
           languages: selectedLanguages,
@@ -2479,8 +2523,8 @@ export default function CreateEvent() {
           coupons,
           hasSeating: hasSeating,
           zoneImage: zoneImage,
-          hasTimeSelection: dateType === 'flexible',
-          timeSlots: dateType === 'flexible' ? timeSlots : [],
+          hasTimeSelection: dateType === 'flexible' && availableDates.some(d => !!d.startTime),
+          timeSlots: dateType === 'flexible' ? Array.from(new Set(availableDates.map(d => d.startTime).filter(Boolean))) : [],
           availableDates: dateType === 'flexible' ? availableDates : [],
           image: verticalImage || horizontalImage || 'https://images.unsplash.com/photo-1540611025311-01df3cef54b5?q=80&w=2000&auto=format&fit=crop',
           exampleImages: galleryImages.length > 0 ? galleryImages : (verticalImage ? [verticalImage] : []),
@@ -4157,6 +4201,7 @@ export default function CreateEvent() {
                             if (dateType === 'flexible') {
                               setBookingAvailableDays([]);
                               setBookingTimeSlots([]);
+                              setBookingSlotCapacities({});
                             } else {
                               setAvailableDates([]);
                             }
@@ -4282,49 +4327,274 @@ export default function CreateEvent() {
                         </div>
 
                         <div id="field-booking-slots" className="grid grid-cols-1 gap-4">
-                          <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-4">
-                            <h4 className="text-xs font-bold text-adv-slate flex items-center gap-1.5 uppercase tracking-wide">
-                              <Calendar className="w-4 h-4 text-adv-orange" />
-                              {lang === 'en' ? 'Time Slots' : 'ຮອບເວລາ'}
-                            </h4>
-                            
-                            <div className="flex gap-2">
-                              <div className="flex-1">
-                                <ScrollTimePicker 
-                                  value={newBookingTimeSlot}
-                                  onChange={(val) => setNewBookingTimeSlot(val)}
-                                  placeholder="09:00"
-                                />
+                          <div className="p-4 sm:p-5 rounded-2xl bg-gray-50/80 border border-gray-200 space-y-4 shadow-xs">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <div>
+                                <h4 className="text-xs font-bold text-adv-slate flex items-center gap-1.5 uppercase tracking-wide">
+                                  <Users className="w-4 h-4 text-adv-orange" />
+                                  {t.timeSlotsAndCapacity}
+                                </h4>
+                                <p className="text-[11px] text-gray-500 font-medium mt-0.5">
+                                  {t.bookingSlotCapacityDesc}
+                                </p>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (newBookingTimeSlot && !bookingTimeSlots.includes(newBookingTimeSlot)) {
-                                    setBookingTimeSlots([...bookingTimeSlots, newBookingTimeSlot].sort());
-                                    setNewBookingTimeSlot('');
-                                  }
-                                }}
-                                className="px-3 py-2 bg-adv-orange text-white rounded-lg hover:bg-orange-600 transition-colors shrink-0"
-                              >
-                                <Plus className="w-4 h-4" />
-                              </button>
+                              {bookingTimeSlots.length > 0 && (
+                                <div className="flex items-center gap-2 self-start sm:self-auto">
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-100/80 text-adv-orange text-[10px] font-extrabold border border-orange-200">
+                                    <Clock className="w-3 h-3" />
+                                    {bookingTimeSlots.length} {t.totalSlotsCount}
+                                  </span>
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100/80 text-amber-800 text-[10px] font-extrabold border border-amber-200">
+                                    <Users className="w-3 h-3" />
+                                    {Object.values(bookingSlotCapacities).reduce((a: number, b: number) => a + (Number(b) || 0), 0) || (bookingTimeSlots.length * 10)} {lang === 'en' ? 'people / day' : 'ຄົນ / ວັນ'}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                             
-                            <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto pt-1 pr-1 custom-scrollbar">
-                              {bookingTimeSlots.map((slot, index) => (
-                                <div key={index} className="flex items-center gap-1 bg-white border border-gray-200 pl-2 pr-1 py-1 rounded-md shadow-xs">
-                                  <span className="text-xs font-bold text-gray-700">{slot}</span>
-                                  <button 
+                            {/* Add New Slot Bar */}
+                            <div className="p-3.5 bg-white rounded-xl border border-gray-200 shadow-xs space-y-3">
+                              <div className="text-[11px] font-bold text-gray-700 flex items-center justify-between">
+                                <div className="flex items-center gap-1">
+                                  <Plus className="w-3.5 h-3.5 text-adv-orange" />
+                                  {lang === 'en' ? 'Add Time Slot & Daily Capacity' : 'ເພີ່ມຮອບເວລາ ແລະ ຈຳນວນຄົນຕໍ່ວັນ'}
+                                </div>
+                                <span className="text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
+                                  {lang === 'en' ? '1 Day Limit' : 'ຈຳນວນຕໍ່ 1 ວັນ'}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+                                <div className="sm:col-span-5">
+                                  <label className="text-[10px] font-extrabold uppercase text-gray-400 block mb-1">
+                                    {lang === 'en' ? 'Slot Time' : 'ເວລາ'}
+                                  </label>
+                                  <ScrollTimePicker 
+                                    value={newBookingTimeSlot}
+                                    onChange={(val) => setNewBookingTimeSlot(val)}
+                                    placeholder="09:00"
+                                  />
+                                </div>
+                                
+                                <div className="sm:col-span-4">
+                                  <label className="text-[10px] font-extrabold uppercase text-gray-500 block mb-1">
+                                    {lang === 'en' ? 'Capacity (People / 1 Day)' : 'ຈຳນວນຄົນ (ຕໍ່ 1 ວັນ)'}
+                                  </label>
+                                  <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-2 py-1 focus-within:border-adv-orange focus-within:bg-white transition-all">
+                                    <button
+                                      type="button"
+                                      onClick={() => setNewBookingSlotCapacity(prev => Math.max(1, (Number(prev) || 10) - 1))}
+                                      className="p-1 text-gray-500 hover:text-adv-orange hover:bg-gray-200/60 rounded-lg transition-colors"
+                                    >
+                                      <Minus className="w-3.5 h-3.5" />
+                                    </button>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      value={newBookingSlotCapacity}
+                                      onChange={(e) => {
+                                        const val = parseInt(e.target.value, 10);
+                                        setNewBookingSlotCapacity(isNaN(val) ? 1 : Math.max(1, val));
+                                      }}
+                                      className="w-full bg-transparent text-center text-xs font-black text-adv-slate focus:outline-hidden"
+                                      placeholder="10"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => setNewBookingSlotCapacity(prev => (Number(prev) || 10) + 1)}
+                                      className="p-1 text-gray-500 hover:text-adv-orange hover:bg-gray-200/60 rounded-lg transition-colors"
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="sm:col-span-3">
+                                  <button
                                     type="button"
-                                    onClick={() => setBookingTimeSlots(bookingTimeSlots.filter((_, i) => i !== index))}
-                                    className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
+                                    onClick={() => {
+                                      if (newBookingTimeSlot && !bookingTimeSlots.includes(newBookingTimeSlot)) {
+                                        const updated = [...bookingTimeSlots, newBookingTimeSlot].sort();
+                                        const cap = Math.max(1, Number(newBookingSlotCapacity) || 10);
+                                        setBookingTimeSlots(updated);
+                                        setBookingSlotCapacities(prev => ({
+                                          ...prev,
+                                          [newBookingTimeSlot]: cap
+                                        }));
+                                        setNewBookingTimeSlot('');
+                                      }
+                                    }}
+                                    disabled={!newBookingTimeSlot || bookingTimeSlots.includes(newBookingTimeSlot)}
+                                    className="w-full py-2 px-3 bg-adv-orange disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-xl hover:bg-orange-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs shrink-0"
                                   >
-                                    <X className="w-3 h-3" />
+                                    <Plus className="w-4 h-4" />
+                                    <span>{lang === 'en' ? 'Add' : 'ເພີ່ມ'}</span>
                                   </button>
                                 </div>
-                              ))}
+                              </div>
+                            </div>
+
+                            {/* Bulk Default Capacity Toolbar if 2+ slots exist */}
+                            {bookingTimeSlots.length > 1 && (
+                              <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-orange-50/60 rounded-xl border border-orange-100 text-xs">
+                                <div className="text-[11px] text-amber-900 font-semibold flex items-center gap-1.5">
+                                  <Users className="w-3.5 h-3.5 text-adv-orange" />
+                                  <span>{lang === 'en' ? 'Quick set all slots capacity (per 1 day) to:' : 'ຕັ້ງຄວາມຈຸທຸກຮອບ (ຕໍ່ 1 ວັນ) ເປັນ:'}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={defaultBookingCapacity}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value, 10);
+                                      setDefaultBookingCapacity(isNaN(val) ? 1 : Math.max(1, val));
+                                    }}
+                                    className="w-16 px-2 py-1 bg-white border border-gray-200 rounded-lg text-center text-xs font-bold text-adv-slate focus:outline-hidden focus:border-adv-orange"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const cap = Math.max(1, Number(defaultBookingCapacity) || 10);
+                                      const updated: Record<string, number> = {};
+                                      bookingTimeSlots.forEach(s => {
+                                        updated[s] = cap;
+                                      });
+                                      setBookingSlotCapacities(updated);
+                                    }}
+                                    className="px-2.5 py-1 bg-white text-adv-orange hover:bg-orange-100/60 border border-orange-200 rounded-lg text-[11px] font-extrabold transition-colors"
+                                  >
+                                    {t.applyToAllSlots}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Slot Cards List */}
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between text-[11px] font-bold text-gray-500">
+                                <span>{lang === 'en' ? 'Configured Time Slots & Daily Limits (For 1 Day):' : 'ຮອບເວລາ ແລະ ຈຳນວນຄົນທີ່ຕັ້ງຄ່າແລ້ວ (ຕໍ່ 1 ວັນ):'}</span>
+                                {bookingTimeSlots.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setBookingTimeSlots([]);
+                                      setBookingSlotCapacities({});
+                                    }}
+                                    className="text-red-500 hover:text-red-700 text-[10px] underline underline-offset-2"
+                                  >
+                                    {lang === 'en' ? 'Remove all' : 'ລຶບທັງໝົດ'}
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[300px] overflow-y-auto pt-1 pr-1 custom-scrollbar">
+                                {bookingTimeSlots.map((slot, index) => {
+                                  const hour = parseInt(slot.split(':')[0], 10);
+                                  const period = hour < 12 
+                                    ? (lang === 'en' ? 'Morning' : 'ຕອນເຊົ້າ')
+                                    : hour < 17 
+                                      ? (lang === 'en' ? 'Afternoon' : 'ຕອນບ່າຍ')
+                                      : (lang === 'en' ? 'Evening' : 'ຕອນແລງ');
+                                  const currentCap = bookingSlotCapacities[slot] !== undefined ? bookingSlotCapacities[slot] : 10;
+
+                                  return (
+                                    <div 
+                                      key={index} 
+                                      className="p-3 bg-white border border-gray-200 rounded-xl shadow-2xs hover:border-orange-200 transition-all flex flex-col justify-between gap-2.5"
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5">
+                                          <div className="w-7 h-7 rounded-lg bg-orange-50 text-adv-orange flex items-center justify-center font-bold">
+                                            <Clock className="w-3.5 h-3.5" />
+                                          </div>
+                                          <div>
+                                            <span className="text-xs font-black text-adv-slate tracking-wide font-mono block">
+                                              {slot}
+                                            </span>
+                                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block -mt-0.5">
+                                              {period}
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        <button 
+                                          type="button"
+                                          onClick={() => {
+                                            setBookingTimeSlots(bookingTimeSlots.filter((_, i) => i !== index));
+                                            setBookingSlotCapacities(prev => {
+                                              const next = { ...prev };
+                                              delete next[slot];
+                                              return next;
+                                            });
+                                          }}
+                                          className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                          title={lang === 'en' ? 'Remove slot' : 'ລຶບຮອບ'}
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+
+                                      {/* Per-Slot Capacity Stepper */}
+                                      <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
+                                        <span className="text-[10px] font-extrabold text-gray-500 flex items-center gap-1">
+                                          <Users className="w-3 h-3 text-adv-orange" />
+                                          {lang === 'en' ? 'Limit / 1 day:' : 'ຮັບໄດ້ / 1 ວັນ:'}
+                                        </span>
+                                        <div className="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-1.5 py-0.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const newCap = Math.max(1, currentCap - 1);
+                                              setBookingSlotCapacities(prev => ({
+                                                ...prev,
+                                                [slot]: newCap
+                                              }));
+                                            }}
+                                            className="p-0.5 text-gray-500 hover:text-adv-orange hover:bg-gray-200/60 rounded transition-colors"
+                                          >
+                                            <Minus className="w-3 h-3" />
+                                          </button>
+                                          <input
+                                            type="number"
+                                            min="1"
+                                            value={currentCap}
+                                            onChange={(e) => {
+                                              const val = parseInt(e.target.value, 10);
+                                              const safe = isNaN(val) ? 1 : Math.max(1, val);
+                                              setBookingSlotCapacities(prev => ({
+                                                ...prev,
+                                                [slot]: safe
+                                              }));
+                                            }}
+                                            className="w-10 bg-transparent text-center text-xs font-black text-adv-slate focus:outline-hidden"
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const newCap = currentCap + 1;
+                                              setBookingSlotCapacities(prev => ({
+                                                ...prev,
+                                                [slot]: newCap
+                                              }));
+                                            }}
+                                            className="p-0.5 text-gray-500 hover:text-adv-orange hover:bg-gray-200/60 rounded transition-colors"
+                                          >
+                                            <Plus className="w-3 h-3" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
                               {bookingTimeSlots.length === 0 && (
-                                <span className="text-xs text-gray-400 italic">No slots added</span>
+                                <div className="p-6 text-center bg-white border border-dashed border-gray-200 rounded-xl space-y-1.5">
+                                  <Clock className="w-6 h-6 text-gray-300 mx-auto" />
+                                  <p className="text-xs text-gray-500 font-medium">
+                                    {t.noBookingSlots}
+                                  </p>
+                                </div>
                               )}
                             </div>
                           </div>
@@ -4863,7 +5133,7 @@ export default function CreateEvent() {
 
 
 
-                    {dateType === 'fixed' && (
+                    {dateType !== 'booking' && (
                       <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
                         <div>
                           <h4 className="text-adv-slate font-bold mb-1">{t.enableCountdown}</h4>
@@ -4987,8 +5257,8 @@ export default function CreateEvent() {
                   exit={{ scale: 0.9, opacity: 0 }}
                   className="bg-white border border-gray-100 rounded-[32px] w-full max-w-md p-8 text-center shadow-2xl relative"
                 >
-                  <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-amber-100">
-                    <Lock className="w-8 h-8 text-amber-600" />
+                  <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-emerald-100">
+                    <MessageCircle className="w-8 h-8 text-emerald-600" />
                   </div>
                   <h3 className="text-xl font-extrabold text-adv-slate mb-3 tracking-tight">{t.editBlocked}</h3>
                   <p className="text-gray-500 mb-6 leading-relaxed font-medium text-sm">
@@ -4996,11 +5266,13 @@ export default function CreateEvent() {
                   </p>
                   <div className="space-y-2.5">
                     <a
-                      href="mailto:admin@ticketlao.com?subject=Request%20Event%20Edit%20/ %20Configuration"
-                      className="w-full py-3.5 px-4 rounded-xl bg-adv-orange hover:bg-orange-600 text-white font-bold transition-all shadow-md flex items-center justify-center gap-2 text-sm"
+                      href={getWhatsAppAdminUrl(selectedEvent?.title || eventName)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-3.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-[0.99] text-white font-bold transition-all shadow-md shadow-emerald-500/20 flex items-center justify-center gap-2 text-sm"
                     >
-                      <Mail className="w-4 h-4" />
-                      <span>{lang === 'lo' ? 'ຕິດຕໍ່ Admin ເພື່ອແກ້ໄຂ' : 'Contact System Admin'}</span>
+                      <MessageCircle className="w-4 h-4 text-white" />
+                      <span>{t.contactAdminWhatsApp}</span>
                     </a>
                     <button
                       onClick={() => setShowEditBlockedModal(false)}
@@ -5183,6 +5455,11 @@ export default function CreateEvent() {
                                       {t.flexibleDate}
                                     </span>
                                   )}
+                                  {event.dateType === 'booking' && (
+                                    <span className="inline-block text-[10px] font-extrabold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 uppercase tracking-wider mb-1">
+                                      {lang === 'lo' ? 'ການຈອງ (Booking)' : 'Slot Booking'}
+                                    </span>
+                                  )}
                                   <div className="font-semibold text-adv-slate">
                                     {new Date(event.date).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                     {event.endDate && event.endDate !== event.date && (
@@ -5322,9 +5599,9 @@ export default function CreateEvent() {
                       onClick={() => {
                         setShowEditBlockedModal(true);
                       }}
-                      className="flex items-center gap-1.5 px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-2xl transition-all text-xs font-black border border-amber-200/60 shadow-sm uppercase tracking-wider"
+                      className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-2xl transition-all text-xs font-black border border-emerald-200/60 shadow-sm uppercase tracking-wider"
                     >
-                      <Lock className="w-4 h-4 text-amber-600" />
+                      <MessageCircle className="w-4 h-4 text-emerald-600" />
                       <span>{lang === 'lo' ? 'ຕິດຕໍ່ Admin ເພື່ອແກ້ໄຂ' : 'Contact Admin to Edit'}</span>
                     </button>
                     <button 
@@ -5466,6 +5743,11 @@ export default function CreateEvent() {
                             {t.flexibleDate}
                           </span>
                         )}
+                        {selectedEvent.dateType === 'booking' && (
+                          <span className="inline-block text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 uppercase tracking-wider">
+                            {lang === 'lo' ? 'ການຈອງຕາມຮອບເວລາ (Booking)' : 'Slot Booking Service'}
+                          </span>
+                        )}
                         <p className="text-sm text-gray-700 font-semibold">
                           {new Date(selectedEvent.date).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
                           {selectedEvent.endDate && selectedEvent.endDate !== selectedEvent.date && (
@@ -5475,11 +5757,32 @@ export default function CreateEvent() {
                             </>
                           )}
                         </p>
-                        {selectedEvent.time && (
+                        {selectedEvent.time && selectedEvent.dateType !== 'booking' && (
                           <p className="text-sm text-gray-500 font-bold flex items-center gap-1.5">
                             <Clock className="w-4 h-4 text-gray-400" />
                             {selectedEvent.time}
                           </p>
+                        )}
+                        {selectedEvent.dateType === 'booking' && selectedEvent.bookingTimeSlots && selectedEvent.bookingTimeSlots.length > 0 && (
+                          <div className="pt-2 space-y-1.5">
+                            <p className="text-xs font-bold text-gray-500 flex items-center gap-1">
+                              <Users className="w-3.5 h-3.5 text-adv-orange" />
+                              {lang === 'lo' ? 'ຮອບເວລາ & ຄວາມຈຸຕໍ່ 1 ວັນ:' : 'Time Slots & Daily Capacity (Per 1 Day):'}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {selectedEvent.bookingTimeSlots.map((slot: string, sIdx: number) => {
+                                const cap = selectedEvent.bookingSlotCapacities?.[slot] || Number(selectedEvent.bookingCapacity) || 10;
+                                return (
+                                  <div key={sIdx} className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-xl flex items-center gap-2 shadow-2xs">
+                                    <span className="font-mono font-bold text-xs text-adv-slate">{slot}</span>
+                                    <span className="text-[10px] font-extrabold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-100">
+                                      {cap} {lang === 'lo' ? 'ຄົນ/ຮອບ/ວັນ' : 'people/slot/day'}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -5878,6 +6181,35 @@ export default function CreateEvent() {
                               {slot}
                             </div>
                           ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Booking Time Slots & Capacities Preview */}
+                    {previewData.dateType === 'booking' && previewData.bookingTimeSlots && previewData.bookingTimeSlots.length > 0 && (
+                      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-bold text-adv-slate flex items-center gap-2">
+                            <Clock className="w-5 h-5 text-adv-orange" />
+                            {lang === 'lo' ? 'ຮອບເວລາ & ຄວາມຈຸຕໍ່ຮອບ (ຕໍ່ 1 ວັນ)' : 'Booking Time Slots & Daily Capacity'}
+                          </h3>
+                          <span className="text-xs font-extrabold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                            {previewData.bookingTimeSlots.length} {lang === 'lo' ? 'ຮອບ' : 'slots'}
+                          </span>
+                        </div>
+                        <div className={`grid grid-cols-2 gap-3 ${previewDeviceMode === 'desktop' ? 'sm:grid-cols-3' : ''}`}>
+                          {previewData.bookingTimeSlots.map((slot: string, idx: number) => {
+                            const cap = previewData.bookingSlotCapacities?.[slot] || Number(previewData.bookingCapacity) || 10;
+                            return (
+                              <div key={idx} className="p-3 bg-amber-50/60 border border-amber-100 rounded-xl text-center space-y-1">
+                                <div className="text-xs font-black text-adv-slate font-mono">{slot}</div>
+                                <div className="text-[10px] font-bold text-amber-800 flex items-center justify-center gap-1">
+                                  <Users className="w-3 h-3 text-adv-orange" />
+                                  <span>{cap} {lang === 'lo' ? 'ຄົນ/ຮອບ/ວັນ' : 'people/slot/day'}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}

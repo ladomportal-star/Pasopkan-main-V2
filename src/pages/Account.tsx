@@ -1,6 +1,6 @@
 import { BankAccountInfo, PayoutBill, EventData } from "../types";
 import React, { useState, useRef, useEffect } from 'react';
-import { User, Settings, CreditCard, Bell, Shield, HelpCircle, LogOut, ChevronLeft, ChevronRight, Camera, Calendar as CalendarIcon, MapPin, Plus, CheckCircle2, XCircle, X, AlertCircle, AlertTriangle, Loader2, Image as ImageIcon, Ticket, Download, Link2, Copy, ExternalLink, QrCode, Trash2, ShieldCheck , Building, Hash, Save, Edit2, ChevronDown, DollarSign, Info, Smartphone, Lock, Search, Phone, Mail } from 'lucide-react';
+import { User, Settings, CreditCard, Bell, Shield, HelpCircle, LogOut, ChevronLeft, ChevronRight, Camera, Calendar as CalendarIcon, MapPin, Plus, CheckCircle2, XCircle, X, AlertCircle, AlertTriangle, Loader2, Image as ImageIcon, Ticket, Download, Link2, Copy, ExternalLink, QrCode, Trash2, ShieldCheck , Building, Hash, Save, Edit2, ChevronDown, DollarSign, Info, Smartphone, Lock, Search, Phone, Mail, FileText, Users, Eye, Filter, PieChart, Sparkles, UserCheck, MessageSquare, ClipboardList, CheckSquare, Clock, Globe, ListFilter, Check, UserX, BarChart3, CheckCheck } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { safeStorage } from '../lib/storage';
 import { motion, AnimatePresence } from 'motion/react';
@@ -9,7 +9,7 @@ import { events, SeatingZone, Coupon } from '../data/events';
 import { useAuth } from '../AuthContext';
 import { useLanguage } from '../LanguageContext';
 import { useTheme } from '../ThemeContext';
-import { CheckinRecord, useCheckins } from '../lib/checkinsStore';
+import { CheckinRecord, EventAttendee, useAttendees, useCheckins } from '../lib/checkinsStore';
 import SEO from '../components/SEO';
 import ManageCouponsSection from '../components/ManageCouponsSection';
 
@@ -105,7 +105,24 @@ const translations = {
     qrCodeModalDesc: 'Scan this QR code on staff device to open scanner portal immediately.',
     revoke: 'Revoke',
     active: 'Active',
-    noStaffLinks: 'No staff links generated yet. Click "Create Staff Link" below.'
+    noStaffLinks: 'No staff links generated yet. Click "Create Staff Link" below.',
+    attendeeDirectory: 'Ticket Buyers & Registration Directory',
+    attendeeDirectoryDesc: 'Track all registered ticket holders, check-in status, and their custom questionnaire responses.',
+    allBuyers: 'All Buyers',
+    checkedIn: 'Checked In',
+    pendingGate: 'Pending Gate Scan',
+    withFormAnswers: 'With Form Answers',
+    viewAnswers: 'View Answers',
+    questionnaireAnswers: 'Questionnaire Responses',
+    questionnaireSummary: 'Answers Summary',
+    noAttendeesFound: 'No ticket buyers match the selected filters.',
+    answersModalTitle: 'Attendee Registration Details & Answers',
+    answersModalSubtitle: 'Full questionnaire response data submitted during ticket checkout',
+    questionnaireSummaryTitle: 'Activity Questionnaire Analytics & Summary',
+    questionnaireSummarySubtitle: 'Aggregated breakdown of all attendee question submissions for this activity',
+    exportAllData: 'Export Excel (All Data & Answers)',
+    quickCheckin: 'Quick Check-In',
+    undoCheckin: 'Undo Check-In'
   },
   lo: {
     settings: 'ຕັ້ງຄ່າ',
@@ -179,7 +196,24 @@ const translations = {
     qrCodeModalDesc: 'ສະແກນ QR code ນີ້ໃນອຸປະກອນພະນັກງານເພື່ອເປີດໜ້າສະແກນທັນທີ.',
     revoke: 'ຍົກເລີກ',
     active: 'ເປີດໃຊ້ງານ',
-    noStaffLinks: 'ຍັງບໍ່ມີລິ້ງພະນັກງານຖືກສ້າງເທື່ອ. ກົດ "ສ້າງລິ້ງເຂົ້າເຖິງສຳລັບພະນັກງານ" ດ້ານລຸ່ມ.'
+    noStaffLinks: 'ຍັງບໍ່ມີລິ້ງພະນັກງານຖືກສ້າງເທື່ອ. ກົດ "ສ້າງລິ້ງເຂົ້າເຖິງສຳລັບພະນັກງານ" ດ້ານລຸ່ມ.',
+    attendeeDirectory: 'ລາຍຊື່ຜູ້ຊື້ປີ້ ແລະ ຄຳຕອບແບບສອບຖາມ',
+    attendeeDirectoryDesc: 'ຕິດຕາມຜູ້ຖືປີ້ທັງໝົດ, ສະຖານະການເຊັກອິນ, ແລະ ຄຳຕອບແບບສອບຖາມຂອງພວກເຂົາ.',
+    allBuyers: 'ຜູ້ຊື້ທັງໝົດ',
+    checkedIn: 'ເຊັກອິນແລ້ວ',
+    pendingGate: 'ລໍຖ້າສະແກນ',
+    withFormAnswers: 'ມີຄຳຕອບແບບສອບຖາມ',
+    viewAnswers: 'ເບິ່ງຄຳຕອບ',
+    questionnaireAnswers: 'ຄຳຕອບແບບສອບຖາມ',
+    questionnaireSummary: 'ສະຫຼຸບຄຳຕອບ',
+    noAttendeesFound: 'ບໍ່ພົບຂໍ້ມູນຜູ້ຊື້ປີ້ຕາມເງື່ອນໄຂທີ່ເລືອກ.',
+    answersModalTitle: 'ລາຍລະອຽດຜູ້ເຂົ້າຮ່ວມ ແລະ ຄຳຕອບແບບສອບຖາມ',
+    answersModalSubtitle: 'ຂໍ້ມູນຄຳຕອບແບບສອບຖາມທີ່ຜູ້ຊື້ປ້ອນໃນຕອນຊື້ປີ້',
+    questionnaireSummaryTitle: 'ສະຖິຕິ ແລະ ບົດສະຫຼຸບຄຳຕອບແບບສອບຖາມ',
+    questionnaireSummarySubtitle: 'ການລວບລວມຄຳຕອບແບບສອບຖາມທັງໝົດສຳລັບກິດຈະກຳນີ້',
+    exportAllData: 'ສົ່ງອອກ Excel (ຂໍ້ມູນທັງໝົດ ແລະ ຄຳຕອບ)',
+    quickCheckin: 'ເຊັກອິນດ່ວນ',
+    undoCheckin: 'ຍົກເລີກການເຊັກອິນ'
   }
 };
 
@@ -442,6 +476,26 @@ export default function Account() {
   // Real-time checkins store automatically filtered for selected event
   const { eventCheckins: recentCheckins, addCheckin: addOrganizerCheckin } = useCheckins(selectedEventId);
 
+  // Real-time comprehensive attendees store with question responses & checkin status
+  const {
+    eventAttendees,
+    checkedInAttendees,
+    pendingAttendees,
+    attendeesWithAnswers,
+    totalCount: totalAttendeesCount,
+    checkedInCount,
+    pendingCount,
+    withAnswersCount,
+    toggleCheckin: toggleAttendeeCheckin,
+    setCheckinStatus
+  } = useAttendees(selectedEventId);
+
+  const [attendeeFilter, setAttendeeFilter] = useState<'all' | 'checked_in' | 'pending' | 'with_answers'>('all');
+  const [attendeeTierFilter, setAttendeeTierFilter] = useState<string>('all');
+  const [selectedAttendeeForAnswers, setSelectedAttendeeForAnswers] = useState<EventAttendee | null>(null);
+  const [showQuestionnaireSummaryModal, setShowQuestionnaireSummaryModal] = useState(false);
+  const [attendeeSearchQuery, setAttendeeSearchQuery] = useState('');
+  const [attendeeListPage, setAttendeeListPage] = useState(1);
 
   const filteredRecentCheckins = recentCheckins.filter(c => {
     const q = recentCheckinSearch.toLowerCase().trim();
@@ -456,6 +510,42 @@ export default function Account() {
       (c.seat && c.seat.toLowerCase().includes(q))
     );
   });
+
+  const filteredAttendees = React.useMemo(() => {
+    return eventAttendees.filter(att => {
+      // Status filter
+      if (attendeeFilter === 'checked_in' && !att.isCheckedIn) return false;
+      if (attendeeFilter === 'pending' && att.isCheckedIn) return false;
+      if (attendeeFilter === 'with_answers') {
+        const hasAnswers = att.customAnswers && Object.keys(att.customAnswers).length > 0 &&
+          Object.values(att.customAnswers).some(v => Array.isArray(v) ? v.length > 0 : (v !== '' && v !== null && v !== undefined));
+        if (!hasAnswers) return false;
+      }
+
+      // Tier filter
+      if (attendeeTierFilter !== 'all' && att.ticketType !== attendeeTierFilter) return false;
+
+      // Query search
+      const q = attendeeSearchQuery.toLowerCase().trim();
+      if (!q) return true;
+
+      const nameMatch = (att.attendeeName || '').toLowerCase().includes(q);
+      const emailMatch = (att.email || '').toLowerCase().includes(q);
+      const phoneMatch = (att.phone || '').toLowerCase().includes(q);
+      const ticketMatch = (att.ticketId || '').toLowerCase().includes(q);
+      const orderMatch = (att.orderId || '').toLowerCase().includes(q);
+      const tierMatch = (att.ticketType || '').toLowerCase().includes(q);
+      const zoneMatch = (att.zone || '').toLowerCase().includes(q);
+
+      const answersMatch = att.customAnswers && Object.values(att.customAnswers).some(val => {
+        if (typeof val === 'string') return val.toLowerCase().includes(q);
+        if (Array.isArray(val)) return val.some(item => String(item).toLowerCase().includes(q));
+        return String(val).toLowerCase().includes(q);
+      });
+
+      return nameMatch || emailMatch || phoneMatch || ticketMatch || orderMatch || tierMatch || zoneMatch || answersMatch;
+    });
+  }, [eventAttendees, attendeeFilter, attendeeTierFilter, attendeeSearchQuery]);
 
   const [scannerError, setScannerError] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState('');
@@ -650,20 +740,95 @@ export default function Account() {
   };
 
   const handleExportToExcel = () => {
-    const headers = ['Ticket ID', 'Attendee Name', 'Email', 'Ticket Type', 'Zone', 'Seat', 'Check-In Time'];
-    const rows = recentCheckins.map(c => [
-      c.id,
-      c.attendeeName,
-      c.email,
-      c.ticketType,
-      c.zone,
-      c.seat,
-      c.time
-    ]);
+    // 1. Collect all custom questions from the event schema or existing answers
+    const configuredQuestions = (selectedEvent as any)?.attendeeQuestions || [];
+    const questionKeys = new Set<string>();
+    const questionLabels: Record<string, string> = {};
+
+    // Add configured questions
+    configuredQuestions.forEach((q: any) => {
+      const qKey = q.id || q.title;
+      questionKeys.add(qKey);
+      questionLabels[qKey] = q.title || q.id;
+    });
+
+    // Also scan all attendees to ensure no dynamic questions are missed
+    eventAttendees.forEach(att => {
+      if (att.customAnswers) {
+        Object.keys(att.customAnswers).forEach(key => {
+          questionKeys.add(key);
+          if (!questionLabels[key]) {
+            // Find label if available
+            const matchingQ = configuredQuestions.find((q: any) => q.id === key || q.title === key);
+            questionLabels[key] = matchingQ?.title || key;
+          }
+        });
+      }
+    });
+
+    const questionKeyList = Array.from(questionKeys);
+
+    // 2. Define headers
+    const baseHeaders = [
+      'Ticket ID',
+      'Order ID',
+      'Attendee Full Name',
+      'First Name',
+      'Last Name',
+      'Email',
+      'Phone',
+      'Ticket Tier',
+      'Zone',
+      'Seat',
+      'Price Paid',
+      'Purchase Date',
+      'Check-in Status',
+      'Check-in Time',
+      'Gate / Staff'
+    ];
+
+    const questionHeaderTitles = questionKeyList.map(k => `Question: ${questionLabels[k] || k}`);
+    const allHeaders = [...baseHeaders, ...questionHeaderTitles];
+
+    // 3. Define rows (export filtered attendees if active, or all attendees)
+    const exportDataset = filteredAttendees.length > 0 ? filteredAttendees : eventAttendees;
+    const rows = exportDataset.map(att => {
+      const answersValues = questionKeyList.map(k => {
+        if (!att.customAnswers || att.customAnswers[k] === undefined || att.customAnswers[k] === null) {
+          return '-';
+        }
+        const val = att.customAnswers[k];
+        if (typeof val === 'boolean') {
+          return val ? 'Yes' : 'No';
+        }
+        if (Array.isArray(val)) {
+          return val.join(', ');
+        }
+        return String(val);
+      });
+
+      return [
+        att.ticketId || att.id,
+        att.orderId || 'N/A',
+        att.attendeeName || `${att.firstName || ''} ${att.lastName || ''}`.trim() || 'Attendee',
+        att.firstName || '',
+        att.lastName || '',
+        att.email || '',
+        att.phone || '',
+        att.ticketType || 'Standard',
+        att.zone || 'General',
+        att.seat || 'N/A',
+        att.price || '',
+        att.purchaseDate ? new Date(att.purchaseDate).toLocaleString() : '',
+        att.isCheckedIn ? 'Checked In' : 'Pending Gate Scan',
+        att.checkinTime || (att.isCheckedIn ? 'Verified' : 'Not Checked In'),
+        att.staffLabel || (att.isCheckedIn ? 'Organizer Desk' : '-')
+      ].concat(answersValues);
+    });
 
     const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(val => `"${val.replace(/"/g, '""')}"`).join(','))
+      allHeaders.join(','),
+      ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
 
     const BOM = '\uFEFF';
@@ -671,15 +836,16 @@ export default function Account() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `checked_in_attendees_${selectedEventId || 'event'}.csv`);
+    const cleanTitle = typeof selectedEvent?.title === 'string' ? selectedEvent.title.replace(/[^a-zA-Z0-9_-]/g, '_') : 'event';
+    link.setAttribute('download', `attendees_and_responses_${cleanTitle}_${selectedEventId}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
     addToast(
       lang === 'en' 
-        ? 'Successfully exported check-in data to Excel/CSV!' 
-        : 'ສົ່ງອອກຂໍ້ມູນການເຊັກອິນໄປຍັງ Excel/CSV ສຳເລັດແລ້ວ!', 
+        ? `Successfully exported ${exportDataset.length} attendee records & answers to Excel!` 
+        : `ສົ່ງອອກຂໍ້ມູນຜູ້ຊື້ປີ້ ແລະ ຄຳຕອບແບບສອບຖາມ ${exportDataset.length} ລາຍການໄປຍັງ Excel ສຳເລັດແລ້ວ!`, 
       'success'
     );
   };
@@ -1031,18 +1197,30 @@ export default function Account() {
                    </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className={`rounded-2xl p-4 sm:p-5 text-center border transition-all ${
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                  <div className={`rounded-2xl p-3 sm:p-4 text-center border transition-all ${
                     theme === 'dark' ? 'bg-zinc-950/40 border-zinc-850' : 'bg-[#F9FAFB] border-gray-50'
                   }`}>
-                    <div className="text-2xl sm:text-3xl font-bold mb-0.5">{selectedEvent.registered}</div>
-                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t.bookings}</div>
+                    <div className="text-xl sm:text-2xl font-black mb-0.5">{totalAttendeesCount || selectedEvent.registered || 0}</div>
+                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{t.allBuyers}</div>
                   </div>
-                  <div className={`rounded-2xl p-4 sm:p-5 text-center border transition-all ${
-                    theme === 'dark' ? 'bg-orange-950/20 border-orange-900/25' : 'bg-orange-50/30 border-orange-50'
+                  <div className={`rounded-2xl p-3 sm:p-4 text-center border transition-all ${
+                    theme === 'dark' ? 'bg-emerald-950/20 border-emerald-900/30' : 'bg-emerald-50/50 border-emerald-100'
                   }`}>
-                    <div className="text-2xl sm:text-3xl font-bold text-adv-orange mb-0.5">{recentCheckins.length}</div>
-                    <div className="text-[10px] text-adv-orange/60 dark:text-orange-450/60 font-bold uppercase tracking-widest">{t.attended}</div>
+                    <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 mb-0.5">{checkedInCount}</div>
+                    <div className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 font-bold uppercase tracking-wider">{t.checkedIn}</div>
+                  </div>
+                  <div className={`rounded-2xl p-3 sm:p-4 text-center border transition-all ${
+                    theme === 'dark' ? 'bg-amber-950/20 border-amber-900/30' : 'bg-amber-50/50 border-amber-100'
+                  }`}>
+                    <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 mb-0.5">{pendingCount}</div>
+                    <div className="text-[10px] text-amber-600/70 dark:text-amber-400/70 font-bold uppercase tracking-wider">{t.pendingGate}</div>
+                  </div>
+                  <div className={`rounded-2xl p-3 sm:p-4 text-center border transition-all ${
+                    theme === 'dark' ? 'bg-blue-950/20 border-blue-900/30' : 'bg-blue-50/50 border-blue-100'
+                  }`}>
+                    <div className="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400 mb-0.5">{withAnswersCount}</div>
+                    <div className="text-[10px] text-blue-600/70 dark:text-blue-400/70 font-bold uppercase tracking-wider">{t.withFormAnswers}</div>
                   </div>
                 </div>
               </div>
@@ -1205,36 +1383,42 @@ export default function Account() {
                 </div>
               )}
 
-              {/* Recent Checked-In Attendees details list */}
+              {/* Ticket Buyers & Registration Directory with Custom Questionnaire Responses */}
               <div className={`rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-8 shadow-sm border transition-all ${
                 theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
               }`}>
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5 pb-4 border-b border-gray-100/50 dark:border-zinc-800/50">
+                {/* Header & Primary Actions */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 pb-5 border-b border-gray-100/60 dark:border-zinc-800/60">
                   <div>
-                    <h4 className="text-base sm:text-lg font-bold">{t.recentCheckins}</h4>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
-                      {filteredRecentCheckins.length} {t.attended}
+                    <div className="flex items-center gap-2.5 mb-1">
+                      <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-adv-orange border border-orange-500/20 flex items-center justify-center shrink-0">
+                        <Users className="w-4 h-4" />
+                      </div>
+                      <h4 className="text-base sm:text-lg font-black">{t.attendeeDirectory}</h4>
+                    </div>
+                    <p className="text-xs text-gray-400 font-medium max-w-2xl">
+                      {t.attendeeDirectoryDesc}
                     </p>
                   </div>
+
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className="relative flex-1 sm:w-64">
-                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                      <input 
-                        type="text" 
-                        value={recentCheckinSearch}
-                        onChange={(e) => {
-                          setRecentCheckinSearch(e.target.value);
-                          setCheckinPage(1);
-                        }}
-                        placeholder={lang === 'lo' ? 'ຄົ້ນຫາຕາມຊື່, ເບີໂທ, ລະຫັດປີ້...' : 'Search Name, Phone, Ticket ID...'}
-                        className={`w-full pl-9 pr-3 py-2 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-all ${
-                          theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white placeholder-zinc-500' : 'bg-gray-50 border-gray-200 text-adv-slate placeholder-gray-400'
-                        }`}
-                      />
-                    </div>
+                    {/* Questionnaire Summary Modal Button */}
+                    <button
+                      onClick={() => setShowQuestionnaireSummaryModal(true)}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border shadow-sm cursor-pointer ${
+                        theme === 'dark'
+                          ? 'bg-zinc-800 border-zinc-700 text-zinc-200 hover:text-white hover:bg-zinc-750'
+                          : 'bg-white border-gray-200 text-gray-700 hover:text-adv-slate hover:bg-gray-50'
+                      }`}
+                    >
+                      <PieChart className="w-3.5 h-3.5 text-blue-500" />
+                      <span>{t.questionnaireSummary}</span>
+                    </button>
+
+                    {/* Export to Excel Button */}
                     <button
                       onClick={handleExportToExcel}
-                      className="px-3.5 py-2 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:scale-[1.02] active:scale-[0.98] font-black text-[10px] uppercase tracking-wider transition-all flex items-center gap-1.5 border border-emerald-500/20 shadow-sm shrink-0 cursor-pointer"
+                      className="px-4 py-2 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:scale-[1.02] active:scale-[0.98] font-black text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 border border-emerald-500/20 shadow-sm shrink-0 cursor-pointer"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>{lang === 'en' ? 'Export Excel' : 'ສົ່ງອອກ Excel'}</span>
@@ -1242,102 +1426,363 @@ export default function Account() {
                   </div>
                 </div>
 
+                {/* Status Tabs & Filters */}
+                <div className="space-y-3.5 mb-5">
+                  {/* Status Pills */}
+                  <div className="flex flex-wrap items-center gap-1.5 p-1 bg-gray-100/80 dark:bg-zinc-950/60 rounded-2xl border border-gray-200/50 dark:border-zinc-850">
+                    <button
+                      onClick={() => { setAttendeeFilter('all'); setAttendeeListPage(1); }}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                        attendeeFilter === 'all'
+                          ? 'bg-adv-orange text-white shadow-xs'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white'
+                      }`}
+                    >
+                      <span>{t.allBuyers}</span>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${attendeeFilter === 'all' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300'}`}>
+                        {totalAttendeesCount}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => { setAttendeeFilter('checked_in'); setAttendeeListPage(1); }}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                        attendeeFilter === 'checked_in'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                      <span>{t.checkedIn}</span>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${attendeeFilter === 'checked_in' ? 'bg-white/20 text-white' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
+                        {checkedInCount}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => { setAttendeeFilter('pending'); setAttendeeListPage(1); }}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                        attendeeFilter === 'pending'
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white'
+                      }`}
+                    >
+                      <Clock className="w-3 h-3 text-amber-400" />
+                      <span>{t.pendingGate}</span>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${attendeeFilter === 'pending' ? 'bg-white/20 text-white' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
+                        {pendingCount}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => { setAttendeeFilter('with_answers'); setAttendeeListPage(1); }}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                        attendeeFilter === 'with_answers'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white'
+                      }`}
+                    >
+                      <FileText className="w-3 h-3 text-blue-400" />
+                      <span>{t.withFormAnswers}</span>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${attendeeFilter === 'with_answers' ? 'bg-white/20 text-white' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'}`}>
+                        {withAnswersCount}
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Search and Tier Filter Row */}
+                  <div className="flex flex-col sm:flex-row items-center gap-2.5">
+                    <div className="relative flex-1 w-full">
+                      <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={attendeeSearchQuery}
+                        onChange={(e) => {
+                          setAttendeeSearchQuery(e.target.value);
+                          setAttendeeListPage(1);
+                        }}
+                        placeholder={lang === 'lo' ? 'ຄົ້ນຫາຊື່, ອີເມວ, ເບີໂທ, ລະຫັດປີ້, ຫຼື ຄຳຕອບແບບສອບຖາມ...' : 'Search name, email, phone, ticket ID, or questionnaire answers...'}
+                        className={`w-full pl-10 pr-9 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-all ${
+                          theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white placeholder-zinc-500' : 'bg-gray-50 border-gray-200 text-adv-slate placeholder-gray-400'
+                        }`}
+                      />
+                      {attendeeSearchQuery && (
+                        <button
+                          onClick={() => { setAttendeeSearchQuery(''); setAttendeeListPage(1); }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Tier selector */}
+                    {selectedEvent.tiers && selectedEvent.tiers.length > 1 && (
+                      <div className="w-full sm:w-48 shrink-0">
+                        <select
+                          value={attendeeTierFilter}
+                          onChange={(e) => {
+                            setAttendeeTierFilter(e.target.value);
+                            setAttendeeListPage(1);
+                          }}
+                          className={`w-full px-3 py-2.5 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-all ${
+                            theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-gray-50 border-gray-200 text-adv-slate'
+                          }`}
+                        >
+                          <option value="all">{lang === 'lo' ? 'ທຸກລະດັບປີ້ (Tiers)' : 'All Ticket Tiers'}</option>
+                          {selectedEvent.tiers.map((tItem: any, idx: number) => (
+                            <option key={idx} value={tItem.name}>{tItem.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Attendees List Cards */}
                 <div className="space-y-3.5">
-                  {filteredRecentCheckins.length === 0 ? (
-                    <div className="py-10 text-center text-gray-400 font-bold text-xs sm:text-sm">
-                      {t.noRecentCheckins}
+                  {filteredAttendees.length === 0 ? (
+                    <div className={`py-12 px-4 text-center rounded-2xl border border-dashed ${
+                      theme === 'dark' ? 'border-zinc-800 text-zinc-400' : 'border-gray-200 text-gray-500'
+                    }`}>
+                      <Users className="w-10 h-10 mx-auto mb-2 text-gray-400 opacity-60" />
+                      <p className="font-bold text-sm mb-1">{t.noAttendeesFound}</p>
+                      <p className="text-xs text-gray-400">
+                        {attendeeSearchQuery ? (lang === 'lo' ? 'ລອງປ່ຽນຄຳຄົ້ນຫາໃໝ່' : 'Try adjusting your search terms') : (lang === 'lo' ? 'ຍັງບໍ່ມີຂໍ້ມູນໃນໝວດນີ້' : 'No attendees in this category yet')}
+                      </p>
                     </div>
                   ) : (
                     (() => {
-                      const CHECKINS_PER_PAGE = 10;
-                      const totalCheckinPages = Math.ceil(filteredRecentCheckins.length / CHECKINS_PER_PAGE) || 1;
-                      const safePage = Math.min(checkinPage, totalCheckinPages);
-                      const currentCheckins = filteredRecentCheckins.slice((safePage - 1) * CHECKINS_PER_PAGE, safePage * CHECKINS_PER_PAGE);
+                      const ATTENDEES_PER_PAGE = 8;
+                      const totalAttendeePages = Math.ceil(filteredAttendees.length / ATTENDEES_PER_PAGE) || 1;
+                      const safePage = Math.min(attendeeListPage, totalAttendeePages);
+                      const paginatedAttendees = filteredAttendees.slice((safePage - 1) * ATTENDEES_PER_PAGE, safePage * ATTENDEES_PER_PAGE);
 
                       return (
                         <>
-                          {currentCheckins.map((checkin, index) => (
-                            <motion.div
-                              key={checkin.id}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: index * 0.03 }}
-                              className={`p-4 rounded-2xl border flex flex-col md:flex-row justify-between gap-3 transition-all group ${
-                                theme === 'dark' 
-                                  ? 'bg-zinc-950/45 border-zinc-850 hover:border-orange-500/20 hover:bg-orange-500/5' 
-                                  : 'bg-[#F9FAFB] border-gray-50 hover:border-orange-100 hover:bg-orange-50/10'
-                              }`}
-                            >
-                              <div className="flex items-start gap-3 min-w-0">
-                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 border transition-all ${
+                          {paginatedAttendees.map((att, index) => {
+                            const answerEntries = att.customAnswers ? Object.entries(att.customAnswers).filter(([_, val]) => val !== undefined && val !== null && val !== '') : [];
+                            const answerCount = answerEntries.length;
+
+                            return (
+                              <motion.div
+                                key={att.id || att.ticketId || index}
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.02 }}
+                                className={`p-4 sm:p-5 rounded-2xl sm:rounded-[1.5rem] border transition-all ${
                                   theme === 'dark'
-                                    ? 'bg-green-500/10 text-green-400 border-green-500/20 group-hover:bg-green-500/20'
-                                    : 'bg-green-50 text-green-500 border-green-100 group-hover:bg-green-100'
-                                }`}>
-                                  <CheckCircle2 className="w-5 h-5" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex flex-wrap items-center gap-1.5">
-                                    <span className="text-xs sm:text-sm font-black truncate max-w-[120px] xs:max-w-[150px] sm:max-w-none">{checkin.attendeeName}</span>
-                                    <span className="px-1.5 py-0.5 bg-adv-slate dark:bg-zinc-800 text-white rounded text-[7px] font-black uppercase tracking-widest">{checkin.ticketType}</span>
+                                    ? 'bg-zinc-950/50 border-zinc-850 hover:border-orange-500/20'
+                                    : 'bg-[#F9FAFB] border-gray-150 hover:border-orange-200 hover:shadow-xs'
+                                }`}
+                              >
+                                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                  {/* Left: Avatar & Info */}
+                                  <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 border mt-0.5 ${
+                                      att.isCheckedIn
+                                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                        : 'bg-orange-500/10 text-adv-orange border-orange-500/20'
+                                    }`}>
+                                      {att.attendeeName
+                                        ? att.attendeeName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                                        : 'AT'}
+                                    </div>
+
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                                        <span className="text-sm sm:text-base font-black truncate max-w-[200px] sm:max-w-none">
+                                          {att.attendeeName || `${att.firstName || ''} ${att.lastName || ''}`.trim() || 'Attendee'}
+                                        </span>
+                                        <span className="px-2 py-0.5 bg-adv-slate dark:bg-zinc-800 text-white rounded-lg text-[9px] font-black uppercase tracking-widest">
+                                          {att.ticketType || 'Standard'}
+                                        </span>
+                                        {/* Checked In status badge */}
+                                        {att.isCheckedIn ? (
+                                          <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider border border-emerald-500/20 flex items-center gap-1">
+                                            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                                            <span>{lang === 'lo' ? 'ເຊັກອິນແລ້ວ' : 'Checked In'}</span>
+                                          </span>
+                                        ) : (
+                                          <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider border border-amber-500/20 flex items-center gap-1">
+                                            <Clock className="w-3 h-3 text-amber-500" />
+                                            <span>{lang === 'lo' ? 'ລໍຖ້າສະແກນ' : 'Pending Gate'}</span>
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      {/* Contact and Ticket IDs */}
+                                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-gray-500 dark:text-zinc-400 mb-2">
+                                        {att.email && (
+                                          <span className="flex items-center gap-1 truncate">
+                                            <Mail className="w-3 h-3 text-adv-orange shrink-0" />
+                                            <span>{att.email}</span>
+                                          </span>
+                                        )}
+                                        {att.phone && (
+                                          <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold truncate">
+                                            <Phone className="w-3 h-3 text-emerald-500 shrink-0" />
+                                            <span>{att.phone}</span>
+                                          </span>
+                                        )}
+                                        <span className="text-[11px] font-mono text-gray-400 dark:text-zinc-500">
+                                          Ticket: <span className="font-bold text-adv-slate dark:text-white">{att.ticketId || att.id}</span>
+                                        </span>
+                                        {att.orderId && (
+                                          <span className="text-[11px] font-mono text-gray-400 dark:text-zinc-500">
+                                            Order: {att.orderId}
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      {/* Zone & Seat info */}
+                                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] sm:text-[11px] font-bold text-gray-400 dark:text-zinc-400 uppercase tracking-wider">
+                                        <span className="flex items-center gap-1">
+                                          <MapPin className="w-3 h-3 text-adv-orange" />
+                                          {att.zone || 'General Access'}
+                                        </span>
+                                        <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />
+                                        <span className="flex items-center gap-1">
+                                          <Ticket className="w-3 h-3 text-blue-400" />
+                                          {att.seat || 'Standard Entry'}
+                                        </span>
+                                        {att.price && (
+                                          <>
+                                            <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />
+                                            <span className="text-adv-orange font-mono font-black">{att.price}</span>
+                                          </>
+                                        )}
+                                        {att.checkinTime && att.isCheckedIn && (
+                                          <>
+                                            <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />
+                                            <span className="text-emerald-500 font-bold lowercase">
+                                              @ {att.checkinTime} {att.staffLabel ? `(${att.staffLabel})` : ''}
+                                            </span>
+                                          </>
+                                        )}
+                                      </div>
+
+                                      {/* Questionnaire Answers Preview Chips (Instantly visible to Organizer) */}
+                                      {answerCount > 0 && (
+                                        <div className="mt-3 pt-2.5 border-t border-gray-200/50 dark:border-zinc-800/60">
+                                          <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1.5">
+                                            <FileText className="w-3 h-3" />
+                                            <span>{t.questionnaireAnswers} ({answerCount}):</span>
+                                          </div>
+                                          <div className="flex flex-wrap gap-1.5">
+                                            {answerEntries.slice(0, 3).map(([key, val], aIdx) => {
+                                              const displayVal = Array.isArray(val) ? val.join(', ') : typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val);
+                                              // Look up clean question label
+                                              const qObj = (selectedEvent as any)?.attendeeQuestions?.find((q: any) => q.id === key || q.title === key);
+                                              const qLabel = qObj?.title || key;
+
+                                              return (
+                                                <span
+                                                  key={aIdx}
+                                                  className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border flex items-center gap-1 max-w-[280px] truncate ${
+                                                    theme === 'dark'
+                                                      ? 'bg-blue-950/30 border-blue-900/40 text-blue-200'
+                                                      : 'bg-blue-50 border-blue-100 text-blue-900'
+                                                  }`}
+                                                >
+                                                  <span className="font-bold opacity-75">{qLabel}:</span>
+                                                  <span className="font-black truncate">{displayVal}</span>
+                                                </span>
+                                              );
+                                            })}
+                                            {answerCount > 3 && (
+                                              <span className="px-2 py-0.5 rounded-md bg-gray-200/60 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 text-[10px] font-bold">
+                                                +{answerCount - 3} more
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 mt-0.5 text-[10px] sm:text-xs font-semibold text-gray-400 dark:text-zinc-400">
-                                    {checkin.email && (
-                                      <span className="flex items-center gap-1 truncate">
-                                        <Mail className="w-3 h-3 text-adv-orange shrink-0" />
-                                        {checkin.email}
+
+                                  {/* Right: Actions */}
+                                  <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-200/60 dark:border-zinc-850 shrink-0">
+                                    {/* View Full Answers Button (Always accessible to organizer) */}
+                                    {answerCount > 0 ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedAttendeeForAnswers(att)}
+                                        className="px-3 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer"
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                        <span>{t.viewAnswers}</span>
+                                        <span className="px-1.5 py-0.2 rounded-full bg-blue-500/20 text-[9px]">
+                                          {answerCount}
+                                        </span>
+                                      </button>
+                                    ) : (
+                                      <span className="text-[10px] text-gray-400 font-semibold italic">
+                                        {lang === 'lo' ? 'ບໍ່ມີແບບສອບຖາມ' : 'No questionnaire'}
                                       </span>
                                     )}
-                                    {checkin.phone && (
-                                      <span className="flex items-center gap-1 truncate text-emerald-600 dark:text-emerald-400 font-bold">
-                                        <Phone className="w-3 h-3 text-emerald-500 shrink-0" />
-                                        {checkin.phone}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5 text-[9px] sm:text-[10px] text-gray-450 dark:text-zinc-400 font-bold uppercase tracking-wider">
-                                    <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-adv-orange" /> {checkin.zone}</span>
-                                    <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />
-                                    <span className="flex items-center gap-1"><Ticket className="w-3 h-3 text-blue-400" /> {checkin.seat}</span>
-                                  </div>
-                                </div>
-                              </div>
 
-                              <div className="flex md:flex-col items-center md:items-end justify-between md:justify-center border-t md:border-t-0 pt-2.5 md:pt-0 border-gray-100 dark:border-zinc-850">
-                                <div className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest">
-                                  ID: {checkin.id}
+                                    {/* Quick Check-in / Undo Toggle */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const newStatus = !att.isCheckedIn;
+                                        toggleAttendeeCheckin(att.ticketId || att.id, att.isCheckedIn, 'Organizer Desk');
+                                        addToast(
+                                          newStatus 
+                                            ? (lang === 'en' ? `Checked in ${att.attendeeName}` : `ເຊັກອິນ ${att.attendeeName} ສຳເລັດແລ້ວ`)
+                                            : (lang === 'en' ? `Check-in undone for ${att.attendeeName}` : `ຍົກເລີກການເຊັກອິນ ${att.attendeeName} ແລ້ວ`),
+                                          newStatus ? 'success' : 'warning'
+                                        );
+                                      }}
+                                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer border ${
+                                        att.isCheckedIn
+                                          ? 'bg-zinc-200 dark:bg-zinc-800 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 text-gray-600 dark:text-zinc-300 border-gray-300 dark:border-zinc-700'
+                                          : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-xs'
+                                      }`}
+                                    >
+                                      {att.isCheckedIn ? (
+                                        <>
+                                          <Check className="w-3 h-3 text-emerald-500" />
+                                          <span>{t.undoCheckin}</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <CheckCircle2 className="w-3 h-3" />
+                                          <span>{t.quickCheckin}</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="text-[9px] text-emerald-500 font-black uppercase tracking-wider md:mt-1 flex items-center gap-1.5 bg-emerald-500/10 px-2 py-0.5 rounded-md">
-                                  <span className="w-1.2 h-1.2 rounded-full bg-emerald-500 animate-pulse" />
-                                  {checkin.time}
-                                </div>
-                              </div>
-                            </motion.div>
-                          ))}
+                              </motion.div>
+                            );
+                          })}
 
-                          {totalCheckinPages > 1 && (
+                          {/* Pagination */}
+                          {totalAttendeePages > 1 && (
                             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-5 mt-4 border-t border-gray-100 dark:border-zinc-800/80">
                               <div className="text-xs font-bold text-gray-400">
                                 {lang === 'en'
-                                  ? `Page ${safePage} of ${totalCheckinPages} (${recentCheckins.length} total)`
-                                  : `ໜ້າ ${safePage} ຈາກ ${totalCheckinPages} (ທັງໝົດ ${recentCheckins.length})`}
+                                  ? `Page ${safePage} of ${totalAttendeePages} (${filteredAttendees.length} total buyers)`
+                                  : `ໜ້າ ${safePage} ຈາກ ${totalAttendeePages} (ທັງໝົດ ${filteredAttendees.length} ຜູ້ຊື້)`}
                               </div>
 
                               <div className="flex items-center gap-1.5">
                                 <button
                                   type="button"
-                                  onClick={() => setCheckinPage(prev => Math.max(prev - 1, 1))}
+                                  onClick={() => setAttendeeListPage(prev => Math.max(prev - 1, 1))}
                                   disabled={safePage === 1}
                                   className="p-2 rounded-xl border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer disabled:cursor-not-allowed"
                                 >
                                   <ChevronLeft className="w-4 h-4" />
                                 </button>
 
-                                {Array.from({ length: totalCheckinPages }, (_, i) => i + 1).map(p => (
+                                {Array.from({ length: totalAttendeePages }, (_, i) => i + 1).map(p => (
                                   <button
                                     key={p}
                                     type="button"
-                                    onClick={() => setCheckinPage(p)}
+                                    onClick={() => setAttendeeListPage(p)}
                                     className={`w-8 h-8 rounded-xl text-xs font-black transition-all cursor-pointer ${
                                       safePage === p
                                         ? 'bg-adv-orange text-white shadow-sm'
@@ -1350,8 +1795,8 @@ export default function Account() {
 
                                 <button
                                   type="button"
-                                  onClick={() => setCheckinPage(prev => Math.min(prev + 1, totalCheckinPages))}
-                                  disabled={safePage === totalCheckinPages}
+                                  onClick={() => setAttendeeListPage(prev => Math.min(prev + 1, totalAttendeePages))}
+                                  disabled={safePage === totalAttendeePages}
                                   className="p-2 rounded-xl border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer disabled:cursor-not-allowed"
                                 >
                                   <ChevronRight className="w-4 h-4" />
@@ -2441,6 +2886,363 @@ export default function Account() {
                 >
                   {isClaiming ? <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" /> : <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                   <span>{lang === 'lo' ? 'ຢືນຢັນເບີກຈ່າຍເງິນ' : 'Confirm & Claim'}</span>
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Individual Attendee Questionnaire Answers Modal */}
+        {selectedAttendeeForAnswers && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[270] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
+            onClick={() => setSelectedAttendeeForAnswers(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              className={`max-w-2xl w-full max-h-[90vh] flex flex-col rounded-3xl sm:rounded-[2.5rem] shadow-2xl border overflow-hidden ${
+                theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
+              }`}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="p-5 sm:p-6 border-b border-gray-100/70 dark:border-zinc-800/70 flex items-start justify-between gap-3 shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center justify-center font-black text-base shrink-0">
+                    <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-base sm:text-lg font-black truncate">
+                        {selectedAttendeeForAnswers.attendeeName || `${selectedAttendeeForAnswers.firstName || ''} ${selectedAttendeeForAnswers.lastName || ''}`.trim() || 'Attendee'}
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-md bg-adv-slate dark:bg-zinc-800 text-white text-[9px] font-black uppercase tracking-widest">
+                        {selectedAttendeeForAnswers.ticketType || 'Standard'}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-gray-400 mt-0.5 font-medium">
+                      <span>Ticket: <strong className="font-mono text-adv-slate dark:text-zinc-200">{selectedAttendeeForAnswers.ticketId || selectedAttendeeForAnswers.id}</strong></span>
+                      {selectedAttendeeForAnswers.orderId && (
+                        <span>• Order: <strong className="font-mono text-adv-slate dark:text-zinc-200">{selectedAttendeeForAnswers.orderId}</strong></span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setSelectedAttendeeForAnswers(null)}
+                  className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
+                {/* Attendee Details Card */}
+                <div className={`p-4 rounded-2xl border grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs ${
+                  theme === 'dark' ? 'bg-zinc-950/60 border-zinc-800' : 'bg-gray-50 border-gray-150'
+                }`}>
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold">{t.phone}</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400 truncate block">{selectedAttendeeForAnswers.phone || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold">{t.email}</span>
+                    <span className="font-bold truncate block">{selectedAttendeeForAnswers.email || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold">{t.zone} / {t.seat}</span>
+                    <span className="font-bold truncate block">{selectedAttendeeForAnswers.zone || 'General'} • {selectedAttendeeForAnswers.seat || 'Standard'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold">{t.checkedIn}</span>
+                    <span className={`font-bold flex items-center gap-1 ${selectedAttendeeForAnswers.isCheckedIn ? 'text-emerald-500' : 'text-amber-500'}`}>
+                      {selectedAttendeeForAnswers.isCheckedIn ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                      {selectedAttendeeForAnswers.isCheckedIn ? 'Verified' : 'Pending Gate'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Questionnaire QA pairs */}
+                <div className="space-y-3 pt-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                    <CheckSquare className="w-3.5 h-3.5 text-adv-orange" />
+                    <span>{t.questionnaireAnswers} ({Object.keys(selectedAttendeeForAnswers.customAnswers || {}).length})</span>
+                  </h4>
+
+                  {(!selectedAttendeeForAnswers.customAnswers || Object.keys(selectedAttendeeForAnswers.customAnswers).length === 0) ? (
+                    <div className="py-8 text-center text-gray-400 text-xs font-bold">
+                      {lang === 'lo' ? 'ບໍ່ມີຂໍ້ມູນຄຳຕອບແບບສອບຖາມສຳລັບປີ້ໃບນີ້' : 'No questionnaire answers recorded for this ticket.'}
+                    </div>
+                  ) : (
+                    Object.entries(selectedAttendeeForAnswers.customAnswers).map(([key, val], idx) => {
+                      const qConfig = (selectedEvent as any)?.attendeeQuestions?.find((q: any) => q.id === key || q.title === key);
+                      const qTitle = qConfig?.title || key;
+                      const qType = qConfig?.type || 'text';
+                      const formattedVal = Array.isArray(val) ? val.join(', ') : typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val);
+
+                      return (
+                        <div
+                          key={idx}
+                          className={`p-4 rounded-2xl border transition-all ${
+                            theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800/80' : 'bg-white border-gray-150 shadow-2xs'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <span className="text-xs font-black text-adv-slate dark:text-zinc-100 flex items-center gap-1.5">
+                              <span className="w-5 h-5 rounded-full bg-orange-500/10 text-adv-orange text-[10px] font-black flex items-center justify-center shrink-0">
+                                {idx + 1}
+                              </span>
+                              <span>{qTitle}</span>
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md bg-gray-100 dark:bg-zinc-800 text-[9px] font-bold text-gray-500 uppercase">
+                              {qType}
+                            </span>
+                          </div>
+
+                          <div className={`p-3 rounded-xl border text-xs font-bold leading-relaxed ${
+                            theme === 'dark' ? 'bg-blue-950/20 border-blue-900/30 text-blue-200' : 'bg-blue-50/50 border-blue-100 text-blue-950'
+                          }`}>
+                            {formattedVal || '-'}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 sm:p-5 border-t border-gray-100/70 dark:border-zinc-800/70 bg-gray-50/50 dark:bg-zinc-950/40 flex items-center justify-between gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedAttendeeForAnswers.customAnswers) {
+                      const textLines = Object.entries(selectedAttendeeForAnswers.customAnswers).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`);
+                      navigator.clipboard?.writeText(textLines.join('\n'));
+                      addToast(lang === 'en' ? 'Answers copied to clipboard!' : 'ສຳເນົາຄຳຕອບທັງໝົດແລ້ວ!', 'success');
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer ${
+                    theme === 'dark' ? 'border-zinc-700 hover:bg-zinc-800 text-zinc-300' : 'border-gray-200 hover:bg-white text-gray-700'
+                  }`}
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>{t.copyLink || 'Copy Answers'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedAttendeeForAnswers(null)}
+                  className="px-5 py-2 rounded-xl bg-adv-orange text-white font-bold text-xs shadow-xs hover:opacity-90 transition-opacity cursor-pointer"
+                >
+                  {t.close || 'Close'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Aggregate Questionnaire Summary Analytics Modal */}
+        {showQuestionnaireSummaryModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[270] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
+            onClick={() => setShowQuestionnaireSummaryModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              className={`max-w-3xl w-full max-h-[90vh] flex flex-col rounded-3xl sm:rounded-[2.5rem] shadow-2xl border overflow-hidden ${
+                theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
+              }`}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="p-5 sm:p-6 border-b border-gray-100/70 dark:border-zinc-800/70 flex items-start justify-between gap-3 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center font-black text-base shrink-0">
+                    <PieChart className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-black">{t.questionnaireSummary}</h3>
+                    <p className="text-xs text-gray-400 font-medium">
+                      {lang === 'lo' 
+                        ? `ສະຫຼຸບຜົນຕອບຮັບແບບສອບຖາມຈາກຜູ້ຊື້ປີ້ທັງໝົດ (${attendeesWithAnswers.length} ຄົນ)`
+                        : `Aggregated survey responses from ticket buyers (${attendeesWithAnswers.length} responses)`}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowQuestionnaireSummaryModal(false)}
+                  className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-6">
+                {(() => {
+                  const configuredQuestions = (selectedEvent as any)?.attendeeQuestions || [];
+                  // If no configured questions, discover dynamically from attendee answers
+                  const questionSet = new Map<string, any>();
+
+                  configuredQuestions.forEach((q: any) => {
+                    const qKey = q.id || q.title;
+                    questionSet.set(qKey, q);
+                  });
+
+                  eventAttendees.forEach(att => {
+                    if (att.customAnswers) {
+                      Object.keys(att.customAnswers).forEach(k => {
+                        if (!questionSet.has(k)) {
+                          questionSet.set(k, { id: k, title: k, type: 'text' });
+                        }
+                      });
+                    }
+                  });
+
+                  const allQuestionsList = Array.from(questionSet.values());
+
+                  if (allQuestionsList.length === 0) {
+                    return (
+                      <div className="py-16 text-center text-gray-400 text-sm font-bold">
+                        {lang === 'lo' ? 'ງານນີ້ບໍ່ມີການຕັ້ງຄ່າແບບສອບຖາມຜູ້ຊື້ປີ້' : 'No questionnaire configured for this event.'}
+                      </div>
+                    );
+                  }
+
+                  return allQuestionsList.map((qObj: any, qIdx: number) => {
+                    const qKey = qObj.id || qObj.title;
+                    const qTitle = qObj.title || qKey;
+                    const qType = qObj.type || 'text';
+
+                    // Collect all responses for this question
+                    const responsesList: Array<{ attendeeName: string; answer: any; ticketId: string }> = [];
+                    const choiceCounts: Record<string, number> = {};
+
+                    eventAttendees.forEach(att => {
+                      if (att.customAnswers && att.customAnswers[qKey] !== undefined && att.customAnswers[qKey] !== null && att.customAnswers[qKey] !== '') {
+                        const val = att.customAnswers[qKey];
+                        responsesList.push({
+                          attendeeName: att.attendeeName || 'Attendee',
+                          answer: val,
+                          ticketId: att.ticketId || att.id
+                        });
+
+                        if (Array.isArray(val)) {
+                          val.forEach((item: string) => {
+                            choiceCounts[item] = (choiceCounts[item] || 0) + 1;
+                          });
+                        } else {
+                          const strVal = typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val);
+                          choiceCounts[strVal] = (choiceCounts[strVal] || 0) + 1;
+                        }
+                      }
+                    });
+
+                    const totalResponses = responsesList.length;
+                    const isChoiceType = ['select', 'radio', 'checkbox', 'dropdown'].includes(qType) || Object.keys(choiceCounts).length <= 6;
+
+                    return (
+                      <div
+                        key={qIdx}
+                        className={`p-5 rounded-2xl sm:rounded-3xl border transition-all ${
+                          theme === 'dark' ? 'bg-zinc-950/50 border-zinc-800' : 'bg-[#F9FAFB] border-gray-150 shadow-2xs'
+                        }`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-2.5 border-b border-gray-200/60 dark:border-zinc-800/60">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-lg bg-orange-500/10 text-adv-orange text-xs font-black flex items-center justify-center shrink-0">
+                              {qIdx + 1}
+                            </span>
+                            <h4 className="text-sm sm:text-base font-black">{qTitle}</h4>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs font-bold text-gray-400">
+                            <span className="px-2 py-0.5 rounded-md bg-gray-200 dark:bg-zinc-800 text-[10px] uppercase">{qType}</span>
+                            <span>• {totalResponses} / {eventAttendees.length} responses</span>
+                          </div>
+                        </div>
+
+                        {/* Choice Breakdown Bars */}
+                        {isChoiceType && Object.keys(choiceCounts).length > 0 ? (
+                          <div className="space-y-2.5 pt-1">
+                            {Object.entries(choiceCounts).map(([opt, count], oIdx) => {
+                              const pct = totalResponses > 0 ? Math.round((count / totalResponses) * 100) : 0;
+                              return (
+                                <div key={oIdx} className="space-y-1">
+                                  <div className="flex justify-between text-xs font-bold">
+                                    <span className="truncate pr-2">{opt}</span>
+                                    <span className="font-mono text-adv-orange shrink-0">{count} ({pct}%)</span>
+                                  </div>
+                                  <div className="w-full h-2 rounded-full bg-gray-200/80 dark:bg-zinc-800 overflow-hidden">
+                                    <div
+                                      className="h-full bg-adv-orange rounded-full transition-all duration-500"
+                                      style={{ width: `${pct}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          /* Text responses list */
+                          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                            {responsesList.length === 0 ? (
+                              <p className="text-xs text-gray-400 italic">No responses recorded</p>
+                            ) : (
+                              responsesList.map((res, rIdx) => (
+                                <div
+                                  key={rIdx}
+                                  className={`p-2.5 rounded-xl border text-xs flex items-center justify-between gap-3 ${
+                                    theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-100'
+                                  }`}
+                                >
+                                  <span className="font-bold text-adv-slate dark:text-zinc-200 truncate flex-1">
+                                    "{String(res.answer)}"
+                                  </span>
+                                  <span className="text-[10px] text-gray-400 shrink-0 font-medium">
+                                    — {res.attendeeName}
+                                  </span>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 sm:p-5 border-t border-gray-100/70 dark:border-zinc-800/70 bg-gray-50/50 dark:bg-zinc-950/40 flex items-center justify-between gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleExportToExcel}
+                  className="px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer hover:bg-emerald-500/20"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>{lang === 'en' ? 'Export All Responses to CSV/Excel' : 'ສົ່ງອອກທຸກຄຳຕອບໄປຍັງ Excel'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowQuestionnaireSummaryModal(false)}
+                  className="px-5 py-2 rounded-xl bg-adv-orange text-white font-bold text-xs shadow-xs hover:opacity-90 transition-opacity cursor-pointer"
+                >
+                  {t.close || 'Close'}
                 </button>
               </div>
             </motion.div>

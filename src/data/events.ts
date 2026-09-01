@@ -54,6 +54,7 @@ export interface LaoEvent {
   bookingNotice?: string;
   bookingApprovalMode?: 'auto' | 'manual';
   bookingTimeSlots?: string[];
+  bookingSlotCapacities?: Record<string, number>;
   bookingAvailableDays?: string[];
   bookingNotes?: string;
   bookingStartDate?: string;
