@@ -21,7 +21,7 @@ export async function getOrCreateUser(uid: string, email: string) {
 
     return result[0];
   } catch (error) {
-    console.warn("[AI Studio] Database unavailable for getOrCreateUser, using in-memory fallback.");
+    console.warn("[Backend DB] Database unavailable for getOrCreateUser, using in-memory fallback.");
     const existing = inMemoryUsers.get(uid);
     if (existing) {
       existing.email = email;
@@ -32,4 +32,3 @@ export async function getOrCreateUser(uid: string, email: string) {
     return user;
   }
 }
-

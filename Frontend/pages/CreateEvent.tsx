@@ -24,6 +24,7 @@ import {
 } from '../lib/siteSettings';
 import { renderTermIcon } from '../lib/termIcons';
 import SEO from '../components/SEO';
+import { compressImage } from '../lib/imageCompression';
 
 const PAYMENT_BANKS = [
   { value: 'BCEL', labelEn: 'BCEL Bank', labelLo: 'BCEL Bank (ທະນາຄານ ການຄ້າຕ່າງປະເທດລາວ)' },
@@ -1314,6 +1315,11 @@ export default function CreateEvent() {
     setOrganizerEmail(event.organizerEmail || '');
     setOrganizerLogo(event.organizerLogo || null);
     setOrganizerSocialLinks(event.organizerSocialLinks || {});
+    if (event.bankName) setBankName(event.bankName);
+    if (event.accountNumber) setAccountNumber(event.accountNumber);
+    if (event.accountHolder) setAccountHolder(event.accountHolder);
+    if (event.idCardFile) setIdCardFile(event.idCardFile);
+    if (event.businessRegFile) setBusinessRegFile(event.businessRegFile);
     setEventType(event.eventType || 'offline');
     setOnlinePlatform(event.onlinePlatform || 'zoom');
     setOnlineMeetingUrl(event.onlineMeetingUrl || '');
@@ -1923,6 +1929,11 @@ export default function CreateEvent() {
   };
 
   useEffect(() => {
+    // If admin is editing an existing event or user is in edit mode, do not restore drafts or overwrite with defaults
+    if (searchParams.get('adminEdit') || searchParams.get('editId')) {
+      return;
+    }
+
     const savedDraft = safeStorage.getItem('eventDraft');
     if (savedDraft) {
       try {
@@ -2113,33 +2124,28 @@ export default function CreateEvent() {
     setDragging(false);
   };
 
-  const simulateUpload = (file: File, setImage: (val: string) => void, setProgress: (val: number | null) => void) => {
+  const simulateUpload = async (file: File, setImage: (val: string) => void, setProgress: (val: number | null) => void) => {
     if (file.type.startsWith('image/')) {
-      setProgress(0);
-      const reader = new FileReader();
-      
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += Math.random() * 30;
-        if (progress >= 100) {
-          progress = 100;
-          clearInterval(interval);
-        }
-        setProgress(progress);
-      }, 200);
-
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          const checkProgress = setInterval(() => {
-            if (progress >= 100) {
-              clearInterval(checkProgress);
-              setImage(event.target.result as string);
-              setProgress(null);
-            }
-          }, 100);
-        }
-      };
-      reader.readAsDataURL(file as File);
+      setProgress(15);
+      try {
+        const compressed = await compressImage(file, 1280, 1280, 0.75);
+        setProgress(75);
+        setTimeout(() => {
+          setImage(compressed);
+          setProgress(100);
+          setTimeout(() => setProgress(null), 200);
+        }, 100);
+      } catch (err) {
+        console.error('Image compression failed:', err);
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            setImage(event.target.result as string);
+            setProgress(null);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -2160,7 +2166,7 @@ export default function CreateEvent() {
   const [isDraggingGallery, setIsDraggingGallery] = useState(false);
   const [galleryUploadProgress, setGalleryUploadProgress] = useState<number | null>(null);
 
-  const handleGalleryFilesInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGalleryFilesInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     
@@ -2170,42 +2176,32 @@ export default function CreateEvent() {
       return;
     }
     
-    const filesToProcess = Array.from(files).slice(0, remainingSlots);
-    setGalleryUploadProgress(10);
+    const filesToProcess = (Array.from(files) as File[]).slice(0, remainingSlots);
+    setGalleryUploadProgress(20);
     
-    let processed = 0;
-    const newUrls: string[] = [];
-    
-    filesToProcess.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          newUrls.push(event.target.result.toString());
+    try {
+      const compressedList = await Promise.all(
+        filesToProcess.map((file: File) => compressImage(file, 1280, 1280, 0.75))
+      );
+      const validUrls = compressedList.filter(Boolean);
+      setGalleryImages(prev => {
+        const updated = [...prev, ...validUrls].slice(0, 10);
+        if (!horizontalImage && !verticalImage && updated.length > 0) {
+          setHorizontalImage(updated[0]);
+          setVerticalImage(updated[0]);
         }
-        processed++;
-        setGalleryUploadProgress((processed / filesToProcess.length) * 100);
-        
-        if (processed === filesToProcess.length) {
-          setTimeout(() => {
-            setGalleryImages(prev => {
-              const updated = [...prev, ...newUrls].slice(0, 10);
-              if (!horizontalImage && !verticalImage && updated.length > 0) {
-                setHorizontalImage(updated[0]);
-                setVerticalImage(updated[0]);
-              }
-              return updated;
-            });
-            setGalleryUploadProgress(null);
-          }, 300);
-        }
-      };
-      reader.readAsDataURL(file as File);
-    });
-    
+        return updated;
+      });
+      setGalleryUploadProgress(100);
+      setTimeout(() => setGalleryUploadProgress(null), 300);
+    } catch (err) {
+      console.error(err);
+      setGalleryUploadProgress(null);
+    }
     e.target.value = '';
   };
 
-  const handleGalleryDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleGalleryDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDraggingGallery(false);
     const files = e.dataTransfer.files;
@@ -2217,37 +2213,28 @@ export default function CreateEvent() {
       return;
     }
     
-    const filesToProcess = Array.from(files).slice(0, remainingSlots);
-    setGalleryUploadProgress(10);
+    const filesToProcess = (Array.from(files) as File[]).slice(0, remainingSlots);
+    setGalleryUploadProgress(20);
     
-    let processed = 0;
-    const newUrls: string[] = [];
-    
-    filesToProcess.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          newUrls.push(event.target.result.toString());
+    try {
+      const compressedList = await Promise.all(
+        filesToProcess.map((file: File) => compressImage(file, 1280, 1280, 0.75))
+      );
+      const validUrls = compressedList.filter(Boolean);
+      setGalleryImages(prev => {
+        const updated = [...prev, ...validUrls].slice(0, 10);
+        if (!horizontalImage && !verticalImage && updated.length > 0) {
+          setHorizontalImage(updated[0]);
+          setVerticalImage(updated[0]);
         }
-        processed++;
-        setGalleryUploadProgress((processed / filesToProcess.length) * 100);
-        
-        if (processed === filesToProcess.length) {
-          setTimeout(() => {
-            setGalleryImages(prev => {
-              const updated = [...prev, ...newUrls].slice(0, 10);
-              if (!horizontalImage && !verticalImage && updated.length > 0) {
-                setHorizontalImage(updated[0]);
-                setVerticalImage(updated[0]);
-              }
-              return updated;
-            });
-            setGalleryUploadProgress(null);
-          }, 300);
-        }
-      };
-      reader.readAsDataURL(file as File);
-    });
+        return updated;
+      });
+      setGalleryUploadProgress(100);
+      setTimeout(() => setGalleryUploadProgress(null), 300);
+    } catch (err) {
+      console.error(err);
+      setGalleryUploadProgress(null);
+    }
   };
 
   const handleSetCoverFromGallery = (url: string) => {
@@ -2395,32 +2382,68 @@ export default function CreateEvent() {
       };
       safeStorage.setItem('organizer_payment_info', JSON.stringify(paymentData));
 
+      // Remove draft immediately to free up browser storage quota
+      safeStorage.removeItem('eventDraft');
+
+      // Fetch fresh storage events so we don't clobber updates that occurred while the organizer was creating the event
+      let currentStorageEvents: any[] = [];
+      try {
+        const saved = safeStorage.getItem('organizer_events');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) currentStorageEvents = parsed;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      if (currentStorageEvents.length === 0 && localEvents.length > 0) {
+        currentStorageEvents = [...localEvents];
+      }
+
       if (editingEventId) {
         setWasEditing(true);
         // Update existing event
-        const updatedEvents = localEvents.map(evt => {
-          if (evt.id === editingEventId) {
+        const updatedEvents = currentStorageEvents.map(evt => {
+          if (String(evt.id) === String(editingEventId)) {
             return {
               ...evt,
               title: eventName,
               category: eventType === 'online' ? 'Workshop' : category,
               venue: venueName,
-              province,
-              district,
+              province: province || evt.province,
+              district: district || evt.district,
               location: streetAddress,
-              latitude,
-              longitude,
-              googleMapUrl: googleMapsLink,
-              organizer: organizerName,
-              organizerInfo,
-              organizerContact,
-              organizerPhone,
-              organizerEmail,
-              organizerLogo,
-              organizerSocialLinks,
-              bankName: bankName || 'BCEL',
-              accountNumber: accountNumber || '160-12-00001234-001',
-              accountHolder: accountHolder || 'LAO EVENT ORGANIZER CO., LTD',
+              latitude: latitude !== undefined ? latitude : evt.latitude,
+              longitude: longitude !== undefined ? longitude : evt.longitude,
+              googleMapUrl: googleMapsLink || evt.googleMapUrl,
+              // Keep organizer-created profile and verification data
+              organizer: organizerName || evt.organizer,
+              organizerInfo: organizerInfo !== undefined && organizerInfo !== '' ? organizerInfo : evt.organizerInfo,
+              organizerContact: organizerContact || evt.organizerContact,
+              organizerPhone: organizerPhone || evt.organizerPhone,
+              organizerEmail: organizerEmail || evt.organizerEmail,
+              organizerLogo: organizerLogo || evt.organizerLogo,
+              organizerSocialLinks: organizerSocialLinks && Object.keys(organizerSocialLinks).length > 0 ? organizerSocialLinks : (evt.organizerSocialLinks || {}),
+              bankName: bankName || evt.bankName || 'BCEL',
+              accountNumber: accountNumber || evt.accountNumber || '160-12-00001234-001',
+              accountHolder: accountHolder || evt.accountHolder || 'LAO EVENT ORGANIZER CO., LTD',
+              idCardFile: idCardFile || evt.idCardFile,
+              businessRegFile: businessRegFile || evt.businessRegFile,
+              kycStatus: evt.kycStatus,
+              userId: evt.userId,
+              organizerId: evt.organizerId,
+              createdBy: evt.createdBy,
+              creatorEmail: evt.creatorEmail,
+              createdAt: evt.createdAt,
+              registered: evt.registered,
+              scanned: evt.scanned,
+              totalTickets: evt.totalTickets,
+              soldTickets: evt.soldTickets,
+              revenue: evt.revenue,
+              views: evt.views,
+              purchases: evt.purchases,
+              likes: evt.likes,
+              featured: evt.featured,
               eventType,
               onlinePlatform,
               onlineMeetingUrl,
@@ -2432,13 +2455,13 @@ export default function CreateEvent() {
               bookingTimeSlots: dateType === 'booking' ? bookingTimeSlots : [],
               bookingSlotCapacities: dateType === 'booking' ? bookingSlotCapacities : {},
               bookingCapacity: dateType === 'booking' ? (Object.values(bookingSlotCapacities).length > 0 ? Math.max(...Object.values(bookingSlotCapacities).map(v => Number(v) || 0)) : 10) : undefined,
-              date: dateType === 'flexible' && availableDates.length > 0 ? availableDates[0].date : (startDate || new Date().toISOString().split('T')[0]),
-              time: dateType === 'flexible' && availableDates.length > 0 && availableDates[0].startTime ? availableDates[0].startTime : (dateType === 'booking' && bookingTimeSlots.length > 0 ? bookingTimeSlots[0] : (startTime || '18:00')),
-              endDate: dateType === 'flexible' && availableDates.length > 0 ? availableDates[availableDates.length - 1].date : (endDate || startDate || new Date().toISOString().split('T')[0]),
-              endTime: endTime || '22:00',
-              durationEn,
-              durationLo,
-              languages: selectedLanguages,
+              date: dateType === 'flexible' && availableDates.length > 0 ? availableDates[0].date : (startDate || evt.date || new Date().toISOString().split('T')[0]),
+              time: dateType === 'flexible' && availableDates.length > 0 && availableDates[0].startTime ? availableDates[0].startTime : (dateType === 'booking' && bookingTimeSlots.length > 0 ? bookingTimeSlots[0] : (startTime || evt.time || '18:00')),
+              endDate: dateType === 'flexible' && availableDates.length > 0 ? availableDates[availableDates.length - 1].date : (endDate || startDate || evt.endDate || new Date().toISOString().split('T')[0]),
+              endTime: endTime || evt.endTime || '22:00',
+              durationEn: durationEn || evt.durationEn,
+              durationLo: durationLo || evt.durationLo,
+              languages: selectedLanguages && selectedLanguages.length > 0 ? selectedLanguages : (evt.languages || ['Lao', 'English']),
               ticketTiers: ticketTiers.map(tier => ({
                 id: tier.id ? String(tier.id) : String(Math.random()),
                 name: tier.name,
@@ -2446,24 +2469,24 @@ export default function CreateEvent() {
                 available: Number(String(tier.quantity).replace(/,/g, '')) || 100,
                 description: tier.name + ' Access',
               })),
-              coupons,
-              hasSeating: hasSeating,
-              zoneImage: zoneImage,
+              coupons: coupons || evt.coupons,
+              hasSeating: hasSeating !== undefined ? hasSeating : evt.hasSeating,
+              zoneImage: zoneImage || evt.zoneImage,
               hasTimeSelection: dateType === 'flexible' && availableDates.some(d => !!d.startTime),
               timeSlots: dateType === 'flexible' ? Array.from(new Set(availableDates.map(d => d.startTime).filter(Boolean))) : [],
               availableDates: dateType === 'flexible' ? availableDates : [],
               image: verticalImage || horizontalImage || evt.image,
-              exampleImages: galleryImages.length > 0 ? galleryImages : (verticalImage ? [verticalImage] : []),
+              exampleImages: galleryImages.length > 0 ? galleryImages : (verticalImage ? [verticalImage] : (evt.exampleImages || [])),
               description: finalDescription || evt.description || (eventName + ' description'),
-              cancellationPolicy,
-              showRemainingTickets,
-              allowRefunds,
-              allowReviews,
-              maxTickets,
-              enableCountdown,
-              eventPrivacy,
-              attendeeMessage,
-              status: eventStatus || 'pending',
+              cancellationPolicy: cancellationPolicy || evt.cancellationPolicy,
+              showRemainingTickets: showRemainingTickets !== undefined ? showRemainingTickets : evt.showRemainingTickets,
+              allowRefunds: allowRefunds !== undefined ? allowRefunds : evt.allowRefunds,
+              allowReviews: allowReviews !== undefined ? allowReviews : evt.allowReviews,
+              maxTickets: maxTickets || evt.maxTickets,
+              enableCountdown: enableCountdown !== undefined ? enableCountdown : evt.enableCountdown,
+              eventPrivacy: eventPrivacy || evt.eventPrivacy,
+              attendeeMessage: attendeeMessage || evt.attendeeMessage,
+              status: eventStatus || evt.status || 'pending',
             };
           }
           return evt;
@@ -2495,6 +2518,16 @@ export default function CreateEvent() {
           bankName: bankName || 'BCEL',
           accountNumber: accountNumber || '160-12-00001234-001',
           accountHolder: accountHolder || 'LAO EVENT ORGANIZER CO., LTD',
+          idCardFile: idCardFile || undefined,
+          businessRegFile: businessRegFile || undefined,
+          kycStatus: idCardFile || businessRegFile ? 'pending' : 'verified',
+          submittedAt: new Date().toISOString().split('T')[0],
+          createdAt: new Date().toISOString(),
+          views: 0,
+          purchases: 0,
+          registered: 0,
+          likes: 0,
+          revenue: '₭ 0',
           eventType,
           onlinePlatform,
           onlineMeetingUrl,
@@ -2539,12 +2572,10 @@ export default function CreateEvent() {
           attendeeMessage,
           status: eventStatus || 'pending',
         };
-        const updatedEvents = [newEvent, ...localEvents];
+        const updatedEvents = [newEvent, ...currentStorageEvents.filter(e => String(e.id) !== String(newEvent.id))];
         setLocalEvents(updatedEvents);
         safeStorage.setItem('organizer_events', JSON.stringify(updatedEvents));
       }
-      // Clear draft and show success modal
-      safeStorage.removeItem('eventDraft');
       setShowSuccessModal(true);
     }
   };

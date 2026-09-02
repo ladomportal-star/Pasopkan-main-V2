@@ -46,7 +46,8 @@ const translations = {
     scanToPay: "Scan to Pay",
     openAppToScan: "Open your {bankName} app and scan the QR code to complete the payment.",
     verifyingPayment: "Verifying payment...",
-    completedPayment: "I have completed the payment",
+    waitingForPayment: "Waiting for payment confirmation...",
+    autoVerifyNotice: "This page will automatically update once payment is verified.",
     checkout: "Pay Now",
     startingFrom: "From",
     ticketOwnerInfo: "Guest Information",
@@ -80,7 +81,8 @@ const translations = {
     scanToPay: "ສະແກນເພື່ອຈ່າຍ",
     openAppToScan: "ໃຊ້ແອັບ {bankName} ເພື່ອສະແກນ QR ແລະ ຊຳລະເງິນ.",
     verifyingPayment: "ກຳລັງກວດສອບການຊຳລະ...",
-    completedPayment: "ຂ້ອຍໄດ້ຊຳລະເງິນແລ້ວ",
+    waitingForPayment: "ກຳລັງລໍຖ້າການຢືນຢັນການຊຳລະເງິນ...",
+    autoVerifyNotice: "ໜ້າຈໍຈະປ່ຽນໄປໜ້າສຳເລັດໂດຍອັດຕະໂນມັດເມື່ອໄດ້ຮັບການຊຳລະເງິນ.",
     checkout: "ຊຳລະເງິນ",
     startingFrom: "ເລີ່ມຕົ້ນທີ່",
     ticketOwnerInfo: "ຂໍ້ມູນຜູ້ເຂົ້າຮ່ວມ",
@@ -414,22 +416,42 @@ export default function Checkout() {
 
   useEffect(() => {
     let activeSocket: any = null;
+    let pollInterval: any = null;
+    let isCompleted = false;
+
+    const handlePaymentSuccess = () => {
+      if (isCompleted) return;
+      isCompleted = true;
+      setIsProcessing(false);
+      setStep('success');
+      setTimeout(() => {
+        navigate('/dashboard', { 
+          state: { 
+            newTicket: { 
+              event, 
+              tier, 
+              quantity: totalQuantity, 
+              selectedTiers: selectedTiersList, 
+              selectedDate: state.selectedDate, 
+              selectedTime: state.selectedTime 
+            } 
+          } 
+        });
+      }, 3000);
+    };
 
     if (step === 'qr' && transactionId) {
+      // 1. Listen via Socket.IO for gateway push event
       import('socket.io-client').then(({ io }) => {
-        if (step !== 'qr' || !transactionId) return;
+        if (step !== 'qr' || !transactionId || isCompleted) return;
         const socket = io("https://payment-gateway.phajay.co/");
         activeSocket = socket;
         const secretKey = '$2a$10$KAXhz.SdbngsbYr.8TYn5ukiYgIJxHT7JqIc5L21K7GJtipmNVJ2.';
 
         socket.on('connect', () => {
           socket.on('join::' + secretKey, (data: any) => {
-            if (data && data.transactionId === transactionId && data.status === 'PAYMENT_COMPLETED') {
-              setIsProcessing(false);
-              setStep('success');
-              setTimeout(() => {
-                navigate('/dashboard', { state: { newTicket: { event, tier, quantity: totalQuantity, selectedTiers: selectedTiersList, selectedDate: state.selectedDate, selectedTime: state.selectedTime } } });
-              }, 3000);
+            if (data && data.transactionId === transactionId && (data.status === 'PAYMENT_COMPLETED' || data.status === 'COMPLETED' || data.status === 'PAID')) {
+              handlePaymentSuccess();
             }
           });
         });
@@ -437,38 +459,35 @@ export default function Checkout() {
         console.error('Socket.io load/connection failure:', err);
       });
 
+      // 2. Poll backend webhook status endpoint every 2.5 seconds
+      const checkBackendWebhookStatus = async () => {
+        if (isCompleted || step !== 'qr' || !transactionId) return;
+        try {
+          const res = await fetch(`/api/payment/status/${encodeURIComponent(transactionId)}`);
+          if (res.ok) {
+            const result = await res.json();
+            if (result && (result.status === 'COMPLETED' || result.status === 'PAYMENT_COMPLETED' || result.status === 'PAID' || result.verified === true)) {
+              handlePaymentSuccess();
+            }
+          }
+        } catch (pollErr) {
+          // Ignore network glitch during polling
+        }
+      };
+
+      // Run initial check after 2s, then every 2.5s
+      const initialTimer = setTimeout(checkBackendWebhookStatus, 2000);
+      pollInterval = setInterval(checkBackendWebhookStatus, 2500);
+
       return () => {
+        clearTimeout(initialTimer);
+        if (pollInterval) clearInterval(pollInterval);
         if (activeSocket) {
           activeSocket.disconnect();
         }
       };
     }
-  }, [step, transactionId, navigate, event, tier, quantity, state.selectedDate, state.selectedTime]);
-
-  // Simulated fallback for payment completion
-  useEffect(() => {
-    if (step === 'qr' && isProcessing) {
-      const timer = setTimeout(() => {
-        setIsProcessing(false);
-        setStep('success');
-        setTimeout(() => {
-          navigate('/dashboard', { 
-            state: { 
-              newTicket: { 
-                event, 
-                tier, 
-                quantity: totalQuantity, 
-                selectedTiers: selectedTiersList,
-                selectedDate: state.selectedDate,
-                selectedTime: state.selectedTime 
-              } 
-            } 
-          });
-        }, 3000);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [step, isProcessing, navigate, event, tier, quantity, state.selectedDate, state.selectedTime]);
+  }, [step, transactionId, navigate, event, tier, totalQuantity, selectedTiersList, state.selectedDate, state.selectedTime]);
 
   useEffect(() => {
     if (step === 'success' && event?.id) {
@@ -1130,13 +1149,20 @@ export default function Checkout() {
                     </>
                   )}
 
-                  <button 
-                    onClick={() => setIsProcessing(true)} 
-                    className="w-full py-4 bg-adv-slate text-white rounded-2xl font-bold flex items-center justify-center gap-3 group transition-all hover:bg-black"
-                  >
-                     {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : t.completedPayment}
-                     <Zap className="w-4 h-4 text-adv-orange" />
-                  </button>
+                  <div className="w-full py-4 px-5 bg-gradient-to-r from-orange-50/70 via-gray-50 to-orange-50/70 border border-orange-200/60 rounded-2xl flex items-center justify-center gap-3.5 shadow-xs">
+                    <div className="relative flex items-center justify-center shrink-0">
+                      <span className="w-3.5 h-3.5 bg-adv-orange rounded-full animate-ping absolute opacity-75" />
+                      <span className="w-2.5 h-2.5 bg-adv-orange rounded-full relative" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="text-xs font-extrabold text-adv-slate flex items-center gap-1.5">
+                        {t.waitingForPayment}
+                      </span>
+                      <span className="text-[11px] text-gray-500 font-medium leading-tight mt-0.5">
+                        {t.autoVerifyNotice}
+                      </span>
+                    </div>
+                  </div>
                 </motion.div>
               </div>
 

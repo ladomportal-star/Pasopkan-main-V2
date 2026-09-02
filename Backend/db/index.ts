@@ -19,7 +19,7 @@ const pool = createPool();
 
 // Prevent unhandled pool-level errors from crashing the application
 pool.on('error', (err) => {
-  console.error('Unexpected error on idle SQL pool client:', err);
+  console.error('[Database Pool Error]:', err);
 });
 
 // Initialize Drizzle with the pool and schema

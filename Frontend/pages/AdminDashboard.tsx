@@ -676,11 +676,46 @@ export default function AdminDashboard() {
     setActivityLogs(prev => [newLog, ...prev]);
   };
 
+  const syncFromStorage = () => {
+    try {
+      const saved = safeStorage.getItem('organizer_events');
+      if (saved) {
+        const all = JSON.parse(saved);
+        if (Array.isArray(all)) {
+          const approvedOrLive = all.filter((e: any) => e.status !== 'pending' && e.status !== 'rejected');
+          const pending = all.filter((e: any) => e.status === 'pending');
+          setEventsList(approvedOrLive);
+          setPendingEventsList([...pending, ...initialMockPendingEvents.filter(mock => !pending.some(p => p.id === mock.id))]);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to sync events in Admin Dashboard:', err);
+    }
+  };
+
   useEffect(() => {
+    syncFromStorage();
+    const handleStorageUpdate = () => {
+      syncFromStorage();
+    };
+
+    window.addEventListener('storage', handleStorageUpdate);
+    window.addEventListener('pasopkan_storage_update', handleStorageUpdate);
+    window.addEventListener('focus', handleStorageUpdate);
+
+    const interval = setInterval(syncFromStorage, 4000);
+
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
+    }, 800);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageUpdate);
+      window.removeEventListener('pasopkan_storage_update', handleStorageUpdate);
+      window.removeEventListener('focus', handleStorageUpdate);
+      clearInterval(interval);
+      clearTimeout(timer);
+    };
   }, []);
 
   const handleExportData = () => {
@@ -863,27 +898,75 @@ export default function AdminDashboard() {
       return;
     }
 
-    addActivityLog('Event edited', `Edited details for ${editingEvent.title}`);
+    // Find original event from lists or storage to keep all organizer-created data
+    let originalEvent = eventsList.find(e => String(e.id) === String(editingEvent.id)) || 
+                        pendingEventsList.find(e => String(e.id) === String(editingEvent.id));
+    if (!originalEvent) {
+      try {
+        const saved = safeStorage.getItem('organizer_events');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          originalEvent = parsed.find((e: any) => String(e.id) === String(editingEvent.id));
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    const mergedEvent = {
+      ...(originalEvent || {}),
+      ...editingEvent,
+      // Retain and preserve all old data created by organizer
+      organizer: editingEvent.organizer || originalEvent?.organizer,
+      organizerInfo: editingEvent.organizerInfo || originalEvent?.organizerInfo,
+      organizerContact: editingEvent.organizerContact || originalEvent?.organizerContact,
+      organizerPhone: editingEvent.organizerPhone || originalEvent?.organizerPhone,
+      organizerEmail: editingEvent.organizerEmail || originalEvent?.organizerEmail,
+      organizerLogo: editingEvent.organizerLogo || originalEvent?.organizerLogo,
+      organizerSocialLinks: editingEvent.organizerSocialLinks || originalEvent?.organizerSocialLinks,
+      organizerId: originalEvent?.organizerId || editingEvent.organizerId,
+      userId: originalEvent?.userId || editingEvent.userId,
+      createdBy: originalEvent?.createdBy || editingEvent.createdBy,
+      creatorEmail: originalEvent?.creatorEmail || editingEvent.creatorEmail,
+      createdAt: originalEvent?.createdAt || editingEvent.createdAt,
+      bankName: originalEvent?.bankName || editingEvent.bankName,
+      accountNumber: originalEvent?.accountNumber || editingEvent.accountNumber,
+      accountHolder: originalEvent?.accountHolder || editingEvent.accountHolder,
+      idCardFile: originalEvent?.idCardFile || editingEvent.idCardFile,
+      businessRegFile: originalEvent?.businessRegFile || editingEvent.businessRegFile,
+      kycStatus: originalEvent?.kycStatus || editingEvent.kycStatus,
+      registered: originalEvent?.registered !== undefined ? originalEvent.registered : editingEvent.registered,
+      scanned: originalEvent?.scanned !== undefined ? originalEvent.scanned : editingEvent.scanned,
+      totalTickets: originalEvent?.totalTickets !== undefined ? originalEvent.totalTickets : editingEvent.totalTickets,
+      soldTickets: originalEvent?.soldTickets !== undefined ? originalEvent.soldTickets : editingEvent.soldTickets,
+      revenue: originalEvent?.revenue !== undefined ? originalEvent.revenue : editingEvent.revenue,
+      views: originalEvent?.views !== undefined ? originalEvent.views : editingEvent.views,
+      purchases: originalEvent?.purchases !== undefined ? originalEvent.purchases : editingEvent.purchases,
+      likes: originalEvent?.likes !== undefined ? originalEvent.likes : editingEvent.likes,
+      featured: originalEvent?.featured !== undefined ? originalEvent.featured : editingEvent.featured,
+    };
+
+    addActivityLog('Event edited', `Edited details for ${mergedEvent.title}`);
     
     // Update active and pending events lists based on status
-    if (editingEvent.status === 'pending') {
-      setPendingEventsList(prev => prev.some(e => e.id === editingEvent.id) 
-        ? prev.map(e => e.id === editingEvent.id ? editingEvent : e) 
-        : [editingEvent, ...prev]);
-      setEventsList(prev => prev.filter(e => e.id !== editingEvent.id));
-    } else if (editingEvent.status === 'rejected') {
-      setPendingEventsList(prev => prev.filter(e => e.id !== editingEvent.id));
-      setEventsList(prev => prev.filter(e => e.id !== editingEvent.id));
+    if (mergedEvent.status === 'pending') {
+      setPendingEventsList(prev => prev.some(e => e.id === mergedEvent.id) 
+        ? prev.map(e => e.id === mergedEvent.id ? mergedEvent : e) 
+        : [mergedEvent, ...prev]);
+      setEventsList(prev => prev.filter(e => e.id !== mergedEvent.id));
+    } else if (mergedEvent.status === 'rejected') {
+      setPendingEventsList(prev => prev.filter(e => e.id !== mergedEvent.id));
+      setEventsList(prev => prev.filter(e => e.id !== mergedEvent.id));
     } else {
-      setEventsList(prev => prev.some(e => e.id === editingEvent.id) 
-        ? prev.map(e => e.id === editingEvent.id ? editingEvent : e) 
-        : [editingEvent, ...prev]);
-      setPendingEventsList(prev => prev.filter(e => e.id !== editingEvent.id));
+      setEventsList(prev => prev.some(e => e.id === mergedEvent.id) 
+        ? prev.map(e => e.id === mergedEvent.id ? mergedEvent : e) 
+        : [mergedEvent, ...prev]);
+      setPendingEventsList(prev => prev.filter(e => e.id !== mergedEvent.id));
     }
 
     // Update selected event if it's the one we're editing
-    if (selectedEvent?.id === editingEvent.id) {
-      setSelectedEvent(editingEvent);
+    if (selectedEvent?.id === mergedEvent.id) {
+      setSelectedEvent(mergedEvent);
     }
     
     // Persist to storage
@@ -891,16 +974,16 @@ export default function AdminDashboard() {
       const saved = safeStorage.getItem('organizer_events');
       if (saved) {
         const allEvents = JSON.parse(saved);
-        const exists = allEvents.some((ev: any) => String(ev.id) === String(editingEvent.id));
+        const exists = allEvents.some((ev: any) => String(ev.id) === String(mergedEvent.id));
         let newStorageEvents;
         if (exists) {
-          newStorageEvents = allEvents.map((ev: any) => String(ev.id) === String(editingEvent.id) ? editingEvent : ev);
+          newStorageEvents = allEvents.map((ev: any) => String(ev.id) === String(mergedEvent.id) ? mergedEvent : ev);
         } else {
-          newStorageEvents = [editingEvent, ...allEvents];
+          newStorageEvents = [mergedEvent, ...allEvents];
         }
         safeStorage.setItem('organizer_events', JSON.stringify(newStorageEvents));
       } else {
-        safeStorage.setItem('organizer_events', JSON.stringify([editingEvent]));
+        safeStorage.setItem('organizer_events', JSON.stringify([mergedEvent]));
       }
     } catch (err) {
       console.error(err);
@@ -1444,7 +1527,8 @@ export default function AdminDashboard() {
                       <button 
                         onClick={() => {
                           setIsLoading(true);
-                          setTimeout(() => setIsLoading(false), 800);
+                          syncFromStorage();
+                          setTimeout(() => setIsLoading(false), 500);
                         }}
                         className="flex items-center gap-2 px-4 py-2.5 bg-white text-adv-slate border border-gray-200 rounded-xl text-xs font-black uppercase tracking-widest hover:border-adv-orange hover:text-adv-orange transition-all shadow-sm print:hidden"
                       >
@@ -1743,8 +1827,11 @@ export default function AdminDashboard() {
                     </div>
                   ) : (
                     pendingEventsList.filter(e => {
-                      const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase());
+                      const matchesSearch = (e.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                            (e.organizer || '').toLowerCase().includes(searchQuery.toLowerCase());
+                      if (!e.date) return matchesSearch;
                       const eventDate = new Date(e.date);
+                      if (isNaN(eventDate.getTime())) return matchesSearch;
                       const matchesMonth = filterMonth === 'all' || (eventDate.getMonth() + 1).toString().padStart(2, '0') === filterMonth;
                       const matchesYear = filterYear === 'all' || eventDate.getFullYear().toString() === filterYear;
                       return matchesSearch && matchesMonth && matchesYear;
@@ -1755,7 +1842,7 @@ export default function AdminDashboard() {
                       <div key={event.id} className="flex flex-col lg:flex-row lg:items-center justify-between p-6 rounded-3xl bg-white border border-gray-100 hover:border-adv-orange/30 transition-all group gap-6 shadow-sm">
                         <div className="flex items-center gap-5">
                           <div className="relative w-24 h-24 rounded-2xl overflow-hidden shrink-0 shadow-md">
-                            <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
+                            <img src={event.image || 'https://images.unsplash.com/photo-1540611025311-01df3cef54b5?q=80&w=1000&auto=format&fit=crop'} alt={event.title} className="w-full h-full object-cover" />
                             <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
                           </div>
                           <div>
@@ -1772,7 +1859,7 @@ export default function AdminDashboard() {
                               </span>
                               <span className="flex items-center gap-1.5">
                                 <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                                {new Date(event.date).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                                {event.date && !isNaN(new Date(event.date).getTime()) ? new Date(event.date).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : (event.date || 'Flexible Date')}
                               </span>
                             </div>
                           </div>
