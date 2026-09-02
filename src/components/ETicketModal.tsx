@@ -352,16 +352,6 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                   </p>
                 </div>
               </div>
-
-              {/* Place / Venue */}
-              <div>
-                <p className="text-[9.5px] sm:text-[10.5px] font-bold text-gray-500 uppercase tracking-wider">
-                  {lang === 'lo' ? 'ສະຖານທີ່' : 'Place'}
-                </p>
-                <p className="text-xs sm:text-sm font-semibold text-gray-900 leading-snug line-clamp-1 mt-0.5">
-                  {ticket.event.venue ? `${ticket.event.venue}, ` : ''}{ticket.event.location || 'Vientiane Capital, Laos'}
-                </p>
-              </div>
             </div>
 
             {/* Perforated Divider with Circular Concave Cutouts */}

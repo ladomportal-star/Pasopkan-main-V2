@@ -1901,16 +1901,6 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                               </p>
                             </div>
                           </div>
-
-                          {/* Place / Venue */}
-                          <div>
-                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                              {lang === 'lo' ? 'ສະຖານທີ່' : 'Place'}
-                            </p>
-                            <p className="text-xs font-semibold text-gray-900 leading-snug truncate">
-                              National Convention Centre, Vientiane
-                            </p>
-                          </div>
                         </div>
 
                         {/* Perforated Divider with Circular Concave Cutouts */}
