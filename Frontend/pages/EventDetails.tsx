@@ -46,7 +46,8 @@ import {
   Image as ImageIcon,
   Copy,
   Ticket,
-  ExternalLink
+  ExternalLink,
+  Video
 } from 'lucide-react';
 import { events, LaoEvent, TicketTier } from '../data/events';
 import { useLanguage } from '../LanguageContext';
@@ -1686,25 +1687,80 @@ export default function EventDetails() {
                 </div>
              </div>
 
-             {/* Public Map Venue Section */}
-             {event.eventType !== 'online' && (
-               <div className="my-4 bg-white p-4 sm:p-5 rounded-2xl border border-gray-150/80 shadow-xs space-y-3" id="event-map-venue">
-                 <div className="pb-2 border-b border-gray-100">
-                   <div className="flex items-center gap-2">
-                     <MapPin className="w-4 h-4 text-adv-orange shrink-0" />
-                     <h3 className="font-bold text-adv-slate text-sm sm:text-base">
-                       {lang === 'lo' ? 'ສະຖານທີ່ຈັດງານ' : 'Event Location & Venue'}
-                     </h3>
+             {/* Public Map & Location Venue Section */}
+             {event.eventType !== 'online' ? (
+               <div className="my-4 bg-white p-4 sm:p-5 rounded-2xl border border-gray-150/80 shadow-xs space-y-4" id="event-map-venue">
+                 <div className="pb-3 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                   <div>
+                     <div className="flex items-center gap-2">
+                       <MapPin className="w-4 h-4 text-adv-orange shrink-0" />
+                       <h3 className="font-bold text-adv-slate text-sm sm:text-base">
+                         {lang === 'lo' ? 'ສະຖານທີ່ຈັດງານ' : 'Event Location & Venue'}
+                       </h3>
+                     </div>
+
+                     {/* Organizer Venue Name */}
+                     {event.venue && (
+                       <div className="mt-2 text-base sm:text-lg font-black text-adv-slate">
+                         {event.venue}
+                       </div>
+                     )}
+
+                     {/* Specific Address, District & Province */}
+                     <p className="text-gray-700 text-xs sm:text-sm font-medium mt-1 leading-relaxed">
+                       {event.location && (
+                         <span className="text-gray-800 font-semibold">{event.location}</span>
+                       )}
+                       {event.district && <span className="text-gray-600">, {event.district}</span>}
+                       {event.province && <span className="text-gray-600">, {event.province}</span>}
+                       {!event.location && !event.district && !event.province && (
+                         <span className="text-gray-500 italic">Vientiane, Laos</span>
+                       )}
+                     </p>
                    </div>
-                   <p className="text-gray-700 text-xs sm:text-sm font-medium mt-1">
-                     {event.location}
-                     {event.district && `, ${event.district}`}
-                     {event.province && `, ${event.province}`}
-                   </p>
+
+                   {/* Quick Action Buttons */}
+                   <div className="flex items-center gap-2 shrink-0">
+                     <button
+                       type="button"
+                       onClick={() => {
+                         const fullAddr = [event.venue, event.location, event.district, event.province, 'Laos'].filter(Boolean).join(', ');
+                         navigator.clipboard.writeText(fullAddr || 'Vientiane, Laos');
+                         setCopiedMapAddress(true);
+                         setTimeout(() => setCopiedMapAddress(false), 2000);
+                       }}
+                       className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                     >
+                       {copiedMapAddress ? (
+                         <>
+                           <Check className="w-3.5 h-3.5 text-emerald-600" />
+                           <span className="text-emerald-600">{lang === 'lo' ? 'ສຳເນົາແລ້ວ' : 'Copied'}</span>
+                         </>
+                       ) : (
+                         <>
+                           <Copy className="w-3.5 h-3.5 text-gray-500" />
+                           <span>{lang === 'lo' ? 'ສຳເນົາທີ່ຢູ່' : 'Copy Address'}</span>
+                         </>
+                       )}
+                     </button>
+
+                     {event.googleMapUrl && (
+                       <a
+                         href={event.googleMapUrl}
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-xl text-xs font-bold text-adv-orange transition-all flex items-center gap-1.5 shadow-2xs"
+                       >
+                         <ExternalLink className="w-3.5 h-3.5" />
+                         <span>{lang === 'lo' ? 'ເປີດໃນ Maps' : 'Google Maps'}</span>
+                       </a>
+                     )}
+                   </div>
                  </div>
 
                  <EventMapPicker 
                    isReadOnly={true}
+                   venue={event.venue}
                    address={event.location}
                    googleMapUrl={event.googleMapUrl}
                    province={event.province}
@@ -1713,6 +1769,38 @@ export default function EventDetails() {
                    longitude={event.longitude}
                    lang={lang as 'en' | 'lo'}
                  />
+               </div>
+             ) : (
+               <div className="my-4 bg-white p-4 sm:p-5 rounded-2xl border border-gray-150/80 shadow-xs space-y-3" id="event-online-venue">
+                 <div className="flex items-center gap-2.5 pb-2 border-b border-gray-100">
+                   <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center text-adv-orange shrink-0">
+                     <Video className="w-4 h-4" />
+                   </div>
+                   <div>
+                     <h3 className="font-bold text-adv-slate text-sm sm:text-base">
+                       {lang === 'lo' ? 'ງານອອນລາຍ' : 'Online Event Details'}
+                     </h3>
+                     <p className="text-xs text-gray-500 font-medium">
+                       {event.onlinePlatform || 'Online Video Conference / Livestream'}
+                     </p>
+                   </div>
+                 </div>
+                 {event.onlineMeetingUrl && (
+                   <div className="p-3 bg-gray-50 rounded-xl text-xs border border-gray-200 space-y-1.5">
+                     <span className="font-bold text-gray-700 block">
+                       {lang === 'lo' ? 'ລິ້ງເຂົ້າຮ່ວມກິດຈະກຳ:' : 'Join Link:'}
+                     </span>
+                     <a 
+                       href={event.onlineMeetingUrl} 
+                       target="_blank" 
+                       rel="noopener noreferrer" 
+                       className="text-adv-orange hover:underline break-all font-mono font-bold flex items-center gap-1"
+                     >
+                       <ExternalLink className="w-3 h-3 shrink-0" />
+                       <span>{event.onlineMeetingUrl}</span>
+                     </a>
+                   </div>
+                 )}
                </div>
              )}
                </div>

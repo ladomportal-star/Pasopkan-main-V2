@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link as LinkIcon, AlertTriangle, Loader2, CheckCircle2, MapPin, ExternalLink } from 'lucide-react';
 
 interface EventMapPickerProps {
+  venue?: string;
   address?: string;
   onChangeAddress?: (address: string, lat?: number, lng?: number) => void;
   province?: string;
@@ -15,6 +16,7 @@ interface EventMapPickerProps {
 }
 
 export const EventMapPicker: React.FC<EventMapPickerProps> = ({
+  venue = '',
   address = '',
   onChangeAddress,
   province = '',
@@ -111,7 +113,7 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
     if (latitude && longitude) {
       return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
     }
-    const fullQuery = [address, district, province].filter(Boolean).join(', ');
+    const fullQuery = [venue, address, district, province, 'Laos'].filter(Boolean).join(', ');
     if (fullQuery) {
       return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullQuery)}`;
     }
@@ -149,7 +151,7 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
       return `https://maps.google.com/maps?q=${latitude},${longitude}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
     }
 
-    const queryLocation = [address, district, province].filter(Boolean).join(', ');
+    const queryLocation = [venue, address, district, province, 'Laos'].filter(Boolean).join(', ');
     return `https://maps.google.com/maps?q=${encodeURIComponent(queryLocation || 'Vientiane, Laos')}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
   };
 

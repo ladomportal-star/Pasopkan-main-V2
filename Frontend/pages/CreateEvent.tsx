@@ -1228,6 +1228,18 @@ export default function CreateEvent() {
   const [previewDeviceMode, setPreviewDeviceMode] = useState<'desktop' | 'mobile'>('desktop');
   const [previewImageIndex, setPreviewImageIndex] = useState(0);
 
+  // Close preview modal on Escape key press
+  useEffect(() => {
+    if (!showPreviewModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowPreviewModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showPreviewModal]);
+
   const handleOpenPreview = () => {
     setPreviewImageIndex(0);
     const preview = {
@@ -1238,6 +1250,9 @@ export default function CreateEvent() {
       province: province || 'Vientiane',
       district: district || 'Chanthabouly',
       location: streetAddress || 'Vientiane, Laos',
+      googleMapUrl: googleMapsLink || '',
+      latitude: latitude,
+      longitude: longitude,
       organizer: organizerName || 'Organizer Name',
       organizerInfo: organizerInfo || '',
       organizerContact: organizerContact || '',
@@ -5908,6 +5923,7 @@ export default function CreateEvent() {
                       <div className="rounded-[24px] overflow-hidden border border-gray-100 shadow-sm">
                         <EventMapPicker 
                           isReadOnly={true}
+                          venue={selectedEvent.venue}
                           address={selectedEvent.location}
                           googleMapUrl={selectedEvent.googleMapUrl}
                           province={selectedEvent.province}
@@ -5942,10 +5958,19 @@ export default function CreateEvent() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            onClick={(e) => {
+              // Clicking directly on the backdrop closes the preview
+              if (e.target === e.currentTarget) {
+                setShowPreviewModal(false);
+              }
+            }}
             className="fixed inset-0 z-[200] flex flex-col bg-slate-900/95 backdrop-blur-md overflow-hidden"
           >
             {/* Preview Top Bar */}
-            <div className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-col md:flex-row items-center justify-between shrink-0 shadow-2xl z-20 gap-4">
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-col md:flex-row items-center justify-between shrink-0 shadow-2xl z-20 gap-4"
+            >
               <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
                 <span className="flex items-center gap-2 px-3 py-1 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full text-xs font-black uppercase tracking-wider animate-pulse">
                   <Eye className="w-4 h-4" />
@@ -5967,12 +5992,16 @@ export default function CreateEvent() {
                     <Smartphone className="w-4 h-4" />
                   </button>
                 </div>
+                <span className="hidden sm:inline text-[11px] text-slate-400 font-medium ml-2">
+                  ({lang === 'lo' ? 'ຄລິກພື້ນທີ່ວ່າງເພື່ອປິດ ຫຼື ກົດ Esc' : 'Click blank space to close or press Esc'})
+                </span>
               </div>
               
               <div className="flex items-center gap-3 w-full md:w-auto">
                 <button
                   onClick={() => setShowPreviewModal(false)}
-                  className="flex-1 md:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all border border-slate-700 flex justify-center items-center gap-1.5"
+                  className="flex-1 md:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all border border-slate-700 flex justify-center items-center gap-1.5 cursor-pointer"
+                  title={lang === 'lo' ? 'ປິດໂໝດເບິ່ງຕົວຢ່າງ' : 'Close preview'}
                 >
                   <X className="w-4 h-4" />
                   {t.backToEdit || (lang === 'lo' ? 'ກັບໄປແກ້ໄຂ' : 'Back to Edit')}
@@ -5983,7 +6012,7 @@ export default function CreateEvent() {
                     if (activeStep !== 5) setActiveStep(5);
                     handleContinue();
                   }}
-                  className="flex-1 md:flex-none px-5 py-2 bg-adv-orange hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-orange-500/20 flex justify-center items-center gap-1.5"
+                  className="flex-1 md:flex-none px-5 py-2 bg-adv-orange hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-orange-500/20 flex justify-center items-center gap-1.5 cursor-pointer"
                 >
                   <Check className="w-4 h-4" />
                   {t.publishFromPreview || (lang === 'lo' ? 'ເຜີຍແຜ່ event ດຽວນີ້' : 'Publish Event Now')}
@@ -5991,9 +6020,18 @@ export default function CreateEvent() {
               </div>
             </div>
 
-            {/* Preview Body Content Scroll Area */}
-            <div className={`flex-1 overflow-y-auto text-adv-slate flex justify-center ${previewDeviceMode === 'mobile' ? 'bg-slate-900/50 py-8 px-4 items-start' : 'bg-gray-50'}`}>
-              <div className={`w-full mx-auto transition-all duration-300 ${previewDeviceMode === 'mobile' ? 'max-w-[400px] min-h-[800px] h-[800px] bg-gray-50 rounded-[3rem] border-[14px] border-slate-800 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col relative' : 'max-w-6xl px-4 py-8'}`}>
+            {/* Preview Body Content Scroll Area - Clicking on any blank space outside the card closes preview */}
+            <div 
+              onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                  setShowPreviewModal(false);
+                }
+              }}
+              className={`flex-1 overflow-y-auto text-adv-slate flex justify-center cursor-pointer ${previewDeviceMode === 'mobile' ? 'bg-slate-900/60 py-8 px-4 items-start' : 'bg-slate-900/40 py-8 px-4 sm:px-6 md:px-8'}`}
+            >
+              <div 
+                onClick={(e) => e.stopPropagation()}
+                className={`w-full mx-auto transition-all duration-300 cursor-default ${previewDeviceMode === 'mobile' ? 'max-w-[400px] min-h-[800px] h-[800px] bg-gray-50 rounded-[3rem] border-[14px] border-slate-800 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col relative' : 'max-w-6xl px-4 sm:px-8 py-8 bg-gray-50 rounded-3xl shadow-2xl border border-gray-200'}`}>
                  {previewDeviceMode === 'mobile' && (
                    <div className="absolute top-0 inset-x-0 h-6 flex justify-center items-start z-50 pointer-events-none">
                      <div className="w-32 h-6 bg-slate-800 rounded-b-3xl"></div>
@@ -6242,6 +6280,63 @@ export default function CreateEvent() {
                             );
                           })}
                         </div>
+                      </div>
+                    )}
+
+                    {/* Location & Map Section in Preview */}
+                    {previewData.eventType !== 'online' ? (
+                      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+                        <h3 className="text-lg font-bold text-adv-slate flex items-center gap-2">
+                          <MapPin className="w-5 h-5 text-adv-orange" />
+                          {lang === 'lo' ? 'ສະຖານທີ່ຈັດງານ' : 'Event Location & Venue'}
+                        </h3>
+                        <div className="space-y-1">
+                          {previewData.venue && <p className="text-base font-bold text-adv-slate">{previewData.venue}</p>}
+                          <p className="text-sm text-gray-600 font-medium">
+                            {previewData.location}
+                            {previewData.district && `, ${previewData.district}`}
+                            {previewData.province && `, ${previewData.province}`}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl overflow-hidden border border-gray-100">
+                          <EventMapPicker 
+                            isReadOnly={true}
+                            venue={previewData.venue}
+                            address={previewData.location}
+                            googleMapUrl={previewData.googleMapUrl}
+                            province={previewData.province}
+                            district={previewData.district}
+                            latitude={previewData.latitude}
+                            longitude={previewData.longitude}
+                            lang={lang as 'en' | 'lo'}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-3">
+                        <div className="flex items-center gap-2.5 pb-2 border-b border-gray-100">
+                          <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center text-adv-orange shrink-0">
+                            <Video className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-adv-slate text-sm sm:text-base">
+                              {lang === 'lo' ? 'ງານອອນລາຍ' : 'Online Event'}
+                            </h3>
+                            <p className="text-xs text-gray-500 font-medium">
+                              {previewData.onlinePlatform || 'Online Video Conference'}
+                            </p>
+                          </div>
+                        </div>
+                        {previewData.onlineMeetingUrl && (
+                          <div className="p-3 bg-gray-50 rounded-xl text-xs border border-gray-200">
+                            <span className="font-bold text-gray-700 block mb-1">
+                              {lang === 'lo' ? 'ລິ້ງເຂົ້າຮ່ວມກິດຈະກຳ:' : 'Join Link:'}
+                            </span>
+                            <span className="text-adv-orange break-all font-mono font-bold">
+                              {previewData.onlineMeetingUrl}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
 
