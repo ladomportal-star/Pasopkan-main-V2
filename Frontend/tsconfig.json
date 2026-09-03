@@ -15,10 +15,10 @@
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./src/*"]
     },
     "noEmit": true
   },
-  "include": ["**/*.ts", "**/*.tsx"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"],
   "exclude": ["dist", "node_modules"]
 }

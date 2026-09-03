@@ -126,8 +126,8 @@ reference): **[`Backend/DATABASE.md`](Backend/DATABASE.md)**.
 
 ## Firebase
 
-- `Frontend/firebase-applet-config.json` holds the **client** Firebase
-  config (public web keys — safe to commit).
+- `Frontend/src/config/firebase-applet-config.json` holds the **client**
+  Firebase config (public web keys — safe to commit).
 - The backend only needs `FIREBASE_PROJECT_ID` (+ a service account for
   production).
 - Firestore security rules live in [`firestore.rules`](firestore.rules)
