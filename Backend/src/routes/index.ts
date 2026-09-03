@@ -3,17 +3,16 @@ import healthRoutes from "./health.routes.ts";
 import mapsRoutes from "./maps.routes.ts";
 import paymentRoutes from "./payment.routes.ts";
 import accountRoutes from "./account.routes.ts";
-import ticketsRoutes from "./tickets.routes.ts";
-import reviewsRoutes from "./reviews.routes.ts";
+import ticketRoutes from "./ticket.routes.ts";
+import reviewRoutes from "./review.routes.ts";
 
 const apiRouter = Router();
 
-// Mount individual domain routers
 apiRouter.use(healthRoutes);
 apiRouter.use(mapsRoutes);
 apiRouter.use(paymentRoutes);
 apiRouter.use(accountRoutes);
-apiRouter.use(ticketsRoutes);
-apiRouter.use(reviewsRoutes);
+apiRouter.use(ticketRoutes);
+apiRouter.use(reviewRoutes);
 
 export default apiRouter;

@@ -1,7 +1,7 @@
 # Database — Supabase (PostgreSQL) + Drizzle ORM
 
 The API talks to PostgreSQL through [Drizzle ORM](https://orm.drizzle.team).
-Schema lives in [`db/schema.ts`](db/schema.ts); generated SQL migrations
+Schema lives in [`src/models/schema.ts`](src/models/schema.ts); generated SQL migrations
 live in [`drizzle/`](drizzle/) and are committed.
 
 If no database is configured the ticket / review endpoints fall back to
@@ -68,7 +68,7 @@ The Session pooler handles DDL fine, so the same `DATABASE_URL` works for
 > "RLS disabled" note; that is fine here because they are reached only
 > through the backend's service connection, never the public anon key.
 
-After editing `db/schema.ts`:
+After editing `src/models/schema.ts`:
 
 ```bash
 npm run db:generate -- --name=<change_summary>   # writes a new drizzle/NNNN_*.sql
