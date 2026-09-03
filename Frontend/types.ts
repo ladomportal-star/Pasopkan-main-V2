@@ -2,20 +2,29 @@ export interface BankAccountInfo {
   bankName: string;
   accountName: string;
   accountNumber: string;
+  updatedAt?: string;
 }
 
 export interface PayoutBill {
   id: string;
-  eventTitle: string;
-  organizer: string;
-  status: 'pending' | 'paid';
-  revenue: number;
-  platformFeePercent: number;
-  platformFeeAmount: number;
-  payoutAmount: number;
-  bankInfo: BankAccountInfo;
+  status: string;
+  eventTitle?: string;
+  organizer?: string;
+  revenue?: number;
+  platformFeePercent?: number;
+  platformFeeAmount?: number;
+  payoutAmount?: number;
+  bankInfo?: BankAccountInfo;
   billImage?: string;
   completedDate?: string;
+  // Alternate display shape used by the payout-history table
+  date?: string;
+  event?: string;
+  account?: string;
+  grossAmount?: number;
+  platformFee?: number;
+  amount?: number;
+  receiptUrl?: string;
 }
 
 export interface TicketZone {

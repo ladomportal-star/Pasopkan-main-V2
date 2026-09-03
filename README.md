@@ -1,195 +1,152 @@
 # Pasopkan
 
-A modern experience, ticketing, and tour booking platform built with React, Vite, Express, Tailwind CSS, Firebase Authentication & Firestore, and PostgreSQL (via Drizzle ORM).
+An experience, ticketing, and tour-booking platform.
+
+This repository holds **two independent projects** that are developed and
+deployed separately:
+
+| Path         | Project             | Stack                                                        |
+| ------------ | ------------------- | ----------------------------------------------------------- |
+| [`Backend/`](Backend/)  | `pasopkan-backend`  | Express, Drizzle ORM (PostgreSQL), Firebase Admin           |
+| [`Frontend/`](Frontend/) | `pasopkan-frontend` | React 19, Vite, Tailwind CSS v4, Firebase (client SDK)      |
+
+Each folder has its own `package.json`, `node_modules`, `tsconfig.json`,
+`.env`, and lockfile. There is **no root `package.json`** — run `npm`
+commands inside `Backend/` or `Frontend/`.
 
 ---
 
-## 📋 Table of Contents
+## Prerequisites
 
-- [Prerequisites](#-prerequisites)
-- [Quick Start (Localhost)](#-quick-start-localhost)
-- [Environment Configuration](#-environment-configuration)
-- [Available Scripts](#-available-scripts)
-- [Project Architecture](#-project-architecture)
-- [Database Setup (Optional)](#-database-setup-optional)
-- [Firebase Setup](#-firebase-setup)
-- [Troubleshooting & FAQ](#-troubleshooting--faq)
+- **Node.js** `v20 LTS` or higher
+- **npm** `v9+`
+- **PostgreSQL** (optional — the backend falls back to in-memory stores)
 
 ---
 
-## 🛠 Prerequisites
+## Quick start (local development)
 
-Before running the application locally, ensure you have the following installed on your machine:
+Open **two terminals**.
 
-- **Node.js**: `v18.0.0` or higher (Node.js 20+ LTS recommended)
-- **npm**: `v9.0.0` or higher (or `yarn` / `pnpm`)
-- **Git** (optional, for cloning)
-
-Verify your installation:
-```bash
-node -v
-npm -v
-```
-
----
-
-## 🚀 Quick Start (Localhost)
-
-### 1. Clone or Extract the Repository
+### 1. Backend (API — http://localhost:3000)
 
 ```bash
-git clone <repository-url>
-cd pasopkan
-```
-
-### 2. Install Dependencies
-
-Install all required npm packages:
-
-```bash
+cd Backend
 npm install
-```
-
-### 3. Configure Environment Variables
-
-Create a local environment file by copying `.env.example`:
-
-```bash
-cp .env.example .env
-```
-
-*(Optional: Fill in your PostgreSQL database credentials if connecting to an external database. If left empty, the application automatically runs in fallback mode).*
-
-### 4. Start Development Server
-
-Run the full-stack development server (Express backend + Vite HMR frontend):
-
-```bash
+cp .env.example .env      # optional: fill in SQL_* / Firebase values
 npm run dev
 ```
 
-Open your browser and navigate to:
-```
-http://localhost:3000
-```
+### 2. Frontend (web app — http://localhost:5173)
 
----
-
-## ⚙️ Environment Configuration
-
-The application uses environment variables for server-side configurations. Create a `.env` file in the root directory:
-
-```env
-# PostgreSQL Database Configuration (Optional)
-SQL_HOST=localhost
-SQL_DB_NAME=pasopkan_db
-SQL_USER=postgres
-SQL_PASSWORD=your_password
-SQL_ADMIN_USER=postgres
-SQL_ADMIN_PASSWORD=your_password
-```
-
-> **Note:** The server has built-in graceful fallback handling. If SQL credentials are not provided or the database is temporarily unreachable, ticketing and reviews will operate in resilient memory-store mode.
-
----
-
-## 📜 Available Scripts
-
-| Command | Description |
-| :--- | :--- |
-| `npm run dev` | Starts the Express server with Vite middleware on `http://localhost:3000` |
-| `npm run build` | Builds the Vite frontend and bundles the backend server into `dist/server.cjs` |
-| `npm run start` | Runs the compiled production server (`node dist/server.cjs`) |
-| `npm run lint` | Runs TypeScript type checking (`tsc --noEmit`) |
-| `npm run preview` | Previews the built frontend via Vite |
-| `npm run clean` | Cleans up the `dist` directory |
-
----
-
-## 🏗 Project Architecture
-
-```
-.
-├── server.ts                  # Express API server entry point & Vite middleware setup
-├── firebase-applet-config.json # Client Firebase configuration
-├── firestore.rules            # Firestore security rules
-├── package.json               # Dependencies and scripts
-├── vite.config.ts             # Vite build configuration
-├── src/
-│   ├── main.tsx               # React application entry point
-│   ├── App.tsx                # Main router and shell layout
-│   ├── index.css              # Tailwind CSS styles
-│   ├── AuthContext.tsx        # Firebase Authentication context
-│   ├── LanguageContext.tsx    # Multi-language translation context (Lao, English, Thai)
-│   ├── ThemeContext.tsx       # Light / Dark theme context
-│   ├── components/            # Reusable UI components (Navbar, Modals, QR scanners, etc.)
-│   ├── pages/                 # Application views (Home, Explore, EventDetails, Tickets, etc.)
-│   ├── lib/                   # Utility helpers, Firebase client, checkins store
-│   └── db/                    # Drizzle ORM schema and database connection
-└── dist/                      # Production build output (generated after build)
-```
-
----
-
-## 🗄 Database Setup (Optional)
-
-If you wish to connect a local PostgreSQL database:
-
-1. **Install PostgreSQL** and create a database:
-   ```sql
-   CREATE DATABASE pasopkan_db;
-   ```
-
-2. **Set credentials in `.env`**:
-   ```env
-   SQL_HOST=127.0.0.1
-   SQL_DB_NAME=pasopkan_db
-   SQL_USER=postgres
-   SQL_PASSWORD=your_postgres_password
-   ```
-
-3. **Push Schema (if using Drizzle Kit)**:
-   ```bash
-   npx drizzle-kit push
-   ```
-
----
-
-## 🔥 Firebase Setup
-
-The application uses Firebase for user authentication and real-time features.
-
-- A pre-configured `firebase-applet-config.json` is included with the project.
-- If using your own Firebase project:
-  1. Go to the [Firebase Console](https://console.firebase.google.com/).
-  2. Enable **Authentication** (Email/Password, Google Sign-In, Anonymous).
-  3. Enable **Firestore Database**.
-  4. In **Authentication > Settings > Authorized Domains**, ensure `localhost` is listed.
-  5. Update the credentials in `firebase-applet-config.json`.
-
----
-
-## ❓ Troubleshooting & FAQ
-
-#### 1. Port 3000 is already in use
-If port `3000` is occupied by another process:
-- **Windows (PowerShell)**:
-  ```powershell
-  Get-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess | Stop-Process
-  ```
-- **macOS / Linux**:
-  ```bash
-  lsof -ti:3000 | xargs kill -9
-  ```
-
-#### 2. Firebase Auth errors on localhost
-Ensure `localhost` is present in your Firebase Project's Authorized Domains list in the Firebase Console under **Authentication > Settings > Authorized domains**.
-
-#### 3. TypeScript / Compilation errors
-Run a clean install and verify the build:
 ```bash
-npm run clean
+cd Frontend
 npm install
-npm run lint
-npm run build
+npm run dev
 ```
+
+The frontend needs **no `.env` file** — it runs on built-in defaults.
+The Vite dev server proxies `/api/*` to the backend
+(`VITE_API_PROXY_TARGET`, default `http://localhost:3000`), so the app
+works from a single origin during development. To override any default,
+create `Frontend/.env` (see the header of `Frontend/vite.config.ts`).
+
+> Prefer one command? From the repo root:
+> `npx concurrently -n api,web "npm --prefix Backend run dev" "npm --prefix Frontend run dev"`
+
+---
+
+## Scripts
+
+### Backend (`cd Backend`)
+
+| Command             | Description                                              |
+| ------------------- | ------------------------------------------------------- |
+| `npm run dev`       | Start the API with auto-reload (`tsx watch`)            |
+| `npm run build`     | Bundle to `Backend/dist/server.cjs` (esbuild)           |
+| `npm run start`     | Run the built server (`NODE_ENV=production`)            |
+| `npm run lint`      | Type-check (`tsc --noEmit`)                             |
+| `npm run db:push`   | Push the Drizzle schema to PostgreSQL                   |
+| `npm run db:studio` | Open Drizzle Studio                                     |
+
+### Frontend (`cd Frontend`)
+
+| Command           | Description                                  |
+| ----------------- | ------------------------------------------- |
+| `npm run dev`     | Vite dev server on port 5173                 |
+| `npm run build`   | Production build to `Frontend/dist`          |
+| `npm run preview` | Preview the production build                 |
+| `npm run lint`    | Type-check (`tsc --noEmit`)                  |
+
+---
+
+## Environment variables
+
+**Backend** — see `Backend/.env.example` for the full, commented list.
+
+- `PORT` – API port (default `3000`)
+- `CORS_ORIGIN` – comma-separated allowed browser origins (empty = any)
+- `SQL_HOST` / `SQL_PORT` / `SQL_DB_NAME` / `SQL_USER` / `SQL_PASSWORD` –
+  PostgreSQL connection (omit to run in in-memory fallback mode)
+- `FIREBASE_PROJECT_ID` – Firebase project for ID-token verification
+- `GOOGLE_APPLICATION_CREDENTIALS` – path to a service-account key JSON.
+  **Required for real token verification**; without it the API trusts the
+  client-supplied UID (development only).
+- `FRONTEND_DIST` – optional path to `Frontend/dist` to serve the SPA from
+  the API process (single-process deploy).
+
+**Frontend** — no `.env` required; all optional. Create `Frontend/.env`
+only to override a default (documented in `Frontend/vite.config.ts`).
+
+- `VITE_API_PROXY_TARGET` – backend origin for the dev proxy (default `http://localhost:3000`)
+- `GEMINI_API_KEY` – optional, inlined at build time
+- `DISABLE_HMR` – set to `true` to turn off Hot Module Replacement
+
+---
+
+## Database — Supabase / PostgreSQL (optional)
+
+Drizzle ORM + PostgreSQL. Without a database the ticket / review endpoints
+run on in-memory fallback stores.
+
+```bash
+cd Backend
+# 1. put your connection string in .env
+#    DATABASE_URL=postgresql://…pooler.supabase.com:5432/postgres?sslmode=require
+#    (or the discrete SQL_* vars for a local Postgres)
+# 2. apply the schema
+npm run db:migrate      # versioned migrations in Backend/drizzle/
+# or: npm run db:push    # push schema directly (prototyping)
+```
+
+Full guide, connection-string choices and the schema (ERD + table
+reference): **[`Backend/DATABASE.md`](Backend/DATABASE.md)**.
+
+---
+
+## Firebase
+
+- `Frontend/firebase-applet-config.json` holds the **client** Firebase
+  config (public web keys — safe to commit).
+- The backend only needs `FIREBASE_PROJECT_ID` (+ a service account for
+  production).
+- Firestore security rules live in [`firestore.rules`](firestore.rules)
+  and are deployed via the Firebase console / CLI.
+
+---
+
+## Production deployment
+
+**Separate (recommended):**
+
+1. `cd Frontend && npm run build` → deploy `Frontend/dist` to any static
+   host / CDN.
+2. `cd Backend && npm run build && npm run start` → deploy the API. Set
+   `CORS_ORIGIN` to the frontend's URL.
+
+**Single process:**
+
+1. `cd Frontend && npm run build`
+2. `cd Backend && npm run build`
+3. `cd Backend && FRONTEND_DIST=../Frontend/dist npm run start` — the API
+   serves the SPA and its own `/api` routes on one port.

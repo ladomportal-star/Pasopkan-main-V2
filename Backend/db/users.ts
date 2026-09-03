@@ -5,29 +5,31 @@ const inMemoryUsers = new Map<string, any>();
 
 export async function getOrCreateUser(uid: string, email: string) {
   try {
-    // Use upsert to handle concurrent inserts of the same user ID safely
-    const result = await db.insert(users)
-      .values({
-        uid,
-        email,
-      })
+    // Upsert on the Firebase UID so concurrent inserts are safe
+    const result = await db
+      .insert(users)
+      .values({ firebaseUid: uid, email })
       .onConflictDoUpdate({
-        target: users.uid,
-        set: {
-          email,
-        },
+        target: users.firebaseUid,
+        set: { email, updatedAt: new Date() },
       })
       .returning();
 
     return result[0];
   } catch (error) {
-    console.warn("[Backend DB] Database unavailable for getOrCreateUser, using in-memory fallback.");
+    console.warn('[Backend DB] Database unavailable for getOrCreateUser, using in-memory fallback.');
     const existing = inMemoryUsers.get(uid);
     if (existing) {
       existing.email = email;
       return existing;
     }
-    const user = { id: inMemoryUsers.size + 1, uid, email, createdAt: new Date() };
+    const user = {
+      id: `mem-${inMemoryUsers.size + 1}`,
+      firebaseUid: uid,
+      email,
+      role: 'user',
+      createdAt: new Date(),
+    };
     inMemoryUsers.set(uid, user);
     return user;
   }

@@ -14,6 +14,7 @@ export interface CheckinRecord {
   time: string;
   timestamp?: number;
   staffLabel?: string;
+  customAnswers?: Record<string, string | string[]>;
 }
 
 export interface EventAttendee {

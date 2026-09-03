@@ -564,7 +564,7 @@ export default function EventDetails() {
   const [searchParams] = useSearchParams();
   const { lang } = useLanguage();
   const { isAuthenticated, user } = useAuth();
-  const t = translations[lang];
+  const t = translations[lang] as unknown as Record<string, string>;
   const currency = lang === 'lo' ? 'ກີບ' : 'Kip';
   
   const [event, setEvent] = useState<LaoEvent | null>(null);

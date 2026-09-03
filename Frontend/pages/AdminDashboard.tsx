@@ -120,7 +120,8 @@ const mockPayoutsData = [
       accountName: 'Lao Events Co.',
       accountNumber: '0101100012345678'
     },
-    completedDate: '2026-07-28'
+    completedDate: '2026-07-28',
+    billImage: ''
   },
   {
     id: 'pay2',
@@ -137,7 +138,8 @@ const mockPayoutsData = [
       accountName: 'TechLao',
       accountNumber: '999912345678'
     },
-    completedDate: '2026-07-15'
+    completedDate: '2026-07-15',
+    billImage: ''
   }
 ];
 
@@ -429,7 +431,7 @@ const translations = {
 
 export default function AdminDashboard() {
   const { lang, toggleLanguage } = useLanguage();
-  const t = translations[lang];
+  const t = translations[lang] as unknown as Record<string, string>;
   const currency = lang === 'lo' ? 'ກີບ' : 'Kip';
 
   const { user, loginWithGoogle } = useAuth();
@@ -589,7 +591,8 @@ export default function AdminDashboard() {
               accountName: 'Platform Vendor',
               accountNumber: 'XXXXX1234'
             },
-            completedDate: ''
+            completedDate: '',
+            billImage: ''
           };
           return [livePayout, ...mockPayoutsData];
         }

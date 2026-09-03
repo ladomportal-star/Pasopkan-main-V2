@@ -91,6 +91,16 @@ export interface LaoEvent {
   longitude?: number;
   googleMapUrl?: string;
   attendeeQuestions?: AttendeeQuestion[];
+  price?: number;
+  availableTickets?: number;
+  allowReviews?: boolean;
+  eventType?: string;
+  district?: string;
+  province?: string;
+  onlinePlatform?: string;
+  onlineMeetingUrl?: string;
+  onlinePasscode?: string;
+  onlineInstructions?: string;
 }
 
 export const events: LaoEvent[] = [

@@ -10,11 +10,15 @@ const router = Router();
 // In-memory fallback reviews storage
 const inMemoryReviews: any[] = [];
 
+const asUuid = (v: unknown) =>
+  typeof v === "string" && v.includes("-") ? v : null;
+
 // Get reviews for an event
 router.get("/reviews/:eventId", async (req, res) => {
   const { eventId } = req.params;
   try {
-    const eventReviews = await db.select()
+    const eventReviews = await db
+      .select()
       .from(reviews)
       .where(eq(reviews.eventId, eventId))
       .orderBy(desc(reviews.createdAt));
@@ -22,17 +26,14 @@ router.get("/reviews/:eventId", async (req, res) => {
     return res.json({ reviews: eventReviews });
   } catch (error: any) {
     console.warn("[Reviews Route] DB fetch fallback to in-memory:", error?.message);
-    const eventReviews = inMemoryReviews.filter((r) => r.eventId === eventId);
-    return res.json({ reviews: eventReviews });
+    return res.json({ reviews: inMemoryReviews.filter((r) => r.eventId === eventId) });
   }
 });
 
-// Create or update a review
+// Create or update the current user's review for an event
 router.post("/reviews", requireAuth, async (req: AuthRequest, res) => {
   const uid = req.user?.uid;
-  if (!uid) {
-    return res.status(400).json({ error: "Unauthorized" });
-  }
+  if (!uid) return res.status(400).json({ error: "Unauthorized" });
 
   const { eventId, userName, userRealName, rating, comment, date, avatarUrl } = req.body;
   if (!eventId || rating === undefined || !comment) {
@@ -40,37 +41,45 @@ router.post("/reviews", requireAuth, async (req: AuthRequest, res) => {
   }
 
   const userEmail = req.user?.email || "user@example.com";
-  await getOrCreateUser(uid, userEmail);
+  const reviewDate = String(date || new Date().toISOString().slice(0, 10));
+  const commentText = typeof comment === "object" ? JSON.stringify(comment) : String(comment);
 
   try {
-    const existing = await db.select()
+    const userRow = await getOrCreateUser(uid, userEmail);
+
+    const existing = await db
+      .select()
       .from(reviews)
-      .where(and(eq(reviews.eventId, String(eventId)), eq(reviews.userId, uid)))
+      .where(and(eq(reviews.eventId, String(eventId)), eq(reviews.authorFirebaseUid, uid)))
       .limit(1);
 
     let result;
     if (existing.length > 0) {
-      result = await db.update(reviews)
+      result = await db
+        .update(reviews)
         .set({
           userName: String(userName || "Anonymous"),
           userRealName: userRealName ? String(userRealName) : null,
           rating: Number(rating),
-          comment: typeof comment === 'object' ? JSON.stringify(comment) : String(comment),
-          date: String(date || new Date().toISOString().slice(0, 10)),
+          comment: commentText,
+          reviewDate,
           avatarUrl: avatarUrl ? String(avatarUrl) : null,
+          updatedAt: new Date(),
         })
         .where(eq(reviews.id, existing[0].id))
         .returning();
     } else {
-      result = await db.insert(reviews)
+      result = await db
+        .insert(reviews)
         .values({
           eventId: String(eventId),
-          userId: uid,
+          userId: asUuid(userRow?.id),
+          authorFirebaseUid: uid,
           userName: String(userName || "Anonymous"),
           userRealName: userRealName ? String(userRealName) : null,
           rating: Number(rating),
-          comment: typeof comment === 'object' ? JSON.stringify(comment) : String(comment),
-          date: String(date || new Date().toISOString().slice(0, 10)),
+          comment: commentText,
+          reviewDate,
           avatarUrl: avatarUrl ? String(avatarUrl) : null,
         })
         .returning();
@@ -79,24 +88,23 @@ router.post("/reviews", requireAuth, async (req: AuthRequest, res) => {
     return res.json({ success: true, review: result[0] });
   } catch (error: any) {
     console.warn("[Reviews Route] DB insert fallback to in-memory:", error?.message);
-    const existingIdx = inMemoryReviews.findIndex((r) => r.eventId === String(eventId) && r.userId === uid);
+    const idx = inMemoryReviews.findIndex(
+      (r) => r.eventId === String(eventId) && r.authorFirebaseUid === uid,
+    );
     const revData = {
-      id: existingIdx >= 0 ? inMemoryReviews[existingIdx].id : inMemoryReviews.length + 1,
+      id: idx >= 0 ? inMemoryReviews[idx].id : `mem-${inMemoryReviews.length + 1}`,
       eventId: String(eventId),
-      userId: uid,
+      authorFirebaseUid: uid,
       userName: String(userName || "Anonymous"),
       userRealName: userRealName ? String(userRealName) : null,
       rating: Number(rating),
-      comment: typeof comment === 'object' ? JSON.stringify(comment) : String(comment),
-      date: String(date || new Date().toISOString().slice(0, 10)),
+      comment: commentText,
+      reviewDate,
       avatarUrl: avatarUrl ? String(avatarUrl) : null,
       createdAt: new Date().toISOString(),
     };
-    if (existingIdx >= 0) {
-      inMemoryReviews[existingIdx] = revData;
-    } else {
-      inMemoryReviews.unshift(revData);
-    }
+    if (idx >= 0) inMemoryReviews[idx] = revData;
+    else inMemoryReviews.unshift(revData);
     return res.json({ success: true, review: revData });
   }
 });

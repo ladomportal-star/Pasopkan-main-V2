@@ -638,7 +638,7 @@ export interface AttendeeQuestion {
 export default function CreateEvent() {
   const navigate = useNavigate();
   const { lang, toggleLanguage } = useLanguage();
-  const t = translations[lang];
+  const t = translations[lang] as unknown as Record<string, string>;
   const currency = lang === 'lo' ? 'ກີບ' : 'Kip';
 
   const [searchParams] = useSearchParams();
@@ -1478,7 +1478,7 @@ export default function CreateEvent() {
 
   const [hasTimeSelection, setHasTimeSelection] = useState(false);
   const [timeSlots, setTimeSlots] = useState<string[]>([]);
-  const [availableDates, setAvailableDates] = useState<{ date: string, startTime: string, endTime?: string }[]>([]);
+  const [availableDates, setAvailableDates] = useState<{ date: string, startTime: string, endTime?: string, timeSlots?: string[] }[]>([]);
   const [newTimeSlot, setNewTimeSlot] = useState('');
   const [flexTimeStart, setFlexTimeStart] = useState('09:00');
   const [flexTimeEnd, setFlexTimeEnd] = useState('17:00');
@@ -3978,8 +3978,8 @@ export default function CreateEvent() {
                             draggable
                             onDragStart={(e) => {
                               setDraggedQuestionIndex(idx);
-                              e.dataTransfer.effectAllowed = 'move';
-                              e.dataTransfer.setData('text/plain', idx.toString());
+                              (e as unknown as React.DragEvent).dataTransfer.effectAllowed = 'move';
+                              (e as unknown as React.DragEvent).dataTransfer.setData('text/plain', idx.toString());
                             }}
                             onDragOver={(e) => {
                               e.preventDefault();

@@ -1,24 +1,27 @@
 import { Request, Response, NextFunction } from "express";
 import { getAuth } from "firebase-admin/auth";
-import { initializeApp, getApps, cert } from "firebase-admin/app";
-import { readFileSync, existsSync } from "fs";
-import { join } from "path";
+import { initializeApp, getApps } from "firebase-admin/app";
 
-// Initialize Firebase Admin if configuration is present
+// Initialize Firebase Admin from environment configuration.
+// FIREBASE_PROJECT_ID identifies the project; GOOGLE_APPLICATION_CREDENTIALS
+// (read implicitly by the Admin SDK) supplies the service-account key needed
+// for real ID-token verification.
 function initFirebaseAdmin() {
   if (getApps().length > 0) return;
 
-  const configPath = join(process.cwd(), "firebase-applet-config.json");
-  if (existsSync(configPath)) {
-    try {
-      const config = JSON.parse(readFileSync(configPath, "utf-8"));
-      initializeApp({
-        projectId: config.projectId,
-      });
-      console.log("[Backend Auth] Firebase Admin initialized for project:", config.projectId);
-    } catch (e: any) {
-      console.warn("[Backend Auth] Firebase Admin initialization failed:", e?.message);
-    }
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  if (!projectId) {
+    console.warn(
+      "[Backend Auth] FIREBASE_PROJECT_ID not set — ID token verification disabled (dev fallback).",
+    );
+    return;
+  }
+
+  try {
+    initializeApp({ projectId });
+    console.log("[Backend Auth] Firebase Admin initialized for project:", projectId);
+  } catch (e: any) {
+    console.warn("[Backend Auth] Firebase Admin initialization failed:", e?.message);
   }
 }
 

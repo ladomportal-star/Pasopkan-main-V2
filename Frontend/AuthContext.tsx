@@ -15,9 +15,18 @@ import { auth, db } from './lib/firebase';
 import { safeStorage } from './lib/storage';
 import DotsLoader from './components/DotsLoader';
 
+// Firebase's User augmented with the optional profile fields the app attaches.
+export type AppUser = User & {
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  avatar?: string;
+};
+
 interface AuthContextType {
   token: string | null;
-  user: User | null;
+  user: AppUser | null;
   login: (token: string) => void;
   loginAnonymously: () => Promise<User>;
   loginWithGoogle: () => Promise<User>;
@@ -52,7 +61,7 @@ const createMockUser = (email: string, displayName: string, uid: string): User =
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
+  const [user, setUser] = useState<AppUser | null>(() => {
     const saved = safeStorage.getItem('pasopkan_mock_user');
     if (saved) {
       try {

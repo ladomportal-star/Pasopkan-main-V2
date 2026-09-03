@@ -1,86 +1,116 @@
 import { Router } from "express";
+import { randomBytes } from "node:crypto";
 import { requireAuth, AuthRequest } from "../middleware/auth.ts";
 import { getOrCreateUser } from "../db/users.ts";
 import { db } from "../db/index.ts";
-import { tickets } from "../db/schema.ts";
+import { orders, orderItems } from "../db/schema.ts";
 import { eq, desc } from "drizzle-orm";
 
 const router = Router();
 
-// In-memory fallback tickets storage when cloud database is unavailable
-const inMemoryTickets: any[] = [];
+// In-memory fallback when the cloud database is unavailable
+const inMemoryOrders: any[] = [];
 
-// Get current user's purchased tickets
+const code = (len = 6) =>
+  randomBytes(len)
+    .toString("base64")
+    .replace(/[^A-Z0-9]/gi, "")
+    .slice(0, len)
+    .toUpperCase();
+
+// GET /api/tickets — current user's orders (each with its ticket items)
 router.get("/tickets", requireAuth, async (req: AuthRequest, res) => {
   const uid = req.user?.uid;
-  if (!uid) {
-    return res.status(400).json({ error: "Unauthorized" });
-  }
+  if (!uid) return res.status(400).json({ error: "Unauthorized" });
 
   try {
-    const userTickets = await db.select()
-      .from(tickets)
-      .where(eq(tickets.userId, uid))
-      .orderBy(desc(tickets.createdAt));
-      
-    return res.json({ tickets: userTickets });
+    const rows = await db.query.orders.findMany({
+      where: eq(orders.buyerFirebaseUid, uid),
+      orderBy: desc(orders.createdAt),
+      with: { items: true },
+    });
+    return res.json({ tickets: rows });
   } catch (error: any) {
     console.warn("[Tickets Route] DB fetch fallback to in-memory:", error?.message);
-    const userTickets = inMemoryTickets.filter((t) => t.userId === uid);
-    return res.json({ tickets: userTickets });
+    return res.json({ tickets: inMemoryOrders.filter((o) => o.buyerFirebaseUid === uid) });
   }
 });
 
-// Create new ticket booking
+// POST /api/tickets — create an order + one ticket item per quantity
 router.post("/tickets", requireAuth, async (req: AuthRequest, res) => {
   const uid = req.user?.uid;
-  if (!uid) {
-    return res.status(400).json({ error: "Unauthorized" });
-  }
+  if (!uid) return res.status(400).json({ error: "Unauthorized" });
 
-  const { eventId, eventTitle, tierId, tierName, price, quantity, selectedDate, selectedTime } = req.body;
+  const { eventId, eventTitle, tierId, tierName, price, quantity, selectedDate, selectedTime } =
+    req.body;
   if (!eventId || !eventTitle || !tierId || !tierName || quantity === undefined) {
     return res.status(400).json({ error: "Missing required booking details" });
   }
 
+  const qty = Math.max(1, Number(quantity) || 1);
+  const unit = Math.max(0, Number(price) || 0);
+  const subtotal = unit * qty;
+  const orderNumber = `PSK-${code(8)}`;
   const userEmail = req.user?.email || "user@example.com";
-  await getOrCreateUser(uid, userEmail);
 
   try {
-    const result = await db.insert(tickets)
+    const userRow = await getOrCreateUser(uid, userEmail);
+
+    const [order] = await db
+      .insert(orders)
       .values({
-        userId: uid,
+        orderNumber,
+        userId: typeof userRow?.id === "string" && userRow.id.includes("-") ? userRow.id : null,
+        buyerFirebaseUid: uid,
         eventId: String(eventId),
         eventTitle: String(eventTitle),
-        tierId: String(tierId),
-        tierName: String(tierName),
-        price: Number(price) || 0,
-        quantity: Number(quantity),
+        status: "confirmed",
+        subtotalKip: subtotal,
+        totalKip: subtotal,
         selectedDate: selectedDate ? String(selectedDate) : null,
         selectedTime: selectedTime ? String(selectedTime) : null,
-        status: "confirmed",
+        buyerEmail: userEmail,
       })
       .returning();
 
-    return res.json({ success: true, ticket: result[0] });
+    const items = await db
+      .insert(orderItems)
+      .values(
+        Array.from({ length: qty }, (_, i) => ({
+          orderId: order.id,
+          tierId: String(tierId),
+          tierName: String(tierName),
+          unitPriceKip: unit,
+          ticketCode: `${orderNumber}-${i + 1}-${code(4)}`,
+        })),
+      )
+      .returning();
+
+    return res.json({ success: true, order, items });
   } catch (error: any) {
     console.warn("[Tickets Route] DB insert fallback to in-memory:", error?.message);
-    const newTicket = {
-      id: inMemoryTickets.length + 1,
-      userId: uid,
+    const order = {
+      id: `mem-${inMemoryOrders.length + 1}`,
+      orderNumber,
+      buyerFirebaseUid: uid,
       eventId: String(eventId),
       eventTitle: String(eventTitle),
-      tierId: String(tierId),
-      tierName: String(tierName),
-      price: Number(price) || 0,
-      quantity: Number(quantity),
+      status: "confirmed",
+      subtotalKip: subtotal,
+      totalKip: subtotal,
       selectedDate: selectedDate ? String(selectedDate) : null,
       selectedTime: selectedTime ? String(selectedTime) : null,
-      status: "confirmed",
       createdAt: new Date().toISOString(),
+      items: Array.from({ length: qty }, (_, i) => ({
+        tierId: String(tierId),
+        tierName: String(tierName),
+        unitPriceKip: unit,
+        ticketCode: `${orderNumber}-${i + 1}-${code(4)}`,
+        status: "valid",
+      })),
     };
-    inMemoryTickets.unshift(newTicket);
-    return res.json({ success: true, ticket: newTicket });
+    inMemoryOrders.unshift(order);
+    return res.json({ success: true, order, items: order.items });
   }
 });
 

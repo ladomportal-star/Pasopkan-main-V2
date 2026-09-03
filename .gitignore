@@ -1,6 +1,9 @@
-node_modules/
-coverage/
+# Root-level ignores only. Each project has its own .gitignore:
+#   Backend/.gitignore   Frontend/.gitignore
 .DS_Store
 *.log
-.env*
-!.env.example
+
+# Firebase CLI local state
+.firebase/
+firebase-debug.log
+node_modules/

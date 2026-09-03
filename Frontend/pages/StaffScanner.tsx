@@ -37,8 +37,8 @@ import { useTheme } from '../ThemeContext';
 import { CheckinRecord, useCheckins } from '../lib/checkinsStore';
 import SEO from '../components/SEO';
 
-const LazyScanner = React.lazy(() => 
-  import('@yudiel/react-qr-scanner')
+const LazyScanner = React.lazy(() =>
+  (import('@yudiel/react-qr-scanner')
     .then(module => ({ default: module.Scanner }))
     .catch(err => {
       console.error('Failed to dynamically import react-qr-scanner:', err);
@@ -53,7 +53,7 @@ const LazyScanner = React.lazy(() =>
           </div>
         )
       };
-    })
+    })) as Promise<{ default: React.ComponentType<any> }>
 );
 
 const translations = {
@@ -129,7 +129,7 @@ export default function StaffScanner() {
   const [searchParams] = useSearchParams();
   const { lang, toggleLanguage } = useLanguage();
   const { theme } = useTheme();
-  const t = translations[lang];
+  const t = translations[lang] as unknown as Record<string, string>;
 
   const eventId = searchParams.get('eventId') || '1';
   const staffLabel = searchParams.get('staffLabel') || 'Main Entrance Gate';
@@ -239,6 +239,7 @@ export default function StaffScanner() {
     bookingDate: string;
     alreadyCheckedIn: boolean;
     checkedInRecord?: CheckinRecord;
+    customAnswers?: Record<string, string | string[]>;
     isValid: boolean;
   } | null>(null);
 

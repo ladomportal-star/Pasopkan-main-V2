@@ -13,8 +13,8 @@ import { CheckinRecord, EventAttendee, useAttendees, useCheckins } from '../lib/
 import SEO from '../components/SEO';
 import ManageCouponsSection from '../components/ManageCouponsSection';
 
-const LazyScanner = React.lazy(() => 
-  import('@yudiel/react-qr-scanner')
+const LazyScanner = React.lazy(() =>
+  (import('@yudiel/react-qr-scanner')
     .then(module => ({ default: module.Scanner }))
     .catch(err => {
       console.error('Failed to dynamically import react-qr-scanner:', err);
@@ -29,7 +29,7 @@ const LazyScanner = React.lazy(() =>
           </div>
         )
       };
-    })
+    })) as Promise<{ default: React.ComponentType<any> }>
 );
 
 const translations = {
@@ -404,7 +404,7 @@ export default function Account() {
   const { logout } = useAuth();
   const { lang } = useLanguage();
   const { theme, toggleTheme } = useTheme();
-  const t = translations[lang];
+  const t = translations[lang] as unknown as Record<string, string>;
   const [profilePic, setProfilePic] = useState<string | null>(() => {
     try {
       return localStorage.getItem('pasopkan_user_profile_pic');
@@ -468,6 +468,7 @@ export default function Account() {
     seat?: string;
     price?: string;
     email?: string;
+    phone?: string;
   } | null>(null);
 
   const [checkinPage, setCheckinPage] = useState(1);
@@ -821,7 +822,7 @@ export default function Account() {
         att.price || '',
         att.purchaseDate ? new Date(att.purchaseDate).toLocaleString() : '',
         att.isCheckedIn ? 'Checked In' : 'Pending Gate Scan',
-        att.checkinTime || (att.isCheckedIn ? 'Verified' : 'Not Checked In'),
+        att.checkedInTime || (att.isCheckedIn ? 'Verified' : 'Not Checked In'),
         att.staffLabel || (att.isCheckedIn ? 'Organizer Desk' : '-')
       ].concat(answersValues);
     });
@@ -1652,11 +1653,11 @@ export default function Account() {
                                             <span className="text-adv-orange font-mono font-black">{att.price}</span>
                                           </>
                                         )}
-                                        {att.checkinTime && att.isCheckedIn && (
+                                        {att.checkedInTime && att.isCheckedIn && (
                                           <>
                                             <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />
                                             <span className="text-emerald-500 font-bold lowercase">
-                                              @ {att.checkinTime} {att.staffLabel ? `(${att.staffLabel})` : ''}
+                                              @ {att.checkedInTime} {att.staffLabel ? `(${att.staffLabel})` : ''}
                                             </span>
                                           </>
                                         )}

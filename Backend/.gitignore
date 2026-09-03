@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.log
+
+# env
+.env
+.env.*
+!.env.example
+
+# Drizzle keeps generated migrations under drizzle/ — those ARE committed.

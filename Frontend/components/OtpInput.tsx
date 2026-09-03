@@ -105,7 +105,7 @@ export default function OtpInput({ value, onChange, length = 6 }: OtpInputProps)
         return (
           <div key={index} className="relative">
             <input
-              ref={(el) => (inputRefs.current[index] = el)}
+              ref={(el) => { inputRefs.current[index] = el; }}
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
