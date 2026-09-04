@@ -23,7 +23,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["tests/**/*.ts", "**/*.config.{js,ts}"],
+    files: ["tests/**/*.ts", "scripts/**", "**/*.config.{js,ts}"],
     rules: { "no-console": "off" },
   },
   prettier,

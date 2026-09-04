@@ -8,6 +8,13 @@
       "when": 1788421481967,
       "tag": "0000_core_commerce",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788503297606,
+      "tag": "0001_payments_and_checkin_transition",
+      "breakpoints": true
     }
   ]
 }

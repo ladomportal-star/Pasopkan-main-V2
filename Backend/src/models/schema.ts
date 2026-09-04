@@ -43,6 +43,7 @@ export const orderStatus = pgEnum("order_status", [
 ]);
 export const ticketStatus = pgEnum("ticket_status", ["valid", "checked_in", "void", "refunded"]);
 export const discountType = pgEnum("discount_type", ["percent", "fixed"]);
+export const paymentState = pgEnum("payment_state", ["pending", "completed", "failed"]);
 
 /* ============================================================================
  *  Identity
@@ -276,18 +277,50 @@ export const orderItems = pgTable(
   (t) => [index("order_items_order_idx").on(t.orderId)],
 );
 
-export const checkIns = pgTable("check_ins", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  orderItemId: uuid("order_item_id")
-    .notNull()
-    .unique() // one check-in per ticket
-    .references(() => orderItems.id, { onDelete: "cascade" }),
-  eventId: text("event_id").notNull(),
-  checkedInAt: timestamp("checked_in_at", { withTimezone: true }).notNull().defaultNow(),
-  checkedInBy: text("checked_in_by"), // staff label / uid
-  gate: text("gate"),
-  note: text("note"),
-});
+export const checkIns = pgTable(
+  "check_ins",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // Linked to an order item when the ticket exists in Postgres; null while
+    // tickets still live only in Firestore.
+    orderItemId: uuid("order_item_id")
+      .unique()
+      .references(() => orderItems.id, { onDelete: "cascade" }),
+    // The scanned QR payload — always present, unique (one check-in per ticket).
+    ticketCode: text("ticket_code").notNull().unique(),
+    eventId: text("event_id").notNull(),
+    attendeeName: text("attendee_name"),
+    ticketType: text("ticket_type"),
+    seatLabel: text("seat_label"),
+    checkedInAt: timestamp("checked_in_at", { withTimezone: true }).notNull().defaultNow(),
+    checkedInBy: text("checked_in_by"), // staff label / uid
+    gate: text("gate"),
+    note: text("note"),
+  },
+  (t) => [index("check_ins_event_idx").on(t.eventId)],
+);
+
+/* ============================================================================
+ *  Payments  (persisted gateway webhook state)
+ * ========================================================================== */
+
+export const payments = pgTable(
+  "payments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id").references(() => orders.id, { onDelete: "set null" }),
+    transactionId: text("transaction_id").notNull().unique(),
+    provider: text("provider"),
+    state: paymentState("state").notNull().default("pending"),
+    rawStatus: text("raw_status"),
+    amountKip: integer("amount_kip"),
+    payload: jsonb("payload"),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("payments_order_idx").on(t.orderId)],
+);
 
 /* ============================================================================
  *  Reviews
@@ -368,4 +401,8 @@ export const checkInsRelations = relations(checkIns, ({ one }) => ({
 
 export const reviewsRelations = relations(reviews, ({ one }) => ({
   user: one(users, { fields: [reviews.userId], references: [users.id] }),
+}));
+
+export const paymentsRelations = relations(payments, ({ one }) => ({
+  order: one(orders, { fields: [payments.orderId], references: [orders.id] }),
 }));

@@ -88,22 +88,24 @@ organizers ──< events ──┬──< event_dates
                         └──< coupons                (unique per event+code)
 
 users ──< orders ──< order_items ──< check_ins      (1 check-in per ticket)
+      │           └──< payments                      (persisted gateway state)
       └──< reviews                                   (unique per event+author)
 ```
 
-| Table          | What it holds                                                 |
-| -------------- | ------------------------------------------------------------- |
-| `users`        | one row per Firebase account (`firebase_uid` unique) + role   |
-| `organizers`   | event owners / promoters                                      |
-| `events`       | the catalog entry — dates, venue, flags, media                |
-| `event_dates`  | extra dates for `flexible` / `booking` events                 |
-| `ticket_tiers` | price levels (`price_kip`, quantity, per-order limit)         |
-| `ticket_zones` | seating zones (capacity / sold)                               |
-| `coupons`      | percent or fixed-kip discounts, redemption limits             |
-| `orders`       | one purchase — totals, payment, buyer, status                 |
-| `order_items`  | **one row per ticket**, each with a unique `ticket_code` (QR) |
-| `check_ins`    | gate scan of an `order_item` (unique → no double entry)       |
-| `reviews`      | one review per (event, author)                                |
+| Table          | What it holds                                                                                                   |
+| -------------- | --------------------------------------------------------------------------------------------------------------- |
+| `users`        | one row per Firebase account (`firebase_uid` unique) + role                                                     |
+| `organizers`   | event owners / promoters                                                                                        |
+| `events`       | the catalog entry — dates, venue, flags, media                                                                  |
+| `event_dates`  | extra dates for `flexible` / `booking` events                                                                   |
+| `ticket_tiers` | price levels (`price_kip`, quantity, per-order limit)                                                           |
+| `ticket_zones` | seating zones (capacity / sold)                                                                                 |
+| `coupons`      | percent or fixed-kip discounts, redemption limits                                                               |
+| `orders`       | one purchase — totals, payment, buyer, status                                                                   |
+| `order_items`  | **one row per ticket**, each with a unique `ticket_code` (QR)                                                   |
+| `check_ins`    | gate scan of a `ticket_code` (unique); `order_item_id` links to the ticket when it lives in Postgres, else null |
+| `payments`     | persisted gateway webhook state, keyed by `transaction_id`                                                      |
+| `reviews`      | one review per (event, author)                                                                                  |
 
 Conventions:
 

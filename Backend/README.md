@@ -49,6 +49,26 @@ drizzle/          committed SQL migrations
 
 Request flow: `route → (requireAuth) → (validate) → controller → service → models/db`.
 
+## Endpoints
+
+| Method & path                    | Auth | Purpose                                                              |
+| -------------------------------- | ---- | -------------------------------------------------------------------- |
+| `GET  /api/health`               | –    | liveness                                                             |
+| `GET  /api/resolve-map-url`      | –    | resolve a Google Maps short link                                     |
+| `POST /api/account/sync`         | ✔    | upsert the caller's profile (email + name/phone/avatar)              |
+| `GET  /api/events`               | –    | list catalog (`?status=&organizerUid=&limit=`)                       |
+| `GET  /api/events/:id`           | –    | one event by uuid / slug / legacy id, with tiers·zones·dates·coupons |
+| `POST /api/events`               | ✔    | create an event + nested tiers/zones/dates/coupons (one tx)          |
+| `PUT  /api/events/:id`           | ✔    | update columns; a sent child array replaces that set                 |
+| `GET  /api/tickets`              | ✔    | the caller's orders + items                                          |
+| `POST /api/tickets`              | ✔    | create an order + one ticket per quantity                            |
+| `POST /api/checkins`             | ✔    | scan a `ticketCode` (idempotent)                                     |
+| `GET  /api/checkins?eventId=`    | ✔    | check-ins for an event                                               |
+| `GET  /api/reviews/:eventId`     | –    | reviews for an event                                                 |
+| `POST /api/reviews`              | ✔    | create/update the caller's review                                    |
+| `POST /api/webhook/payment`      | –    | gateway webhook — persisted to `payments`                            |
+| `GET  /api/payment/status/:txId` | –    | verify a transaction                                                 |
+
 ## Tooling
 
 - **Validation** — `zod` on every request body/query/params and on `env` at boot.
