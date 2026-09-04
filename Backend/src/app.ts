@@ -2,6 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
+import compression from "compression";
+import { rateLimit } from "express-rate-limit";
+import { pinoHttp } from "pino-http";
 import { env } from "./config/env.ts";
 import apiRouter from "./routes/index.ts";
 import { notFound, errorHandler } from "./middlewares/error.middleware.ts";
@@ -10,12 +14,41 @@ import { logger } from "./utils/logger.ts";
 /** Build and configure the Express application. */
 export function createApp() {
   const app = express();
+  app.set("trust proxy", 1); // behind a load balancer / Supabase / Nginx
 
-  // CORS — allow the configured frontend origin(s); empty list reflects any.
+  // Per-request structured logging (adds a request id)
+  if (!env.isTest) {
+    app.use(
+      pinoHttp({
+        logger: logger.raw,
+        // Keep dev logs terse; full detail is still in the JSON fields in prod.
+        serializers: {
+          req: (req) => ({ id: req.id, method: req.method, url: req.url }),
+          res: (res) => ({ statusCode: res.statusCode }),
+        },
+        autoLogging: { ignore: (req) => req.url === "/api/health" },
+      }),
+    );
+  }
+
+  // Security + transport
+  app.use(helmet());
+  app.use(compression());
   app.use(
     cors({
       origin: env.corsOrigins.length > 0 ? env.corsOrigins : true,
       credentials: true,
+    }),
+  );
+
+  // Basic abuse protection on the API surface
+  app.use(
+    "/api",
+    rateLimit({
+      windowMs: env.rateLimit.windowMs,
+      limit: env.rateLimit.max,
+      standardHeaders: "draft-7",
+      legacyHeaders: false,
     }),
   );
 

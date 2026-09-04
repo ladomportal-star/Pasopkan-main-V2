@@ -4,30 +4,19 @@ import { listReviewsByEvent, upsertReview } from "../services/review.service.ts"
 
 /** GET /api/reviews/:eventId */
 export async function listReviews(req: Request, res: Response) {
-  const list = await listReviewsByEvent(req.params.eventId);
-  return ok(res, { reviews: list });
+  return ok(res, { reviews: await listReviewsByEvent(req.params.eventId) });
 }
 
-/** POST /api/reviews — create or update the caller's review for an event. */
+/** POST /api/reviews — create or update the caller's review for an event.
+ *  Body is validated by `validate(createReviewBody)`. */
 export async function createReview(req: Request, res: Response) {
   const uid = req.user?.uid;
-  if (!uid) return fail(res, "Unauthorized", 400);
-
-  const { eventId, userName, userRealName, rating, comment, date, avatarUrl } = req.body ?? {};
-  if (!eventId || rating === undefined || !comment) {
-    return fail(res, "Missing required review fields", 400);
-  }
+  if (!uid) return fail(res, "Unauthorized", 401);
 
   const review = await upsertReview({
+    ...req.body,
     uid,
     email: req.user?.email || "user@example.com",
-    eventId,
-    userName,
-    userRealName,
-    rating,
-    comment,
-    date,
-    avatarUrl,
   });
 
   return ok(res, { success: true, review });

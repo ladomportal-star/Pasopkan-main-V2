@@ -10,7 +10,9 @@ import { logger } from "../utils/logger.ts";
 function initFirebaseAdmin() {
   if (getApps().length > 0) return;
   if (!env.firebaseProjectId) {
-    logger.warn("[auth] FIREBASE_PROJECT_ID not set — ID-token verification disabled (dev fallback).");
+    logger.warn(
+      "[auth] FIREBASE_PROJECT_ID not set — ID-token verification disabled (dev fallback).",
+    );
     return;
   }
   try {

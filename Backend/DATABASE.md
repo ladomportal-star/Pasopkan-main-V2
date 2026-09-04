@@ -16,11 +16,11 @@ in-memory stores, so the app still runs.
    password it generates.
 2. Top bar **Connect → Connection string → URI**. You get three:
 
-   | String | Host / port | Use it for |
-   | --- | --- | --- |
-   | **Session pooler** | `…pooler.supabase.com:5432` | everything — API server **and** migrations |
-   | Direct connection | `db.<ref>.supabase.co:5432` | only if you have IPv4/IPv6 to it (paid add-on on Free tier) |
-   | Transaction pooler | `…pooler.supabase.com:6543` | serverless only — **don't use here** |
+   | String             | Host / port                 | Use it for                                                  |
+   | ------------------ | --------------------------- | ----------------------------------------------------------- |
+   | **Session pooler** | `…pooler.supabase.com:5432` | everything — API server **and** migrations                  |
+   | Direct connection  | `db.<ref>.supabase.co:5432` | only if you have IPv4/IPv6 to it (paid add-on on Free tier) |
+   | Transaction pooler | `…pooler.supabase.com:6543` | serverless only — **don't use here**                        |
 
    On the Free plan the direct host is IPv6-only, so use the **Session
    pooler** string for both the server and `db:migrate`.
@@ -91,19 +91,19 @@ users ──< orders ──< order_items ──< check_ins      (1 check-in per 
       └──< reviews                                   (unique per event+author)
 ```
 
-| Table | What it holds |
-| --- | --- |
-| `users` | one row per Firebase account (`firebase_uid` unique) + role |
-| `organizers` | event owners / promoters |
-| `events` | the catalog entry — dates, venue, flags, media |
-| `event_dates` | extra dates for `flexible` / `booking` events |
-| `ticket_tiers` | price levels (`price_kip`, quantity, per-order limit) |
-| `ticket_zones` | seating zones (capacity / sold) |
-| `coupons` | percent or fixed-kip discounts, redemption limits |
-| `orders` | one purchase — totals, payment, buyer, status |
-| `order_items` | **one row per ticket**, each with a unique `ticket_code` (QR) |
-| `check_ins` | gate scan of an `order_item` (unique → no double entry) |
-| `reviews` | one review per (event, author) |
+| Table          | What it holds                                                 |
+| -------------- | ------------------------------------------------------------- |
+| `users`        | one row per Firebase account (`firebase_uid` unique) + role   |
+| `organizers`   | event owners / promoters                                      |
+| `events`       | the catalog entry — dates, venue, flags, media                |
+| `event_dates`  | extra dates for `flexible` / `booking` events                 |
+| `ticket_tiers` | price levels (`price_kip`, quantity, per-order limit)         |
+| `ticket_zones` | seating zones (capacity / sold)                               |
+| `coupons`      | percent or fixed-kip discounts, redemption limits             |
+| `orders`       | one purchase — totals, payment, buyer, status                 |
+| `order_items`  | **one row per ticket**, each with a unique `ticket_code` (QR) |
+| `check_ins`    | gate scan of an `order_item` (unique → no double entry)       |
+| `reviews`      | one review per (event, author)                                |
 
 Conventions:
 

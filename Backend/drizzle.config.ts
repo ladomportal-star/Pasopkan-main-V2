@@ -1,5 +1,5 @@
-import 'dotenv/config';
-import { defineConfig } from 'drizzle-kit';
+import "dotenv/config";
+import { defineConfig } from "drizzle-kit";
 
 /**
  * For migrations, prefer Supabase's "Direct connection" string
@@ -8,17 +8,17 @@ import { defineConfig } from 'drizzle-kit';
 const url = process.env.DATABASE_URL?.trim();
 
 export default defineConfig({
-  schema: './src/models/schema.ts',
-  out: './drizzle',
-  dialect: 'postgresql',
+  schema: "./src/models/schema.ts",
+  out: "./drizzle",
+  dialect: "postgresql",
   dbCredentials: url
     ? { url }
     : {
-        host: process.env.SQL_HOST || 'localhost',
+        host: process.env.SQL_HOST || "localhost",
         port: Number(process.env.SQL_PORT) || 5432,
-        user: process.env.SQL_USER || 'postgres',
-        password: process.env.SQL_PASSWORD || '',
-        database: process.env.SQL_DB_NAME || 'pasopkan',
-        ssl: process.env.DATABASE_SSL === 'true',
+        user: process.env.SQL_USER || "postgres",
+        password: process.env.SQL_PASSWORD || "",
+        database: process.env.SQL_DB_NAME || "pasopkan",
+        ssl: process.env.DATABASE_SSL === "true",
       },
 });

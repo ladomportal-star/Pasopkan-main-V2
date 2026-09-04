@@ -12,37 +12,51 @@ npm run dev               # tsx watch, http://localhost:3000
 
 ## Scripts
 
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Start with auto-reload (`tsx watch src/server.ts`) |
-| `npm run build` | Bundle to `dist/server.cjs` (esbuild) |
-| `npm run start` | Run the built server (`NODE_ENV=production`) |
-| `npm run lint` | Type-check (`tsc --noEmit`) |
-| `npm run db:generate` | Generate a new SQL migration from the schema |
-| `npm run db:migrate` | Apply migrations in `drizzle/` |
-| `npm run db:push` | Push the schema straight to the DB (prototyping) |
-| `npm run db:studio` | Open Drizzle Studio |
+| Command               | Description                                        |
+| --------------------- | -------------------------------------------------- |
+| `npm run dev`         | Start with auto-reload (`tsx watch src/server.ts`) |
+| `npm run build`       | Bundle to `dist/server.cjs` (esbuild)              |
+| `npm run start`       | Run the built server (`NODE_ENV=production`)       |
+| `npm run typecheck`   | `tsc --noEmit`                                     |
+| `npm run lint`        | ESLint (`lint:fix` to autofix)                     |
+| `npm run format`      | Prettier write (`format:check` to verify)          |
+| `npm run test`        | Vitest suite (`test:watch` for watch mode)         |
+| `npm run check`       | typecheck + lint + test                            |
+| `npm run db:generate` | Generate a new SQL migration from the schema       |
+| `npm run db:migrate`  | Apply migrations in `drizzle/`                     |
+| `npm run db:push`     | Push the schema straight to the DB (prototyping)   |
+| `npm run db:studio`   | Open Drizzle Studio                                |
 
 ## Layout
 
 ```
 src/
-├── config/       env.ts (typed env)  ·  database.ts (pg Pool + Drizzle)
+├── config/       env.ts (zod-validated env)  ·  database.ts (pg Pool + Drizzle)
 ├── controllers/  thin request handlers, one per resource
 ├── routes/       path → controller wiring, mounted in routes/index.ts
 ├── services/     business logic + in-memory fallbacks
 ├── models/       Drizzle schema (schema.ts) + barrel (index.ts)
-├── middlewares/  auth.middleware.ts  ·  error.middleware.ts
+├── middlewares/  auth · validate (zod) · error (404 + handler)
+├── validators/   zod request schemas, one per resource
 ├── types/        express.d.ts (augments Request with `user`)
-├── utils/        logger.ts  ·  response.util.ts
-├── app.ts        builds the Express app
+├── utils/        logger.ts (pino)  ·  response.util.ts
+├── app.ts        builds the Express app (helmet, cors, compression, rate-limit, pino-http)
 └── server.ts     entry point — listen, graceful shutdown
 
+tests/            Vitest + supertest integration tests
 drizzle/          committed SQL migrations
-drizzle.config.ts drizzle-kit config (schema → src/models/schema.ts)
 ```
 
-Request flow: `route → (requireAuth) → controller → service → models/db`.
+Request flow: `route → (requireAuth) → (validate) → controller → service → models/db`.
+
+## Tooling
+
+- **Validation** — `zod` on every request body/query/params and on `env` at boot.
+- **Security** — `helmet`, `express-rate-limit` (`/api/*`), `cors`, `compression`.
+- **Logging** — `pino` + `pino-http` (pretty in dev, JSON in prod, silent in tests).
+- **Tests** — `vitest run` — supertest hits `createApp()` with the DB forced offline.
+- **Style** — ESLint (typescript-eslint) + Prettier; `husky` pre-commit runs
+  `lint-staged` (`core.hooksPath` → `Backend/.husky`, set by `npm install`).
 
 ## Environment
 

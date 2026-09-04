@@ -18,7 +18,10 @@ export async function getOrCreateUser(uid: string, email: string) {
 
     return row;
   } catch (error: any) {
-    logger.warn("[user.service] DB unavailable for getOrCreateUser — in-memory fallback:", error?.message);
+    logger.warn(
+      "[user.service] DB unavailable for getOrCreateUser — in-memory fallback:",
+      error?.message,
+    );
     const existing = inMemoryUsers.get(uid);
     if (existing) {
       existing.email = email;

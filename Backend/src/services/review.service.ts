@@ -67,7 +67,12 @@ export async function upsertReview(input: UpsertReviewInput) {
             .returning()
         : await db
             .insert(reviews)
-            .values({ ...common, eventId, authorFirebaseUid: input.uid, userId: asUuid(userRow?.id) })
+            .values({
+              ...common,
+              eventId,
+              authorFirebaseUid: input.uid,
+              userId: asUuid(userRow?.id),
+            })
             .returning();
 
     return row;

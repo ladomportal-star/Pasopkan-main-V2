@@ -25,7 +25,8 @@ class PaymentService {
         "",
     ).trim();
 
-    const statusRaw = payload.status || payload.data?.status || payload.paymentStatus || payload.state;
+    const statusRaw =
+      payload.status || payload.data?.status || payload.paymentStatus || payload.state;
     const isPaid =
       statusRaw === "PAYMENT_COMPLETED" ||
       statusRaw === "COMPLETED" ||
@@ -39,7 +40,9 @@ class PaymentService {
         updatedAt: new Date().toISOString(),
         details: payload,
       };
-      logger.info(`[payment.service] webhook stored: ${txId} -> ${this.paymentStatuses[txId].status}`);
+      logger.info(
+        `[payment.service] webhook stored: ${txId} -> ${this.paymentStatuses[txId].status}`,
+      );
     }
 
     return { txId: txId || null, isPaid, status: statusRaw };

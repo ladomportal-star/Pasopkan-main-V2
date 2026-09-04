@@ -5,32 +5,20 @@ import { createOrder, listOrders } from "../services/ticket.service.ts";
 /** GET /api/tickets — the current user's orders, each with its ticket items. */
 export async function listTickets(req: Request, res: Response) {
   const uid = req.user?.uid;
-  if (!uid) return fail(res, "Unauthorized", 400);
+  if (!uid) return fail(res, "Unauthorized", 401);
   return ok(res, { tickets: await listOrders(uid) });
 }
 
-/** POST /api/tickets — create an order + one ticket item per quantity. */
+/** POST /api/tickets — create an order + one ticket item per quantity.
+ *  Body is validated by `validate(createTicketBody)`. */
 export async function createTicket(req: Request, res: Response) {
   const uid = req.user?.uid;
-  if (!uid) return fail(res, "Unauthorized", 400);
-
-  const { eventId, eventTitle, tierId, tierName, price, quantity, selectedDate, selectedTime } =
-    req.body ?? {};
-  if (!eventId || !eventTitle || !tierId || !tierName || quantity === undefined) {
-    return fail(res, "Missing required booking details", 400);
-  }
+  if (!uid) return fail(res, "Unauthorized", 401);
 
   const { order, items } = await createOrder({
+    ...req.body,
     uid,
     email: req.user?.email || "user@example.com",
-    eventId,
-    eventTitle,
-    tierId,
-    tierName,
-    price,
-    quantity,
-    selectedDate,
-    selectedTime,
   });
 
   return ok(res, { success: true, order, items });
