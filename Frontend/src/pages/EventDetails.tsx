@@ -56,6 +56,7 @@ import { AdaptiveImage } from '../components/AdaptiveImage';
 import { CountdownTimer } from '../components/CountdownTimer';
 import DotsLoader from '../components/DotsLoader';
 import { safeStorage } from '../lib/storage';
+import { api } from '../lib/api';
 import { getReviewsForEvent, getAverageRatingForEvent, saveReview } from '../data/reviews';
 import { useAuth } from '../context/AuthContext';
 import { collection, query, where, onSnapshot, doc, setDoc, getDocs } from 'firebase/firestore';
@@ -866,6 +867,16 @@ export default function EventDetails() {
       try {
         const reviewRef = doc(collection(db, 'reviews'));
         await setDoc(reviewRef, reviewData);
+
+        // Persist to Postgres (source of truth); non-blocking.
+        api.createReview({
+          eventId: String(id),
+          rating: reviewData.rating,
+          comment: reviewData.comment,
+          userName: reviewData.userName,
+          userRealName: reviewData.userRealName || undefined,
+          date: reviewData.date,
+        });
 
         // Local fallback / sync
         saveReview({

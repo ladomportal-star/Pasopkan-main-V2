@@ -80,7 +80,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Listen to Auth State changes
   useEffect(() => {
-    const syncUserToCloudSql = async (authToken: string, emailStr: string, retries = 3) => {
+    const syncUserToCloudSql = async (
+      authToken: string,
+      emailStr: string,
+      retries = 3,
+      profile?: { displayName?: string; phone?: string; avatarUrl?: string },
+    ) => {
       for (let i = 0; i < retries; i++) {
         try {
           const response = await fetch('/api/account/sync', {
@@ -89,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${authToken}`
             },
-            body: JSON.stringify({ email: emailStr })
+            body: JSON.stringify({ email: emailStr, ...profile })
           });
           if (response.ok) return;
         } catch (e) {
@@ -155,6 +160,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if (data.profilePic) {
                 safeStorage.setItem('pasopkan_user_profile_pic', data.profilePic);
               }
+              // Mirror the full profile (not just email) into Postgres
+              syncUserToCloudSql(idToken, data.email || firebaseUser.email || '', 1, {
+                displayName: `${data.firstName || ''} ${data.lastName || ''}`.trim() || undefined,
+                phone: data.phone || undefined,
+                avatarUrl: data.profilePic || undefined,
+              });
             } else {
               // Document doesn't exist, create it if we have local info or use auth info
               let localProfile = {

@@ -4,6 +4,8 @@ import { Calendar, Undo, Redo, Heading3, FileImage, Folder, FileText, Plus, User
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../context/LanguageContext';
 import { safeStorage } from '../lib/storage';
+import { api } from '../lib/api';
+import { toEventPayload } from '../lib/eventPayload';
 import { laosProvinces, getDistrictsForProvince } from '../lib/laosLocations';
 import { events } from '../data/events';
 import Logo from '../components/Logo';
@@ -2508,6 +2510,9 @@ export default function CreateEvent() {
         });
         setLocalEvents(updatedEvents);
         safeStorage.setItem('organizer_events', JSON.stringify(updatedEvents));
+        // Mirror to Postgres (source of truth); non-blocking.
+        const edited = updatedEvents.find((e) => String(e.id) === String(editingEventId));
+        if (edited) api.updateEvent(String(editingEventId), toEventPayload(edited));
         setEditingEventId(null);
       } else {
         setWasEditing(false);
@@ -2590,6 +2595,8 @@ export default function CreateEvent() {
         const updatedEvents = [newEvent, ...currentStorageEvents.filter(e => String(e.id) !== String(newEvent.id))];
         setLocalEvents(updatedEvents);
         safeStorage.setItem('organizer_events', JSON.stringify(updatedEvents));
+        // Mirror to Postgres (source of truth); non-blocking.
+        api.createEvent(toEventPayload(newEvent));
       }
       setShowSuccessModal(true);
     }

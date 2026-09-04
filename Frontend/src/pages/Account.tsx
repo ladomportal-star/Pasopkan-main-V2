@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { User, Settings, CreditCard, Bell, Shield, HelpCircle, LogOut, ChevronLeft, ChevronRight, Camera, Calendar as CalendarIcon, MapPin, Plus, CheckCircle2, XCircle, X, AlertCircle, AlertTriangle, Loader2, Image as ImageIcon, Ticket, Download, Link2, Copy, ExternalLink, QrCode, Trash2, ShieldCheck , Building, Hash, Save, Edit2, ChevronDown, DollarSign, Info, Smartphone, Lock, Search, Phone, Mail, FileText, Users, Eye, Filter, PieChart, Sparkles, UserCheck, MessageSquare, ClipboardList, CheckSquare, Clock, Globe, ListFilter, Check, UserX, BarChart3, CheckCheck } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { safeStorage } from '../lib/storage';
+import { api } from '../lib/api';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
 import { events, SeatingZone, Coupon } from '../data/events';
@@ -723,6 +724,15 @@ export default function Account() {
       staffLabel: 'Organizer Desk'
     };
     addOrganizerCheckin(newCheckin);
+    // Persist the scan to Postgres (source of truth); non-blocking.
+    api.scanCheckin({
+      ticketCode: scanResult.id,
+      eventId: String(selectedEventId),
+      attendeeName: scanResult.attendeeName || undefined,
+      ticketType: scanResult.ticketType || undefined,
+      seatLabel: scanResult.seat || undefined,
+      gate: 'Organizer Desk',
+    });
     setMyEvents(prev => prev.map(e => e.id === selectedEventId ? { ...e, scanned: e.scanned + 1 } : e));
     addToast(lang === 'en' ? `Successfully checked in ${scanResult.attendeeName}` : `ເຊັກອິນ ${scanResult.attendeeName} ສຳເລັດແລ້ວ`, 'success');
     setScanResult(null);

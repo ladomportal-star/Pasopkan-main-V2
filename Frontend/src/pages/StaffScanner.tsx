@@ -35,6 +35,7 @@ import { events, LaoEvent } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { CheckinRecord, useCheckins } from '../lib/checkinsStore';
+import { api } from '../lib/api';
 import SEO from '../components/SEO';
 
 const LazyScanner = React.lazy(() =>
@@ -369,6 +370,16 @@ export default function StaffScanner() {
     };
 
     addCheckin(newRecord);
+
+    // Persist the scan to Postgres (source of truth); non-blocking.
+    api.scanCheckin({
+      ticketCode: scannedTicket.ticketId,
+      eventId: String(selectedEvent.id),
+      attendeeName: scannedTicket.attendeeName || undefined,
+      ticketType: scannedTicket.ticketType || undefined,
+      seatLabel: scannedTicket.seat || undefined,
+      gate: staffLabel || undefined,
+    });
 
     setScannedTicket(prev => prev ? {
       ...prev,
