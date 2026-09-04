@@ -69,6 +69,25 @@ Request flow: `route → (requireAuth) → (validate) → controller → service
 | `POST /api/webhook/payment`      | –    | gateway webhook — persisted to `payments`                            |
 | `GET  /api/payment/status/:txId` | –    | verify a transaction                                                 |
 
+## Authentication
+
+Sign-in happens on the client against **Firebase Auth**, which returns an
+**ID token — an RS256-signed JWT**. Every `✔` endpoint above requires
+`Authorization: Bearer <idToken>`; `requireAuth` verifies the JWT
+signature against Google's public keys and checks `aud` / `iss` / expiry.
+
+- **No password ever reaches this service** — Firebase handles credentials,
+  so there is nothing here to hash or store.
+- Verification needs only `FIREBASE_PROJECT_ID`. A service-account key
+  (`GOOGLE_APPLICATION_CREDENTIALS`) is optional, for extras like
+  revocation checks.
+- An invalid, forged or expired token gets `401`; if Firebase Admin cannot
+  initialise at all the endpoint returns `503` rather than letting a
+  request through.
+- `AUTH_DEV_BYPASS=true` skips verification and trusts the bearer string as
+  the uid — **local development and tests only**. The process refuses to
+  start with it enabled while `NODE_ENV=production`.
+
 ## Tooling
 
 - **Validation** — `zod` on every request body/query/params and on `env` at boot.

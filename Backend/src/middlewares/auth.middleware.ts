@@ -4,53 +4,69 @@ import { initializeApp, getApps } from "firebase-admin/app";
 import { env } from "../config/env.ts";
 import { logger } from "../utils/logger.ts";
 
-// Initialize Firebase Admin from FIREBASE_PROJECT_ID. GOOGLE_APPLICATION_CREDENTIALS
-// (read implicitly by the Admin SDK) supplies the service-account key for real
-// ID-token verification.
+/**
+ * Authentication = Firebase ID token verification.
+ *
+ * Sign-in happens entirely on the client against Firebase Auth, which
+ * returns an **ID token — an RS256-signed JWT**. This service never sees a
+ * password, so there is no credential here to store or hash.
+ *
+ * `verifyIdToken` checks the JWT signature against Google's published
+ * public keys and validates `aud` (our project), `iss` and expiry. That
+ * works from `projectId` alone — a service account is only needed for
+ * extras such as revocation checks.
+ *
+ * AUTH_DEV_BYPASS=true skips verification and trusts the bearer string as
+ * the uid. Local development and tests only; `config/env.ts` refuses to
+ * boot with it enabled while NODE_ENV=production.
+ */
 function initFirebaseAdmin() {
   if (getApps().length > 0) return;
   if (!env.firebaseProjectId) {
-    logger.warn(
-      "[auth] FIREBASE_PROJECT_ID not set — ID-token verification disabled (dev fallback).",
-    );
+    logger.warn("[auth] FIREBASE_PROJECT_ID not set — cannot verify ID tokens.");
     return;
   }
   try {
     initializeApp({ projectId: env.firebaseProjectId });
     logger.info("[auth] Firebase Admin initialized for project:", env.firebaseProjectId);
   } catch (e: any) {
-    logger.warn("[auth] Firebase Admin init failed:", e?.message);
+    logger.error("[auth] Firebase Admin init failed:", e?.message);
   }
 }
 
 initFirebaseAdmin();
 
-/** Verify a Firebase ID token; in dev without a service account, trust the raw UID. */
+const unauthorized = (res: Response, message: string) => res.status(401).json({ error: message });
+
+/** Reject the request unless it carries a valid Firebase ID token. */
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Missing or invalid authorization header" });
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) {
+    return unauthorized(res, "Missing or invalid authorization header");
   }
 
-  const token = authHeader.split("Bearer ")[1]?.trim();
-  if (!token) return res.status(401).json({ error: "Empty token provided" });
+  const token = header.slice("Bearer ".length).trim();
+  if (!token) return unauthorized(res, "Empty token provided");
 
-  const devFallback = () => {
+  // Explicit, non-production escape hatch for local dev and tests.
+  if (env.authDevBypass) {
     req.user = {
       uid: token,
-      email: (req.headers["x-user-email"] as string) || "user@example.com",
+      email: (req.headers["x-user-email"] as string) || "dev@example.com",
     };
-    next();
-  };
+    return next();
+  }
+
+  if (getApps().length === 0) {
+    logger.error("[auth] Firebase Admin unavailable — refusing authenticated request");
+    return res.status(503).json({ error: "Authentication is not configured on this server" });
+  }
 
   try {
-    if (getApps().length > 0) {
-      req.user = await getAuth().verifyIdToken(token);
-      return next();
-    }
-    return devFallback();
+    req.user = await getAuth().verifyIdToken(token);
+    return next();
   } catch (error: any) {
-    logger.warn("[auth] token verification fallback:", error?.message);
-    return devFallback();
+    logger.warn(`[auth] ID token rejected: ${error?.code ?? error?.message}`);
+    return unauthorized(res, "Invalid or expired ID token");
   }
 }

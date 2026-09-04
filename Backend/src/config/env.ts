@@ -28,6 +28,9 @@ const schema = z.object({
   SQL_PASSWORD: z.string().optional().default(""),
 
   FIREBASE_PROJECT_ID: z.string().optional().default(""),
+  // Skips Firebase ID-token (JWT) verification and trusts the bearer string
+  // as the uid. Local development and tests ONLY — refused in production.
+  AUTH_DEV_BYPASS: z.string().optional().default("false"),
   FRONTEND_DIST: z.string().optional().default(""),
 
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
@@ -67,10 +70,20 @@ export const env = {
   },
 
   firebaseProjectId: e.FIREBASE_PROJECT_ID,
+  authDevBypass: e.AUTH_DEV_BYPASS === "true" || e.AUTH_DEV_BYPASS === "1",
   frontendDist: e.FRONTEND_DIST,
 
   rateLimit: { windowMs: e.RATE_LIMIT_WINDOW_MS, max: e.RATE_LIMIT_MAX },
 } as const;
+
+// Refuse to boot with authentication disabled in production.
+if (env.isProd && env.authDevBypass) {
+  console.error(
+    "FATAL: AUTH_DEV_BYPASS is enabled while NODE_ENV=production. " +
+      "This would let any caller act as any user. Unset it and restart.",
+  );
+  process.exit(1);
+}
 
 /** Warn (don't crash) about config a production deployment really wants. */
 export function checkEnv(warn: (msg: string) => void) {
@@ -78,6 +91,9 @@ export function checkEnv(warn: (msg: string) => void) {
     warn("No DATABASE_URL / SQL_* set — ticket & review APIs use in-memory fallback.");
   }
   if (!env.firebaseProjectId) {
-    warn("FIREBASE_PROJECT_ID not set — ID-token verification is disabled (dev fallback).");
+    warn("FIREBASE_PROJECT_ID not set — authenticated endpoints will return 503.");
+  }
+  if (env.authDevBypass) {
+    warn("AUTH_DEV_BYPASS is ON — ID tokens are NOT verified. Never use this outside dev/tests.");
   }
 }
