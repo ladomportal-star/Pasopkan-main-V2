@@ -60,12 +60,20 @@ export function createApp() {
   app.use("/api", notFound);
 
   // Optionally serve the built frontend from this same process
-  const distPath = env.frontendDist
-    ? path.resolve(env.frontendDist)
-    : path.resolve(process.cwd(), "..", "Frontend", "dist");
-  if (env.isProd && fs.existsSync(distPath)) {
+  const candidates = [
+    env.frontendDist,
+    path.resolve(process.cwd(), "dist"),
+    path.resolve(process.cwd(), "Frontend", "dist"),
+    path.resolve(process.cwd(), "..", "Frontend", "dist"),
+  ].filter(Boolean) as string[];
+
+  const distPath = candidates.find((p) => fs.existsSync(p));
+  if (distPath) {
     app.use(express.static(distPath));
-    app.get("*", (_req, res) => res.sendFile(path.join(distPath, "index.html")));
+    app.get("*", (_req, res, next) => {
+      if (_req.path.startsWith("/api/")) return next();
+      res.sendFile(path.join(distPath, "index.html"));
+    });
     logger.info("[app] serving frontend from", distPath);
   }
 

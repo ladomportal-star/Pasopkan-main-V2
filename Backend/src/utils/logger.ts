@@ -12,14 +12,6 @@ import { env } from "../config/env.ts";
  */
 export const raw: Logger = pino({
   level: process.env.LOG_LEVEL ?? (env.isTest ? "silent" : env.isProd ? "info" : "debug"),
-  ...(env.isProd
-    ? {}
-    : {
-        transport: {
-          target: "pino-pretty",
-          options: { colorize: true, translateTime: "SYS:HH:MM:ss", ignore: "pid,hostname" },
-        },
-      }),
 });
 
 type Level = "debug" | "info" | "warn" | "error";
