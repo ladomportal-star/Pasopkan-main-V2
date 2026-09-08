@@ -53,12 +53,14 @@ class SafeStorage {
       }
     }
 
-    // Broadcast update across the application
+    // Broadcast update across the application asynchronously so it never interrupts a React render cycle
     if (typeof window !== 'undefined') {
-      try {
-        window.dispatchEvent(new CustomEvent('pasopkan_storage_update', { detail: { key, value: strVal } }));
-        window.dispatchEvent(new Event('storage'));
-      } catch (_) {}
+      setTimeout(() => {
+        try {
+          window.dispatchEvent(new CustomEvent('pasopkan_storage_update', { detail: { key, value: strVal } }));
+          window.dispatchEvent(new Event('storage'));
+        } catch (_) {}
+      }, 0);
     }
   }
 
@@ -73,10 +75,12 @@ class SafeStorage {
     }
 
     if (typeof window !== 'undefined') {
-      try {
-        window.dispatchEvent(new CustomEvent('pasopkan_storage_update', { detail: { key, value: null } }));
-        window.dispatchEvent(new Event('storage'));
-      } catch (_) {}
+      setTimeout(() => {
+        try {
+          window.dispatchEvent(new CustomEvent('pasopkan_storage_update', { detail: { key, value: null } }));
+          window.dispatchEvent(new Event('storage'));
+        } catch (_) {}
+      }, 0);
     }
   }
 

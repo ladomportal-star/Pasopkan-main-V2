@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { extractDominantColor } from '../utils/imageColor';
+import { extractDominantColor, ExtractedColors, DEFAULT_FALLBACK_COLORS } from '../utils/imageColor';
 
 interface AdaptiveImageProps {
   src?: string | null;
@@ -22,13 +22,9 @@ export const AdaptiveImage: React.FC<AdaptiveImageProps> = ({
   backdropClassName = '',
   children,
   onClick,
-  showBlurBackdrop = true,
+  showBlurBackdrop = false,
 }) => {
-  const [colors, setColors] = useState<{ dominant: string; dark: string; light: string }>({
-    dominant: '#1e293b',
-    dark: '#0f172a',
-    light: '#334155',
-  });
+  const [colors, setColors] = useState<ExtractedColors>(DEFAULT_FALLBACK_COLORS);
 
   useEffect(() => {
     if (!src) return;
@@ -48,10 +44,14 @@ export const AdaptiveImage: React.FC<AdaptiveImageProps> = ({
   return (
     <div
       onClick={onClick}
-      style={{ backgroundColor: colors.dark }}
+      style={{
+        background: colors.background,
+        backgroundColor: colors.dark,
+        transition: 'background 0.4s ease, background-color 0.4s ease',
+      }}
       className={`relative overflow-hidden flex items-center justify-center select-none ${className}`}
     >
-      {/* Ambient same-color blurred backdrop filling any non-matching aspect ratio letterbox */}
+      {/* Ambient same-color blurred backdrop only if explicitly enabled */}
       {showBlurBackdrop && (
         <>
           <img
@@ -75,7 +75,9 @@ export const AdaptiveImage: React.FC<AdaptiveImageProps> = ({
         src={src}
         alt={alt}
         className={`relative z-10 w-full h-full transition-all duration-300 pointer-events-none ${
-          fitMode === 'contain' ? 'object-contain drop-shadow-xl p-0.5' : 'object-cover'
+          fitMode === 'contain' 
+            ? 'object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.25)]' 
+            : 'object-cover'
         } ${imageClassName}`}
       />
 

@@ -34,7 +34,6 @@ import {
   Sliders,
   Settings,
   Save,
-  Check,
   Lock,
   Unlock,
   FileEdit,
@@ -44,7 +43,6 @@ import {
   Phone,
   ShieldCheck,
   Image as ImageIcon,
-  Copy,
   Ticket,
   ExternalLink,
   Video
@@ -53,7 +51,6 @@ import { events, LaoEvent, TicketTier } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
 import { EventMapPicker } from '../components/EventMapPicker';
 import { AdaptiveImage } from '../components/AdaptiveImage';
-import { CountdownTimer } from '../components/CountdownTimer';
 import DotsLoader from '../components/DotsLoader';
 import { safeStorage } from '../lib/storage';
 import { api } from '../lib/api';
@@ -608,7 +605,6 @@ export default function EventDetails() {
     setTouchEndX(null);
   };
   const [shareSuccess, setShareSuccess] = useState(false);
-  const [copiedMapAddress, setCopiedMapAddress] = useState(false);
   const [showOrganizerDetails, setShowOrganizerDetails] = useState(false);
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -1417,10 +1413,8 @@ export default function EventDetails() {
                        alt={event.title} 
                        fitMode="contain"
                        className="w-full h-full"
+                       showBlurBackdrop={false}
                      >
-                       {/* Subtle dark gradient overlay at top and bottom */}
-                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/40 pointer-events-none z-10" />
-
                        {/* Round White Back Button */}
                        <button 
                          onClick={(e) => { e.stopPropagation(); handleBack(); }} 
@@ -1496,7 +1490,7 @@ export default function EventDetails() {
                                  : 'border-transparent opacity-60 hover:opacity-100'
                              }`}
                            >
-                             <AdaptiveImage src={img} alt={`Thumbnail ${idx + 1}`} fitMode="contain" className="w-full h-full" />
+                             <AdaptiveImage src={img} alt={`Thumbnail ${idx + 1}`} fitMode="contain" className="w-full h-full" showBlurBackdrop={false} />
                            </button>
                          );
                        })}
@@ -1537,123 +1531,119 @@ export default function EventDetails() {
                )}
 
                {/* Desktop Hero Image */}
-               <div className="hidden lg:block">
-                 {event.image ? (
-                 <div className="relative">
-                   {/* Ambient glow backdrop underneath */}
-                   <div 
-                     className="absolute inset-0 -m-8 bg-cover bg-center blur-3xl opacity-15 select-none pointer-events-none rounded-[40px] transition-opacity duration-500 group-hover/hero:opacity-25" 
-                     style={{ backgroundImage: `url(${galleryImages[activeImageIndex]})` }} 
-                   />
-                   
-                   <div 
-                     className="relative h-72 sm:h-[360px] md:h-[420px] lg:h-[460px] w-full cursor-zoom-in overflow-hidden rounded-3xl"
-                     onClick={() => setFullscreenImageIndex(activeImageIndex)}
-                   >
-                     <AdaptiveImage
-                       key={activeImageIndex}
-                       src={galleryImages[activeImageIndex]}
-                       alt={event.title}
-                       fitMode="contain"
-                       className="w-full h-full"
-                     >
-                       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent pointer-events-none z-10" />
-                       <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent pointer-events-none z-10" />
-                       
-                       {/* Left/Right Arrows on Hover */}
-                       {galleryImages.length > 1 && (
-                         <>
-                           <button 
-                             className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/30 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/90 hover:text-white transition-all active:scale-90 z-20 md:opacity-0 md:group-hover/hero:opacity-100 pointer-events-auto"
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               setActiveImageIndex(prev => (prev === 0 ? galleryImages.length - 1 : prev - 1));
-                             }}
-                           >
-                             <ChevronLeft className="w-5 h-5" />
-                           </button>
-                           <button 
-                             className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/30 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/90 hover:text-white transition-all active:scale-90 z-20 md:opacity-0 md:group-hover/hero:opacity-100 pointer-events-auto"
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               setActiveImageIndex(prev => (prev === galleryImages.length - 1 ? 0 : prev + 1));
-                             }}
-                           >
-                             <ChevronRight className="w-5 h-5" />
-                           </button>
-                         </>
-                       )}
+                <div className="hidden lg:block">
+                  {event.image ? (
+                  <div className="relative">
+                    <div 
+                      className="relative h-72 sm:h-[360px] md:h-[420px] lg:h-[460px] w-full cursor-zoom-in overflow-hidden rounded-3xl"
+                      onClick={() => setFullscreenImageIndex(activeImageIndex)}
+                    >
+                      <AdaptiveImage
+                        key={activeImageIndex}
+                        src={galleryImages[activeImageIndex]}
+                        alt={event.title}
+                        fitMode="contain"
+                        className="w-full h-full"
+                        showBlurBackdrop={false}
+                      >
+                        {/* Left/Right Arrows on Hover */}
+                        {galleryImages.length > 1 && (
+                          <>
+                            <button 
+                              className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/90 hover:text-white transition-all active:scale-90 z-20 md:opacity-0 md:group-hover/hero:opacity-100 pointer-events-auto shadow-md"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveImageIndex(prev => (prev === 0 ? galleryImages.length - 1 : prev - 1));
+                              }}
+                            >
+                              <ChevronLeft className="w-5 h-5" />
+                            </button>
+                            <button 
+                              className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/90 hover:text-white transition-all active:scale-90 z-20 md:opacity-0 md:group-hover/hero:opacity-100 pointer-events-auto shadow-md"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveImageIndex(prev => (prev === galleryImages.length - 1 ? 0 : prev + 1));
+                              }}
+                            >
+                              <ChevronRight className="w-5 h-5" />
+                            </button>
+                          </>
+                        )}
 
-                       {/* Overlay Title on Image */}
-                       <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 text-white flex flex-col justify-end h-full z-20 pointer-events-none">
-                         <div className="mb-2.5">
-                           <span className="inline-flex items-center gap-1 bg-adv-orange/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/10 border border-white/10">
-                             {event.category || 'Event'}
-                           </span>
-                         </div>
-                         
-                         <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight mb-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] font-sans text-white">
-                           {event.title}
-                         </h1>
+                        <div className="absolute top-4 right-4 bg-black/40 hover:bg-black/70 backdrop-blur-md border border-white/15 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-all active:scale-95 group/btn z-20 pointer-events-auto" title="Full Screen">
+                          <Maximize2 className="w-4 h-4 transition-transform duration-300 group-hover/btn:scale-110" />
+                        </div>
+                      </AdaptiveImage>
+                    </div>
 
-                         <div className="flex flex-wrap items-center gap-2.5 text-xs font-semibold font-sans">
-                            {event.dateType !== 'flexible' && (
-                              <span className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/10 shadow-lg text-white transition-all hover:bg-white/20">
-                                <Calendar className="w-3.5 h-3.5 text-white" />
-                                {new Date(event.date).toLocaleDateString()}
-                              </span>
-                            )}
-                            {event.dateType !== 'flexible' && event.time && (
-                              <span className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/10 shadow-lg text-white transition-all hover:bg-white/20">
-                                <Clock className="w-3.5 h-3.5 text-white animate-pulse" />
-                                {event.time}
-                              </span>
-                            )}
-                            <span className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/10 shadow-lg text-white">
-                              <MapPin className="w-3.5 h-3.5 text-white shrink-0" />
-                              <span>{event.location}</span>
-                            </span>
-                         </div>
-                       </div>
+                    {/* Thumbnail strip */}
+                    {galleryImages.length > 1 && (
+                      <div className="flex gap-2.5 overflow-x-auto px-6 py-4 border-b border-gray-100/80 bg-gray-50/45 scrollbar-none">
+                        {galleryImages.map((img, idx) => {
+                          const isActive = idx === activeImageIndex;
+                          return (
+                            <button
+                              key={idx}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveImageIndex(idx);
+                              }}
+                              className={`relative w-20 h-14 sm:w-24 sm:h-16 rounded-2xl overflow-hidden flex-shrink-0 transition-all duration-300 border-2 cursor-pointer ${
+                                isActive 
+                                  ? 'border-adv-orange ring-2 ring-orange-100 scale-[0.96] shadow-md shadow-orange-500/10' 
+                                  : 'border-transparent hover:border-gray-200 hover:scale-[1.02] opacity-70 hover:opacity-100'
+                              }`}
+                            >
+                              <AdaptiveImage 
+                                src={img} 
+                                alt={`Event thumbnail ${idx + 1}`} 
+                                fitMode="contain"
+                                className="w-full h-full"
+                                showBlurBackdrop={false}
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
 
-                       <div className="absolute top-4 right-4 bg-black/20 hover:bg-white/20 backdrop-blur-md border border-white/15 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-all active:scale-95 group/btn z-20 pointer-events-auto" title="Full Screen">
-                         <Maximize2 className="w-4 h-4 transition-transform duration-300 group-hover/btn:scale-110" />
-                       </div>
-                     </AdaptiveImage>
-                   </div>
+                    {/* Title & Metadata Section */}
+                    <div className="p-6 border-b border-gray-150/60 bg-gray-50/50 space-y-4">
+                      <div className="space-y-2">
+                        <span className="inline-block bg-adv-orange/10 text-adv-orange px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-adv-orange/20">
+                          {event.category || 'Event'}
+                        </span>
+                        <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight text-adv-slate">
+                          {event.title}
+                        </h1>
+                      </div>
 
-                   {/* Thumbnail strip */}
-                   {galleryImages.length > 1 && (
-                     <div className="flex gap-2.5 overflow-x-auto px-6 py-4 border-b border-gray-100/80 bg-gray-50/45 scrollbar-none">
-                       {galleryImages.map((img, idx) => {
-                         const isActive = idx === activeImageIndex;
-                         return (
-                           <button
-                             key={idx}
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               setActiveImageIndex(idx);
-                             }}
-                             className={`relative w-20 h-14 sm:w-24 sm:h-16 rounded-2xl overflow-hidden flex-shrink-0 transition-all duration-300 border-2 cursor-pointer ${
-                               isActive 
-                                 ? 'border-adv-orange ring-2 ring-orange-100 scale-[0.96] shadow-md shadow-orange-500/10' 
-                                 : 'border-transparent hover:border-gray-200 hover:scale-[1.02] opacity-70 hover:opacity-100'
-                             }`}
-                           >
-                             <AdaptiveImage 
-                               src={img} 
-                               alt={`Event thumbnail ${idx + 1}`} 
-                               fitMode="contain"
-                               className="w-full h-full"
-                             />
-                           </button>
-                         );
-                       })}
-                     </div>
-                   )}
-                 </div>
-               ) : (
-                 /* Title with NO background image - should be black / text-adv-slate */
+                      <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                        {event.dateType !== 'flexible' && (
+                          <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-xs text-gray-600">
+                            <Calendar className="w-3.5 h-3.5 text-adv-orange" />
+                            {new Date(event.date).toLocaleDateString()}
+                          </span>
+                        )}
+                        {event.dateType !== 'flexible' && event.time && (
+                          <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-xs text-gray-600">
+                            <Clock className="w-3.5 h-3.5 text-adv-orange animate-pulse" />
+                            {event.time}
+                          </span>
+                        )}
+                        <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-xs text-adv-slate">
+                          <MapPin className="w-3.5 h-3.5 text-adv-orange shrink-0" />
+                          <span>{event.location}</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-xs text-gray-600">
+                          <Languages className="w-3.5 h-3.5 text-adv-orange" />
+                          {(event.languages || ['Lao', 'English']).join(', ')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Title with NO background image - should be black / text-adv-slate */
                  <div className={`p-6 border-b border-gray-150/60 bg-gray-50/50 ${event.allowReviews !== false && mobileActiveTab === 'reviews' ? 'hidden lg:block' : 'block'}`}>
                     <h1 className="text-xl sm:text-3xl font-black tracking-tight leading-tight mb-4 text-adv-slate">
                       {event.title}
@@ -1701,7 +1691,7 @@ export default function EventDetails() {
              {/* Public Map & Location Venue Section */}
              {event.eventType !== 'online' ? (
                <div className="my-4 bg-white p-4 sm:p-5 rounded-2xl border border-gray-150/80 shadow-xs space-y-4" id="event-map-venue">
-                 <div className="pb-3 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                 <div className="pb-3 border-b border-gray-100">
                    <div>
                      <div className="flex items-center gap-2">
                        <MapPin className="w-4 h-4 text-adv-orange shrink-0" />
@@ -1729,44 +1719,6 @@ export default function EventDetails() {
                        )}
                      </p>
                    </div>
-
-                   {/* Quick Action Buttons */}
-                   <div className="flex items-center gap-2 shrink-0">
-                     <button
-                       type="button"
-                       onClick={() => {
-                         const fullAddr = [event.venue, event.location, event.district, event.province, 'Laos'].filter(Boolean).join(', ');
-                         navigator.clipboard.writeText(fullAddr || 'Vientiane, Laos');
-                         setCopiedMapAddress(true);
-                         setTimeout(() => setCopiedMapAddress(false), 2000);
-                       }}
-                       className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                     >
-                       {copiedMapAddress ? (
-                         <>
-                           <Check className="w-3.5 h-3.5 text-emerald-600" />
-                           <span className="text-emerald-600">{lang === 'lo' ? 'ສຳເນົາແລ້ວ' : 'Copied'}</span>
-                         </>
-                       ) : (
-                         <>
-                           <Copy className="w-3.5 h-3.5 text-gray-500" />
-                           <span>{lang === 'lo' ? 'ສຳເນົາທີ່ຢູ່' : 'Copy Address'}</span>
-                         </>
-                       )}
-                     </button>
-
-                     {event.googleMapUrl && (
-                       <a
-                         href={event.googleMapUrl}
-                         target="_blank"
-                         rel="noopener noreferrer"
-                         className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-xl text-xs font-bold text-adv-orange transition-all flex items-center gap-1.5 shadow-2xs"
-                       >
-                         <ExternalLink className="w-3.5 h-3.5" />
-                         <span>{lang === 'lo' ? 'ເປີດໃນ Maps' : 'Google Maps'}</span>
-                       </a>
-                     )}
-                   </div>
                  </div>
 
                  <EventMapPicker 
@@ -1779,6 +1731,7 @@ export default function EventDetails() {
                    latitude={event.latitude}
                    longitude={event.longitude}
                    lang={lang as 'en' | 'lo'}
+                   showOpenInMapsButton={true}
                  />
                </div>
              ) : (

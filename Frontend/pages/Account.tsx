@@ -1,8 +1,9 @@
 import { BankAccountInfo, PayoutBill, EventData } from "../types";
 import React, { useState, useRef, useEffect } from 'react';
-import { User, Settings, CreditCard, Bell, Shield, HelpCircle, LogOut, ChevronLeft, ChevronRight, Camera, Calendar as CalendarIcon, MapPin, Plus, CheckCircle2, XCircle, X, AlertCircle, AlertTriangle, Loader2, Image as ImageIcon, Ticket, Download, Link2, Copy, ExternalLink, QrCode, Trash2, ShieldCheck , Building, Hash, Save, Edit2, ChevronDown, DollarSign, Info, Smartphone, Lock, Search, Phone, Mail, FileText, Users, Eye, Filter, PieChart, Sparkles, UserCheck, MessageSquare, ClipboardList, CheckSquare, Clock, Globe, ListFilter, Check, UserX, BarChart3, CheckCheck } from 'lucide-react';
+import { User, Settings, CreditCard, Bell, Shield, HelpCircle, LogOut, ChevronLeft, ChevronRight, Camera, Calendar as CalendarIcon, MapPin, Plus, CheckCircle2, XCircle, X, AlertCircle, AlertTriangle, Loader2, Image as ImageIcon, Ticket, Download, Link2, Copy, ExternalLink, QrCode, Trash2, ShieldCheck , Building, Save, Edit2, ChevronDown, DollarSign, Info, Smartphone, Lock, Search, Phone, Mail, FileText, Users, Eye, Filter, PieChart, Sparkles, UserCheck, MessageSquare, ClipboardList, CheckSquare, Clock, Globe, ListFilter, Check, UserX, BarChart3, CheckCheck } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { safeStorage } from '../lib/storage';
+import { api } from '../lib/api';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
 import { events, SeatingZone, Coupon } from '../data/events';
@@ -13,8 +14,8 @@ import { CheckinRecord, EventAttendee, useAttendees, useCheckins } from '../lib/
 import SEO from '../components/SEO';
 import ManageCouponsSection from '../components/ManageCouponsSection';
 
-const LazyScanner = React.lazy(() => 
-  import('@yudiel/react-qr-scanner')
+const LazyScanner = React.lazy(() =>
+  (import('@yudiel/react-qr-scanner')
     .then(module => ({ default: module.Scanner }))
     .catch(err => {
       console.error('Failed to dynamically import react-qr-scanner:', err);
@@ -29,7 +30,7 @@ const LazyScanner = React.lazy(() =>
           </div>
         )
       };
-    })
+    })) as Promise<{ default: React.ComponentType<any> }>
 );
 
 const translations = {
@@ -121,8 +122,7 @@ const translations = {
     questionnaireSummaryTitle: 'Activity Questionnaire Analytics & Summary',
     questionnaireSummarySubtitle: 'Aggregated breakdown of all attendee question submissions for this activity',
     exportAllData: 'Export Excel (All Data & Answers)',
-    quickCheckin: 'Quick Check-In',
-    undoCheckin: 'Undo Check-In'
+    quickCheckin: 'Quick Check-In'
   },
   lo: {
     settings: 'ຕັ້ງຄ່າ',
@@ -212,8 +212,7 @@ const translations = {
     questionnaireSummaryTitle: 'ສະຖິຕິ ແລະ ບົດສະຫຼຸບຄຳຕອບແບບສອບຖາມ',
     questionnaireSummarySubtitle: 'ການລວບລວມຄຳຕອບແບບສອບຖາມທັງໝົດສຳລັບກິດຈະກຳນີ້',
     exportAllData: 'ສົ່ງອອກ Excel (ຂໍ້ມູນທັງໝົດ ແລະ ຄຳຕອບ)',
-    quickCheckin: 'ເຊັກອິນດ່ວນ',
-    undoCheckin: 'ຍົກເລີກການເຊັກອິນ'
+    quickCheckin: 'ເຊັກອິນດ່ວນ'
   }
 };
 
@@ -404,7 +403,7 @@ export default function Account() {
   const { logout } = useAuth();
   const { lang } = useLanguage();
   const { theme, toggleTheme } = useTheme();
-  const t = translations[lang];
+  const t = translations[lang] as unknown as Record<string, string>;
   const [profilePic, setProfilePic] = useState<string | null>(() => {
     try {
       return localStorage.getItem('pasopkan_user_profile_pic');
@@ -468,6 +467,7 @@ export default function Account() {
     seat?: string;
     price?: string;
     email?: string;
+    phone?: string;
   } | null>(null);
 
   const [checkinPage, setCheckinPage] = useState(1);
@@ -486,14 +486,12 @@ export default function Account() {
     checkedInCount,
     pendingCount,
     withAnswersCount,
-    toggleCheckin: toggleAttendeeCheckin,
     setCheckinStatus
   } = useAttendees(selectedEventId);
 
-  const [attendeeFilter, setAttendeeFilter] = useState<'all' | 'checked_in' | 'pending' | 'with_answers'>('all');
+  const [attendeeFilter, setAttendeeFilter] = useState<'all' | 'checked_in' | 'pending'>('all');
   const [attendeeTierFilter, setAttendeeTierFilter] = useState<string>('all');
   const [selectedAttendeeForAnswers, setSelectedAttendeeForAnswers] = useState<EventAttendee | null>(null);
-  const [showQuestionnaireSummaryModal, setShowQuestionnaireSummaryModal] = useState(false);
   const [attendeeSearchQuery, setAttendeeSearchQuery] = useState('');
   const [attendeeListPage, setAttendeeListPage] = useState(1);
 
@@ -516,11 +514,6 @@ export default function Account() {
       // Status filter
       if (attendeeFilter === 'checked_in' && !att.isCheckedIn) return false;
       if (attendeeFilter === 'pending' && att.isCheckedIn) return false;
-      if (attendeeFilter === 'with_answers') {
-        const hasAnswers = att.customAnswers && Object.keys(att.customAnswers).length > 0 &&
-          Object.values(att.customAnswers).some(v => Array.isArray(v) ? v.length > 0 : (v !== '' && v !== null && v !== undefined));
-        if (!hasAnswers) return false;
-      }
 
       // Tier filter
       if (attendeeTierFilter !== 'all' && att.ticketType !== attendeeTierFilter) return false;
@@ -722,6 +715,15 @@ export default function Account() {
       staffLabel: 'Organizer Desk'
     };
     addOrganizerCheckin(newCheckin);
+    // Persist the scan to Postgres (source of truth); non-blocking.
+    api.scanCheckin({
+      ticketCode: scanResult.id,
+      eventId: String(selectedEventId),
+      attendeeName: scanResult.attendeeName || undefined,
+      ticketType: scanResult.ticketType || undefined,
+      seatLabel: scanResult.seat || undefined,
+      gate: 'Organizer Desk',
+    });
     setMyEvents(prev => prev.map(e => e.id === selectedEventId ? { ...e, scanned: e.scanned + 1 } : e));
     addToast(lang === 'en' ? `Successfully checked in ${scanResult.attendeeName}` : `ເຊັກອິນ ${scanResult.attendeeName} ສຳເລັດແລ້ວ`, 'success');
     setScanResult(null);
@@ -821,7 +823,7 @@ export default function Account() {
         att.price || '',
         att.purchaseDate ? new Date(att.purchaseDate).toLocaleString() : '',
         att.isCheckedIn ? 'Checked In' : 'Pending Gate Scan',
-        att.checkinTime || (att.isCheckedIn ? 'Verified' : 'Not Checked In'),
+        att.checkedInTime || (att.isCheckedIn ? 'Verified' : 'Not Checked In'),
         att.staffLabel || (att.isCheckedIn ? 'Organizer Desk' : '-')
       ].concat(answersValues);
     });
@@ -1176,51 +1178,45 @@ export default function Account() {
           {selectedEvent && (
             <div className="space-y-6 sm:space-y-8">
               {/* Event Stats Card */}
-              <div className={`rounded-3xl sm:rounded-[2.5rem] overflow-hidden shadow-sm border p-5 sm:p-8 transition-all ${
+              <div className={`rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm border p-4 sm:p-5 transition-all ${
                 theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
               }`}>
-                <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 mb-6 pb-6 border-b border-gray-100/50 dark:border-zinc-800/50">
-                   <img src={selectedEvent.image} alt={selectedEvent.title} className="w-16 h-16 sm:w-24 sm:h-24 rounded-2xl object-cover shrink-0 shadow-sm" />
+                <div className="flex flex-col sm:flex-row items-center gap-3.5 sm:gap-5 mb-4 pb-4 border-b border-gray-100/50 dark:border-zinc-800/50">
+                   <img src={selectedEvent.image} alt={selectedEvent.title} className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl object-cover shrink-0 shadow-sm" />
                    <div className="flex-1 text-center sm:text-left min-w-0">
-                      <div className="flex items-center gap-3 justify-center sm:justify-start mb-1 sm:mb-1.5">
-                        <h3 className="text-base sm:text-lg font-bold truncate">{selectedEvent.title}</h3>
+                      <div className="flex items-center gap-2.5 justify-center sm:justify-start mb-1">
+                        <h3 className="text-sm sm:text-base font-bold truncate">{selectedEvent.title}</h3>
                         {selectedEvent.status === 'pending' && (
-                          <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-widest shrink-0">
+                          <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[9px] sm:text-[10px] font-black uppercase tracking-widest shrink-0">
                             Pending Approval
                           </span>
                         )}
                       </div>
-                      <div className="flex flex-wrap justify-center sm:justify-start gap-x-3.5 gap-y-1.5 text-[11px] sm:text-sm text-gray-400 font-medium">
-                         <span className="flex items-center gap-1.5"><CalendarIcon className="w-4 h-4 text-adv-orange shrink-0" /> {selectedEvent.date}</span>
-                         <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-adv-orange shrink-0" /> {selectedEvent.location}</span>
+                      <div className="flex flex-wrap justify-center sm:justify-start gap-x-3 gap-y-1 text-[11px] sm:text-xs text-gray-400 font-medium">
+                         <span className="flex items-center gap-1.5"><CalendarIcon className="w-3.5 h-3.5 text-adv-orange shrink-0" /> {selectedEvent.date}</span>
+                         <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-adv-orange shrink-0" /> {selectedEvent.location}</span>
                       </div>
                    </div>
                 </div>
                 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                  <div className={`rounded-2xl p-3 sm:p-4 text-center border transition-all ${
-                    theme === 'dark' ? 'bg-zinc-950/40 border-zinc-850' : 'bg-[#F9FAFB] border-gray-50'
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                  <div className={`rounded-xl sm:rounded-2xl py-2 px-2 sm:py-2.5 sm:px-3 text-center border transition-all ${
+                    theme === 'dark' ? 'bg-zinc-950/40 border-zinc-850' : 'bg-[#F9FAFB] border-gray-100'
                   }`}>
-                    <div className="text-xl sm:text-2xl font-black mb-0.5">{totalAttendeesCount || selectedEvent.registered || 0}</div>
-                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{t.allBuyers}</div>
+                    <div className="text-base sm:text-lg font-black leading-tight mb-0.5">{totalAttendeesCount || selectedEvent.registered || 0}</div>
+                    <div className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider truncate">{t.allBuyers}</div>
                   </div>
-                  <div className={`rounded-2xl p-3 sm:p-4 text-center border transition-all ${
+                  <div className={`rounded-xl sm:rounded-2xl py-2 px-2 sm:py-2.5 sm:px-3 text-center border transition-all ${
                     theme === 'dark' ? 'bg-emerald-950/20 border-emerald-900/30' : 'bg-emerald-50/50 border-emerald-100'
                   }`}>
-                    <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 mb-0.5">{checkedInCount}</div>
-                    <div className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 font-bold uppercase tracking-wider">{t.checkedIn}</div>
+                    <div className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 leading-tight mb-0.5">{checkedInCount}</div>
+                    <div className="text-[9px] sm:text-[10px] text-emerald-600/70 dark:text-emerald-400/70 font-bold uppercase tracking-wider truncate">{t.checkedIn}</div>
                   </div>
-                  <div className={`rounded-2xl p-3 sm:p-4 text-center border transition-all ${
+                  <div className={`rounded-xl sm:rounded-2xl py-2 px-2 sm:py-2.5 sm:px-3 text-center border transition-all ${
                     theme === 'dark' ? 'bg-amber-950/20 border-amber-900/30' : 'bg-amber-50/50 border-amber-100'
                   }`}>
-                    <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 mb-0.5">{pendingCount}</div>
-                    <div className="text-[10px] text-amber-600/70 dark:text-amber-400/70 font-bold uppercase tracking-wider">{t.pendingGate}</div>
-                  </div>
-                  <div className={`rounded-2xl p-3 sm:p-4 text-center border transition-all ${
-                    theme === 'dark' ? 'bg-blue-950/20 border-blue-900/30' : 'bg-blue-50/50 border-blue-100'
-                  }`}>
-                    <div className="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400 mb-0.5">{withAnswersCount}</div>
-                    <div className="text-[10px] text-blue-600/70 dark:text-blue-400/70 font-bold uppercase tracking-wider">{t.withFormAnswers}</div>
+                    <div className="text-base sm:text-lg font-black text-amber-600 dark:text-amber-400 leading-tight mb-0.5">{pendingCount}</div>
+                    <div className="text-[9px] sm:text-[10px] text-amber-600/70 dark:text-amber-400/70 font-bold uppercase tracking-wider truncate">{t.pendingGate}</div>
                   </div>
                 </div>
               </div>
@@ -1229,7 +1225,7 @@ export default function Account() {
               <div className="w-full">
                 <button 
                   onClick={() => setShowScanner(true)}
-                  className={`w-full flex items-center justify-center gap-3 p-4 sm:p-5 rounded-2xl sm:rounded-[1.5rem] font-bold hover:opacity-95 transition-all shadow-md active:scale-[0.98] transform cursor-pointer ${theme === 'dark' ? 'bg-white text-adv-slate' : 'bg-adv-slate text-white'}`}
+                  className="w-full flex items-center justify-center gap-3 p-4 sm:p-5 rounded-2xl sm:rounded-[1.5rem] bg-adv-slate dark:bg-white text-white dark:text-adv-slate font-bold hover:opacity-95 transition-all shadow-md active:scale-[0.98] transform cursor-pointer"
                 >
                   <Camera className="w-5 h-5 text-adv-orange animate-pulse" />
                   <span className="text-sm sm:text-base">{t.scanQr}</span>
@@ -1369,13 +1365,14 @@ export default function Account() {
                       referrerPolicy="no-referrer"
                     />
                     
-                    {/* Interactive Hint */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
+                    {/* Interactive Hint / Action Control */}
+                    <div className="absolute bottom-2.5 right-2.5 sm:inset-0 sm:bg-black/40 sm:opacity-0 sm:group-hover:opacity-100 transition-all flex items-center justify-center sm:backdrop-blur-[2px] z-10">
                        <button 
+                        type="button"
                         onClick={() => setShowFullMap(true)}
-                        className="px-5 py-2 bg-white text-adv-slate rounded-xl font-bold text-xs shadow-xl border border-gray-100 flex items-center gap-2 hover:scale-105 transition-transform"
+                        className="px-3 py-1.5 sm:px-5 sm:py-2 bg-white/95 dark:bg-zinc-900/95 sm:bg-white text-adv-slate dark:text-white sm:text-adv-slate rounded-xl font-bold text-xs shadow-md sm:shadow-xl border border-gray-200 dark:border-zinc-750 sm:border-gray-100 flex items-center gap-1.5 sm:gap-2 hover:scale-105 active:scale-95 transition-transform cursor-pointer backdrop-blur-sm"
                        >
-                          <ImageIcon className="w-4 h-4 text-adv-orange" />
+                          <ImageIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-adv-orange shrink-0" />
                           <span>{t.viewFullMap}</span>
                        </button>
                     </div>
@@ -1402,19 +1399,6 @@ export default function Account() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    {/* Questionnaire Summary Modal Button */}
-                    <button
-                      onClick={() => setShowQuestionnaireSummaryModal(true)}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border shadow-sm cursor-pointer ${
-                        theme === 'dark'
-                          ? 'bg-zinc-800 border-zinc-700 text-zinc-200 hover:text-white hover:bg-zinc-750'
-                          : 'bg-white border-gray-200 text-gray-700 hover:text-adv-slate hover:bg-gray-50'
-                      }`}
-                    >
-                      <PieChart className="w-3.5 h-3.5 text-blue-500" />
-                      <span>{t.questionnaireSummary}</span>
-                    </button>
-
                     {/* Export to Excel Button */}
                     <button
                       onClick={handleExportToExcel}
@@ -1429,63 +1413,52 @@ export default function Account() {
                 {/* Status Tabs & Filters */}
                 <div className="space-y-3.5 mb-5">
                   {/* Status Pills */}
-                  <div className="flex flex-wrap items-center gap-1.5 p-1 bg-gray-100/80 dark:bg-zinc-950/60 rounded-2xl border border-gray-200/50 dark:border-zinc-850">
+                  <div className="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-1 sm:gap-1.5 p-1 bg-gray-100/80 dark:bg-zinc-950/60 rounded-xl sm:rounded-2xl border border-gray-200/50 dark:border-zinc-850 w-full sm:w-auto">
                     <button
                       onClick={() => { setAttendeeFilter('all'); setAttendeeListPage(1); }}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                      className={`px-1.5 py-2 sm:px-3.5 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer flex flex-col xs:flex-row sm:flex-row items-center justify-center gap-1 sm:gap-1.5 min-h-[44px] sm:min-h-0 text-center ${
                         attendeeFilter === 'all'
                           ? 'bg-adv-orange text-white shadow-xs'
                           : 'text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white'
                       }`}
                     >
-                      <span>{t.allBuyers}</span>
-                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${attendeeFilter === 'all' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300'}`}>
+                      <span className="truncate">{t.allBuyers}</span>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[9px] sm:text-[10px] font-black shrink-0 ${attendeeFilter === 'all' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300'}`}>
                         {totalAttendeesCount}
                       </span>
                     </button>
 
                     <button
                       onClick={() => { setAttendeeFilter('checked_in'); setAttendeeListPage(1); }}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                      className={`px-1.5 py-2 sm:px-3.5 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer flex flex-col xs:flex-row sm:flex-row items-center justify-center gap-1 sm:gap-1.5 min-h-[44px] sm:min-h-0 text-center ${
                         attendeeFilter === 'checked_in'
                           ? 'bg-emerald-600 text-white shadow-xs'
                           : 'text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white'
                       }`}
                     >
-                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                      <span>{t.checkedIn}</span>
-                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${attendeeFilter === 'checked_in' ? 'bg-white/20 text-white' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
+                      <span className="flex items-center justify-center gap-1 truncate">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <span className="truncate">{t.checkedIn}</span>
+                      </span>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[9px] sm:text-[10px] font-black shrink-0 ${attendeeFilter === 'checked_in' ? 'bg-white/20 text-white' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
                         {checkedInCount}
                       </span>
                     </button>
 
                     <button
                       onClick={() => { setAttendeeFilter('pending'); setAttendeeListPage(1); }}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                      className={`px-1.5 py-2 sm:px-3.5 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer flex flex-col xs:flex-row sm:flex-row items-center justify-center gap-1 sm:gap-1.5 min-h-[44px] sm:min-h-0 text-center ${
                         attendeeFilter === 'pending'
                           ? 'bg-amber-600 text-white shadow-xs'
                           : 'text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white'
                       }`}
                     >
-                      <Clock className="w-3 h-3 text-amber-400" />
-                      <span>{t.pendingGate}</span>
-                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${attendeeFilter === 'pending' ? 'bg-white/20 text-white' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
-                        {pendingCount}
+                      <span className="flex items-center justify-center gap-1 truncate">
+                        <Clock className="w-3 h-3 text-amber-400 shrink-0" />
+                        <span className="truncate">{t.pendingGate}</span>
                       </span>
-                    </button>
-
-                    <button
-                      onClick={() => { setAttendeeFilter('with_answers'); setAttendeeListPage(1); }}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                        attendeeFilter === 'with_answers'
-                          ? 'bg-blue-600 text-white shadow-xs'
-                          : 'text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white'
-                      }`}
-                    >
-                      <FileText className="w-3 h-3 text-blue-400" />
-                      <span>{t.withFormAnswers}</span>
-                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${attendeeFilter === 'with_answers' ? 'bg-white/20 text-white' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'}`}>
-                        {withAnswersCount}
+                      <span className={`px-1.5 py-0.2 rounded-full text-[9px] sm:text-[10px] font-black shrink-0 ${attendeeFilter === 'pending' ? 'bg-white/20 text-white' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
+                        {pendingCount}
                       </span>
                     </button>
                   </div>
@@ -1501,7 +1474,7 @@ export default function Account() {
                           setAttendeeSearchQuery(e.target.value);
                           setAttendeeListPage(1);
                         }}
-                        placeholder={lang === 'lo' ? 'ຄົ້ນຫາຊື່, ອີເມວ, ເບີໂທ, ລະຫັດປີ້, ຫຼື ຄຳຕອບແບບສອບຖາມ...' : 'Search name, email, phone, ticket ID, or questionnaire answers...'}
+                        placeholder={lang === 'lo' ? 'ຄົ້ນຫາຊື່, ອີເມວ, ເບີໂທ, ຫຼື ລະຫັດປີ້...' : 'Search name, email, phone, or ticket ID...'}
                         className={`w-full pl-10 pr-9 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-all ${
                           theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white placeholder-zinc-500' : 'bg-gray-50 border-gray-200 text-adv-slate placeholder-gray-400'
                         }`}
@@ -1626,7 +1599,7 @@ export default function Account() {
                                           </span>
                                         )}
                                         <span className="text-[11px] font-mono text-gray-400 dark:text-zinc-500">
-                                          Ticket: <span className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>{att.ticketId || att.id}</span>
+                                          Ticket: <span className="font-bold text-adv-slate dark:text-white">{att.ticketId || att.id}</span>
                                         </span>
                                         {att.orderId && (
                                           <span className="text-[11px] font-mono text-gray-400 dark:text-zinc-500">
@@ -1652,52 +1625,16 @@ export default function Account() {
                                             <span className="text-adv-orange font-mono font-black">{att.price}</span>
                                           </>
                                         )}
-                                        {att.checkinTime && att.isCheckedIn && (
+                                        {att.checkedInTime && att.isCheckedIn && (
                                           <>
                                             <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />
                                             <span className="text-emerald-500 font-bold lowercase">
-                                              @ {att.checkinTime} {att.staffLabel ? `(${att.staffLabel})` : ''}
+                                              @ {att.checkedInTime} {att.staffLabel ? `(${att.staffLabel})` : ''}
                                             </span>
                                           </>
                                         )}
                                       </div>
 
-                                      {/* Questionnaire Answers Preview Chips (Instantly visible to Organizer) */}
-                                      {answerCount > 0 && (
-                                        <div className="mt-3 pt-2.5 border-t border-gray-200/50 dark:border-zinc-800/60">
-                                          <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1.5">
-                                            <FileText className="w-3 h-3" />
-                                            <span>{t.questionnaireAnswers} ({answerCount}):</span>
-                                          </div>
-                                          <div className="flex flex-wrap gap-1.5">
-                                            {answerEntries.slice(0, 3).map(([key, val], aIdx) => {
-                                              const displayVal = Array.isArray(val) ? val.join(', ') : typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val);
-                                              // Look up clean question label
-                                              const qObj = (selectedEvent as any)?.attendeeQuestions?.find((q: any) => q.id === key || q.title === key);
-                                              const qLabel = qObj?.title || key;
-
-                                              return (
-                                                <span
-                                                  key={aIdx}
-                                                  className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border flex items-center gap-1 max-w-[280px] truncate ${
-                                                    theme === 'dark'
-                                                      ? 'bg-blue-950/30 border-blue-900/40 text-blue-200'
-                                                      : 'bg-blue-50 border-blue-100 text-blue-900'
-                                                  }`}
-                                                >
-                                                  <span className="font-bold opacity-75">{qLabel}:</span>
-                                                  <span className="font-black truncate">{displayVal}</span>
-                                                </span>
-                                              );
-                                            })}
-                                            {answerCount > 3 && (
-                                              <span className="px-2 py-0.5 rounded-md bg-gray-200/60 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 text-[10px] font-bold">
-                                                +{answerCount - 3} more
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                      )}
                                     </div>
                                   </div>
 
@@ -1708,11 +1645,11 @@ export default function Account() {
                                       <button
                                         type="button"
                                         onClick={() => setSelectedAttendeeForAnswers(att)}
-                                        className="px-3 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer"
+                                        className="px-3 py-1.5 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-adv-orange border border-orange-500/20 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer"
                                       >
                                         <Eye className="w-3.5 h-3.5" />
                                         <span>{t.viewAnswers}</span>
-                                        <span className="px-1.5 py-0.2 rounded-full bg-blue-500/20 text-[9px]">
+                                        <span className="px-1.5 py-0.2 rounded-full bg-orange-500/20 text-[9px]">
                                           {answerCount}
                                         </span>
                                       </button>
@@ -1722,37 +1659,31 @@ export default function Account() {
                                       </span>
                                     )}
 
-                                    {/* Quick Check-in / Undo Toggle */}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const newStatus = !att.isCheckedIn;
-                                        toggleAttendeeCheckin(att.ticketId || att.id, att.isCheckedIn, 'Organizer Desk');
-                                        addToast(
-                                          newStatus 
-                                            ? (lang === 'en' ? `Checked in ${att.attendeeName}` : `ເຊັກອິນ ${att.attendeeName} ສຳເລັດແລ້ວ`)
-                                            : (lang === 'en' ? `Check-in undone for ${att.attendeeName}` : `ຍົກເລີກການເຊັກອິນ ${att.attendeeName} ແລ້ວ`),
-                                          newStatus ? 'success' : 'warning'
-                                        );
-                                      }}
-                                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer border ${
-                                        att.isCheckedIn
-                                          ? 'bg-zinc-200 dark:bg-zinc-800 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 text-gray-600 dark:text-zinc-300 border-gray-300 dark:border-zinc-700'
-                                          : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-xs'
-                                      }`}
-                                    >
-                                      {att.isCheckedIn ? (
-                                        <>
-                                          <Check className="w-3 h-3 text-emerald-500" />
-                                          <span>{t.undoCheckin}</span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <CheckCircle2 className="w-3 h-3" />
-                                          <span>{t.quickCheckin}</span>
-                                        </>
-                                      )}
-                                    </button>
+                                    {/* Check-in Status / Quick Check-in */}
+                                    {att.isCheckedIn ? (
+                                      <div 
+                                        className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-2xs select-none"
+                                        title={att.checkedInTime ? `${t.checkedIn} @ ${att.checkedInTime}` : t.checkedIn}
+                                      >
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                        <span>{t.checkedIn}</span>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setCheckinStatus(att.ticketId || att.id, true, 'Organizer Desk');
+                                          addToast(
+                                            lang === 'en' ? `Checked in ${att.attendeeName}` : `ເຊັກອິນ ${att.attendeeName} ສຳເລັດແລ້ວ`,
+                                            'success'
+                                          );
+                                        }}
+                                        className="px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer border bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-xs active:scale-95"
+                                      >
+                                        <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                        <span>{t.quickCheckin}</span>
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                               </motion.div>
@@ -1975,29 +1906,26 @@ export default function Account() {
                     {/* Account Number */}
                     <div className="space-y-1 sm:space-y-2">
                       <label className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest block">{lang === 'lo' ? 'ເລກບັນຊີ' : 'Account Number'}</label>
-                      <div className="relative">
-                        <Hash className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        <input 
-                          type="text"
-                          inputMode="numeric"
-                          required
-                          placeholder="e.g. 120-11-00-1234567-001"
-                          value={bankFormData.accountNumber || ''}
-                          onChange={(e) => setBankFormData({...bankFormData, accountNumber: e.target.value.replace(/\D/g, '')})}
-                          className={`w-full border rounded-lg sm:rounded-xl pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all ${
-                            theme === 'dark' 
-                              ? 'bg-zinc-950 border-zinc-800 text-white focus:bg-zinc-900' 
-                              : 'bg-gray-50 border-gray-200/80 text-adv-slate focus:bg-white'
-                          }`}
-                        />
-                      </div>
+                      <input 
+                        type="text"
+                        inputMode="numeric"
+                        required
+                        placeholder="e.g. 120-11-00-1234567-001"
+                        value={bankFormData.accountNumber || ''}
+                        onChange={(e) => setBankFormData({...bankFormData, accountNumber: e.target.value.replace(/\D/g, '')})}
+                        className={`w-full border rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all ${
+                          theme === 'dark' 
+                            ? 'bg-zinc-950 border-zinc-800 text-white focus:bg-zinc-900' 
+                            : 'bg-gray-50 border-gray-200/80 text-adv-slate focus:bg-white'
+                        }`}
+                      />
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-2 sm:gap-3 pt-1">
                     <button 
                       type="submit"
-                      className={`px-5 sm:px-8 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest hover:opacity-90 transition-all cursor-pointer shadow-xs active:scale-[0.98] flex items-center justify-center gap-1.5 sm:gap-2 ${theme === 'dark' ? 'bg-white text-adv-slate' : 'bg-adv-slate text-white'}`}
+                      className="px-5 sm:px-8 py-2.5 sm:py-3 bg-adv-slate dark:bg-white text-white dark:text-adv-slate rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest hover:opacity-90 transition-all cursor-pointer shadow-xs active:scale-[0.98] flex items-center justify-center gap-1.5 sm:gap-2"
                     >
                       <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       {lang === 'lo' ? 'ບັນທຶກ' : 'Save Details'}
@@ -2193,7 +2121,7 @@ export default function Account() {
               }`}>
                 <button 
                   onClick={() => setShowFullMap(false)}
-                  className={`px-8 sm:px-10 py-3 sm:py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-md w-full sm:w-auto ${theme === 'dark' ? 'bg-white text-adv-slate' : 'bg-adv-slate text-white'}`}
+                  className="px-8 sm:px-10 py-3 sm:py-4 bg-adv-slate dark:bg-white text-white dark:text-adv-slate rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-md w-full sm:w-auto"
                 >
                   {t.closeDashboard}
                 </button>
@@ -2432,7 +2360,7 @@ export default function Account() {
                     />
                     <button 
                       type="submit"
-                      className={`px-5 py-3 rounded-xl text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all ${theme === 'dark' ? 'bg-white text-adv-slate' : 'bg-adv-slate text-white'}`}
+                      className="px-5 py-3 rounded-xl bg-adv-slate dark:bg-white text-white dark:text-adv-slate text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all"
                     >
                       {t.checkIn}
                     </button>
@@ -2906,29 +2834,29 @@ export default function Account() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 15 }}
               className={`max-w-2xl w-full max-h-[90vh] flex flex-col rounded-3xl sm:rounded-[2.5rem] shadow-2xl border overflow-hidden ${
-                theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
+                theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-200 text-gray-900'
               }`}
               onClick={e => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="p-5 sm:p-6 border-b border-gray-100/70 dark:border-zinc-800/70 flex items-start justify-between gap-3 shrink-0">
+              <div className="p-5 sm:p-6 border-b border-gray-200 dark:border-zinc-800 flex items-start justify-between gap-3 shrink-0">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center justify-center font-black text-base shrink-0">
                     <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-base sm:text-lg font-black truncate">
+                      <h3 className="text-base sm:text-lg font-black truncate text-gray-900 dark:text-white">
                         {selectedAttendeeForAnswers.attendeeName || `${selectedAttendeeForAnswers.firstName || ''} ${selectedAttendeeForAnswers.lastName || ''}`.trim() || 'Attendee'}
                       </h3>
                       <span className="px-2 py-0.5 rounded-md bg-adv-slate dark:bg-zinc-800 text-white text-[9px] font-black uppercase tracking-widest">
                         {selectedAttendeeForAnswers.ticketType || 'Standard'}
                       </span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-gray-400 mt-0.5 font-medium">
-                      <span>Ticket: <strong className="font-mono text-adv-slate dark:text-zinc-200">{selectedAttendeeForAnswers.ticketId || selectedAttendeeForAnswers.id}</strong></span>
+                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-gray-500 dark:text-zinc-400 mt-0.5 font-medium">
+                      <span>Ticket: <strong className="font-mono text-gray-900 dark:text-zinc-200">{selectedAttendeeForAnswers.ticketId || selectedAttendeeForAnswers.id}</strong></span>
                       {selectedAttendeeForAnswers.orderId && (
-                        <span>• Order: <strong className="font-mono text-adv-slate dark:text-zinc-200">{selectedAttendeeForAnswers.orderId}</strong></span>
+                        <span>• Order: <strong className="font-mono text-gray-900 dark:text-zinc-200">{selectedAttendeeForAnswers.orderId}</strong></span>
                       )}
                     </div>
                   </div>
@@ -2946,22 +2874,22 @@ export default function Account() {
               <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
                 {/* Attendee Details Card */}
                 <div className={`p-4 rounded-2xl border grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs ${
-                  theme === 'dark' ? 'bg-zinc-950/60 border-zinc-800' : 'bg-gray-50 border-gray-150'
+                  theme === 'dark' ? 'bg-zinc-950/60 border-zinc-800 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
                 }`}>
                   <div>
-                    <span className="text-gray-400 block text-[10px] uppercase font-bold">{t.phone}</span>
+                    <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t.phone}</span>
                     <span className="font-bold text-emerald-600 dark:text-emerald-400 truncate block">{selectedAttendeeForAnswers.phone || '-'}</span>
                   </div>
                   <div>
-                    <span className="text-gray-400 block text-[10px] uppercase font-bold">{t.email}</span>
-                    <span className="font-bold truncate block">{selectedAttendeeForAnswers.email || '-'}</span>
+                    <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t.email}</span>
+                    <span className="font-bold text-gray-900 dark:text-zinc-100 truncate block">{selectedAttendeeForAnswers.email || '-'}</span>
                   </div>
                   <div>
-                    <span className="text-gray-400 block text-[10px] uppercase font-bold">{t.zone} / {t.seat}</span>
-                    <span className="font-bold truncate block">{selectedAttendeeForAnswers.zone || 'General'} • {selectedAttendeeForAnswers.seat || 'Standard'}</span>
+                    <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t.zone} / {t.seat}</span>
+                    <span className="font-bold text-gray-900 dark:text-zinc-100 truncate block">{selectedAttendeeForAnswers.zone || 'General'} • {selectedAttendeeForAnswers.seat || 'Standard'}</span>
                   </div>
                   <div>
-                    <span className="text-gray-400 block text-[10px] uppercase font-bold">{t.checkedIn}</span>
+                    <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t.checkedIn}</span>
                     <span className={`font-bold flex items-center gap-1 ${selectedAttendeeForAnswers.isCheckedIn ? 'text-emerald-500' : 'text-amber-500'}`}>
                       {selectedAttendeeForAnswers.isCheckedIn ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
                       {selectedAttendeeForAnswers.isCheckedIn ? 'Verified' : 'Pending Gate'}
@@ -2971,13 +2899,13 @@ export default function Account() {
 
                 {/* Questionnaire QA pairs */}
                 <div className="space-y-3 pt-2">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-gray-900 dark:text-zinc-100 flex items-center gap-1.5">
                     <CheckSquare className="w-3.5 h-3.5 text-adv-orange" />
                     <span>{t.questionnaireAnswers} ({Object.keys(selectedAttendeeForAnswers.customAnswers || {}).length})</span>
                   </h4>
 
                   {(!selectedAttendeeForAnswers.customAnswers || Object.keys(selectedAttendeeForAnswers.customAnswers).length === 0) ? (
-                    <div className="py-8 text-center text-gray-400 text-xs font-bold">
+                    <div className="py-8 text-center text-gray-500 dark:text-zinc-400 text-xs font-bold">
                       {lang === 'lo' ? 'ບໍ່ມີຂໍ້ມູນຄຳຕອບແບບສອບຖາມສຳລັບປີ້ໃບນີ້' : 'No questionnaire answers recorded for this ticket.'}
                     </div>
                   ) : (
@@ -2991,23 +2919,25 @@ export default function Account() {
                         <div
                           key={idx}
                           className={`p-4 rounded-2xl border transition-all ${
-                            theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800/80' : 'bg-white border-gray-150 shadow-2xs'
+                            theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800 text-zinc-100' : 'bg-white border-gray-200 text-gray-900 shadow-xs'
                           }`}
                         >
-                          <div className="flex items-center justify-between gap-2 mb-1.5">
-                            <span className="text-xs font-black text-adv-slate dark:text-zinc-100 flex items-center gap-1.5">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="text-xs font-black text-gray-900 dark:text-zinc-100 flex items-center gap-1.5">
                               <span className="w-5 h-5 rounded-full bg-orange-500/10 text-adv-orange text-[10px] font-black flex items-center justify-center shrink-0">
                                 {idx + 1}
                               </span>
-                              <span>{qTitle}</span>
+                              <span className="text-gray-900 dark:text-white font-black">{qTitle}</span>
                             </span>
-                            <span className="px-2 py-0.5 rounded-md bg-gray-100 dark:bg-zinc-800 text-[9px] font-bold text-gray-500 uppercase">
+                            <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase ${
+                              theme === 'dark' ? 'bg-zinc-800 text-zinc-300' : 'bg-gray-100 text-gray-700'
+                            }`}>
                               {qType}
                             </span>
                           </div>
 
-                          <div className={`p-3 rounded-xl border text-xs font-bold leading-relaxed ${
-                            theme === 'dark' ? 'bg-blue-950/20 border-blue-900/30 text-blue-200' : 'bg-blue-50/50 border-blue-100 text-blue-950'
+                          <div className={`p-3.5 rounded-xl border text-sm font-semibold leading-relaxed ${
+                            theme === 'dark' ? 'bg-zinc-900 border-zinc-750 text-zinc-100' : 'bg-gray-50 border-gray-200 text-gray-900'
                           }`}>
                             {formattedVal || '-'}
                           </div>
@@ -3019,227 +2949,10 @@ export default function Account() {
               </div>
 
               {/* Footer */}
-              <div className="p-4 sm:p-5 border-t border-gray-100/70 dark:border-zinc-800/70 bg-gray-50/50 dark:bg-zinc-950/40 flex items-center justify-between gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (selectedAttendeeForAnswers.customAnswers) {
-                      const textLines = Object.entries(selectedAttendeeForAnswers.customAnswers).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`);
-                      navigator.clipboard?.writeText(textLines.join('\n'));
-                      addToast(lang === 'en' ? 'Answers copied to clipboard!' : 'ສຳເນົາຄຳຕອບທັງໝົດແລ້ວ!', 'success');
-                    }
-                  }}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer ${
-                    theme === 'dark' ? 'border-zinc-700 hover:bg-zinc-800 text-zinc-300' : 'border-gray-200 hover:bg-white text-gray-700'
-                  }`}
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>{t.copyLink || 'Copy Answers'}</span>
-                </button>
-
+              <div className="p-4 sm:p-5 border-t border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950/40 flex items-center justify-end gap-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => setSelectedAttendeeForAnswers(null)}
-                  className="px-5 py-2 rounded-xl bg-adv-orange text-white font-bold text-xs shadow-xs hover:opacity-90 transition-opacity cursor-pointer"
-                >
-                  {t.close || 'Close'}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {/* Aggregate Questionnaire Summary Analytics Modal */}
-        {showQuestionnaireSummaryModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[270] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
-            onClick={() => setShowQuestionnaireSummaryModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              className={`max-w-3xl w-full max-h-[90vh] flex flex-col rounded-3xl sm:rounded-[2.5rem] shadow-2xl border overflow-hidden ${
-                theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
-              }`}
-              onClick={e => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="p-5 sm:p-6 border-b border-gray-100/70 dark:border-zinc-800/70 flex items-start justify-between gap-3 shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center font-black text-base shrink-0">
-                    <PieChart className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-base sm:text-lg font-black">{t.questionnaireSummary}</h3>
-                    <p className="text-xs text-gray-400 font-medium">
-                      {lang === 'lo' 
-                        ? `ສະຫຼຸບຜົນຕອບຮັບແບບສອບຖາມຈາກຜູ້ຊື້ປີ້ທັງໝົດ (${attendeesWithAnswers.length} ຄົນ)`
-                        : `Aggregated survey responses from ticket buyers (${attendeesWithAnswers.length} responses)`}
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setShowQuestionnaireSummaryModal(false)}
-                  className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Body */}
-              <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-6">
-                {(() => {
-                  const configuredQuestions = (selectedEvent as any)?.attendeeQuestions || [];
-                  // If no configured questions, discover dynamically from attendee answers
-                  const questionSet = new Map<string, any>();
-
-                  configuredQuestions.forEach((q: any) => {
-                    const qKey = q.id || q.title;
-                    questionSet.set(qKey, q);
-                  });
-
-                  eventAttendees.forEach(att => {
-                    if (att.customAnswers) {
-                      Object.keys(att.customAnswers).forEach(k => {
-                        if (!questionSet.has(k)) {
-                          questionSet.set(k, { id: k, title: k, type: 'text' });
-                        }
-                      });
-                    }
-                  });
-
-                  const allQuestionsList = Array.from(questionSet.values());
-
-                  if (allQuestionsList.length === 0) {
-                    return (
-                      <div className="py-16 text-center text-gray-400 text-sm font-bold">
-                        {lang === 'lo' ? 'ງານນີ້ບໍ່ມີການຕັ້ງຄ່າແບບສອບຖາມຜູ້ຊື້ປີ້' : 'No questionnaire configured for this event.'}
-                      </div>
-                    );
-                  }
-
-                  return allQuestionsList.map((qObj: any, qIdx: number) => {
-                    const qKey = qObj.id || qObj.title;
-                    const qTitle = qObj.title || qKey;
-                    const qType = qObj.type || 'text';
-
-                    // Collect all responses for this question
-                    const responsesList: Array<{ attendeeName: string; answer: any; ticketId: string }> = [];
-                    const choiceCounts: Record<string, number> = {};
-
-                    eventAttendees.forEach(att => {
-                      if (att.customAnswers && att.customAnswers[qKey] !== undefined && att.customAnswers[qKey] !== null && att.customAnswers[qKey] !== '') {
-                        const val = att.customAnswers[qKey];
-                        responsesList.push({
-                          attendeeName: att.attendeeName || 'Attendee',
-                          answer: val,
-                          ticketId: att.ticketId || att.id
-                        });
-
-                        if (Array.isArray(val)) {
-                          val.forEach((item: string) => {
-                            choiceCounts[item] = (choiceCounts[item] || 0) + 1;
-                          });
-                        } else {
-                          const strVal = typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val);
-                          choiceCounts[strVal] = (choiceCounts[strVal] || 0) + 1;
-                        }
-                      }
-                    });
-
-                    const totalResponses = responsesList.length;
-                    const isChoiceType = ['select', 'radio', 'checkbox', 'dropdown'].includes(qType) || Object.keys(choiceCounts).length <= 6;
-
-                    return (
-                      <div
-                        key={qIdx}
-                        className={`p-5 rounded-2xl sm:rounded-3xl border transition-all ${
-                          theme === 'dark' ? 'bg-zinc-950/50 border-zinc-800' : 'bg-[#F9FAFB] border-gray-150 shadow-2xs'
-                        }`}
-                      >
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-2.5 border-b border-gray-200/60 dark:border-zinc-800/60">
-                          <div className="flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-lg bg-orange-500/10 text-adv-orange text-xs font-black flex items-center justify-center shrink-0">
-                              {qIdx + 1}
-                            </span>
-                            <h4 className="text-sm sm:text-base font-black">{qTitle}</h4>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs font-bold text-gray-400">
-                            <span className="px-2 py-0.5 rounded-md bg-gray-200 dark:bg-zinc-800 text-[10px] uppercase">{qType}</span>
-                            <span>• {totalResponses} / {eventAttendees.length} responses</span>
-                          </div>
-                        </div>
-
-                        {/* Choice Breakdown Bars */}
-                        {isChoiceType && Object.keys(choiceCounts).length > 0 ? (
-                          <div className="space-y-2.5 pt-1">
-                            {Object.entries(choiceCounts).map(([opt, count], oIdx) => {
-                              const pct = totalResponses > 0 ? Math.round((count / totalResponses) * 100) : 0;
-                              return (
-                                <div key={oIdx} className="space-y-1">
-                                  <div className="flex justify-between text-xs font-bold">
-                                    <span className="truncate pr-2">{opt}</span>
-                                    <span className="font-mono text-adv-orange shrink-0">{count} ({pct}%)</span>
-                                  </div>
-                                  <div className="w-full h-2 rounded-full bg-gray-200/80 dark:bg-zinc-800 overflow-hidden">
-                                    <div
-                                      className="h-full bg-adv-orange rounded-full transition-all duration-500"
-                                      style={{ width: `${pct}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          /* Text responses list */
-                          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                            {responsesList.length === 0 ? (
-                              <p className="text-xs text-gray-400 italic">No responses recorded</p>
-                            ) : (
-                              responsesList.map((res, rIdx) => (
-                                <div
-                                  key={rIdx}
-                                  className={`p-2.5 rounded-xl border text-xs flex items-center justify-between gap-3 ${
-                                    theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-100'
-                                  }`}
-                                >
-                                  <span className="font-bold text-adv-slate dark:text-zinc-200 truncate flex-1">
-                                    "{String(res.answer)}"
-                                  </span>
-                                  <span className="text-[10px] text-gray-400 shrink-0 font-medium">
-                                    — {res.attendeeName}
-                                  </span>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-
-              {/* Footer */}
-              <div className="p-4 sm:p-5 border-t border-gray-100/70 dark:border-zinc-800/70 bg-gray-50/50 dark:bg-zinc-950/40 flex items-center justify-between gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleExportToExcel}
-                  className="px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer hover:bg-emerald-500/20"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>{lang === 'en' ? 'Export All Responses to CSV/Excel' : 'ສົ່ງອອກທຸກຄຳຕອບໄປຍັງ Excel'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowQuestionnaireSummaryModal(false)}
                   className="px-5 py-2 rounded-xl bg-adv-orange text-white font-bold text-xs shadow-xs hover:opacity-90 transition-opacity cursor-pointer"
                 >
                   {t.close || 'Close'}

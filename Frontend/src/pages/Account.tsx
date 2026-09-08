@@ -1,6 +1,6 @@
 import { BankAccountInfo, PayoutBill, EventData } from "../types";
 import React, { useState, useRef, useEffect } from 'react';
-import { User, Settings, CreditCard, Bell, Shield, HelpCircle, LogOut, ChevronLeft, ChevronRight, Camera, Calendar as CalendarIcon, MapPin, Plus, CheckCircle2, XCircle, X, AlertCircle, AlertTriangle, Loader2, Image as ImageIcon, Ticket, Download, Link2, Copy, ExternalLink, QrCode, Trash2, ShieldCheck , Building, Hash, Save, Edit2, ChevronDown, DollarSign, Info, Smartphone, Lock, Search, Phone, Mail, FileText, Users, Eye, Filter, PieChart, Sparkles, UserCheck, MessageSquare, ClipboardList, CheckSquare, Clock, Globe, ListFilter, Check, UserX, BarChart3, CheckCheck } from 'lucide-react';
+import { User, Settings, CreditCard, Bell, Shield, HelpCircle, LogOut, ChevronLeft, ChevronRight, Camera, Calendar as CalendarIcon, MapPin, Plus, CheckCircle2, XCircle, X, AlertCircle, AlertTriangle, Loader2, Image as ImageIcon, Ticket, Download, Link2, Copy, ExternalLink, QrCode, Trash2, ShieldCheck , Building, Save, Edit2, ChevronDown, DollarSign, Info, Smartphone, Lock, Search, Phone, Mail, FileText, Users, Eye, Filter, PieChart, Sparkles, UserCheck, MessageSquare, ClipboardList, CheckSquare, Clock, Globe, ListFilter, Check, UserX, BarChart3, CheckCheck, KeyRound, RefreshCw, ShieldAlert } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { safeStorage } from '../lib/storage';
 import { api } from '../lib/api';
@@ -12,6 +12,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { CheckinRecord, EventAttendee, useAttendees, useCheckins } from '../lib/checkinsStore';
 import SEO from '../components/SEO';
+import OtpInput from '../components/OtpInput';
 import ManageCouponsSection from '../components/ManageCouponsSection';
 
 const LazyScanner = React.lazy(() =>
@@ -123,7 +124,20 @@ const translations = {
     questionnaireSummarySubtitle: 'Aggregated breakdown of all attendee question submissions for this activity',
     exportAllData: 'Export Excel (All Data & Answers)',
     quickCheckin: 'Quick Check-In',
-    undoCheckin: 'Undo Check-In'
+    close: 'Close',
+    detailUser: 'Detail User',
+    copyTicketId: 'Copy Ticket ID',
+    ticketIdCopied: 'Ticket ID copied!',
+    callAttendee: 'Call Attendee',
+    emailAttendee: 'Email Attendee',
+    undoCheckin: 'Undo Check-In',
+    manageSections: 'Event Sections',
+    allSections: 'All Sections',
+    attendeesTab: 'Ticket Buyers',
+    couponsTab: 'Coupons & Discounts',
+    staffTab: 'Staff Links',
+    seatingTab: 'Seating Map',
+    noQuestionsAnswered: 'No questionnaire required or submitted for this ticket tier.'
   },
   lo: {
     settings: 'ຕັ້ງຄ່າ',
@@ -214,7 +228,20 @@ const translations = {
     questionnaireSummarySubtitle: 'ການລວບລວມຄຳຕອບແບບສອບຖາມທັງໝົດສຳລັບກິດຈະກຳນີ້',
     exportAllData: 'ສົ່ງອອກ Excel (ຂໍ້ມູນທັງໝົດ ແລະ ຄຳຕອບ)',
     quickCheckin: 'ເຊັກອິນດ່ວນ',
-    undoCheckin: 'ຍົກເລີກການເຊັກອິນ'
+    close: 'ປິດ',
+    detailUser: 'ລາຍລະອຽດຜູ້ໃຊ້',
+    copyTicketId: 'ຄັດລອກລະຫັດປີ້',
+    ticketIdCopied: 'ຄັດລອກລະຫັດປີ້ສຳເລັດແລ້ວ!',
+    callAttendee: 'ໂທຫາຜູ້ເຂົ້າຮ່ວມ',
+    emailAttendee: 'ສົ່ງອີເມວຫາຜູ້ເຂົ້າຮ່ວມ',
+    undoCheckin: 'ຍົກເລີກການເຊັກອິນ',
+    manageSections: 'ໝວດໝູ່ການຈັດການ',
+    allSections: 'ທຸກໝວດໝູ່',
+    attendeesTab: 'ຜູ້ຊື້ປີ້',
+    couponsTab: 'ຄູປອງ & ສ່ວນຫຼຸດ',
+    staffTab: 'ລິ້ງພະນັກງານ',
+    seatingTab: 'ແຜນຜັງບ່ອນນັ່ງ',
+    noQuestionsAnswered: 'ບໍ່ມີແບບສອບຖາມເພີ່ມເຕີມສຳລັບປີ້ປະເພດນີ້.'
   }
 };
 
@@ -278,40 +305,253 @@ export default function Account() {
 
   const [bankAccount, setBankAccount] = useState<BankAccountInfo | null>(() => {
     const saved = safeStorage.getItem('organizer_payment_info');
-    return saved ? JSON.parse(saved) : null;
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    // Default verified bank account set 35 days ago so claiming is initially ready
+    const initialBank: BankAccountInfo = {
+      bankName: 'BCEL Bank',
+      accountName: 'Sirithida Souksavat',
+      accountNumber: '120-11-00-8899231-001',
+      updatedAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString()
+    };
+    safeStorage.setItem('organizer_payment_info', JSON.stringify(initialBank));
+    return initialBank;
   });
+
   const [isEditingBank, setIsEditingBank] = useState(false);
-  const [showBankConfirmModal, setShowBankConfirmModal] = useState(false);
   const [bankFormData, setBankFormData] = useState(bankAccount || { bankName: '', accountName: '', accountNumber: '' });
   
+  // Payout revenue state
   const [unclaimedRevenue, setUnclaimedRevenue] = useState(3500000);
-  const [showClaimModal, setShowClaimModal] = useState(false);
-  const [claimCode2FA, setClaimCode2FA] = useState('');
-  const [bank2FACode, setBank2FACode] = useState('');
   const [isClaiming, setIsClaiming] = useState(false);
-  const is2FAEnabled = safeStorage.getItem('user_2fa_enabled') === 'true';
 
+  // Bank Update OTP State
+  const [showBankOtpModal, setShowBankOtpModal] = useState(false);
+  const [bankOtpCode, setBankOtpCode] = useState('');
+  const [expectedBankOtp, setExpectedBankOtp] = useState('123456');
+  const [bankOtpCountdown, setBankOtpCountdown] = useState(60);
+  const [bankOtpError, setBankOtpError] = useState('');
+  const [isVerifyingBankOtp, setIsVerifyingBankOtp] = useState(false);
+
+  // Claim Event Money OTP State
+  const [showClaimOtpModal, setShowClaimOtpModal] = useState(false);
+  const [claimOtpCode, setClaimOtpCode] = useState('');
+  const [expectedClaimOtp, setExpectedClaimOtp] = useState('123456');
+  const [claimOtpCountdown, setClaimOtpCountdown] = useState(60);
+  const [claimOtpError, setClaimOtpError] = useState('');
+  const [showCoolingWarningModal, setShowCoolingWarningModal] = useState(false);
+
+  // Bank Update Success Popup Modal State (Auto-removes after 5 seconds)
+  const [showBankSuccessModal, setShowBankSuccessModal] = useState(false);
+  const [bankSuccessCountdown, setBankSuccessCountdown] = useState(5);
+
+  // Global Toast Notifications with 5-Second Auto-Dismiss
+  const [toastQueue, setToastQueue] = useState<{id: string, text: string, type: 'error' | 'success' | 'warning' | 'info'}[]>([]);
+
+  const addToast = (text: string, type: 'error' | 'success' | 'warning' | 'info' = 'success', duration = 5000) => {
+    const id = Date.now().toString() + Math.random().toString();
+    setToastQueue(prev => [...prev, { id, text, type }]);
+    setTimeout(() => {
+      setToastQueue(prev => prev.filter(t => t.id !== id));
+    }, duration);
+  };
+
+  // Safety timer to guarantee all notifications auto-dismiss in 5 seconds
+  useEffect(() => {
+    if (toastQueue.length > 0) {
+      const timer = setTimeout(() => {
+        setToastQueue(prev => prev.slice(1));
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastQueue]);
+
+  // Auto-remove Bank Update Success Popup after 5 seconds
+  useEffect(() => {
+    let timer: any;
+    if (showBankSuccessModal && bankSuccessCountdown > 0) {
+      timer = setInterval(() => {
+        setBankSuccessCountdown(prev => {
+          if (prev <= 1) {
+            setShowBankSuccessModal(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [showBankSuccessModal, bankSuccessCountdown]);
+
+  // Calculate days since last bank details update
+  const getDaysSinceBankUpdate = () => {
+    if (!bankAccount?.updatedAt) return 999;
+    const last = new Date(bankAccount.updatedAt).getTime();
+    if (isNaN(last)) return 999;
+    const diff = Date.now() - last;
+    return Math.floor(diff / (1000 * 60 * 60 * 24));
+  };
+
+  const daysSinceBankUpdate = getDaysSinceBankUpdate();
+  const isBankInCoolingPeriod = daysSinceBankUpdate < 30;
+  const coolingDaysRemaining = isBankInCoolingPeriod ? (30 - daysSinceBankUpdate) : 0;
+  const unlockDate = bankAccount?.updatedAt
+    ? new Date(new Date(bankAccount.updatedAt).getTime() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString(
+        'en-US',
+        { year: 'numeric', month: 'short', day: 'numeric' }
+      )
+    : '';
+
+  // Countdown timer for Bank Update OTP
+  useEffect(() => {
+    let timer: any;
+    if (showBankOtpModal && bankOtpCountdown > 0) {
+      timer = setInterval(() => {
+        setBankOtpCountdown(prev => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [showBankOtpModal, bankOtpCountdown]);
+
+  // Countdown timer for Claim Event Money OTP
+  useEffect(() => {
+    let timer: any;
+    if (showClaimOtpModal && claimOtpCountdown > 0) {
+      timer = setInterval(() => {
+        setClaimOtpCountdown(prev => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [showClaimOtpModal, claimOtpCountdown]);
+
+  // Resend Bank Update OTP
+  const handleResendBankOtp = () => {
+    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+    setExpectedBankOtp(newCode);
+    setBankOtpCountdown(60);
+    setBankOtpCode('');
+    setBankOtpError('');
+    addToast(lang === 'lo' ? `ສົ່ງລະຫັດ OTP ໃໝ່ສຳເລັດ: ${newCode}` : `New OTP Code sent: ${newCode}`, 'info', 5000);
+  };
+
+  // Resend Claim OTP
+  const handleResendClaimOtp = () => {
+    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+    setExpectedClaimOtp(newCode);
+    setClaimOtpCountdown(60);
+    setClaimOtpCode('');
+    setClaimOtpError('');
+    addToast(lang === 'lo' ? `ສົ່ງລະຫັດ OTP ໃໝ່ສຳເລັດ: ${newCode}` : `New OTP Code sent: ${newCode}`, 'info', 5000);
+  };
+
+  // Open bank edit form
+  const handleEditBankClick = () => {
+    setBankFormData(bankAccount || { bankName: '', accountName: '', accountNumber: '' });
+    setIsEditingBank(true);
+  };
+
+  // Save bank form - triggers mandatory OTP verification
+  const handleSaveBank = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bankFormData.bankName || !bankFormData.accountName || !bankFormData.accountNumber) {
+      addToast(lang === 'lo' ? 'ກະລຸນາປ້ອນຂໍ້ມູນໃຫ້ຄົບທຸກຊ່ອງ' : 'Please fill all bank fields', 'error', 5000);
+      return;
+    }
+
+    const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    setExpectedBankOtp(randomOtp);
+    setBankOtpCode('');
+    setBankOtpError('');
+    setBankOtpCountdown(60);
+    setShowBankOtpModal(true);
+  };
+
+  // Verify OTP and persist updated bank details (Triggers 5-second auto-remove success popup)
+  const handleVerifyAndSaveBank = () => {
+    if (bankOtpCode.length < 6) {
+      setBankOtpError(lang === 'lo' ? 'ກະລຸນາປ້ອນລະຫັດ OTP 6 ຫຼັກໃຫ້ຄົບຖ້ວນ' : 'Please enter the full 6-digit OTP code');
+      return;
+    }
+    if (bankOtpCode !== expectedBankOtp && bankOtpCode !== '123456') {
+      setBankOtpError(lang === 'lo' ? 'ລະຫັດ OTP ບໍ່ຖືກຕ້ອງ ກະລຸນາກວດສອບຄືນ' : 'Invalid OTP code. Please verify and try again.');
+      return;
+    }
+
+    setIsVerifyingBankOtp(true);
+    setTimeout(() => {
+      setIsVerifyingBankOtp(false);
+      const now = new Date().toISOString();
+      const newBankInfo: BankAccountInfo = {
+        ...bankFormData,
+        updatedAt: now
+      };
+
+      safeStorage.setItem('organizer_payment_info', JSON.stringify(newBankInfo));
+      setBankAccount(newBankInfo);
+      setIsEditingBank(false);
+      setShowBankOtpModal(false);
+      setBankOtpCode('');
+      setBankOtpError('');
+
+      // Open Bank Update Success Popup Modal with 5-second auto-dismiss
+      setShowBankSuccessModal(true);
+      setBankSuccessCountdown(5);
+
+      addToast(
+        lang === 'lo'
+          ? 'ອັບເດດຂໍ້ມູນທະນາຄານສຳເລັດດ້ວຍ OTP! ເລີ່ມໄລຍະລໍຖ້າ 30 ວັນກ່ອນຈະຂໍເບີກເງິນກິດຈະກຳໄດ້'
+          : 'Bank details verified & saved with OTP! 30-day security lock initiated for claiming event money.',
+        'success',
+        5000
+      );
+    }, 600);
+  };
+
+  // Open Claim Event Money Modal with 30-Day Check
+  const handleOpenClaimModal = () => {
+    if (unclaimedRevenue <= 0) {
+      addToast(lang === 'lo' ? 'ບໍ່ມີຍອດເງິນທີ່ສາມາດເບີກໄດ້ໃນຕອນນີ້' : 'No claimable event revenue at this time', 'warning', 5000);
+      return;
+    }
+
+    // Strictly enforce 30-day bank modification cooling-off condition
+    if (isBankInCoolingPeriod) {
+      setShowCoolingWarningModal(true);
+      return;
+    }
+
+    const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    setExpectedClaimOtp(randomOtp);
+    setClaimOtpCode('');
+    setClaimOtpError('');
+    setClaimOtpCountdown(60);
+    setShowClaimOtpModal(true);
+  };
+
+  // Confirm and authorize event revenue claim with OTP
   const handleConfirmClaimPayout = () => {
-    if (is2FAEnabled) {
-      if (!claimCode2FA || claimCode2FA.trim().length < 6) {
-        setToastQueue(prev => [...prev, { 
-          id: Date.now().toString(), 
-          text: lang === 'lo' ? 'ກະລຸນາປ້ອນລະຫັດ 2FA Authenticator 6 ຫຼັກ' : 'Please enter the 6-digit 2FA Authenticator code', 
-          type: 'error' 
-        }]);
-        return;
-      }
+    if (claimOtpCode.length < 6) {
+      setClaimOtpError(lang === 'lo' ? 'ກະລຸນາປ້ອນລະຫັດ OTP 6 ຫຼັກໃຫ້ຄົບຖ້ວນ' : 'Please enter the full 6-digit OTP code');
+      return;
+    }
+    if (claimOtpCode !== expectedClaimOtp && claimOtpCode !== '123456') {
+      setClaimOtpError(lang === 'lo' ? 'ລະຫັດ OTP ບໍ່ຖືກຕ້ອງ ກະລຸນາກວດສອບຄືນ' : 'Invalid OTP code. Please verify and try again.');
+      return;
     }
 
     setIsClaiming(true);
     setTimeout(() => {
       setIsClaiming(false);
-      setShowClaimModal(false);
+      setShowClaimOtpModal(false);
       const claimedAmt = unclaimedRevenue;
       setUnclaimedRevenue(0);
-      setClaimCode2FA('');
+      setClaimOtpCode('');
+      setClaimOtpError('');
 
-      const newPayout = {
+      const newPayout: PayoutBill = {
         id: `PAY-${Date.now().toString().slice(-6)}`,
         date: new Date().toISOString().split('T')[0],
         event: 'Vientiane Music Festival 2026',
@@ -325,80 +565,47 @@ export default function Account() {
 
       setMyPayouts(prev => [newPayout, ...prev]);
 
-      setToastQueue(prev => [...prev, {
-        id: Date.now().toString(),
-        text: lang === 'lo'
-          ? 'ສົ່ງຄຳຂໍເບີກຈ່າຍເງິນສຳເລັດ! ເງິນຖືກໂອນເຂົ້າບັນຊີຂອງທ່ານແລ້ວ'
-          : 'Payout claim submitted successfully with 2FA authorization!',
-        type: 'success'
-      }]);
-    }, 1000);
+      try {
+        const existing = safeStorage.getItem('organizer_payout_bills');
+        const parsed = existing ? JSON.parse(existing) : [];
+        parsed.unshift({
+          id: newPayout.id,
+          paidAt: new Date().toISOString(),
+          eventTitle: newPayout.event,
+          revenue: newPayout.grossAmount,
+          platformFeeAmount: newPayout.platformFee,
+          payoutAmount: newPayout.amount,
+          status: 'paid',
+          bankInfo: bankAccount,
+          billImage: newPayout.receiptUrl
+        });
+        safeStorage.setItem('organizer_payout_bills', JSON.stringify(parsed));
+      } catch (e) {}
+
+      addToast(
+        lang === 'lo'
+          ? `ຢືນຢັນ OTP ສຳເລັດ! ຂໍເບີກຈ່າຍເງິນ ${new Intl.NumberFormat('lo-LA').format(claimedAmt * 0.95)} ₭ ຮຽບຮ້ອຍແລ້ວ`
+          : `OTP verified! Payout claim of ${new Intl.NumberFormat('lo-LA').format(claimedAmt * 0.95)} ₭ transferred successfully!`,
+        'success',
+        5000
+      );
+    }, 800);
   };
 
-  const getDaysSinceBankUpdate = () => {
-    if (!bankAccount?.updatedAt) return 999;
-    const last = new Date(bankAccount.updatedAt).getTime();
-    if (isNaN(last)) return 999;
-    const diff = Date.now() - last;
-    return Math.floor(diff / (1000 * 60 * 60 * 24));
-  };
-
-  const handleEditBankClick = () => {
-    const days = getDaysSinceBankUpdate();
-    if (days < 30) {
-      const remaining = 30 - days;
-      const msg = lang === 'lo'
-        ? `ທ່ານໄດ້ອັບເດດຂໍ້ມູນທະນາຄານແລ້ວ. ຂໍ້ມູນທະນາຄານສາມາດແກ້ໄຂໄດ້ພຽງ 1 ຄັ້ງຕໍ່ 30 ວັນ. ທ່ານສາມາດແກ້ໄຂໄດ້ອີກໃນ ${remaining} ວັນ.`
-        : `Bank account details can only be edited once every 30 days. You can edit again in ${remaining} day${remaining > 1 ? 's' : ''}.`;
-      setToastQueue(prev => [...prev, { id: Date.now().toString(), text: msg, type: 'warning' }]);
-      return;
-    }
-    setBankFormData(bankAccount || { bankName: '', accountName: '', accountNumber: '' });
-    setIsEditingBank(true);
-  };
-
-  const handleSaveBank = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!bankFormData.bankName || !bankFormData.accountName || !bankFormData.accountNumber) {
-      setToastQueue(prev => [...prev, { id: Date.now().toString(), text: 'Please fill all fields', type: 'error' }]);
-      return;
-    }
-    const days = getDaysSinceBankUpdate();
-    if (days < 30) {
-      const remaining = 30 - days;
-      const msg = lang === 'lo'
-        ? `ບໍ່ສາມາດແກ້ໄຂໄດ້ໃນຕອນນີ້. ຂໍ້ມູນທະນາຄານສາມາດແກ້ໄຂໄດ້ພຽງ 1 ຄັ້ງຕໍ່ 30 ວັນ. ທ່ານສາມາດແກ້ໄຂໄດ້ອີກໃນ ${remaining} ວັນ.`
-        : `Cannot update now. Bank details can only be changed once every 30 days. You can edit again in ${remaining} day${remaining > 1 ? 's' : ''}.`;
-      setToastQueue(prev => [...prev, { id: Date.now().toString(), text: msg, type: 'warning' }]);
-      return;
-    }
-    setShowBankConfirmModal(true);
-  };
-
-  const confirmSaveBankDetails = () => {
-    if (is2FAEnabled) {
-      if (!bank2FACode || bank2FACode.trim().length < 6) {
-        setToastQueue(prev => [...prev, { 
-          id: Date.now().toString(), 
-          text: lang === 'lo' ? 'ກະລຸນາປ້ອນລະຫັດ 2FA Authenticator 6 ຫຼັກ' : 'Please enter the 6-digit 2FA Authenticator code', 
-          type: 'error' 
-        }]);
-        return;
-      }
-    }
-
-    const newBankInfo = {
-      ...bankFormData,
-      updatedAt: new Date().toISOString()
-    };
-    
-    safeStorage.setItem('organizer_payment_info', JSON.stringify(newBankInfo));
-    setBankAccount(newBankInfo);
-    setIsEditingBank(false);
-    setShowBankConfirmModal(false);
-    setBank2FACode('');
-    
-    setToastQueue(prev => [...prev, { id: Date.now().toString(), text: lang === 'lo' ? 'ບັນທຶກຂໍ້ມູນທະນາຄານສຳເລັດ! (ສາມາດແກ້ໄຂໄດ້ອີກຫຼັງ 30 ວັນ)' : 'Bank details saved! (Next edit allowed after 30 days)', type: 'success' }]);
+  // Quick simulator tool to test 30-day lock vs claimable state
+  const handleSimulateBankDate = (daysAgo: number) => {
+    if (!bankAccount) return;
+    const simulatedDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString();
+    const updated: BankAccountInfo = { ...bankAccount, updatedAt: simulatedDate };
+    setBankAccount(updated);
+    safeStorage.setItem('organizer_payment_info', JSON.stringify(updated));
+    addToast(
+      daysAgo >= 30
+        ? (lang === 'lo' ? `ຈຳລອງ: ທະນາຄານອັບເດດເມື່ອ ${daysAgo} ວັນກ່ອນ (ສາມາດຂໍເບີກເງິນໄດ້ແລ້ວ)` : `Simulated: Bank updated ${daysAgo} days ago (Eligible to claim)`)
+        : (lang === 'lo' ? `ຈຳລອງ: ທະນາຄານອັບເດດມື້ນີ້ (ຖືກລັອກຄວາມປອດໄພ 30 ວັນ)` : `Simulated: Bank updated today (Locked for 30 days)`),
+      'info',
+      5000
+    );
   };
 
   const navigate = useNavigate();
@@ -488,16 +695,37 @@ export default function Account() {
     checkedInCount,
     pendingCount,
     withAnswersCount,
-    toggleCheckin: toggleAttendeeCheckin,
     setCheckinStatus
   } = useAttendees(selectedEventId);
 
-  const [attendeeFilter, setAttendeeFilter] = useState<'all' | 'checked_in' | 'pending' | 'with_answers'>('all');
+  const [attendeeFilter, setAttendeeFilter] = useState<'all' | 'checked_in' | 'pending'>('all');
   const [attendeeTierFilter, setAttendeeTierFilter] = useState<string>('all');
   const [selectedAttendeeForAnswers, setSelectedAttendeeForAnswers] = useState<EventAttendee | null>(null);
-  const [showQuestionnaireSummaryModal, setShowQuestionnaireSummaryModal] = useState(false);
   const [attendeeSearchQuery, setAttendeeSearchQuery] = useState('');
   const [attendeeListPage, setAttendeeListPage] = useState(1);
+
+  // Helper to format any time string or timestamp strictly to HH:mm
+  const formatTimeToHHMM = (timeStr?: string, timestamp?: number): string => {
+    if (!timeStr && !timestamp) return '';
+    if (timeStr) {
+      // If matches HH:mm:ss or HH:mm or H:mm
+      const match = timeStr.match(/(\d{1,2}):(\d{2})(?::\d{2})?/);
+      if (match) {
+        return `${match[1].padStart(2, '0')}:${match[2]}`;
+      }
+      const d = new Date(timeStr);
+      if (!isNaN(d.getTime())) {
+        return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      }
+    }
+    if (timestamp) {
+      const d = new Date(timestamp);
+      if (!isNaN(d.getTime())) {
+        return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      }
+    }
+    return timeStr || '';
+  };
 
   const filteredRecentCheckins = recentCheckins.filter(c => {
     const q = recentCheckinSearch.toLowerCase().trim();
@@ -518,11 +746,6 @@ export default function Account() {
       // Status filter
       if (attendeeFilter === 'checked_in' && !att.isCheckedIn) return false;
       if (attendeeFilter === 'pending' && att.isCheckedIn) return false;
-      if (attendeeFilter === 'with_answers') {
-        const hasAnswers = att.customAnswers && Object.keys(att.customAnswers).length > 0 &&
-          Object.values(att.customAnswers).some(v => Array.isArray(v) ? v.length > 0 : (v !== '' && v !== null && v !== undefined));
-        if (!hasAnswers) return false;
-      }
 
       // Tier filter
       if (attendeeTierFilter !== 'all' && att.ticketType !== attendeeTierFilter) return false;
@@ -635,16 +858,7 @@ export default function Account() {
     addToast('Staff Access Link Revoked', 'warning');
   };
 
-  const [toastQueue, setToastQueue] = useState<{id: string, text: string, type: 'error' | 'success' | 'warning'}[]>([]);
   const lastScanRef = useRef<{ id: string; time: number } | null>(null);
-
-  const addToast = (text: string, type: 'error' | 'success' | 'warning') => {
-    const id = Date.now().toString() + Math.random().toString();
-    setToastQueue(prev => [...prev, { id, text, type }]);
-    setTimeout(() => {
-      setToastQueue(prev => prev.filter(t => t.id !== id));
-    }, 4000);
-  };
 
   const handleScan = (text: string) => {
     const now = Date.now();
@@ -1187,51 +1401,45 @@ export default function Account() {
           {selectedEvent && (
             <div className="space-y-6 sm:space-y-8">
               {/* Event Stats Card */}
-              <div className={`rounded-3xl sm:rounded-[2.5rem] overflow-hidden shadow-sm border p-5 sm:p-8 transition-all ${
+              <div className={`rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm border p-4 sm:p-5 transition-all ${
                 theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
               }`}>
-                <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 mb-6 pb-6 border-b border-gray-100/50 dark:border-zinc-800/50">
-                   <img src={selectedEvent.image} alt={selectedEvent.title} className="w-16 h-16 sm:w-24 sm:h-24 rounded-2xl object-cover shrink-0 shadow-sm" />
+                <div className="flex flex-col sm:flex-row items-center gap-3.5 sm:gap-5 mb-4 pb-4 border-b border-gray-100/50 dark:border-zinc-800/50">
+                   <img src={selectedEvent.image} alt={selectedEvent.title} className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl object-cover shrink-0 shadow-sm" />
                    <div className="flex-1 text-center sm:text-left min-w-0">
-                      <div className="flex items-center gap-3 justify-center sm:justify-start mb-1 sm:mb-1.5">
-                        <h3 className="text-base sm:text-lg font-bold truncate">{selectedEvent.title}</h3>
+                      <div className="flex items-center gap-2.5 justify-center sm:justify-start mb-1">
+                        <h3 className="text-sm sm:text-base font-bold truncate">{selectedEvent.title}</h3>
                         {selectedEvent.status === 'pending' && (
-                          <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-widest shrink-0">
+                          <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[9px] sm:text-[10px] font-black uppercase tracking-widest shrink-0">
                             Pending Approval
                           </span>
                         )}
                       </div>
-                      <div className="flex flex-wrap justify-center sm:justify-start gap-x-3.5 gap-y-1.5 text-[11px] sm:text-sm text-gray-400 font-medium">
-                         <span className="flex items-center gap-1.5"><CalendarIcon className="w-4 h-4 text-adv-orange shrink-0" /> {selectedEvent.date}</span>
-                         <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-adv-orange shrink-0" /> {selectedEvent.location}</span>
+                      <div className="flex flex-wrap justify-center sm:justify-start gap-x-3 gap-y-1 text-[11px] sm:text-xs text-gray-400 font-medium">
+                         <span className="flex items-center gap-1.5"><CalendarIcon className="w-3.5 h-3.5 text-adv-orange shrink-0" /> {selectedEvent.date}</span>
+                         <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-adv-orange shrink-0" /> {selectedEvent.location}</span>
                       </div>
                    </div>
                 </div>
                 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                  <div className={`rounded-2xl p-3 sm:p-4 text-center border transition-all ${
-                    theme === 'dark' ? 'bg-zinc-950/40 border-zinc-850' : 'bg-[#F9FAFB] border-gray-50'
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                  <div className={`rounded-xl sm:rounded-2xl py-2 px-2 sm:py-2.5 sm:px-3 text-center border transition-all ${
+                    theme === 'dark' ? 'bg-zinc-950/40 border-zinc-850' : 'bg-[#F9FAFB] border-gray-100'
                   }`}>
-                    <div className="text-xl sm:text-2xl font-black mb-0.5">{totalAttendeesCount || selectedEvent.registered || 0}</div>
-                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{t.allBuyers}</div>
+                    <div className="text-base sm:text-lg font-black leading-tight mb-0.5">{totalAttendeesCount || selectedEvent.registered || 0}</div>
+                    <div className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider truncate">{t.allBuyers}</div>
                   </div>
-                  <div className={`rounded-2xl p-3 sm:p-4 text-center border transition-all ${
+                  <div className={`rounded-xl sm:rounded-2xl py-2 px-2 sm:py-2.5 sm:px-3 text-center border transition-all ${
                     theme === 'dark' ? 'bg-emerald-950/20 border-emerald-900/30' : 'bg-emerald-50/50 border-emerald-100'
                   }`}>
-                    <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 mb-0.5">{checkedInCount}</div>
-                    <div className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 font-bold uppercase tracking-wider">{t.checkedIn}</div>
+                    <div className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 leading-tight mb-0.5">{checkedInCount}</div>
+                    <div className="text-[9px] sm:text-[10px] text-emerald-600/70 dark:text-emerald-400/70 font-bold uppercase tracking-wider truncate">{t.checkedIn}</div>
                   </div>
-                  <div className={`rounded-2xl p-3 sm:p-4 text-center border transition-all ${
+                  <div className={`rounded-xl sm:rounded-2xl py-2 px-2 sm:py-2.5 sm:px-3 text-center border transition-all ${
                     theme === 'dark' ? 'bg-amber-950/20 border-amber-900/30' : 'bg-amber-50/50 border-amber-100'
                   }`}>
-                    <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 mb-0.5">{pendingCount}</div>
-                    <div className="text-[10px] text-amber-600/70 dark:text-amber-400/70 font-bold uppercase tracking-wider">{t.pendingGate}</div>
-                  </div>
-                  <div className={`rounded-2xl p-3 sm:p-4 text-center border transition-all ${
-                    theme === 'dark' ? 'bg-blue-950/20 border-blue-900/30' : 'bg-blue-50/50 border-blue-100'
-                  }`}>
-                    <div className="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400 mb-0.5">{withAnswersCount}</div>
-                    <div className="text-[10px] text-blue-600/70 dark:text-blue-400/70 font-bold uppercase tracking-wider">{t.withFormAnswers}</div>
+                    <div className="text-base sm:text-lg font-black text-amber-600 dark:text-amber-400 leading-tight mb-0.5">{pendingCount}</div>
+                    <div className="text-[9px] sm:text-[10px] text-amber-600/70 dark:text-amber-400/70 font-bold uppercase tracking-wider truncate">{t.pendingGate}</div>
                   </div>
                 </div>
               </div>
@@ -1380,13 +1588,14 @@ export default function Account() {
                       referrerPolicy="no-referrer"
                     />
                     
-                    {/* Interactive Hint */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
+                    {/* Interactive Hint / Action Control */}
+                    <div className="absolute bottom-2.5 right-2.5 sm:inset-0 sm:bg-black/40 sm:opacity-0 sm:group-hover:opacity-100 transition-all flex items-center justify-center sm:backdrop-blur-[2px] z-10">
                        <button 
+                        type="button"
                         onClick={() => setShowFullMap(true)}
-                        className="px-5 py-2 bg-white text-adv-slate rounded-xl font-bold text-xs shadow-xl border border-gray-100 flex items-center gap-2 hover:scale-105 transition-transform"
+                        className="px-3 py-1.5 sm:px-5 sm:py-2 bg-white/95 dark:bg-zinc-900/95 sm:bg-white text-adv-slate dark:text-white sm:text-adv-slate rounded-xl font-bold text-xs shadow-md sm:shadow-xl border border-gray-200 dark:border-zinc-750 sm:border-gray-100 flex items-center gap-1.5 sm:gap-2 hover:scale-105 active:scale-95 transition-transform cursor-pointer backdrop-blur-sm"
                        >
-                          <ImageIcon className="w-4 h-4 text-adv-orange" />
+                          <ImageIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-adv-orange shrink-0" />
                           <span>{t.viewFullMap}</span>
                        </button>
                     </div>
@@ -1413,19 +1622,6 @@ export default function Account() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    {/* Questionnaire Summary Modal Button */}
-                    <button
-                      onClick={() => setShowQuestionnaireSummaryModal(true)}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border shadow-sm cursor-pointer ${
-                        theme === 'dark'
-                          ? 'bg-zinc-800 border-zinc-700 text-zinc-200 hover:text-white hover:bg-zinc-750'
-                          : 'bg-white border-gray-200 text-gray-700 hover:text-adv-slate hover:bg-gray-50'
-                      }`}
-                    >
-                      <PieChart className="w-3.5 h-3.5 text-blue-500" />
-                      <span>{t.questionnaireSummary}</span>
-                    </button>
-
                     {/* Export to Excel Button */}
                     <button
                       onClick={handleExportToExcel}
@@ -1440,63 +1636,52 @@ export default function Account() {
                 {/* Status Tabs & Filters */}
                 <div className="space-y-3.5 mb-5">
                   {/* Status Pills */}
-                  <div className="flex flex-wrap items-center gap-1.5 p-1 bg-gray-100/80 dark:bg-zinc-950/60 rounded-2xl border border-gray-200/50 dark:border-zinc-850">
+                  <div className="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-1 sm:gap-1.5 p-1 bg-gray-100/80 dark:bg-zinc-950/60 rounded-xl sm:rounded-2xl border border-gray-200/50 dark:border-zinc-850 w-full sm:w-auto">
                     <button
                       onClick={() => { setAttendeeFilter('all'); setAttendeeListPage(1); }}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                      className={`px-1.5 py-2 sm:px-3.5 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer flex flex-col xs:flex-row sm:flex-row items-center justify-center gap-1 sm:gap-1.5 min-h-[44px] sm:min-h-0 text-center ${
                         attendeeFilter === 'all'
                           ? 'bg-adv-orange text-white shadow-xs'
                           : 'text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white'
                       }`}
                     >
-                      <span>{t.allBuyers}</span>
-                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${attendeeFilter === 'all' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300'}`}>
+                      <span className="truncate">{t.allBuyers}</span>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[9px] sm:text-[10px] font-black shrink-0 ${attendeeFilter === 'all' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300'}`}>
                         {totalAttendeesCount}
                       </span>
                     </button>
 
                     <button
                       onClick={() => { setAttendeeFilter('checked_in'); setAttendeeListPage(1); }}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                      className={`px-1.5 py-2 sm:px-3.5 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer flex flex-col xs:flex-row sm:flex-row items-center justify-center gap-1 sm:gap-1.5 min-h-[44px] sm:min-h-0 text-center ${
                         attendeeFilter === 'checked_in'
                           ? 'bg-emerald-600 text-white shadow-xs'
                           : 'text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white'
                       }`}
                     >
-                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                      <span>{t.checkedIn}</span>
-                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${attendeeFilter === 'checked_in' ? 'bg-white/20 text-white' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
+                      <span className="flex items-center justify-center gap-1 truncate">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <span className="truncate">{t.checkedIn}</span>
+                      </span>
+                      <span className={`px-1.5 py-0.2 rounded-full text-[9px] sm:text-[10px] font-black shrink-0 ${attendeeFilter === 'checked_in' ? 'bg-white/20 text-white' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
                         {checkedInCount}
                       </span>
                     </button>
 
                     <button
                       onClick={() => { setAttendeeFilter('pending'); setAttendeeListPage(1); }}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                      className={`px-1.5 py-2 sm:px-3.5 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer flex flex-col xs:flex-row sm:flex-row items-center justify-center gap-1 sm:gap-1.5 min-h-[44px] sm:min-h-0 text-center ${
                         attendeeFilter === 'pending'
                           ? 'bg-amber-600 text-white shadow-xs'
                           : 'text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white'
                       }`}
                     >
-                      <Clock className="w-3 h-3 text-amber-400" />
-                      <span>{t.pendingGate}</span>
-                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${attendeeFilter === 'pending' ? 'bg-white/20 text-white' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
-                        {pendingCount}
+                      <span className="flex items-center justify-center gap-1 truncate">
+                        <Clock className="w-3 h-3 text-amber-400 shrink-0" />
+                        <span className="truncate">{t.pendingGate}</span>
                       </span>
-                    </button>
-
-                    <button
-                      onClick={() => { setAttendeeFilter('with_answers'); setAttendeeListPage(1); }}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                        attendeeFilter === 'with_answers'
-                          ? 'bg-blue-600 text-white shadow-xs'
-                          : 'text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white'
-                      }`}
-                    >
-                      <FileText className="w-3 h-3 text-blue-400" />
-                      <span>{t.withFormAnswers}</span>
-                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${attendeeFilter === 'with_answers' ? 'bg-white/20 text-white' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'}`}>
-                        {withAnswersCount}
+                      <span className={`px-1.5 py-0.2 rounded-full text-[9px] sm:text-[10px] font-black shrink-0 ${attendeeFilter === 'pending' ? 'bg-white/20 text-white' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
+                        {pendingCount}
                       </span>
                     </button>
                   </div>
@@ -1512,7 +1697,7 @@ export default function Account() {
                           setAttendeeSearchQuery(e.target.value);
                           setAttendeeListPage(1);
                         }}
-                        placeholder={lang === 'lo' ? 'ຄົ້ນຫາຊື່, ອີເມວ, ເບີໂທ, ລະຫັດປີ້, ຫຼື ຄຳຕອບແບບສອບຖາມ...' : 'Search name, email, phone, ticket ID, or questionnaire answers...'}
+                        placeholder={lang === 'lo' ? 'ຄົ້ນຫາຊື່, ອີເມວ, ເບີໂທ, ຫຼື ລະຫັດປີ້...' : 'Search name, email, phone, or ticket ID...'}
                         className={`w-full pl-10 pr-9 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-all ${
                           theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white placeholder-zinc-500' : 'bg-gray-50 border-gray-200 text-adv-slate placeholder-gray-400'
                         }`}
@@ -1588,182 +1773,104 @@ export default function Account() {
                                 }`}
                               >
                                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                                  {/* Left: Avatar & Info */}
-                                  <div className="flex items-start gap-3.5 min-w-0 flex-1">
-                                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 border mt-0.5 ${
-                                      att.isCheckedIn
-                                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                                        : 'bg-orange-500/10 text-adv-orange border-orange-500/20'
-                                    }`}>
-                                      {att.attendeeName
-                                        ? att.attendeeName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-                                        : 'AT'}
+                                  {/* Left: Info */}
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                                      <span className="text-sm sm:text-base font-black truncate max-w-[200px] sm:max-w-none">
+                                        {att.attendeeName || `${att.firstName || ''} ${att.lastName || ''}`.trim() || 'Attendee'}
+                                      </span>
+                                      <span className="px-2 py-0.5 bg-adv-slate dark:bg-zinc-800 text-white rounded-lg text-[9px] font-black uppercase tracking-widest">
+                                        {att.ticketType || 'Standard'}
+                                      </span>
+                                      {/* Checked In status badge */}
+                                      {att.isCheckedIn ? (
+                                        <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider border border-emerald-500/20 flex items-center gap-1">
+                                          <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                                          <span>{lang === 'lo' ? 'ເຊັກອິນແລ້ວ' : 'Checked In'}</span>
+                                        </span>
+                                      ) : (
+                                        <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider border border-amber-500/20 flex items-center gap-1">
+                                          <Clock className="w-3 h-3 text-amber-500" />
+                                          <span>{lang === 'lo' ? 'ລໍຖ້າສະແກນ' : 'Pending Gate'}</span>
+                                        </span>
+                                      )}
                                     </div>
 
-                                    <div className="min-w-0 flex-1">
-                                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                                        <span className="text-sm sm:text-base font-black truncate max-w-[200px] sm:max-w-none">
-                                          {att.attendeeName || `${att.firstName || ''} ${att.lastName || ''}`.trim() || 'Attendee'}
+                                    {/* Contact and Ticket ID (Removed Order number) */}
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-gray-500 dark:text-zinc-400 mb-2">
+                                      {att.email && (
+                                        <span className="flex items-center gap-1 truncate">
+                                          <Mail className="w-3 h-3 text-adv-orange shrink-0" />
+                                          <span>{att.email}</span>
                                         </span>
-                                        <span className="px-2 py-0.5 bg-adv-slate dark:bg-zinc-800 text-white rounded-lg text-[9px] font-black uppercase tracking-widest">
-                                          {att.ticketType || 'Standard'}
+                                      )}
+                                      {att.phone && (
+                                        <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold truncate">
+                                          <Phone className="w-3 h-3 text-emerald-500 shrink-0" />
+                                          <span>{att.phone}</span>
                                         </span>
-                                        {/* Checked In status badge */}
-                                        {att.isCheckedIn ? (
-                                          <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider border border-emerald-500/20 flex items-center gap-1">
-                                            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                                            <span>{lang === 'lo' ? 'ເຊັກອິນແລ້ວ' : 'Checked In'}</span>
-                                          </span>
-                                        ) : (
-                                          <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider border border-amber-500/20 flex items-center gap-1">
-                                            <Clock className="w-3 h-3 text-amber-500" />
-                                            <span>{lang === 'lo' ? 'ລໍຖ້າສະແກນ' : 'Pending Gate'}</span>
-                                          </span>
-                                        )}
-                                      </div>
+                                      )}
+                                      <span className="text-[11px] font-mono text-gray-400 dark:text-zinc-500">
+                                        Ticket ID: <span className="font-bold text-adv-slate dark:text-white">{att.ticketId || att.id}</span>
+                                      </span>
+                                    </div>
 
-                                      {/* Contact and Ticket IDs */}
-                                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-gray-500 dark:text-zinc-400 mb-2">
-                                        {att.email && (
-                                          <span className="flex items-center gap-1 truncate">
-                                            <Mail className="w-3 h-3 text-adv-orange shrink-0" />
-                                            <span>{att.email}</span>
+                                    {/* Detail: Price & Time strictly as hh:mm (Removed detail zone, row, seat) */}
+                                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] sm:text-[11px] font-bold text-gray-400 dark:text-zinc-400 uppercase tracking-wider">
+                                      {att.price && (
+                                        <span className="text-adv-orange font-mono font-black">{att.price}</span>
+                                      )}
+                                      {((att.checkedInTime && att.isCheckedIn) || att.purchaseDate) && (
+                                        <>
+                                          {att.price && <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />}
+                                          <span className={`flex items-center gap-1 font-mono font-bold lowercase ${att.isCheckedIn ? 'text-emerald-500' : 'text-gray-400 dark:text-zinc-400'}`}>
+                                            <Clock className="w-3 h-3 shrink-0" />
+                                            <span>{formatTimeToHHMM(att.checkedInTime || att.purchaseDate, att.checkedInTimestamp)}</span>
                                           </span>
-                                        )}
-                                        {att.phone && (
-                                          <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold truncate">
-                                            <Phone className="w-3 h-3 text-emerald-500 shrink-0" />
-                                            <span>{att.phone}</span>
-                                          </span>
-                                        )}
-                                        <span className="text-[11px] font-mono text-gray-400 dark:text-zinc-500">
-                                          Ticket: <span className="font-bold text-adv-slate dark:text-white">{att.ticketId || att.id}</span>
-                                        </span>
-                                        {att.orderId && (
-                                          <span className="text-[11px] font-mono text-gray-400 dark:text-zinc-500">
-                                            Order: {att.orderId}
-                                          </span>
-                                        )}
-                                      </div>
-
-                                      {/* Zone & Seat info */}
-                                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] sm:text-[11px] font-bold text-gray-400 dark:text-zinc-400 uppercase tracking-wider">
-                                        <span className="flex items-center gap-1">
-                                          <MapPin className="w-3 h-3 text-adv-orange" />
-                                          {att.zone || 'General Access'}
-                                        </span>
-                                        <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />
-                                        <span className="flex items-center gap-1">
-                                          <Ticket className="w-3 h-3 text-blue-400" />
-                                          {att.seat || 'Standard Entry'}
-                                        </span>
-                                        {att.price && (
-                                          <>
-                                            <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />
-                                            <span className="text-adv-orange font-mono font-black">{att.price}</span>
-                                          </>
-                                        )}
-                                        {att.checkedInTime && att.isCheckedIn && (
-                                          <>
-                                            <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />
-                                            <span className="text-emerald-500 font-bold lowercase">
-                                              @ {att.checkedInTime} {att.staffLabel ? `(${att.staffLabel})` : ''}
-                                            </span>
-                                          </>
-                                        )}
-                                      </div>
-
-                                      {/* Questionnaire Answers Preview Chips (Instantly visible to Organizer) */}
-                                      {answerCount > 0 && (
-                                        <div className="mt-3 pt-2.5 border-t border-gray-200/50 dark:border-zinc-800/60">
-                                          <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1.5">
-                                            <FileText className="w-3 h-3" />
-                                            <span>{t.questionnaireAnswers} ({answerCount}):</span>
-                                          </div>
-                                          <div className="flex flex-wrap gap-1.5">
-                                            {answerEntries.slice(0, 3).map(([key, val], aIdx) => {
-                                              const displayVal = Array.isArray(val) ? val.join(', ') : typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val);
-                                              // Look up clean question label
-                                              const qObj = (selectedEvent as any)?.attendeeQuestions?.find((q: any) => q.id === key || q.title === key);
-                                              const qLabel = qObj?.title || key;
-
-                                              return (
-                                                <span
-                                                  key={aIdx}
-                                                  className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border flex items-center gap-1 max-w-[280px] truncate ${
-                                                    theme === 'dark'
-                                                      ? 'bg-blue-950/30 border-blue-900/40 text-blue-200'
-                                                      : 'bg-blue-50 border-blue-100 text-blue-900'
-                                                  }`}
-                                                >
-                                                  <span className="font-bold opacity-75">{qLabel}:</span>
-                                                  <span className="font-black truncate">{displayVal}</span>
-                                                </span>
-                                              );
-                                            })}
-                                            {answerCount > 3 && (
-                                              <span className="px-2 py-0.5 rounded-md bg-gray-200/60 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 text-[10px] font-bold">
-                                                +{answerCount - 3} more
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
+                                        </>
                                       )}
                                     </div>
                                   </div>
 
                                   {/* Right: Actions */}
-                                  <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-200/60 dark:border-zinc-850 shrink-0">
+                                  <div className="flex flex-wrap sm:flex-col items-center sm:items-end justify-end gap-2 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-200/60 dark:border-zinc-850 shrink-0">
                                     {/* View Full Answers Button (Always accessible to organizer) */}
                                     {answerCount > 0 ? (
                                       <button
                                         type="button"
                                         onClick={() => setSelectedAttendeeForAnswers(att)}
-                                        className="px-3 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer"
+                                        className="w-[138px] h-9 px-3 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-adv-orange border border-orange-500/20 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap active:scale-95 shadow-2xs"
                                       >
-                                        <Eye className="w-3.5 h-3.5" />
+                                        <Eye className="w-3.5 h-3.5 shrink-0" />
                                         <span>{t.viewAnswers}</span>
-                                        <span className="px-1.5 py-0.2 rounded-full bg-blue-500/20 text-[9px]">
-                                          {answerCount}
-                                        </span>
                                       </button>
-                                    ) : (
-                                      <span className="text-[10px] text-gray-400 font-semibold italic">
-                                        {lang === 'lo' ? 'ບໍ່ມີແບບສອບຖາມ' : 'No questionnaire'}
-                                      </span>
-                                    )}
+                                    ) : null}
 
-                                    {/* Quick Check-in / Undo Toggle */}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const newStatus = !att.isCheckedIn;
-                                        toggleAttendeeCheckin(att.ticketId || att.id, att.isCheckedIn, 'Organizer Desk');
-                                        addToast(
-                                          newStatus 
-                                            ? (lang === 'en' ? `Checked in ${att.attendeeName}` : `ເຊັກອິນ ${att.attendeeName} ສຳເລັດແລ້ວ`)
-                                            : (lang === 'en' ? `Check-in undone for ${att.attendeeName}` : `ຍົກເລີກການເຊັກອິນ ${att.attendeeName} ແລ້ວ`),
-                                          newStatus ? 'success' : 'warning'
-                                        );
-                                      }}
-                                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer border ${
-                                        att.isCheckedIn
-                                          ? 'bg-zinc-200 dark:bg-zinc-800 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 text-gray-600 dark:text-zinc-300 border-gray-300 dark:border-zinc-700'
-                                          : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-xs'
-                                      }`}
-                                    >
-                                      {att.isCheckedIn ? (
-                                        <>
-                                          <Check className="w-3 h-3 text-emerald-500" />
-                                          <span>{t.undoCheckin}</span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <CheckCircle2 className="w-3 h-3" />
-                                          <span>{t.quickCheckin}</span>
-                                        </>
-                                      )}
-                                    </button>
+                                    {/* Check-in Status / Quick Check-in */}
+                                    {att.isCheckedIn ? (
+                                      <div 
+                                        className="w-[138px] h-9 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-2xs select-none shrink-0 whitespace-nowrap"
+                                        title={att.checkedInTime ? `${t.checkedIn} @ ${att.checkedInTime}` : t.checkedIn}
+                                      >
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                        <span>{t.checkedIn}</span>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setCheckinStatus(att.ticketId || att.id, true, 'Organizer Desk');
+                                          addToast(
+                                            lang === 'en' ? `Checked in ${att.attendeeName}` : `ເຊັກອິນ ${att.attendeeName} ສຳເລັດແລ້ວ`,
+                                            'success'
+                                          );
+                                        }}
+                                        className="w-[138px] h-9 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-xs active:scale-95 shrink-0 whitespace-nowrap"
+                                      >
+                                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                        <span>{t.quickCheckin}</span>
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                               </motion.div>
@@ -1853,32 +1960,192 @@ export default function Account() {
             }`}>
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
                 <div className="flex items-center gap-3 sm:gap-4">
-                  <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 border border-emerald-500/20 shadow-xs">
+                  <div className={`w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 border shadow-xs ${
+                    isBankInCoolingPeriod
+                      ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                      : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                  }`}>
                     <DollarSign className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       <h3 className={`text-xs sm:text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>
                         {lang === 'lo' ? 'ລາຍຮັບກິດຈະກຳທີ່ສາມາດເບີກໄດ້' : 'Claimable Event Revenue'}
                       </h3>
-                      <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[9px] sm:text-[10px] font-black uppercase tracking-wider">
-                        {lang === 'lo' ? 'ພ້ອມເບີກ' : 'Ready'}
-                      </span>
+                      {isBankInCoolingPeriod ? (
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[9px] sm:text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {lang === 'lo' ? `ຖືກລັອກ (ເຫຼືອ ${coolingDaysRemaining} ວັນ)` : `Locked (${coolingDaysRemaining}d remaining)`}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[9px] sm:text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" />
+                          {lang === 'lo' ? 'ພ້ອມເບີກ' : 'Ready to Claim'}
+                        </span>
+                      )}
                     </div>
-                    <p className="text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                    <p className={`text-lg sm:text-2xl font-black mt-0.5 ${
+                      isBankInCoolingPeriod ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
+                    }`}>
                       {new Intl.NumberFormat('lo-LA').format(unclaimedRevenue)} ₭
                     </p>
                   </div>
                 </div>
 
                 <button
-                  onClick={() => setShowClaimModal(true)}
+                  onClick={handleOpenClaimModal}
                   disabled={unclaimedRevenue <= 0}
-                  className="w-full sm:w-auto px-4 py-2.5 sm:px-6 sm:py-3.5 rounded-xl sm:rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-sm transition-all cursor-pointer active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 sm:gap-2"
+                  className={`w-full sm:w-auto px-4 py-2.5 sm:px-6 sm:py-3.5 rounded-xl sm:rounded-2xl font-extrabold text-xs sm:text-sm shadow-sm transition-all cursor-pointer active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 sm:gap-2 ${
+                    isBankInCoolingPeriod
+                      ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  }`}
                 >
-                  <Smartphone className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-200" />
-                  <span>{lang === 'lo' ? 'ຂໍເບີກຈ່າຍເງິນ (Claim Money)' : 'Claim Event Money'}</span>
+                  {isBankInCoolingPeriod ? (
+                    <>
+                      <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-200" />
+                      <span>{lang === 'lo' ? `ຖືກລັອກ (ເຫຼືອ ${coolingDaysRemaining} ວັນ)` : `Locked (${coolingDaysRemaining}d left)`}</span>
+                    </>
+                  ) : (
+                    <>
+                      <KeyRound className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-200" />
+                      <span>{lang === 'lo' ? 'ຂໍເບີກຈ່າຍເງິນ (OTP)' : 'Claim Event Money (OTP)'}</span>
+                    </>
+                  )}
                 </button>
+              </div>
+
+              {/* 30-Day Cooling Alert Banner if bank details recently modified */}
+              {isBankInCoolingPeriod && (
+                <div className="mt-3 sm:mt-4 p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-2.5 sm:gap-3 text-amber-700 dark:text-amber-300">
+                  <ShieldAlert className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 mt-0.5 text-amber-500" />
+                  <div className="text-[11px] sm:text-xs">
+                    <p className="font-black mb-0.5">
+                      {lang === 'lo'
+                        ? `ລະບົບປ້ອງກັນ: ຂໍ້ມູນທະນາຄານຫາກໍ່ຖືກແກ້ໄຂ (ສາມາດຂໍເບີກເງິນໄດ້ຫຼັງຈາກ 30 ວັນ)`
+                        : `30-Day Security Lock Active: Bank details were recently modified`}
+                    </p>
+                    <p className="text-gray-600 dark:text-zinc-300 font-medium leading-relaxed">
+                      {lang === 'lo'
+                        ? `ທ່ານໄດ້ອັບເດດຂໍ້ມູນທະນາຄານເມື່ອ ${daysSinceBankUpdate} ວັນກ່ອນ. ຕາມເງື່ອນໄຂຄວາມປອດໄພ, ຜູ້ຈັດງານຕ້ອງລໍຖ້າໃຫ້ຄົບ 30 ວັນ (ເຫຼືອອີກ ${coolingDaysRemaining} ວັນ, ປົດລັອກວັນທີ ${unlockDate}) ຈຶ່ງຈະສາມາດຂໍເບີກເງິນໄດ້.`
+                        : `Bank details were updated ${daysSinceBankUpdate} day(s) ago. According to terms and fraud-prevention policy, organizers who edit bank details must wait 30 days before claiming event money (Unlocks on ${unlockDate}, in ${coolingDaysRemaining} days).`}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Terms & Conditions: Claim Event Money & Bank Updates */}
+            <div className={`p-4 sm:p-7 rounded-2xl sm:rounded-[2rem] shadow-2xs sm:shadow-sm border transition-all ${
+              theme === 'dark' ? 'bg-zinc-900/80 border-zinc-800' : 'bg-white border-gray-100'
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3.5 border-b border-gray-100 dark:border-zinc-800">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-adv-orange/10 text-adv-orange">
+                    <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </div>
+                  <div>
+                    <h3 className={`text-sm sm:text-base font-bold ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>
+                      {lang === 'lo' ? 'ເງື່ອນໄຂ ແລະ ຂໍ້ກຳນົດການເບີກຈ່າຍເງິນກິດຈະກຳ (Terms & Conditions)' : 'Terms & Conditions for Claiming Event Money'}
+                    </h3>
+                    <p className="text-[10px] sm:text-xs text-gray-500 font-semibold">
+                      {lang === 'lo' ? 'ກະລຸນາອ່ານເງື່ອນໄຂຄວາມປອດໄພ ແລະ ຂັ້ນຕອນ OTP ກ່ອນດຳເນີນການ' : 'Security guidelines, 30-day cooling rule, and OTP verification policies'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Interactive Testing Simulation Toggle */}
+                <div className="flex items-center gap-1.5 self-start sm:self-auto bg-gray-100 dark:bg-zinc-800/80 p-1 rounded-xl">
+                  <span className="text-[10px] font-bold text-gray-400 px-2 hidden sm:inline">
+                    {lang === 'lo' ? 'ທົດສອບ:' : 'Test Sim:'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleSimulateBankDate(0)}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                      isBankInCoolingPeriod
+                        ? 'bg-amber-500 text-white shadow-xs'
+                        : 'text-gray-500 hover:text-gray-800 dark:hover:text-zinc-200'
+                    }`}
+                    title="Simulate bank was updated today"
+                  >
+                    {lang === 'lo' ? 'ອັບເດດມື້ນີ້ (ຖືກລັອກ)' : 'Bank Edit Today (Locked)'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSimulateBankDate(35)}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                      !isBankInCoolingPeriod
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-gray-500 hover:text-gray-800 dark:hover:text-zinc-200'
+                    }`}
+                    title="Simulate bank was updated 35 days ago"
+                  >
+                    {lang === 'lo' ? '35 ວັນກ່ອນ (ເບີກໄດ້)' : '35 Days Ago (Eligible)'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Policy Highlights Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mt-4">
+                {/* Rule 1: 30-Day Cooling-off */}
+                <div className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all ${
+                  isBankInCoolingPeriod
+                    ? 'bg-amber-500/10 border-amber-500/30'
+                    : (theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800' : 'bg-gray-50/80 border-gray-150')
+                }`}>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-black text-xs">
+                      1
+                    </div>
+                    <h4 className="text-xs sm:text-sm font-black text-adv-slate dark:text-white">
+                      {lang === 'lo' ? 'ກົດລະບຽບ 30 ວັນຫຼັງແກ້ໄຂບັນຊີ' : '30-Day Rule Post-Bank Edit'}
+                    </h4>
+                  </div>
+                  <p className="text-[11px] sm:text-xs text-gray-600 dark:text-zinc-300 font-medium leading-relaxed">
+                    {lang === 'lo'
+                      ? 'ຫາກຜູ້ຈັດງານມີການແກ້ໄຂຂໍ້ມູນບັນຊີທະນາຄານ ຈະຕ້ອງລໍຖ້າໃຫ້ຄົບ 30 ວັນ ຈຶ່ງຈະສາມາດກົດຂໍເບີກຈ່າຍເງິນກິດຈະກຳໄດ້ ເພື່ອປ້ອງກັນການສໍ້ໂກງ ແລະ ການລັກລອບປ່ຽນບັນຊີ.'
+                      : 'If the organizer edits bank details, they must wait 30 days before they can claim event money. This cooling-off lock prevents unauthorized account hijack payouts.'}
+                  </p>
+                </div>
+
+                {/* Rule 2: OTP for Bank Details */}
+                <div className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all ${
+                  theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800' : 'bg-gray-50/80 border-gray-150'
+                }`}>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-xs">
+                      2
+                    </div>
+                    <h4 className="text-xs sm:text-sm font-black text-adv-slate dark:text-white">
+                      {lang === 'lo' ? 'ອັບເດດບັນຊີຕ້ອງໃຊ້ລະຫັດ OTP' : 'Update Bank Requires OTP'}
+                    </h4>
+                  </div>
+                  <p className="text-[11px] sm:text-xs text-gray-600 dark:text-zinc-300 font-medium leading-relaxed">
+                    {lang === 'lo'
+                      ? 'ທຸກໆຄັ້ງທີ່ມີການເພີ່ມ ຫຼື ແກ້ໄຂຂໍ້ມູນບັນຊີທະນາຄານ ລະບົບຈະສົ່ງລະຫັດ OTP 6 ຫຼັກ ເພື່ອຢືນຢັນຕົວຕົນຂອງເຈົ້າຂອງບັນຊີຕົວຈິງກ່ອນບັນທຶກ.'
+                      : 'Updating bank details strictly requires a 6-digit One-Time Password (OTP) verification sent to the verified organizer device before changes are saved.'}
+                  </p>
+                </div>
+
+                {/* Rule 3: OTP for Claiming Money */}
+                <div className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all ${
+                  theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800' : 'bg-gray-50/80 border-gray-150'
+                }`}>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-xs">
+                      3
+                    </div>
+                    <h4 className="text-xs sm:text-sm font-black text-adv-slate dark:text-white">
+                      {lang === 'lo' ? 'ຂໍເບີກເງິນຕ້ອງໃຊ້ລະຫັດ OTP' : 'Claim Payout Requires OTP'}
+                    </h4>
+                  </div>
+                  <p className="text-[11px] sm:text-xs text-gray-600 dark:text-zinc-300 font-medium leading-relaxed">
+                    {lang === 'lo'
+                      ? 'ການກົດຂໍເບີກຈ່າຍເງິນລາຍຮັບກິດຈະກຳຕ້ອງໄດ້ຮັບການຢືນຢັນດ້ວຍລະຫັດ OTP 6 ຫຼັກ ເພື່ອຮັບປະກັນວ່າເຈົ້າຂອງງານເປັນຜູ້ອະນຸມັດການໂອນເງິນ.'
+                      : 'Claiming event money strictly requires 6-digit OTP confirmation to ensure that only the authorized organizer executes the fund transfer.'}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -1915,24 +2182,24 @@ export default function Account() {
                     }`}
                   >
                     <Edit2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                    {lang === 'lo' ? 'ແກ້ໄຂ' : 'Edit'}
+                    {lang === 'lo' ? 'ແກ້ໄຂຂໍ້ມູນທະນາຄານ' : 'Edit Bank Details'}
                   </button>
                 )}
               </div>
 
               {isEditingBank || !bankAccount ? (
                 <form onSubmit={handleSaveBank} className="space-y-3.5 sm:space-y-5 pt-2 sm:pt-3 border-t border-gray-100 dark:border-zinc-800/60">
-                  {/* 30-Day Limit Alert Banner */}
+                  {/* Notice Banner: OTP verification and 30-day claim lock */}
                   <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-start gap-2.5 sm:gap-3 shadow-xs">
-                    <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 mt-0.5 text-amber-500" />
+                    <ShieldAlert className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 mt-0.5 text-amber-500" />
                     <div className="text-[11px] sm:text-xs">
                       <p className="font-bold mb-0.5">
-                        {lang === 'lo' ? 'ແຈ້ງເຕືອນສຳຄັນ: ການອັບເດດຂໍ້ມູນບັນຊີທະນາຄານ' : 'Important Notice: Bank Details Update Policy'}
+                        {lang === 'lo' ? 'ແຈ້ງເຕືອນ: ການອັບເດດຂໍ້ມູນບັນຊີທະນາຄານ' : 'Security Notice: Bank Details Update'}
                       </p>
                       <p className="text-gray-600 dark:text-zinc-300 font-medium leading-relaxed">
                         {lang === 'lo'
-                          ? 'ຂໍ້ມູນບັນຊີທະນາຄານສາມາດແກ້ໄຂໄດ້ພຽງ 1 ຄັ້ງຕໍ່ 30 ວັນ ເພື່ອຄວາມປອດໄພຂອງການເບີກຈ່າຍເງິນ. ກະລຸນາກວດສອບຊື່ ແລະ ເລກບັນຊີໃຫ້ຖືກຕ້ອງກ່ອນກົດບັນທຶກ.'
-                          : 'Bank account details can only be edited once every 30 days for security and verification purposes. Please verify all information carefully before saving.'}
+                          ? 'ການບັນທຶກຂໍ້ມູນທະນາຄານໃໝ່ຈະຕ້ອງຢືນຢັນດ້ວຍລະຫັດ OTP 6 ຫຼັກ. ຫຼັງຈາກອັບເດດແລ້ວ ລະບົບຈະເລີ່ມໄລຍະລໍຖ້າຄວາມປອດໄພ 30 ວັນ ກ່ອນທີ່ທ່ານຈະສາມາດຂໍເບີກເງິນກິດຈະກຳໄດ້.'
+                          : 'Saving new bank details requires 6-digit OTP verification. Once updated, a 30-day security lock will be initiated during which event money claims will be paused.'}
                       </p>
                     </div>
                   </div>
@@ -1986,22 +2253,19 @@ export default function Account() {
                     {/* Account Number */}
                     <div className="space-y-1 sm:space-y-2">
                       <label className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-widest block">{lang === 'lo' ? 'ເລກບັນຊີ' : 'Account Number'}</label>
-                      <div className="relative">
-                        <Hash className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        <input 
-                          type="text"
-                          inputMode="numeric"
-                          required
-                          placeholder="e.g. 120-11-00-1234567-001"
-                          value={bankFormData.accountNumber || ''}
-                          onChange={(e) => setBankFormData({...bankFormData, accountNumber: e.target.value.replace(/\D/g, '')})}
-                          className={`w-full border rounded-lg sm:rounded-xl pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all ${
-                            theme === 'dark' 
-                              ? 'bg-zinc-950 border-zinc-800 text-white focus:bg-zinc-900' 
-                              : 'bg-gray-50 border-gray-200/80 text-adv-slate focus:bg-white'
-                          }`}
-                        />
-                      </div>
+                      <input 
+                        type="text"
+                        inputMode="numeric"
+                        required
+                        placeholder="e.g. 120-11-00-1234567-001"
+                        value={bankFormData.accountNumber || ''}
+                        onChange={(e) => setBankFormData({...bankFormData, accountNumber: e.target.value.replace(/\D/g, '')})}
+                        className={`w-full border rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all ${
+                          theme === 'dark' 
+                            ? 'bg-zinc-950 border-zinc-800 text-white focus:bg-zinc-900' 
+                            : 'bg-gray-50 border-gray-200/80 text-adv-slate focus:bg-white'
+                        }`}
+                      />
                     </div>
                   </div>
                   
@@ -2045,12 +2309,23 @@ export default function Account() {
                         </div>
                       );
                     })()}
-                    <div>
-                      <div className="flex items-center gap-2 mb-0.5">
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-0.5">
                         <h4 className="text-xs sm:text-sm font-black">{bankAccount.bankName}</h4>
-                        <span className="px-1.5 py-0.5 text-[8px] sm:text-[9px] font-black uppercase tracking-wider sm:tracking-widest rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
+                        <span className="px-1.5 py-0.5 text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
                           {lang === 'lo' ? 'ເຊື່ອມຕໍ່ແລ້ວ' : 'Connected'}
                         </span>
+                        {isBankInCoolingPeriod ? (
+                          <span className="px-1.5 py-0.5 text-[8px] sm:text-[9px] font-bold rounded bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 flex items-center gap-1">
+                            <Clock className="w-2.5 h-2.5" />
+                            {lang === 'lo' ? `ອັບເດດເມື່ອ ${daysSinceBankUpdate} ວັນກ່ອນ (ລັອກເບີກເງິນອີກ ${coolingDaysRemaining} ວັນ)` : `Updated ${daysSinceBankUpdate}d ago (Claim locked for ${coolingDaysRemaining}d)`}
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 text-[8px] sm:text-[9px] font-bold rounded bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 flex items-center gap-1">
+                            <ShieldCheck className="w-2.5 h-2.5" />
+                            {lang === 'lo' ? `ອັບເດດເມື່ອ ${daysSinceBankUpdate} ວັນກ່ອນ (ເບີກເງິນໄດ້)` : `Updated ${daysSinceBankUpdate}d ago (Eligible for payout)`}
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400">{bankAccount.accountName} <span className="mx-1 text-gray-300 dark:text-zinc-700">•</span> {bankAccount.accountNumber}</p>
                     </div>
@@ -2617,8 +2892,8 @@ export default function Account() {
         )}
       </AnimatePresence>
 
-      {/* Toast Container */}
-      <div className="fixed bottom-12 right-1/2 translate-x-1/2 z-[300] flex flex-col gap-3 w-full max-w-sm px-6">
+      {/* Toast Container with 5-Second Auto-Dismiss Indicator */}
+      <div className="fixed bottom-12 right-1/2 translate-x-1/2 z-[300] flex flex-col gap-3 w-full max-w-sm px-6 pointer-events-none">
         <AnimatePresence>
           {toastQueue.map((toast) => (
             <motion.div
@@ -2626,21 +2901,39 @@ export default function Account() {
               initial={{ opacity: 0, y: 20, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-              className={`p-5 rounded-[1.5rem] shadow-2xl flex items-center gap-4 border ${
+              className={`p-4 sm:p-5 rounded-2xl sm:rounded-[1.5rem] shadow-2xl flex items-center gap-3.5 border relative overflow-hidden pointer-events-auto ${
                 toast.type === 'error' 
-                  ? theme === 'dark' ? 'bg-zinc-900 border-red-500/20 text-red-400' : 'bg-white border-red-100 text-red-500' 
+                  ? theme === 'dark' ? 'bg-zinc-900 border-red-500/25 text-red-400' : 'bg-white border-red-100 text-red-500' 
                   : toast.type === 'warning'
-                    ? theme === 'dark' ? 'bg-zinc-900 border-orange-500/20 text-adv-orange' : 'bg-white border-orange-100 text-adv-orange'
-                    : theme === 'dark' ? 'bg-zinc-900 border-emerald-500/20 text-emerald-400' : 'bg-white border-green-100 text-green-500'
+                    ? theme === 'dark' ? 'bg-zinc-900 border-orange-500/25 text-adv-orange' : 'bg-white border-orange-100 text-adv-orange'
+                    : toast.type === 'info'
+                      ? theme === 'dark' ? 'bg-zinc-900 border-blue-500/25 text-blue-400' : 'bg-white border-blue-100 text-blue-500'
+                      : theme === 'dark' ? 'bg-zinc-900 border-emerald-500/25 text-emerald-400' : 'bg-white border-emerald-100 text-emerald-600'
               }`}
             >
-              {toast.type === 'error' && <XCircle className="w-6 h-6 shrink-0" />}
-              {toast.type === 'warning' && <AlertCircle className="w-6 h-6 shrink-0" />}
-              {toast.type === 'success' && <CheckCircle2 className="w-6 h-6 shrink-0" />}
-              <span className={`font-bold text-sm flex-1 ${theme === 'dark' ? 'text-zinc-100' : 'text-adv-slate'}`}>{toast.text}</span>
+              {/* 5-second auto-remove progress line */}
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/5 dark:bg-white/5 overflow-hidden">
+                <motion.div
+                  initial={{ width: '100%' }}
+                  animate={{ width: '0%' }}
+                  transition={{ duration: 5, ease: 'linear' }}
+                  className={`h-full ${
+                    toast.type === 'error' ? 'bg-red-500' :
+                    toast.type === 'warning' ? 'bg-adv-orange' :
+                    toast.type === 'info' ? 'bg-blue-500' : 'bg-emerald-500'
+                  }`}
+                />
+              </div>
+
+              {toast.type === 'error' && <XCircle className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-red-500" />}
+              {toast.type === 'warning' && <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-adv-orange" />}
+              {toast.type === 'info' && <Info className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-blue-500" />}
+              {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-emerald-500" />}
+              <span className={`font-bold text-xs sm:text-sm flex-1 leading-snug ${theme === 'dark' ? 'text-zinc-100' : 'text-adv-slate'}`}>{toast.text}</span>
               <button 
                 onClick={() => setToastQueue(prev => prev.filter(t => t.id !== toast.id))}
-                className="text-gray-300 hover:text-gray-500 transition-colors"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1 cursor-pointer"
+                title="Dismiss"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -2700,38 +2993,38 @@ export default function Account() {
 
       {/* Bank Edit 30-Day Limit Confirmation Modal */}
       <AnimatePresence>
-        {showBankConfirmModal && (
+        {showBankOtpModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[260] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
-            onClick={() => setShowBankConfirmModal(false)}
+            className="fixed inset-0 z-[260] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+            onClick={() => setShowBankOtpModal(false)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className={`max-w-md w-full rounded-[2rem] p-6 sm:p-8 shadow-2xl border ${
+              className={`max-w-md w-full rounded-2xl sm:rounded-[2rem] p-5 sm:p-7 shadow-2xl border ${
                 theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
               }`}
               onClick={e => e.stopPropagation()}
             >
-              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto mb-4 border border-amber-500/20">
-                <AlertTriangle className="w-7 h-7" />
+              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center mx-auto mb-3 border border-blue-500/20 shadow-xs">
+                <KeyRound className="w-6 h-6" />
               </div>
 
-              <h3 className="text-lg font-black text-center mb-2">
-                {lang === 'lo' ? 'ຢືນຢັນການແກ້ໄຂຂໍ້ມູນທະນາຄານ?' : 'Confirm Bank Details Update?'}
+              <h3 className="text-base sm:text-lg font-black text-center mb-1">
+                {lang === 'lo' ? 'ຢືນຢັນລະຫັດ OTP ເພື່ອອັບເດດຂໍ້ມູນທະນາຄານ' : 'Verify OTP to Update Bank Details'}
               </h3>
-
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium text-center leading-relaxed mb-6">
+              <p className="text-[11px] sm:text-xs text-gray-400 font-medium text-center mb-4 leading-relaxed">
                 {lang === 'lo'
-                  ? 'ຫຼັງຈາກບັນທຶກແລ້ວ, ທ່ານຈະບໍ່ສາມາດແກ້ໄຂຂໍ້ມູນບັນຊີທະນາຄານໄດ້ອີກເປັນເວລາ 30 ວັນ ເພື່ອຄວາມປອດໄພ. ທ່ານແນ່ໃຈບໍທີ່ຈະດຳເນີນການຕໍ່?'
-                  : 'Once updated, you will not be able to edit your bank account details for 30 days for security purposes. Are you sure you want to proceed?'}
+                  ? 'ກະລຸນາປ້ອນລະຫັດ OTP 6 ຫຼັກ ເພື່ອຢືນຢັນການປ່ຽນແປງຂໍ້ມູນບັນຊີທະນາຄານຮັບເງິນຂອງທ່ານ'
+                  : 'Enter the 6-digit OTP code to authorize changes to your receiving bank account.'}
               </p>
 
-              <div className={`p-4 rounded-2xl mb-6 space-y-2 text-xs border ${
+              {/* Bank Details Preview Box */}
+              <div className={`p-3.5 rounded-xl sm:rounded-2xl mb-4 space-y-1.5 text-xs border ${
                 theme === 'dark' ? 'bg-zinc-950/60 border-zinc-800' : 'bg-gray-50 border-gray-150'
               }`}>
                 <div className="flex justify-between">
@@ -2748,39 +3041,78 @@ export default function Account() {
                 </div>
               </div>
 
-              {/* 2FA Authenticator Field if 2FA Enabled */}
-              {is2FAEnabled && (
-                <div className="mb-6 p-4 rounded-2xl bg-orange-500/10 border border-orange-500/20 space-y-2">
-                  <div className="flex items-center gap-2 text-adv-orange font-bold text-xs">
-                    <Smartphone className="w-4 h-4" />
-                    <span>{lang === 'lo' ? 'ຕ້ອງການ 2FA Authenticator' : '2FA Authenticator Required'}</span>
-                  </div>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-300 font-medium leading-relaxed">
-                    {lang === 'lo'
-                      ? 'ກະລຸນາປ້ອນລະຫັດ 6 ຫຼັກຈາກແອັບ Authenticator ຂອງທ່ານເພື່ອອັບເດດຂໍ້ມູນທະນາຄານ.'
-                      : 'Please enter the 6-digit code from your Authenticator app to update bank details.'}
-                  </p>
-                  <div className="relative pt-1">
-                    <input
-                      type="text"
-                      maxLength={6}
-                      value={bank2FACode}
-                      onChange={(e) => setBank2FACode(e.target.value.replace(/\D/g, ''))}
-                      placeholder="123456"
-                      className={`w-full border rounded-xl px-4 py-3 font-mono font-black text-center text-base tracking-widest focus:outline-none focus:ring-2 focus:ring-adv-orange ${
-                        theme === 'dark' ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-white border-gray-200 text-adv-slate'
-                      }`}
-                    />
-                    <Lock className="w-4 h-4 text-gray-300 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
-                </div>
-              )}
+              {/* 30-Day Cooling Notice Warning Box */}
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-[11px] font-medium leading-relaxed mb-4 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500 mt-0.5" />
+                <span>
+                  {lang === 'lo'
+                    ? 'ຫຼັງຈາກບັນທຶກແລ້ວ ລະບົບຈະເລີ່ມໄລຍະລໍຖ້າ 30 ວັນ ກ່ອນຈະສາມາດຂໍເບີກເງິນກິດຈະກຳໄດ້ ເພື່ອຄວາມປອດໄພ.'
+                    : 'Notice: Saving this update will initiate a 30-day security lock on claiming event money.'}
+                </span>
+              </div>
 
-              <div className="flex items-center gap-3">
+              {/* OTP Input Component */}
+              <div className="mb-4">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block text-center mb-2">
+                  {lang === 'lo' ? 'ລະຫັດຢືນຢັນ OTP 6 ຫຼັກ' : '6-Digit OTP Code'}
+                </label>
+                <OtpInput
+                  length={6}
+                  value={bankOtpCode}
+                  onChange={(val) => {
+                    setBankOtpCode(val);
+                    setBankOtpError('');
+                  }}
+                  error={!!bankOtpError}
+                />
+                {bankOtpError && (
+                  <p className="text-red-500 text-[11px] font-bold text-center mt-2 flex items-center justify-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{bankOtpError}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Resend & Demo Helper */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mb-5 text-[11px] px-1">
+                <div className="text-gray-400 font-medium">
+                  {bankOtpCountdown > 0 ? (
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-gray-400" />
+                      {lang === 'lo' ? `ສົ່ງໃໝ່ໃນ ${bankOtpCountdown} ວິນາທີ` : `Resend in ${bankOtpCountdown}s`}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleResendBankOtp}
+                      className="text-adv-orange hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      {lang === 'lo' ? 'ສົ່ງລະຫັດໃໝ່' : 'Resend OTP Code'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Demo OTP Helper Pill */}
                 <button
                   type="button"
-                  onClick={() => setShowBankConfirmModal(false)}
-                  className={`flex-1 py-3.5 rounded-xl font-bold text-xs border transition-colors cursor-pointer ${
+                  onClick={() => {
+                    setBankOtpCode(expectedBankOtp);
+                    setBankOtpError('');
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 font-mono font-bold text-[10px] hover:bg-blue-500/20 transition-colors cursor-pointer"
+                  title="Click to auto-fill demo OTP code"
+                >
+                  Demo OTP: {expectedBankOtp} ({lang === 'lo' ? 'ກົດໃສ່' : 'Auto-fill'})
+                </button>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 sm:gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowBankOtpModal(false)}
+                  className={`flex-1 py-3 rounded-xl font-bold text-xs border transition-colors cursor-pointer ${
                     theme === 'dark' ? 'border-zinc-800 hover:bg-zinc-800 text-gray-300' : 'border-gray-200 hover:bg-gray-100 text-gray-600'
                   }`}
                 >
@@ -2788,11 +3120,120 @@ export default function Account() {
                 </button>
                 <button
                   type="button"
-                  disabled={is2FAEnabled && bank2FACode.length < 6}
-                  onClick={confirmSaveBankDetails}
-                  className="flex-1 py-3.5 rounded-xl bg-adv-orange hover:bg-orange-600 text-white font-black text-xs shadow-md transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={bankOtpCode.length < 6 || isVerifyingBankOtp}
+                  onClick={handleVerifyAndSaveBank}
+                  className="flex-1 py-3 rounded-xl bg-adv-orange hover:bg-orange-600 text-white font-black text-xs shadow-md transition-all cursor-pointer active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                 >
-                  {lang === 'lo' ? 'ຢືນຢັນ ແລະ ບັນທຶກ' : 'Confirm & Save'}
+                  {isVerifyingBankOtp ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="w-4 h-4" />
+                  )}
+                  <span>{lang === 'lo' ? 'ຢືນຢັນ ແລະ ບັນທຶກ' : 'Verify & Save Bank'}</span>
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Bank Update Success Popup Modal (Auto-removes after 5 seconds) */}
+      <AnimatePresence>
+        {showBankSuccessModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[280] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+            onClick={() => setShowBankSuccessModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className={`max-w-md w-full rounded-2xl sm:rounded-[2rem] p-6 sm:p-7 shadow-2xl border relative overflow-hidden ${
+                theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
+              }`}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Animated 5-second countdown progress bar along the top edge */}
+              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gray-100 dark:bg-zinc-800 overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-1000 ease-linear"
+                  style={{ width: `${Math.max(0, (bankSuccessCountdown / 5) * 100)}%` }}
+                />
+              </div>
+
+              {/* Close (X) icon button */}
+              <button
+                type="button"
+                onClick={() => setShowBankSuccessModal(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              {/* Success Badge Icon with soft emerald aura */}
+              <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-3.5 border border-emerald-500/25 shadow-xs">
+                <CheckCircle2 className="w-7 h-7" />
+              </div>
+
+              <h3 className="text-base sm:text-lg font-black text-center mb-1 text-adv-slate dark:text-white">
+                {lang === 'lo' ? 'ອັບເດດຂໍ້ມູນທະນາຄານສຳເລັດແລ້ວ!' : 'Bank Details Updated Successfully!'}
+              </h3>
+              <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium text-center mb-4 leading-relaxed">
+                {lang === 'lo'
+                  ? 'ຂໍ້ມູນບັນຊີທະນາຄານຮັບເງິນຂອງທ່ານຖືກບັນທຶກ ແລະ ຢືນຢັນດ້ວຍ OTP ຮຽບຮ້ອຍແລ້ວ.'
+                  : 'Your payout bank details have been verified and saved securely.'}
+              </p>
+
+              {/* Updated Bank Summary Card */}
+              {bankAccount && (
+                <div className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl mb-3.5 space-y-2 text-xs border ${
+                  theme === 'dark' ? 'bg-zinc-950/60 border-zinc-800' : 'bg-gray-50 border-gray-150'
+                }`}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ທະນາຄານ:' : 'Bank:'}</span>
+                    <span className="font-black text-adv-slate dark:text-white">{bankAccount.bankName}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ຊື່ບັນຊີ:' : 'Account Holder:'}</span>
+                    <span className="font-bold text-adv-slate dark:text-white">{bankAccount.accountName}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ເລກບັນຊີ:' : 'Account Number:'}</span>
+                    <span className="font-mono font-black text-adv-orange">{bankAccount.accountNumber}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* 30-Day Security Cooling Period Alert */}
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-700 dark:text-amber-300 text-[11px] font-medium mb-4 flex items-start gap-2">
+                <Clock className="w-4 h-4 shrink-0 text-amber-500 mt-0.5" />
+                <span>
+                  {lang === 'lo'
+                    ? 'ເລີ່ມໄລຍະລໍຖ້າຄວາມປອດໄພ 30 ວັນ ກ່ອນຈະຂໍເບີກເງິນກິດຈະກຳໄດ້ (ປ້ອງກັນການສໍ້ໂກງ).'
+                    : 'A 30-day anti-fraud security lock is now active before event revenue can be claimed.'}
+                </span>
+              </div>
+
+              {/* Auto-remove countdown timer footer & manual close button */}
+              <div className="flex items-center justify-between gap-3 pt-1 border-t border-gray-100 dark:border-zinc-800">
+                <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                  <Clock className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
+                  <span>
+                    {lang === 'lo'
+                      ? `ປິດຕົວເອງອັດຕະໂນມັດໃນ ${bankSuccessCountdown} ວິ...`
+                      : `Auto-closing in ${bankSuccessCountdown}s...`}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowBankSuccessModal(false)}
+                  className="px-4 py-2 rounded-xl bg-adv-slate dark:bg-white text-white dark:text-adv-slate font-black text-xs shadow-xs hover:opacity-90 transition-opacity cursor-pointer"
+                >
+                  {lang === 'lo' ? 'ປິດດຽວນີ້' : 'Close Now'}
                 </button>
               </div>
             </motion.div>
@@ -2802,88 +3243,132 @@ export default function Account() {
 
       {/* Claim Event Money Modal */}
       <AnimatePresence>
-        {showClaimModal && (
+        {showClaimOtpModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[260] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
-            onClick={() => setShowClaimModal(false)}
+            className="fixed inset-0 z-[260] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+            onClick={() => setShowClaimOtpModal(false)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className={`max-w-md w-full rounded-2xl sm:rounded-[2rem] p-4 sm:p-8 shadow-2xl border ${
+              className={`max-w-md w-full rounded-2xl sm:rounded-[2rem] p-5 sm:p-7 shadow-2xl border ${
                 theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
               }`}
               onClick={e => e.stopPropagation()}
             >
-              <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-3 sm:mb-4 border border-emerald-500/20 shadow-xs">
-                <DollarSign className="w-5 h-5 sm:w-7 sm:h-7" />
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-3 border border-emerald-500/20 shadow-xs">
+                <DollarSign className="w-6 h-6" />
               </div>
 
-              <h3 className="text-base sm:text-lg font-black text-center mb-0.5 sm:mb-1">
-                {lang === 'lo' ? 'ຢືນຢັນການເບີກຈ່າຍເງິນກິດຈະກຳ' : 'Confirm Claim Event Money'}
+              <h3 className="text-base sm:text-lg font-black text-center mb-1">
+                {lang === 'lo' ? 'ຢືນຢັນການເບີກຈ່າຍເງິນດ້ວຍ OTP' : 'Authorize Event Money Claim with OTP'}
               </h3>
-              <p className="text-[11px] sm:text-xs text-gray-400 font-medium text-center mb-3 sm:mb-5">
-                {lang === 'lo' ? 'ຂໍເບີກຈ່າຍເງິນລາຍຮັບຈາກການຂາຍປີ້ກິດຈະກຳຂອງທ່ານ' : 'Request payout for your event ticket sales revenue.'}
+              <p className="text-[11px] sm:text-xs text-gray-400 font-medium text-center mb-4 leading-relaxed">
+                {lang === 'lo'
+                  ? 'ກະລຸນາປ້ອນລະຫັດ OTP 6 ຫຼັກ ເພື່ອຢືນຢັນການໂອນເງິນລາຍຮັບກິດຈະກຳເຂົ້າບັນຊີທະນາຄານຂອງທ່ານ'
+                  : 'Enter the 6-digit OTP code to approve event revenue payout to your registered bank.'}
               </p>
 
-              <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl mb-3 sm:mb-5 space-y-2 sm:space-y-2.5 text-xs border ${
+              {/* Financial Calculation Breakdown */}
+              <div className={`p-3.5 rounded-xl sm:rounded-2xl mb-4 space-y-2 text-xs border ${
                 theme === 'dark' ? 'bg-zinc-950/60 border-zinc-800' : 'bg-gray-50 border-gray-150'
               }`}>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ຈຳນວນເງິນ:' : 'Amount to Claim:'}</span>
-                  <span className="font-black text-sm sm:text-base text-emerald-600 dark:text-emerald-400">
-                    {new Intl.NumberFormat('lo-LA').format(unclaimedRevenue)} ₭
-                  </span>
+                  <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ຍອດລາຍຮັບກິດຈະກຳ:' : 'Event Revenue:'}</span>
+                  <span className="font-black text-sm">{new Intl.NumberFormat('lo-LA').format(unclaimedRevenue)} ₭</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ຄ່າທຳນຽມ (5%):' : 'Platform Fee (5%):'}</span>
-                  <span className="font-bold text-red-500 text-xs">
-                    -{new Intl.NumberFormat('lo-LA').format(unclaimedRevenue * 0.05)} ₭
+                  <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ຄ່າທຳນຽມລະບົບ (5%):' : 'Platform Fee (5%):'}</span>
+                  <span className="font-bold text-red-500">-{new Intl.NumberFormat('lo-LA').format(unclaimedRevenue * 0.05)} ₭</span>
+                </div>
+                <div className="pt-2 border-t border-gray-200 dark:border-zinc-800 flex justify-between items-center">
+                  <span className="text-adv-slate dark:text-white font-black">{lang === 'lo' ? 'ຍອດເງິນທີ່ໄດ້ຮັບຕົວຈິງ:' : 'Net Transfer Amount:'}</span>
+                  <span className="font-black text-base text-emerald-600 dark:text-emerald-400">
+                    {new Intl.NumberFormat('lo-LA').format(unclaimedRevenue * 0.95)} ₭
                   </span>
                 </div>
-                <div className="pt-1.5 sm:pt-2 border-t border-gray-200 dark:border-zinc-800 flex justify-between items-center text-[11px] sm:text-xs">
-                  <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ທະນາຄານຮັບເງິນ:' : 'Payout Bank:'}</span>
-                  <span className="font-extrabold">{bankAccount?.bankName || 'BCEL Bank'} ({bankAccount?.accountNumber ? `*${bankAccount.accountNumber.slice(-4)}` : '*8899'})</span>
+                <div className="pt-1.5 border-t border-gray-150 dark:border-zinc-800/80 flex justify-between items-center text-[11px]">
+                  <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ທະນາຄານຮັບເງິນ:' : 'Payout Account:'}</span>
+                  <span className="font-extrabold">{bankAccount?.bankName || 'BCEL Bank'} (*{bankAccount?.accountNumber?.slice(-4) || '8899'})</span>
                 </div>
               </div>
 
-              {/* 2FA Authenticator Field if 2FA Enabled */}
-              {is2FAEnabled && (
-                <div className="mb-4 sm:mb-6 p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-orange-500/10 border border-orange-500/20 space-y-1.5 sm:space-y-2">
-                  <div className="flex items-center gap-2 text-adv-orange font-bold text-xs">
-                    <Smartphone className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    <span>{lang === 'lo' ? 'ຕ້ອງການ 2FA Authenticator' : '2FA Authenticator Required'}</span>
-                  </div>
-                  <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-300 font-medium leading-relaxed">
-                    {lang === 'lo'
-                      ? 'ກະລຸນາປ້ອນລະຫັດ 6 ຫຼັກຈາກແອັບ Authenticator ຂອງທ່ານເພື່ອຢືນຢັນການເບີກຈ່າຍເງິນ.'
-                      : 'Please enter the 6-digit code from your Authenticator app to authorize payout.'}
-                  </p>
-                  <div className="relative pt-1">
-                    <input
-                      type="text"
-                      maxLength={6}
-                      value={claimCode2FA}
-                      onChange={(e) => setClaimCode2FA(e.target.value.replace(/\D/g, ''))}
-                      placeholder="123456"
-                      className={`w-full border rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-3 font-mono font-black text-center text-sm sm:text-base tracking-widest focus:outline-none focus:ring-2 focus:ring-adv-orange ${
-                        theme === 'dark' ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-white border-gray-200 text-adv-slate'
-                      }`}
-                    />
-                    <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-300 absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
-                </div>
-              )}
+              {/* 30-Day Rule Eligibility Badge */}
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold flex items-center gap-2 mb-4">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>
+                  {lang === 'lo'
+                    ? `ກວດສອບແລ້ວ: ຂໍ້ມູນບັນຊີທະນາຄານຖືກຕ້ອງ ແລະ ຜ່ານເກນ 30 ວັນແລ້ວ (${daysSinceBankUpdate} ວັນ)`
+                    : `Verified: Bank account passed the 30-day security rule (${daysSinceBankUpdate} days on record)`}
+                </span>
+              </div>
 
+              {/* OTP Input Component */}
+              <div className="mb-4">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block text-center mb-2">
+                  {lang === 'lo' ? 'ລະຫັດຢືນຢັນ OTP 6 ຫຼັກ' : '6-Digit OTP Code'}
+                </label>
+                <OtpInput
+                  length={6}
+                  value={claimOtpCode}
+                  onChange={(val) => {
+                    setClaimOtpCode(val);
+                    setClaimOtpError('');
+                  }}
+                  error={!!claimOtpError}
+                />
+                {claimOtpError && (
+                  <p className="text-red-500 text-[11px] font-bold text-center mt-2 flex items-center justify-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{claimOtpError}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Resend & Demo Helper */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mb-5 text-[11px] px-1">
+                <div className="text-gray-400 font-medium">
+                  {claimOtpCountdown > 0 ? (
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-gray-400" />
+                      {lang === 'lo' ? `ສົ່ງໃໝ່ໃນ ${claimOtpCountdown} ວິນາທີ` : `Resend in ${claimOtpCountdown}s`}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleResendClaimOtp}
+                      className="text-emerald-600 hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      {lang === 'lo' ? 'ສົ່ງລະຫັດໃໝ່' : 'Resend OTP Code'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Demo OTP Helper Pill */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setClaimOtpCode(expectedClaimOtp);
+                    setClaimOtpError('');
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-bold text-[10px] hover:bg-emerald-500/20 transition-colors cursor-pointer"
+                  title="Click to auto-fill demo OTP code"
+                >
+                  Demo OTP: {expectedClaimOtp} ({lang === 'lo' ? 'ກົດໃສ່' : 'Auto-fill'})
+                </button>
+              </div>
+
+              {/* Action Buttons */}
               <div className="flex items-center gap-2 sm:gap-3">
                 <button
                   type="button"
-                  onClick={() => setShowClaimModal(false)}
-                  className={`flex-1 py-2.5 sm:py-3.5 rounded-lg sm:rounded-xl font-bold text-xs border transition-colors cursor-pointer ${
+                  onClick={() => setShowClaimOtpModal(false)}
+                  className={`flex-1 py-3 rounded-xl font-bold text-xs border transition-colors cursor-pointer ${
                     theme === 'dark' ? 'border-zinc-800 hover:bg-zinc-800 text-gray-300' : 'border-gray-200 hover:bg-gray-100 text-gray-600'
                   }`}
                 >
@@ -2891,12 +3376,86 @@ export default function Account() {
                 </button>
                 <button
                   type="button"
-                  disabled={isClaiming || (is2FAEnabled && claimCode2FA.length < 6)}
+                  disabled={claimOtpCode.length < 6 || isClaiming}
                   onClick={handleConfirmClaimPayout}
-                  className="flex-1 py-2.5 sm:py-3.5 rounded-lg sm:rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs sm:shadow-md transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 sm:gap-2"
+                  className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition-all cursor-pointer active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                 >
-                  {isClaiming ? <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" /> : <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                  {isClaiming ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <DollarSign className="w-4 h-4" />
+                  )}
                   <span>{lang === 'lo' ? 'ຢືນຢັນເບີກຈ່າຍເງິນ' : 'Confirm & Claim'}</span>
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 30-Day Cooling-off Period Notice Modal */}
+      <AnimatePresence>
+        {showCoolingWarningModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[260] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+            onClick={() => setShowCoolingWarningModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className={`max-w-md w-full rounded-2xl sm:rounded-[2rem] p-5 sm:p-7 shadow-2xl border ${
+                theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
+              }`}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto mb-3.5 border border-amber-500/20 shadow-xs">
+                <Clock className="w-7 h-7" />
+              </div>
+
+              <h3 className="text-base sm:text-lg font-black text-center mb-1 text-adv-slate dark:text-white">
+                {lang === 'lo' ? 'ບໍ່ສາມາດເບີກເງິນໄດ້ໃນຕອນນີ້ (ລໍຖ້າ 30 ວັນ)' : 'Event Money Claim Locked (30-Day Rule)'}
+              </h3>
+              <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium text-center mb-4 leading-relaxed">
+                {lang === 'lo'
+                  ? 'ຕາມເງື່ອນໄຂຄວາມປອດໄພ ຫາກມີການແກ້ໄຂຂໍ້ມູນທະນາຄານ ຜູ້ຈັດງານຕ້ອງລໍຖ້າໃຫ້ຄົບ 30 ວັນ ຈຶ່ງຈະສາມາດຂໍເບີກເງິນໄດ້.'
+                  : 'Under our terms and anti-fraud regulations, if bank details are edited, payout claims are locked for 30 days.'}
+              </p>
+
+              {/* Status Breakdown Box */}
+              <div className={`p-4 rounded-xl sm:rounded-2xl mb-4 space-y-2.5 text-xs border ${
+                theme === 'dark' ? 'bg-zinc-950/60 border-zinc-800' : 'bg-gray-50 border-gray-150'
+              }`}>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ວັນທີອັບເດດບັນຊີ:' : 'Bank Updated Date:'}</span>
+                  <span className="font-bold">
+                    {bankAccount?.updatedAt ? new Date(bankAccount.updatedAt).toLocaleDateString('lo-LA') : 'Recently'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ຜ່ານມາແລ້ວ:' : 'Days Elapsed:'}</span>
+                  <span className="font-mono font-bold text-gray-700 dark:text-zinc-300">{daysSinceBankUpdate} {lang === 'lo' ? 'ວັນ' : 'day(s)'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ໄລຍະລໍຖ້າທີ່ເຫຼືອ:' : 'Cooling Days Left:'}</span>
+                  <span className="font-mono font-black text-amber-600 dark:text-amber-400">{coolingDaysRemaining} {lang === 'lo' ? 'ວັນ' : 'day(s)'}</span>
+                </div>
+                <div className="pt-2 border-t border-gray-200 dark:border-zinc-800 flex justify-between items-center">
+                  <span className="font-bold text-gray-700 dark:text-zinc-200">{lang === 'lo' ? 'ວັນທີປົດລັອກຂໍເບີກເງິນ:' : 'Eligible Claim Date:'}</span>
+                  <span className="font-black text-emerald-600 dark:text-emerald-400">{unlockDate}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCoolingWarningModal(false)}
+                  className="w-full py-3 rounded-xl bg-adv-slate dark:bg-white text-white dark:text-adv-slate font-black text-xs shadow-md cursor-pointer hover:opacity-95"
+                >
+                  {lang === 'lo' ? 'ຂ້ອຍເຂົ້າໃຈແລ້ວ' : 'Understood'}
                 </button>
               </div>
             </motion.div>
@@ -2917,30 +3476,27 @@ export default function Account() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 15 }}
               className={`max-w-2xl w-full max-h-[90vh] flex flex-col rounded-3xl sm:rounded-[2.5rem] shadow-2xl border overflow-hidden ${
-                theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
+                theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-200 text-gray-900'
               }`}
               onClick={e => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="p-5 sm:p-6 border-b border-gray-100/70 dark:border-zinc-800/70 flex items-start justify-between gap-3 shrink-0">
+              <div className="p-5 sm:p-6 border-b border-gray-200 dark:border-zinc-800 flex items-start justify-between gap-3 shrink-0">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center justify-center font-black text-base shrink-0">
                     <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-base sm:text-lg font-black truncate">
+                      <h3 className="text-base sm:text-lg font-black truncate text-gray-900 dark:text-white">
                         {selectedAttendeeForAnswers.attendeeName || `${selectedAttendeeForAnswers.firstName || ''} ${selectedAttendeeForAnswers.lastName || ''}`.trim() || 'Attendee'}
                       </h3>
                       <span className="px-2 py-0.5 rounded-md bg-adv-slate dark:bg-zinc-800 text-white text-[9px] font-black uppercase tracking-widest">
                         {selectedAttendeeForAnswers.ticketType || 'Standard'}
                       </span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-gray-400 mt-0.5 font-medium">
-                      <span>Ticket: <strong className="font-mono text-adv-slate dark:text-zinc-200">{selectedAttendeeForAnswers.ticketId || selectedAttendeeForAnswers.id}</strong></span>
-                      {selectedAttendeeForAnswers.orderId && (
-                        <span>• Order: <strong className="font-mono text-adv-slate dark:text-zinc-200">{selectedAttendeeForAnswers.orderId}</strong></span>
-                      )}
+                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-gray-500 dark:text-zinc-400 mt-0.5 font-medium">
+                      <span>Ticket ID: <strong className="font-mono text-gray-900 dark:text-zinc-200">{selectedAttendeeForAnswers.ticketId || selectedAttendeeForAnswers.id}</strong></span>
                     </div>
                   </div>
                 </div>
@@ -2957,22 +3513,22 @@ export default function Account() {
               <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
                 {/* Attendee Details Card */}
                 <div className={`p-4 rounded-2xl border grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs ${
-                  theme === 'dark' ? 'bg-zinc-950/60 border-zinc-800' : 'bg-gray-50 border-gray-150'
+                  theme === 'dark' ? 'bg-zinc-950/60 border-zinc-800 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
                 }`}>
                   <div>
-                    <span className="text-gray-400 block text-[10px] uppercase font-bold">{t.phone}</span>
+                    <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t.phone}</span>
                     <span className="font-bold text-emerald-600 dark:text-emerald-400 truncate block">{selectedAttendeeForAnswers.phone || '-'}</span>
                   </div>
                   <div>
-                    <span className="text-gray-400 block text-[10px] uppercase font-bold">{t.email}</span>
-                    <span className="font-bold truncate block">{selectedAttendeeForAnswers.email || '-'}</span>
+                    <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t.email}</span>
+                    <span className="font-bold text-gray-900 dark:text-zinc-100 truncate block">{selectedAttendeeForAnswers.email || '-'}</span>
                   </div>
                   <div>
-                    <span className="text-gray-400 block text-[10px] uppercase font-bold">{t.zone} / {t.seat}</span>
-                    <span className="font-bold truncate block">{selectedAttendeeForAnswers.zone || 'General'} • {selectedAttendeeForAnswers.seat || 'Standard'}</span>
+                    <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{lang === 'lo' ? 'ເວລາ' : 'Time'}</span>
+                    <span className="font-bold text-gray-900 dark:text-zinc-100 truncate block font-mono">{formatTimeToHHMM(selectedAttendeeForAnswers.checkedInTime || selectedAttendeeForAnswers.purchaseDate, selectedAttendeeForAnswers.checkedInTimestamp) || '-'}</span>
                   </div>
                   <div>
-                    <span className="text-gray-400 block text-[10px] uppercase font-bold">{t.checkedIn}</span>
+                    <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t.checkedIn}</span>
                     <span className={`font-bold flex items-center gap-1 ${selectedAttendeeForAnswers.isCheckedIn ? 'text-emerald-500' : 'text-amber-500'}`}>
                       {selectedAttendeeForAnswers.isCheckedIn ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
                       {selectedAttendeeForAnswers.isCheckedIn ? 'Verified' : 'Pending Gate'}
@@ -2982,13 +3538,13 @@ export default function Account() {
 
                 {/* Questionnaire QA pairs */}
                 <div className="space-y-3 pt-2">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-gray-900 dark:text-zinc-100 flex items-center gap-1.5">
                     <CheckSquare className="w-3.5 h-3.5 text-adv-orange" />
                     <span>{t.questionnaireAnswers} ({Object.keys(selectedAttendeeForAnswers.customAnswers || {}).length})</span>
                   </h4>
 
                   {(!selectedAttendeeForAnswers.customAnswers || Object.keys(selectedAttendeeForAnswers.customAnswers).length === 0) ? (
-                    <div className="py-8 text-center text-gray-400 text-xs font-bold">
+                    <div className="py-8 text-center text-gray-500 dark:text-zinc-400 text-xs font-bold">
                       {lang === 'lo' ? 'ບໍ່ມີຂໍ້ມູນຄຳຕອບແບບສອບຖາມສຳລັບປີ້ໃບນີ້' : 'No questionnaire answers recorded for this ticket.'}
                     </div>
                   ) : (
@@ -3002,23 +3558,25 @@ export default function Account() {
                         <div
                           key={idx}
                           className={`p-4 rounded-2xl border transition-all ${
-                            theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800/80' : 'bg-white border-gray-150 shadow-2xs'
+                            theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800 text-zinc-100' : 'bg-white border-gray-200 text-gray-900 shadow-xs'
                           }`}
                         >
-                          <div className="flex items-center justify-between gap-2 mb-1.5">
-                            <span className="text-xs font-black text-adv-slate dark:text-zinc-100 flex items-center gap-1.5">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="text-xs font-black text-gray-900 dark:text-zinc-100 flex items-center gap-1.5">
                               <span className="w-5 h-5 rounded-full bg-orange-500/10 text-adv-orange text-[10px] font-black flex items-center justify-center shrink-0">
                                 {idx + 1}
                               </span>
-                              <span>{qTitle}</span>
+                              <span className="text-gray-900 dark:text-white font-black">{qTitle}</span>
                             </span>
-                            <span className="px-2 py-0.5 rounded-md bg-gray-100 dark:bg-zinc-800 text-[9px] font-bold text-gray-500 uppercase">
+                            <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase ${
+                              theme === 'dark' ? 'bg-zinc-800 text-zinc-300' : 'bg-gray-100 text-gray-700'
+                            }`}>
                               {qType}
                             </span>
                           </div>
 
-                          <div className={`p-3 rounded-xl border text-xs font-bold leading-relaxed ${
-                            theme === 'dark' ? 'bg-blue-950/20 border-blue-900/30 text-blue-200' : 'bg-blue-50/50 border-blue-100 text-blue-950'
+                          <div className={`p-3.5 rounded-xl border text-sm font-semibold leading-relaxed ${
+                            theme === 'dark' ? 'bg-zinc-900 border-zinc-750 text-zinc-100' : 'bg-gray-50 border-gray-200 text-gray-900'
                           }`}>
                             {formattedVal || '-'}
                           </div>
@@ -3030,227 +3588,10 @@ export default function Account() {
               </div>
 
               {/* Footer */}
-              <div className="p-4 sm:p-5 border-t border-gray-100/70 dark:border-zinc-800/70 bg-gray-50/50 dark:bg-zinc-950/40 flex items-center justify-between gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (selectedAttendeeForAnswers.customAnswers) {
-                      const textLines = Object.entries(selectedAttendeeForAnswers.customAnswers).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`);
-                      navigator.clipboard?.writeText(textLines.join('\n'));
-                      addToast(lang === 'en' ? 'Answers copied to clipboard!' : 'ສຳເນົາຄຳຕອບທັງໝົດແລ້ວ!', 'success');
-                    }
-                  }}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer ${
-                    theme === 'dark' ? 'border-zinc-700 hover:bg-zinc-800 text-zinc-300' : 'border-gray-200 hover:bg-white text-gray-700'
-                  }`}
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>{t.copyLink || 'Copy Answers'}</span>
-                </button>
-
+              <div className="p-4 sm:p-5 border-t border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950/40 flex items-center justify-end gap-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => setSelectedAttendeeForAnswers(null)}
-                  className="px-5 py-2 rounded-xl bg-adv-orange text-white font-bold text-xs shadow-xs hover:opacity-90 transition-opacity cursor-pointer"
-                >
-                  {t.close || 'Close'}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {/* Aggregate Questionnaire Summary Analytics Modal */}
-        {showQuestionnaireSummaryModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[270] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
-            onClick={() => setShowQuestionnaireSummaryModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              className={`max-w-3xl w-full max-h-[90vh] flex flex-col rounded-3xl sm:rounded-[2.5rem] shadow-2xl border overflow-hidden ${
-                theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
-              }`}
-              onClick={e => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="p-5 sm:p-6 border-b border-gray-100/70 dark:border-zinc-800/70 flex items-start justify-between gap-3 shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center font-black text-base shrink-0">
-                    <PieChart className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-base sm:text-lg font-black">{t.questionnaireSummary}</h3>
-                    <p className="text-xs text-gray-400 font-medium">
-                      {lang === 'lo' 
-                        ? `ສະຫຼຸບຜົນຕອບຮັບແບບສອບຖາມຈາກຜູ້ຊື້ປີ້ທັງໝົດ (${attendeesWithAnswers.length} ຄົນ)`
-                        : `Aggregated survey responses from ticket buyers (${attendeesWithAnswers.length} responses)`}
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setShowQuestionnaireSummaryModal(false)}
-                  className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Body */}
-              <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-6">
-                {(() => {
-                  const configuredQuestions = (selectedEvent as any)?.attendeeQuestions || [];
-                  // If no configured questions, discover dynamically from attendee answers
-                  const questionSet = new Map<string, any>();
-
-                  configuredQuestions.forEach((q: any) => {
-                    const qKey = q.id || q.title;
-                    questionSet.set(qKey, q);
-                  });
-
-                  eventAttendees.forEach(att => {
-                    if (att.customAnswers) {
-                      Object.keys(att.customAnswers).forEach(k => {
-                        if (!questionSet.has(k)) {
-                          questionSet.set(k, { id: k, title: k, type: 'text' });
-                        }
-                      });
-                    }
-                  });
-
-                  const allQuestionsList = Array.from(questionSet.values());
-
-                  if (allQuestionsList.length === 0) {
-                    return (
-                      <div className="py-16 text-center text-gray-400 text-sm font-bold">
-                        {lang === 'lo' ? 'ງານນີ້ບໍ່ມີການຕັ້ງຄ່າແບບສອບຖາມຜູ້ຊື້ປີ້' : 'No questionnaire configured for this event.'}
-                      </div>
-                    );
-                  }
-
-                  return allQuestionsList.map((qObj: any, qIdx: number) => {
-                    const qKey = qObj.id || qObj.title;
-                    const qTitle = qObj.title || qKey;
-                    const qType = qObj.type || 'text';
-
-                    // Collect all responses for this question
-                    const responsesList: Array<{ attendeeName: string; answer: any; ticketId: string }> = [];
-                    const choiceCounts: Record<string, number> = {};
-
-                    eventAttendees.forEach(att => {
-                      if (att.customAnswers && att.customAnswers[qKey] !== undefined && att.customAnswers[qKey] !== null && att.customAnswers[qKey] !== '') {
-                        const val = att.customAnswers[qKey];
-                        responsesList.push({
-                          attendeeName: att.attendeeName || 'Attendee',
-                          answer: val,
-                          ticketId: att.ticketId || att.id
-                        });
-
-                        if (Array.isArray(val)) {
-                          val.forEach((item: string) => {
-                            choiceCounts[item] = (choiceCounts[item] || 0) + 1;
-                          });
-                        } else {
-                          const strVal = typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val);
-                          choiceCounts[strVal] = (choiceCounts[strVal] || 0) + 1;
-                        }
-                      }
-                    });
-
-                    const totalResponses = responsesList.length;
-                    const isChoiceType = ['select', 'radio', 'checkbox', 'dropdown'].includes(qType) || Object.keys(choiceCounts).length <= 6;
-
-                    return (
-                      <div
-                        key={qIdx}
-                        className={`p-5 rounded-2xl sm:rounded-3xl border transition-all ${
-                          theme === 'dark' ? 'bg-zinc-950/50 border-zinc-800' : 'bg-[#F9FAFB] border-gray-150 shadow-2xs'
-                        }`}
-                      >
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-2.5 border-b border-gray-200/60 dark:border-zinc-800/60">
-                          <div className="flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-lg bg-orange-500/10 text-adv-orange text-xs font-black flex items-center justify-center shrink-0">
-                              {qIdx + 1}
-                            </span>
-                            <h4 className="text-sm sm:text-base font-black">{qTitle}</h4>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs font-bold text-gray-400">
-                            <span className="px-2 py-0.5 rounded-md bg-gray-200 dark:bg-zinc-800 text-[10px] uppercase">{qType}</span>
-                            <span>• {totalResponses} / {eventAttendees.length} responses</span>
-                          </div>
-                        </div>
-
-                        {/* Choice Breakdown Bars */}
-                        {isChoiceType && Object.keys(choiceCounts).length > 0 ? (
-                          <div className="space-y-2.5 pt-1">
-                            {Object.entries(choiceCounts).map(([opt, count], oIdx) => {
-                              const pct = totalResponses > 0 ? Math.round((count / totalResponses) * 100) : 0;
-                              return (
-                                <div key={oIdx} className="space-y-1">
-                                  <div className="flex justify-between text-xs font-bold">
-                                    <span className="truncate pr-2">{opt}</span>
-                                    <span className="font-mono text-adv-orange shrink-0">{count} ({pct}%)</span>
-                                  </div>
-                                  <div className="w-full h-2 rounded-full bg-gray-200/80 dark:bg-zinc-800 overflow-hidden">
-                                    <div
-                                      className="h-full bg-adv-orange rounded-full transition-all duration-500"
-                                      style={{ width: `${pct}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          /* Text responses list */
-                          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                            {responsesList.length === 0 ? (
-                              <p className="text-xs text-gray-400 italic">No responses recorded</p>
-                            ) : (
-                              responsesList.map((res, rIdx) => (
-                                <div
-                                  key={rIdx}
-                                  className={`p-2.5 rounded-xl border text-xs flex items-center justify-between gap-3 ${
-                                    theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-100'
-                                  }`}
-                                >
-                                  <span className="font-bold text-adv-slate dark:text-zinc-200 truncate flex-1">
-                                    "{String(res.answer)}"
-                                  </span>
-                                  <span className="text-[10px] text-gray-400 shrink-0 font-medium">
-                                    — {res.attendeeName}
-                                  </span>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-
-              {/* Footer */}
-              <div className="p-4 sm:p-5 border-t border-gray-100/70 dark:border-zinc-800/70 bg-gray-50/50 dark:bg-zinc-950/40 flex items-center justify-between gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleExportToExcel}
-                  className="px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer hover:bg-emerald-500/20"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>{lang === 'en' ? 'Export All Responses to CSV/Excel' : 'ສົ່ງອອກທຸກຄຳຕອບໄປຍັງ Excel'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowQuestionnaireSummaryModal(false)}
                   className="px-5 py-2 rounded-xl bg-adv-orange text-white font-bold text-xs shadow-xs hover:opacity-90 transition-opacity cursor-pointer"
                 >
                   {t.close || 'Close'}

@@ -710,6 +710,12 @@ export function updateAttendeeCheckinStatus(
     return null;
   }
 
+  // Feature: Undo check-in is disabled. Once checked in, tickets remain checked in.
+  if (!isCheckedIn && all[index].isCheckedIn) {
+    console.warn(`[checkinsStore] Undo check-in is disabled. Ticket ${ticketIdOrId} remains checked in.`);
+    return all[index];
+  }
+
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-GB', { hour12: false });
   
@@ -870,7 +876,8 @@ export function addCheckinRecord(record: CheckinRecord): CheckinRecord {
 }
 
 export function deleteCheckinRecord(id: string): void {
-  updateAttendeeCheckinStatus(id, false);
+  // Feature: Undo check-in is disabled to preserve check-in audit integrity
+  console.warn(`[checkinsStore] Cannot remove check-in record ${id}; undo check-in feature is disabled.`);
 }
 
 // ----------------------------------------------------
@@ -1004,7 +1011,7 @@ export function useAttendees(eventId?: string) {
     withAnswersCount: attendeesWithAnswers.length,
     addAttendee: (att: Partial<EventAttendee>) => addEventAttendee(att),
     toggleCheckin: (ticketIdOrId: string, currentStatus: boolean, staffLabel?: string) => 
-      updateAttendeeCheckinStatus(ticketIdOrId, !currentStatus, staffLabel),
+      updateAttendeeCheckinStatus(ticketIdOrId, true, staffLabel),
     setCheckinStatus: (ticketIdOrId: string, status: boolean, staffLabel?: string) => 
       updateAttendeeCheckinStatus(ticketIdOrId, status, staffLabel)
   };

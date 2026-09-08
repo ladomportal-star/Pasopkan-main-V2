@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link as LinkIcon, AlertTriangle, Loader2, CheckCircle2, MapPin, ExternalLink } from 'lucide-react';
 
 interface EventMapPickerProps {
@@ -13,6 +13,96 @@ interface EventMapPickerProps {
   lang?: 'en' | 'lo';
   googleMapUrl?: string;
   onChangeGoogleMapUrl?: (url: string) => void;
+  showOpenInMapsButton?: boolean;
+}
+
+/**
+ * Parses any user-provided Google Maps URL, embed code, My Maps link, or coordinate string
+ * into a safe, valid embed URL.
+ * CRITICAL: Never pass an HTTP/HTTPS URL directly into `q=` because Google Maps classic
+ * interprets URLs as deprecated KML files and displays the error:
+ * "Some custom on-map content could not be displayed."
+ */
+function parseMapEmbedUrl(rawUrl: string, lang = 'en'): string | null {
+  if (!rawUrl || typeof rawUrl !== 'string') return null;
+  let url = rawUrl.trim();
+
+  // 1. If user pasted an <iframe> embed snippet from Google Maps
+  const iframeMatch = url.match(/src=["'](https?:\/\/[^"']+)["']/i);
+  if (iframeMatch) {
+    url = iframeMatch[1];
+  }
+
+  // 2. If it's already an official Google Maps embed or output=embed
+  if (url.includes('google.com/maps/embed') || url.includes('output=embed')) {
+    return url;
+  }
+
+  // 3. Google My Maps (/maps/d/) -> must use /maps/d/embed?mid=...
+  if (url.includes('/maps/d/')) {
+    const midMatch = url.match(/[?&]mid=([^&#]+)/);
+    if (midMatch) {
+      return `https://www.google.com/maps/d/embed?mid=${encodeURIComponent(midMatch[1])}`;
+    }
+    const pathMidMatch = url.match(/\/maps\/d\/(?:viewer|edit|embed|u\/\d+\/viewer)\?.*mid=([^&#]+)/);
+    if (pathMidMatch) {
+      return `https://www.google.com/maps/d/embed?mid=${encodeURIComponent(pathMidMatch[1])}`;
+    }
+  }
+
+  // 4. Coordinates: @lat,lng
+  const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (atMatch) {
+    return `https://maps.google.com/maps?q=${atMatch[1]},${atMatch[2]}&hl=${lang}&z=15&output=embed`;
+  }
+
+  // 5. Protobuf coordinates: !3dlat!4dlng
+  const protoMatch = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+  if (protoMatch) {
+    return `https://maps.google.com/maps?q=${protoMatch[1]},${protoMatch[2]}&hl=${lang}&z=15&output=embed`;
+  }
+
+  // 6. Parameter coordinates: ?q=lat,lng or ?query=lat,lng or ?ll=lat,lng
+  const coordParam = url.match(/[?&](?:q|query|ll|center)=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (coordParam) {
+    return `https://maps.google.com/maps?q=${coordParam[1]},${coordParam[2]}&hl=${lang}&z=15&output=embed`;
+  }
+
+  // 7. Place name in path: /maps/place/<PlaceName>
+  if (url.includes('/maps/place/')) {
+    const placePart = url.split('/maps/place/')[1]?.split('/')[0]?.split('?')[0];
+    if (placePart && !placePart.startsWith('http')) {
+      const cleanName = decodeURIComponent(placePart.replace(/\+/g, ' '));
+      return `https://maps.google.com/maps?q=${encodeURIComponent(cleanName)}&hl=${lang}&z=15&output=embed`;
+    }
+  }
+
+  // 8. Search in path: /maps/search/<Query>
+  if (url.includes('/maps/search/')) {
+    const searchPart = url.split('/maps/search/')[1]?.split('/')[0]?.split('?')[0];
+    if (searchPart && !searchPart.startsWith('http')) {
+      const cleanQuery = decodeURIComponent(searchPart.replace(/\+/g, ' '));
+      return `https://maps.google.com/maps?q=${encodeURIComponent(cleanQuery)}&hl=${lang}&z=15&output=embed`;
+    }
+  }
+
+  // 9. Query param text: ?q=text or ?query=text (only if NOT an HTTP URL)
+  const qParam = url.match(/[?&](?:q|query)=([^&#]+)/);
+  if (qParam) {
+    const val = decodeURIComponent(qParam[1].replace(/\+/g, ' '));
+    if (!val.startsWith('http://') && !val.startsWith('https://')) {
+      return `https://maps.google.com/maps?q=${encodeURIComponent(val)}&hl=${lang}&z=15&output=embed`;
+    }
+  }
+
+  // If it is a web URL (http:// or https://) that could not be parsed synchronously,
+  // DO NOT pass it to q= ! Return null to let async resolution or fallback location handle it.
+  if (url.startsWith('http://') || url.startsWith('https://') || url.includes('://')) {
+    return null;
+  }
+
+  // If the user typed a plain text place/address directly
+  return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&hl=${lang}&z=15&output=embed`;
 }
 
 export const EventMapPicker: React.FC<EventMapPickerProps> = ({
@@ -26,67 +116,118 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
   longitude,
   lang = 'en',
   googleMapUrl = '',
-  onChangeGoogleMapUrl
+  onChangeGoogleMapUrl,
+  showOpenInMapsButton = true
 }) => {
   const [url, setUrl] = useState(googleMapUrl);
   const [resolvedEmbedSrc, setResolvedEmbedSrc] = useState<string | null>(null);
   const [isResolving, setIsResolving] = useState(false);
   const [resolvedSuccess, setResolvedSuccess] = useState(false);
+  const isResolvingRef = useRef(false);
   
   useEffect(() => {
     setUrl(googleMapUrl);
   }, [googleMapUrl]);
 
+  // Construct a safe fallback query from location props
+  const fallbackQuery = useMemo(() => {
+    const parts = [venue, address, district, province, 'Laos'].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : 'Vientiane, Laos';
+  }, [venue, address, district, province]);
+
+  // Fallback embed URL (never fails or shows KML error)
+  const fallbackEmbedSrc = useMemo(() => {
+    if (latitude && longitude) {
+      return `https://maps.google.com/maps?q=${latitude},${longitude}&hl=${lang}&z=15&output=embed`;
+    }
+    return `https://maps.google.com/maps?q=${encodeURIComponent(fallbackQuery)}&hl=${lang}&z=15&output=embed`;
+  }, [latitude, longitude, fallbackQuery, lang]);
+
+  // Synchronously attempt to parse the URL
+  const syncEmbedSrc = useMemo(() => {
+    return parseMapEmbedUrl(url, lang);
+  }, [url, lang]);
+
   // Automatically resolve Google Maps shortlinks (e.g. https://maps.app.goo.gl/...)
   useEffect(() => {
     let isMounted = true;
-    if (!url || !url.trim()) {
+    const cleanUrl = url?.trim();
+
+    if (!cleanUrl) {
       setResolvedEmbedSrc(null);
       setResolvedSuccess(false);
+      setIsResolving(false);
       return;
     }
 
-    // Check if it's a shortlink or google maps link that needs resolution
-    if (url.includes('goo.gl') || url.includes('maps.app.goo.gl') || url.includes('google.com/maps')) {
+    // If synchronous parsing already succeeded (e.g., coordinates, place, My Maps embed), no resolution needed
+    if (syncEmbedSrc) {
+      setResolvedEmbedSrc(syncEmbedSrc);
+      setResolvedSuccess(true);
+      setIsResolving(false);
+      return;
+    }
+
+    // Check if it's a shortlink or Google link that needs server-side redirection resolution
+    const isShortlink = cleanUrl.includes('goo.gl') || 
+                        cleanUrl.includes('maps.app.goo.gl') || 
+                        cleanUrl.includes('google.com/maps');
+
+    if (isShortlink) {
       setIsResolving(true);
+      isResolvingRef.current = true;
       setResolvedSuccess(false);
 
       const resolveTimer = setTimeout(() => {
-        fetch(`/api/resolve-map-url?url=${encodeURIComponent(url.trim())}`)
+        fetch(`/api/resolve-map-url?url=${encodeURIComponent(cleanUrl)}`)
           .then(res => res.json())
           .then(data => {
             if (!isMounted) return;
             setIsResolving(false);
-            if (data.coords) {
-              setResolvedEmbedSrc(`https://maps.google.com/maps?q=${data.coords.lat},${data.coords.lng}&t=m&z=15&ie=UTF8&iwloc=&output=embed`);
+            isResolvingRef.current = false;
+
+            const resData = data?.data || data;
+
+            if (resData?.cleanEmbedUrl) {
+              setResolvedEmbedSrc(resData.cleanEmbedUrl);
               setResolvedSuccess(true);
-              if (onChangeAddress && data.coords) {
-                onChangeAddress(address, data.coords.lat, data.coords.lng);
+              if (onChangeAddress && resData.coords) {
+                onChangeAddress(address, resData.coords.lat, resData.coords.lng);
               }
-            } else if (data.placeName) {
-              setResolvedEmbedSrc(`https://maps.google.com/maps?q=${encodeURIComponent(data.placeName)}&t=m&z=15&ie=UTF8&iwloc=&output=embed`);
+            } else if (resData?.coords) {
+              const src = `https://maps.google.com/maps?q=${resData.coords.lat},${resData.coords.lng}&hl=${lang}&z=15&output=embed`;
+              setResolvedEmbedSrc(src);
               setResolvedSuccess(true);
-            } else if (data.resolvedUrl) {
-              const resUrl = data.resolvedUrl;
-              const match = resUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-              if (match) {
-                setResolvedEmbedSrc(`https://maps.google.com/maps?q=${match[1]},${match[2]}&t=m&z=15&ie=UTF8&iwloc=&output=embed`);
-              } else if (resUrl.includes('/maps/place/')) {
-                const p = resUrl.split('/maps/place/')[1]?.split('/')[0];
-                if (p) {
-                  setResolvedEmbedSrc(`https://maps.google.com/maps?q=${p}&t=m&z=15&ie=UTF8&iwloc=&output=embed`);
-                }
+              if (onChangeAddress) {
+                onChangeAddress(address, resData.coords.lat, resData.coords.lng);
+              }
+            } else if (resData?.placeName) {
+              const src = `https://maps.google.com/maps?q=${encodeURIComponent(resData.placeName)}&hl=${lang}&z=15&output=embed`;
+              setResolvedEmbedSrc(src);
+              setResolvedSuccess(true);
+            } else if (resData?.resolvedUrl) {
+              // Try parsing the resolved URL
+              const parsedAfterRedirect = parseMapEmbedUrl(resData.resolvedUrl, lang);
+              if (parsedAfterRedirect) {
+                setResolvedEmbedSrc(parsedAfterRedirect);
+                setResolvedSuccess(true);
               } else {
-                setResolvedEmbedSrc(`https://maps.google.com/maps?q=${encodeURIComponent(resUrl)}&t=m&z=15&ie=UTF8&iwloc=&output=embed`);
+                // Safe fallback to venue/coordinates — NEVER pass the raw URL to q=
+                setResolvedEmbedSrc(fallbackEmbedSrc);
+                setResolvedSuccess(true);
               }
-              setResolvedSuccess(true);
+            } else {
+              setResolvedEmbedSrc(fallbackEmbedSrc);
             }
           })
           .catch(() => {
             if (!isMounted) return;
             setIsResolving(false);
+            isResolvingRef.current = false;
+            // On resolution failure, safely fall back to known venue / address
+            setResolvedEmbedSrc(fallbackEmbedSrc);
           });
-      }, 300);
+      }, 250);
 
       return () => {
         isMounted = false;
@@ -95,8 +236,9 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
     } else {
       setResolvedEmbedSrc(null);
       setResolvedSuccess(false);
+      setIsResolving(false);
     }
-  }, [url]);
+  }, [url, syncEmbedSrc, fallbackEmbedSrc, lang, address, onChangeAddress]);
 
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newUrl = e.target.value;
@@ -113,79 +255,52 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
     if (latitude && longitude) {
       return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
     }
-    const fullQuery = [venue, address, district, province, 'Laos'].filter(Boolean).join(', ');
-    if (fullQuery) {
-      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullQuery)}`;
-    }
-    return 'https://www.google.com/maps/search/?api=1&query=Vientiane,Laos';
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fallbackQuery)}`;
   };
 
-  const getIframeSrc = () => {
-    if (resolvedEmbedSrc) return resolvedEmbedSrc;
-
-    if (url) {
-      if (url.includes('output=embed')) return url;
-      
-      // Handle place links
-      if (url.includes('/maps/place/')) {
-        const urlParts = url.split('?')[0].split('/maps/place/')[1];
-        if (urlParts) {
-          const placeName = urlParts.split('/')[0];
-          return `https://maps.google.com/maps?q=${placeName}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
-        }
-      }
-      
-      // Handle search links
-      if (url.includes('/maps/search/')) {
-        const urlParts = url.split('?')[0].split('/maps/search/')[1];
-        if (urlParts) {
-          const placeName = urlParts.split('/')[0];
-          return `https://maps.google.com/maps?q=${placeName}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
-        }
-      }
-
-      return `https://maps.google.com/maps?q=${encodeURIComponent(url)}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
-    }
-
-    if (latitude && longitude) {
-      return `https://maps.google.com/maps?q=${latitude},${longitude}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
-    }
-
-    const queryLocation = [venue, address, district, province, 'Laos'].filter(Boolean).join(', ');
-    return `https://maps.google.com/maps?q=${encodeURIComponent(queryLocation || 'Vientiane, Laos')}&t=m&z=15&ie=UTF8&iwloc=&output=embed`;
-  };
-
-  const iframeSrc = getIframeSrc();
+  // Determine final safe embed source
+  const finalEmbedSrc = resolvedEmbedSrc || syncEmbedSrc || fallbackEmbedSrc;
+  const externalMapLink = getExternalMapUrl();
 
   if (isReadOnly) {
-    const externalMapLink = getExternalMapUrl();
     return (
       <div className="relative rounded-2xl overflow-hidden border border-gray-200/80 shadow-xs bg-gray-100 group">
-        <iframe 
-          key={iframeSrc}
-          src={iframeSrc}
-          width="100%" 
-          height="320" 
-          style={{ border: 0 }} 
-          allowFullScreen 
-          loading="lazy" 
-          referrerPolicy="no-referrer-when-downgrade"
-          className="w-full h-[320px] bg-white block"
-        />
+        {isResolving ? (
+          <div className="w-full h-[320px] flex flex-col items-center justify-center bg-gray-50 text-gray-500 gap-2">
+            <Loader2 className="w-6 h-6 text-adv-orange animate-spin" />
+            <span className="text-xs font-medium">
+              {lang === 'lo' ? 'ກຳລັງໂຫລດແຜນທີ່...' : 'Loading map location...'}
+            </span>
+          </div>
+        ) : (
+          <iframe 
+            key={finalEmbedSrc}
+            src={finalEmbedSrc}
+            width="100%" 
+            height="320" 
+            style={{ border: 0 }} 
+            allowFullScreen 
+            loading="lazy" 
+            referrerPolicy="no-referrer-when-downgrade"
+            className="w-full h-[320px] bg-white block"
+          />
+        )}
 
         {/* Floating "Open in Google Maps" button in top-right */}
-        <div className="absolute top-3 right-3 z-10">
-          <a
-            href={externalMapLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/95 hover:bg-white text-adv-slate hover:text-adv-orange text-xs font-bold rounded-xl shadow-md border border-gray-200/80 backdrop-blur-xs transition-all active:scale-95 cursor-pointer"
-          >
-            <MapPin className="w-3.5 h-3.5 text-adv-orange" />
-            <span>{lang === 'lo' ? 'ເປີດໃນ Google Maps' : 'Open in Google Maps'}</span>
-            <ExternalLink className="w-3 h-3 opacity-70" />
-          </a>
-        </div>
+        {showOpenInMapsButton && (
+          <div className="absolute top-3 right-3 z-10">
+            <a
+              href={externalMapLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/95 hover:bg-white text-adv-slate hover:text-adv-orange text-xs font-bold rounded-xl shadow-md border border-gray-200/80 backdrop-blur-xs transition-all active:scale-95 cursor-pointer"
+            >
+              <MapPin className="w-3.5 h-3.5 text-adv-orange" />
+              <span>{lang === 'lo' ? 'ເປີດໃນ Google Maps' : 'Open in Google Maps'}</span>
+              <ExternalLink className="w-3 h-3 opacity-70" />
+            </a>
+          </div>
+        )}
       </div>
     );
   }
@@ -201,7 +316,7 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
             type="text"
             value={url}
             onChange={handleUrlChange}
-            placeholder="https://maps.app.goo.gl/..."
+            placeholder="https://maps.app.goo.gl/... or place link"
             className="w-full pl-11 pr-10 py-3.5 bg-white border border-gray-200/80 text-adv-slate rounded-2xl focus:ring-4 focus:ring-adv-orange/15 focus:border-adv-orange outline-none transition-all font-medium text-sm shadow-sm"
           />
           <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -215,20 +330,43 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
         <p className="mt-2 text-xs text-gray-500 font-medium flex items-start gap-1.5">
           <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
           {lang === 'lo' 
-            ? 'ວາງລິ້ງ Google Maps ເພື່ອສະແດງສະຖານທີ່ໃນແຜນທີ່'
-            : 'Paste a Google Maps link to preview the location'}
+            ? 'ວາງລິ້ງ Google Maps ຫຼື My Maps ເພື່ອສະແດງສະຖານທີ່ໃນແຜນທີ່'
+            : 'Paste a Google Maps or My Maps link to preview the location'}
         </p>
       </div>
 
       <div className="rounded-[16px] h-[300px] overflow-hidden border border-gray-200 shadow-sm relative bg-gray-100 group mt-4">
-        <iframe 
-          key={iframeSrc}
-          style={{ border: 0 }} 
-          loading="lazy" 
-          allowFullScreen 
-          src={iframeSrc}
-          className="w-[calc(100%+60px)] h-[calc(100%+120px)] -mt-[62px] -ml-[15px] -mb-[45px] -mr-[45px]"
-        />
+        {isResolving ? (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 text-gray-500 gap-2">
+            <Loader2 className="w-6 h-6 text-adv-orange animate-spin" />
+            <span className="text-xs font-medium">
+              {lang === 'lo' ? 'ກຳລັງເຊື່ອມຕໍ່ສະຖານທີ່...' : 'Resolving map link...'}
+            </span>
+          </div>
+        ) : (
+          <iframe 
+            key={finalEmbedSrc}
+            style={{ border: 0 }} 
+            loading="lazy" 
+            allowFullScreen 
+            src={finalEmbedSrc}
+            className="w-full h-full bg-white block"
+          />
+        )}
+
+        {/* Quick action to test map link in new tab */}
+        <div className="absolute top-2.5 right-2.5 z-10">
+          <a
+            href={externalMapLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 px-2.5 py-1 bg-white/95 hover:bg-white text-adv-slate hover:text-adv-orange text-[11px] font-semibold rounded-lg shadow-sm border border-gray-200/80 backdrop-blur-xs transition-all"
+          >
+            <MapPin className="w-3 h-3 text-adv-orange" />
+            <span>{lang === 'lo' ? 'ທົດສອບແຜນທີ່' : 'Test Link'}</span>
+            <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+          </a>
+        </div>
       </div>
     </div>
   );

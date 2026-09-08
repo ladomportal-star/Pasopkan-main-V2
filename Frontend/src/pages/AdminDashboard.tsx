@@ -2942,10 +2942,7 @@ export default function AdminDashboard() {
                           <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{lang === 'lo' ? 'ບັງຄັບໃຫ້ໃສ່ຂໍ້ມູນທຸກປີ້' : 'Require Every Ticket Info'}</div>
                           <div className="text-xs font-black text-adv-slate">{selectedEvent.requireEveryTicketInfo !== false ? 'Yes' : 'No'}</div>
                         </div>
-                        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{lang === 'lo' ? 'ເປີດໃຊ້ນັບຖອຍຫຼັງ' : 'Enable Countdown'}</div>
-                          <div className="text-xs font-black text-adv-slate">{selectedEvent.enableCountdown !== false ? 'Yes' : 'No'}</div>
-                        </div>
+
                         <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
                           <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{lang === 'lo' ? 'ຈຳກັດຈຳນວນປີ້ຕໍ່ການຊື້' : 'Max Tickets per Transaction'}</div>
                           <div className="text-xs font-black text-adv-slate">{selectedEvent.maxTickets || '4'}</div>

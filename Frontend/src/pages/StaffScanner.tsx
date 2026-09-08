@@ -28,13 +28,16 @@ import {
   Globe,
   Plus,
   Users,
-  X
+  X,
+  Eye,
+  FileText,
+  CheckSquare
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { events, LaoEvent } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
-import { CheckinRecord, useCheckins } from '../lib/checkinsStore';
+import { CheckinRecord, EventAttendee, useCheckins, useAttendees } from '../lib/checkinsStore';
 import { api } from '../lib/api';
 import SEO from '../components/SEO';
 
@@ -56,6 +59,28 @@ const LazyScanner = React.lazy(() =>
       };
     })) as Promise<{ default: React.ComponentType<any> }>
 );
+
+// Helper to format any time string or timestamp strictly to HH:mm
+const formatTimeToHHMM = (timeStr?: string, timestamp?: number): string => {
+  if (!timeStr && !timestamp) return '';
+  if (timeStr) {
+    const match = timeStr.match(/(\d{1,2}):(\d{2})(?::\d{2})?/);
+    if (match) {
+      return `${match[1].padStart(2, '0')}:${match[2]}`;
+    }
+    const d = new Date(timeStr);
+    if (!isNaN(d.getTime())) {
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+  }
+  if (timestamp) {
+    const d = new Date(timestamp);
+    if (!isNaN(d.getTime())) {
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+  }
+  return timeStr || '';
+};
 
 const translations = {
   en: {
@@ -90,6 +115,13 @@ const translations = {
     openCamera: 'Open Camera to Scan',
     closeCamera: 'Turn Off Camera',
     cameraInactiveDesc: 'Click the button below to turn on the camera for QR code scanning.',
+    viewAnswers: 'View Answers',
+    checkedIn: 'Checked In',
+    questionnaireAnswers: 'Questionnaire Answers',
+    close: 'Close',
+    time: 'Time',
+    phone: 'Phone',
+    email: 'Email',
   },
   lo: {
     staffPortal: 'ລະບົບກວດສອບປີ້ ແລະ ເຊັກອິນສຳລັບພະນັກງານ',
@@ -123,6 +155,13 @@ const translations = {
     openCamera: 'ເປີດກ້ອງເພື່ອສະແກນ',
     closeCamera: 'ປິດກ້ອງ',
     cameraInactiveDesc: 'ກົດປຸ່ມດ້ານລຸ່ມເພື່ອເປີດກ້ອງຖ່າຍຮູບສຳລັບສະແກນ QR Code.',
+    viewAnswers: 'ເບິ່ງຄຳຕອບ',
+    checkedIn: 'ເຊັກອິນແລ້ວ',
+    questionnaireAnswers: 'ຄຳຕອບແບບສອບຖາມ',
+    close: 'ປິດ',
+    time: 'ເວລາ',
+    phone: 'ເບີໂທລະສັບ',
+    email: 'ອີເມວ',
   }
 };
 
@@ -179,9 +218,20 @@ export default function StaffScanner() {
   const [scannerError, setScannerError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [scannerPage, setScannerPage] = useState(1);
+  const [selectedAttendeeForAnswers, setSelectedAttendeeForAnswers] = useState<{
+    attendeeName: string;
+    ticketType?: string;
+    ticketId: string;
+    email?: string;
+    phone?: string;
+    time?: string;
+    timestamp?: number;
+    customAnswers?: Record<string, string | string[]>;
+  } | null>(null);
 
-  // Loaded checkins from shared store for selected event
+  // Loaded checkins and attendees from shared store for selected event
   const { eventCheckins: checkins, addCheckin } = useCheckins(selectedEvent.id);
+  const { eventAttendees } = useAttendees(selectedEvent.id);
 
   const generateMockAttendees = () => {
     const laosNames = [
@@ -764,8 +814,11 @@ export default function StaffScanner() {
               theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
             }`}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3 pb-2.5 border-b border-gray-100/50 dark:border-zinc-800/50">
-                <div>
-                  <h4 className="text-xs sm:text-sm font-bold">{t.recentCheckins}</h4>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs sm:text-sm font-bold text-gray-950 dark:text-white">{t.recentCheckins}</h4>
+                  <span className="px-2 py-0.5 rounded-full bg-adv-orange/10 text-adv-orange text-[10px] font-black">
+                    {filteredCheckins.length}
+                  </span>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -779,7 +832,7 @@ export default function StaffScanner() {
                         setScannerPage(1);
                       }}
                       placeholder={t.searchAttendee}
-                      className={`w-full sm:w-56 pl-8 pr-2.5 py-1.5 rounded-xl border text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-all ${
+                      className={`w-full sm:w-56 pl-8 pr-2.5 py-2 sm:py-1.5 rounded-xl border text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-all ${
                         theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white placeholder-zinc-500' : 'bg-gray-50 border-gray-200 text-adv-slate placeholder-gray-400'
                       }`}
                     />
@@ -794,117 +847,195 @@ export default function StaffScanner() {
                   </div>
                 ) : (
                   (() => {
-                    const CHECKINS_PER_PAGE = 10;
+                    const CHECKINS_PER_PAGE = 5;
                     const totalScannerPages = Math.ceil(filteredCheckins.length / CHECKINS_PER_PAGE) || 1;
                     const safePage = Math.min(scannerPage, totalScannerPages);
                     const currentCheckins = filteredCheckins.slice((safePage - 1) * CHECKINS_PER_PAGE, safePage * CHECKINS_PER_PAGE);
 
                     return (
                       <>
-                        {currentCheckins.map((checkin, index) => (
-                          <motion.div 
-                            key={checkin.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.03 }}
-                            className={`p-4 rounded-2xl border flex flex-col md:flex-row justify-between gap-3 transition-all group ${
-                              theme === 'dark' 
-                                ? 'bg-zinc-950/45 border-zinc-850 hover:border-orange-500/20 hover:bg-orange-500/5' 
-                                : 'bg-[#F9FAFB] border-gray-50 hover:border-orange-100 hover:bg-orange-50/10'
-                            }`}
-                          >
-                            <div className="flex items-start gap-3 min-w-0">
-                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 border transition-all ${
-                                theme === 'dark'
-                                  ? 'bg-green-500/10 text-green-400 border-green-500/20 group-hover:bg-green-500/20'
-                                  : 'bg-green-50 text-green-500 border-green-100 group-hover:bg-green-100'
-                              }`}>
-                                <CheckCircle2 className="w-5 h-5" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <span className="text-xs sm:text-sm font-black truncate max-w-[120px] xs:max-w-[150px] sm:max-w-none">{checkin.attendeeName}</span>
-                                  <span className="px-1.5 py-0.5 bg-adv-slate dark:bg-zinc-800 text-white rounded text-[7px] font-black uppercase tracking-widest">{checkin.ticketType}</span>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 mt-0.5 text-[10px] sm:text-xs font-semibold text-gray-400 dark:text-zinc-400">
-                                  {checkin.email && (
-                                    <span className="flex items-center gap-1 truncate">
-                                      <Mail className="w-3 h-3 text-adv-orange shrink-0" />
-                                      {checkin.email}
+                        {currentCheckins.map((checkin, index) => {
+                          const matchedAttendee = eventAttendees?.find(a => 
+                            (a.ticketId && checkin.ticketId && a.ticketId.toLowerCase() === checkin.ticketId.toLowerCase()) ||
+                            a.id === checkin.id
+                          );
+                          const combinedAnswers = checkin.customAnswers || matchedAttendee?.customAnswers || {};
+                          const answerCount = Object.keys(combinedAnswers).filter(k => {
+                            const v = combinedAnswers[k];
+                            return Array.isArray(v) ? v.length > 0 : (v !== '' && v !== null && v !== undefined);
+                          }).length;
+
+                          return (
+                            <motion.div 
+                              key={checkin.id || checkin.ticketId || index}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.02 }}
+                              className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
+                                theme === 'dark' 
+                                  ? 'bg-zinc-900/60 border-zinc-800/80 hover:border-orange-500/30' 
+                                  : 'bg-white border-gray-100 hover:border-orange-200 shadow-2xs'
+                              }`}
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                                {/* Left: Info */}
+                                <div className="min-w-0 flex-1">
+                                  {/* Top Row: Name + Ticket Type + Status */}
+                                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1.5">
+                                    <span className="text-sm sm:text-base font-black text-gray-900 dark:text-white break-words">
+                                      {checkin.attendeeName || 'Attendee'}
                                     </span>
-                                  )}
-                                  {checkin.phone && (
-                                    <span className="flex items-center gap-1 truncate text-emerald-600 dark:text-emerald-400 font-bold">
-                                      <Phone className="w-3 h-3 text-emerald-500 shrink-0" />
-                                      {checkin.phone}
+                                    <span className="px-2 py-0.5 bg-adv-slate dark:bg-zinc-800 text-white rounded-lg text-[9px] font-black uppercase tracking-widest shrink-0">
+                                      {checkin.ticketType || 'Standard'}
                                     </span>
-                                  )}
+                                    {/* Checked In status badge */}
+                                    <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider border border-emerald-500/20 flex items-center gap-1 shrink-0">
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                                      <span>{lang === 'lo' ? 'ເຊັກອິນແລ້ວ' : 'Checked In'}</span>
+                                    </span>
+                                  </div>
+
+                                  {/* Contact and Ticket ID (Removed Order number) */}
+                                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-gray-500 dark:text-zinc-400 mb-2">
+                                    {checkin.email && (
+                                      <span className="flex items-center gap-1 max-w-full truncate">
+                                        <Mail className="w-3.5 h-3.5 text-adv-orange shrink-0" />
+                                        <span className="truncate">{checkin.email}</span>
+                                      </span>
+                                    )}
+                                    {checkin.phone && (
+                                      <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold shrink-0">
+                                        <Phone className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                        <span>{checkin.phone}</span>
+                                      </span>
+                                    )}
+                                    <span className="text-[11px] font-mono text-gray-400 dark:text-zinc-500 shrink-0">
+                                      Ticket ID: <strong className="font-bold text-adv-slate dark:text-white">{checkin.ticketId || checkin.id}</strong>
+                                    </span>
+                                  </div>
+
+                                  {/* Detail: Price & Time strictly as hh:mm (Removed detail zone, row, seat) */}
+                                  <div className="flex items-center gap-x-2.5 text-[10px] sm:text-[11px] font-bold text-gray-400 dark:text-zinc-400 uppercase tracking-wider">
+                                    {checkin.price && (
+                                      <span className="text-adv-orange font-mono font-black">{checkin.price}</span>
+                                    )}
+                                    {checkin.time && (
+                                      <>
+                                        {checkin.price && <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />}
+                                        <span className="flex items-center gap-1 font-mono font-bold lowercase text-emerald-500">
+                                          <Clock className="w-3 h-3 shrink-0" />
+                                          <span>{formatTimeToHHMM(checkin.time, checkin.timestamp)}</span>
+                                        </span>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5 text-[9px] sm:text-[10px] text-gray-450 dark:text-zinc-400 font-bold uppercase tracking-wider">
-                                  {checkin.zone && (
-                                    <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-adv-orange" /> {checkin.zone}</span>
-                                  )}
-                                  {checkin.seat && (
-                                    <>
-                                      <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />
-                                      <span className="flex items-center gap-1"><TicketIcon className="w-3 h-3 text-blue-400" /> {checkin.seat}</span>
-                                    </>
-                                  )}
+
+                                {/* Right: Actions (Responsive grid on mobile, standard 138px stack on desktop) */}
+                                <div className="flex items-center gap-2 border-t sm:border-t-0 pt-2.5 sm:pt-0 border-gray-100 dark:border-zinc-800/80 shrink-0 w-full sm:w-auto">
+                                  <div className={`grid ${answerCount > 0 ? 'grid-cols-2' : 'grid-cols-1'} sm:flex sm:flex-col items-center sm:items-end gap-2 w-full sm:w-auto`}>
+                                    {/* View Full Answers Button */}
+                                    {answerCount > 0 ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedAttendeeForAnswers({
+                                          attendeeName: checkin.attendeeName,
+                                          ticketType: checkin.ticketType,
+                                          ticketId: checkin.ticketId || checkin.id,
+                                          email: checkin.email,
+                                          phone: checkin.phone,
+                                          time: checkin.time,
+                                          timestamp: checkin.timestamp,
+                                          customAnswers: combinedAnswers
+                                        })}
+                                        className="w-full sm:w-[138px] h-9 px-3 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-adv-orange border border-orange-500/20 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap active:scale-95 shadow-2xs"
+                                      >
+                                        <Eye className="w-3.5 h-3.5 shrink-0" />
+                                        <span>{t.viewAnswers}</span>
+                                      </button>
+                                    ) : null}
+
+                                    {/* Checked In badge */}
+                                    <div 
+                                      className="w-full sm:w-[138px] h-9 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-2xs select-none shrink-0 whitespace-nowrap"
+                                      title={checkin.time ? `${t.checkedIn} @ ${checkin.time}` : t.checkedIn}
+                                    >
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                      <span>{t.checkedIn}</span>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
+                            </motion.div>
+                          );
+                        })}
+
+                        {/* Pagination Bar - Displays when more than 5 users */}
+                        {totalScannerPages > 1 ? (
+                          <div className="flex flex-col xs:flex-row items-center justify-between gap-3 pt-3 mt-2.5 border-t border-gray-100 dark:border-zinc-800/80">
+                            <div className="text-xs font-semibold text-gray-500 dark:text-zinc-400 text-center xs:text-left">
+                              {lang === 'lo'
+                                ? `ສະແດງ ${(safePage - 1) * CHECKINS_PER_PAGE + 1}-${Math.min(safePage * CHECKINS_PER_PAGE, filteredCheckins.length)} ຈາກ ${filteredCheckins.length} ຄົນ`
+                                : `Showing ${(safePage - 1) * CHECKINS_PER_PAGE + 1}-${Math.min(safePage * CHECKINS_PER_PAGE, filteredCheckins.length)} of ${filteredCheckins.length}`}
                             </div>
 
-                            <div className="flex md:flex-col items-center md:items-end justify-between md:justify-center border-t md:border-t-0 pt-2.5 md:pt-0 border-gray-100 dark:border-zinc-850">
-                              <div className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest">
-                                ID: {checkin.ticketId || checkin.id}
-                              </div>
-                              <div className="text-[9px] text-emerald-500 font-black uppercase tracking-wider md:mt-1 flex items-center gap-1.5 bg-emerald-500/10 px-2 py-0.5 rounded-md">
-                                <span className="w-1.2 h-1.2 rounded-full bg-emerald-500 animate-pulse" />
-                                {checkin.time}
-                              </div>
-                            </div>
-                          </motion.div>
-                        ))}
+                            <div className="flex items-center gap-1.5 select-none">
+                              {/* Previous Button */}
+                              <button
+                                type="button"
+                                onClick={() => setScannerPage(prev => Math.max(prev - 1, 1))}
+                                disabled={safePage === 1}
+                                className="h-9 px-2.5 sm:px-3 rounded-xl border border-gray-200 dark:border-zinc-800 text-xs font-bold flex items-center gap-1 text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-35 disabled:hover:bg-transparent transition-all cursor-pointer disabled:cursor-not-allowed active:scale-95"
+                                title={lang === 'lo' ? 'ໜ້າກ່ອນໜ້າ' : 'Previous Page'}
+                              >
+                                <ChevronLeft className="w-4 h-4" />
+                                <span className="hidden xs:inline">{lang === 'lo' ? 'ກ່ອນໜ້າ' : 'Prev'}</span>
+                              </button>
 
-                        {totalScannerPages >= 1 && (
-                          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2.5 mt-2 border-t border-gray-100 dark:border-zinc-800/80">
-                            <div className="text-[11px] font-bold text-gray-400 dark:text-zinc-400 flex items-center gap-2">
-                              <span>
-                                {lang === 'lo'
-                                  ? `ສະແດງ ${(safePage - 1) * CHECKINS_PER_PAGE + 1}-${Math.min(safePage * CHECKINS_PER_PAGE, filteredCheckins.length)} ຈາກທັງໝົດ ${filteredCheckins.length} ຄົນ`
-                                  : `Showing ${(safePage - 1) * CHECKINS_PER_PAGE + 1}-${Math.min(safePage * CHECKINS_PER_PAGE, filteredCheckins.length)} of ${filteredCheckins.length} attendees`}
-                              </span>
-                            </div>
-
-                            {totalScannerPages > 1 && (
+                              {/* Page Number Pills */}
                               <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => setScannerPage(prev => Math.max(prev - 1, 1))}
-                                  disabled={safePage === 1}
-                                  className="p-1.5 rounded-lg border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer disabled:cursor-not-allowed"
-                                  title={lang === 'lo' ? 'ໜ້າກ່ອນໜ້າ' : 'Previous Page'}
-                                >
-                                  <ChevronLeft className="w-3.5 h-3.5" />
-                                </button>
-
-                                <span className="w-7 h-7 flex items-center justify-center rounded-lg text-xs font-black bg-adv-orange text-white shadow-sm">
-                                  {safePage}
-                                </span>
-
-                                <button
-                                  type="button"
-                                  onClick={() => setScannerPage(prev => Math.min(prev + 1, totalScannerPages))}
-                                  disabled={safePage === totalScannerPages}
-                                  className="p-1.5 rounded-lg border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer disabled:cursor-not-allowed"
-                                  title={lang === 'lo' ? 'ໜ້າຖັດໄປ' : 'Next Page'}
-                                >
-                                  <ChevronRight className="w-3.5 h-3.5" />
-                                </button>
+                                {Array.from({ length: totalScannerPages }, (_, i) => i + 1)
+                                  .filter(p => p === 1 || p === totalScannerPages || Math.abs(p - safePage) <= 1)
+                                  .map((pageNum, idx, arr) => (
+                                    <React.Fragment key={pageNum}>
+                                      {idx > 0 && arr[idx - 1] !== pageNum - 1 && (
+                                        <span className="text-gray-400 dark:text-zinc-500 text-xs px-0.5">...</span>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => setScannerPage(pageNum)}
+                                        className={`min-w-9 h-9 px-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                          safePage === pageNum
+                                            ? 'bg-adv-orange text-white shadow-xs'
+                                            : 'border border-gray-200 dark:border-zinc-800 text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800'
+                                        }`}
+                                      >
+                                        {pageNum}
+                                      </button>
+                                    </React.Fragment>
+                                  ))}
                               </div>
-                            )}
+
+                              {/* Next Button */}
+                              <button
+                                type="button"
+                                onClick={() => setScannerPage(prev => Math.min(prev + 1, totalScannerPages))}
+                                disabled={safePage === totalScannerPages}
+                                className="h-9 px-2.5 sm:px-3 rounded-xl border border-gray-200 dark:border-zinc-800 text-xs font-bold flex items-center gap-1 text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-35 disabled:hover:bg-transparent transition-all cursor-pointer disabled:cursor-not-allowed active:scale-95"
+                                title={lang === 'lo' ? 'ໜ້າຖັດໄປ' : 'Next Page'}
+                              >
+                                <span className="hidden xs:inline">{lang === 'lo' ? 'ຖັດໄປ' : 'Next'}</span>
+                                <ChevronRight className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
-                        )}
+                        ) : filteredCheckins.length > 0 ? (
+                          <div className="pt-2.5 mt-2 border-t border-gray-100 dark:border-zinc-800/80 text-[11px] font-bold text-gray-400 dark:text-zinc-400 text-center sm:text-left">
+                            {lang === 'lo'
+                              ? `ສະແດງທັງໝົດ ${filteredCheckins.length} ຄົນ`
+                              : `Showing all ${filteredCheckins.length} verified attendees`}
+                          </div>
+                        ) : null}
                       </>
                     );
                   })()
@@ -917,6 +1048,148 @@ export default function StaffScanner() {
         </div>
 
       </main>
+
+      {/* Questionnaire Answers Modal */}
+      <AnimatePresence>
+        {selectedAttendeeForAnswers && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4"
+            onClick={() => setSelectedAttendeeForAnswers(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className={`max-w-2xl w-full max-h-[90vh] flex flex-col rounded-3xl sm:rounded-[2.5rem] shadow-2xl border overflow-hidden ${
+                theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-200 text-gray-900'
+              }`}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="p-5 sm:p-6 border-b border-gray-200 dark:border-zinc-800 flex items-start justify-between gap-3 shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center justify-center font-black text-base shrink-0">
+                    <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-base sm:text-lg font-black truncate text-gray-900 dark:text-white">
+                        {selectedAttendeeForAnswers.attendeeName}
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-md bg-adv-slate dark:bg-zinc-800 text-white text-[9px] font-black uppercase tracking-widest">
+                        {selectedAttendeeForAnswers.ticketType || 'Standard'}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-gray-500 dark:text-zinc-400 mt-0.5 font-medium">
+                      <span>Ticket ID: <strong className="font-mono text-gray-900 dark:text-zinc-200">{selectedAttendeeForAnswers.ticketId}</strong></span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedAttendeeForAnswers(null)}
+                  className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
+                {/* Attendee Details Card */}
+                <div className={`p-4 rounded-2xl border grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs ${
+                  theme === 'dark' ? 'bg-zinc-950/60 border-zinc-800 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                }`}>
+                  <div>
+                    <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t.phone}</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400 truncate block">{selectedAttendeeForAnswers.phone || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t.email}</span>
+                    <span className="font-bold text-gray-900 dark:text-zinc-100 truncate block">{selectedAttendeeForAnswers.email || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t.time}</span>
+                    <span className="font-bold text-gray-900 dark:text-zinc-100 truncate block font-mono">{formatTimeToHHMM(selectedAttendeeForAnswers.time, selectedAttendeeForAnswers.timestamp) || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t.checkedIn}</span>
+                    <span className="font-bold flex items-center gap-1 text-emerald-500">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Verified
+                    </span>
+                  </div>
+                </div>
+
+                {/* Questionnaire QA pairs */}
+                <div className="space-y-3 pt-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-gray-900 dark:text-zinc-100 flex items-center gap-1.5">
+                    <CheckSquare className="w-3.5 h-3.5 text-adv-orange" />
+                    <span>{t.questionnaireAnswers} ({Object.keys(selectedAttendeeForAnswers.customAnswers || {}).length})</span>
+                  </h4>
+
+                  {(!selectedAttendeeForAnswers.customAnswers || Object.keys(selectedAttendeeForAnswers.customAnswers).length === 0) ? (
+                    <div className="py-8 text-center text-gray-500 dark:text-zinc-400 text-xs font-bold">
+                      {lang === 'lo' ? 'ບໍ່ມີຂໍ້ມູນຄຳຕອບແບບສອບຖາມສຳລັບປີ້ໃບນີ້' : 'No questionnaire answers recorded for this ticket.'}
+                    </div>
+                  ) : (
+                    Object.entries(selectedAttendeeForAnswers.customAnswers).map(([key, val], idx) => {
+                      const qConfig = (selectedEvent as any)?.attendeeQuestions?.find((q: any) => q.id === key || q.title === key);
+                      const qTitle = qConfig?.title || key;
+                      const qType = qConfig?.type || 'text';
+                      const formattedVal = Array.isArray(val) ? val.join(', ') : typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val);
+
+                      return (
+                        <div
+                          key={idx}
+                          className={`p-4 rounded-2xl border transition-all ${
+                            theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800 text-zinc-100' : 'bg-white border-gray-200 text-gray-900 shadow-xs'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="text-xs font-black text-gray-900 dark:text-zinc-100 flex items-center gap-1.5">
+                              <span className="w-5 h-5 rounded-full bg-orange-500/10 text-adv-orange text-[10px] font-black flex items-center justify-center shrink-0">
+                                {idx + 1}
+                              </span>
+                              <span className="text-gray-900 dark:text-white font-black">{qTitle}</span>
+                            </span>
+                            <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase ${
+                              theme === 'dark' ? 'bg-zinc-800 text-zinc-300' : 'bg-gray-100 text-gray-700'
+                            }`}>
+                              {qType}
+                            </span>
+                          </div>
+
+                          <div className={`p-3.5 rounded-xl border text-sm font-semibold leading-relaxed ${
+                            theme === 'dark' ? 'bg-zinc-900 border-zinc-750 text-zinc-100' : 'bg-gray-50 border-gray-200 text-gray-900'
+                          }`}>
+                            {formattedVal || '-'}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 sm:p-5 border-t border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-950/40 flex items-center justify-end gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSelectedAttendeeForAnswers(null)}
+                  className="px-5 py-2 rounded-xl bg-adv-orange text-white font-bold text-xs shadow-xs hover:opacity-90 transition-opacity cursor-pointer"
+                >
+                  {t.close}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

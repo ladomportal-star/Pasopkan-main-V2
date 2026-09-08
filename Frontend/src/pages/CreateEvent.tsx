@@ -206,8 +206,6 @@ const translations = {
     showRemainingTicketsDesc: 'Display the number of available tickets on the event page.',
     requireEveryTicketInfo: 'Require Guest Info for Every Ticket',
     requireEveryTicketInfoDesc: 'If disabled, only the buyer\'s information is required even when purchasing multiple tickets.',
-    enableCountdown: 'Enable Event Countdown Timer',
-    enableCountdownDesc: 'Show a live real-time countdown timer to the event start time on the details page.',
     allowRefunds: 'Allow Refunds',
     allowRefundsDesc: 'Let attendees request refunds up to 24 hours before the event.',
     maxTicketsPerUser: 'Max Tickets Per User',
@@ -472,8 +470,6 @@ const translations = {
     showRemainingTicketsDesc: 'ສະແດງຈຳນວນປີ້ທີ່ຍັງສາມາດຊື້ໄດ້ໃນໜ້າ event.',
     requireEveryTicketInfo: 'ຕ້ອງການຂໍ້ມູນແຂກສຳລັບທຸກໆປີ້',
     requireEveryTicketInfoDesc: 'ຖ້າປິດການນຳໃຊ້, ຈະຕ້ອງການພຽງແຕ່ຂໍ້ມູນຂອງຜູ້ຊື້ເທົ່ານັ້ນ ເຖິງແມ່ນວ່າຈະຊື້ຫຼາຍປີ້ກໍຕາມ.',
-    enableCountdown: 'ເປີດໃຊ້ງານໂມງນັບຖອຍຫຼັງ',
-    enableCountdownDesc: 'ສະແດງໂມງນັບຖອຍຫຼັງແບບສົດໆ ກ່ອນເວລາເລີ່ມຕົ້ນຂອງ event ໃນໜ້າລາຍລະອຽດ.',
     allowRefunds: 'ອະນຸຍາດໃຫ້ຄືນເງິນ',
     allowRefundsDesc: 'ໃຫ້ຜູ້ເຂົ້າຮ່ວມຮ້ອງຂໍຄືນເງິນໄດ້ເຖິງ 24 ຊົ່ວໂມງກ່ອນ event.',
     maxTicketsPerUser: 'ຈຳນວນປີ້ສູງສຸດຕໍ່ຜູ້ໃຊ້',
@@ -1219,7 +1215,6 @@ export default function CreateEvent() {
   const [eventStatus, setEventStatus] = useState<string>('pending');
   const [maxTickets, setMaxTickets] = useState('4');
   const [requireEveryTicketInfo, setRequireEveryTicketInfo] = useState(true);
-  const [enableCountdown, setEnableCountdown] = useState(true);
   const [cancellationPolicy, setCancellationPolicy] = useState('');
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [newGalleryUrl, setNewGalleryUrl] = useState('');
@@ -1291,7 +1286,6 @@ export default function CreateEvent() {
       availableDates: dateType === 'flexible' ? availableDates : [],
       status: 'preview',
       requireEveryTicketInfo: requireEveryTicketInfo,
-      enableCountdown: enableCountdown,
       allowRefunds: allowRefunds,
       allowReviews: allowReviews,
       showRemainingTickets: showRemainingTickets,
@@ -1399,7 +1393,6 @@ export default function CreateEvent() {
     setAllowReviews(event.allowReviews !== false);
     setEventStatus(event.status || 'active');
     setMaxTickets(event.maxTickets || '4');
-    setEnableCountdown(event.enableCountdown !== false);
     setEventPrivacy(event.eventPrivacy || 'public');
     setAttendeeMessage(event.attendeeMessage || '');
     
@@ -1981,7 +1974,6 @@ export default function CreateEvent() {
         if (parsed.showRemainingTickets !== undefined) setShowRemainingTickets(parsed.showRemainingTickets);
         if (parsed.allowRefunds !== undefined) setAllowRefunds(parsed.allowRefunds);
         if (parsed.maxTickets) setMaxTickets(parsed.maxTickets);
-        if (parsed.enableCountdown !== undefined) setEnableCountdown(parsed.enableCountdown);
         if (parsed.verticalImage) setVerticalImage(parsed.verticalImage);
         if (parsed.horizontalImage) setHorizontalImage(parsed.horizontalImage);
         if (parsed.galleryImages && Array.isArray(parsed.galleryImages)) setGalleryImages(parsed.galleryImages);
@@ -2080,7 +2072,6 @@ export default function CreateEvent() {
       showRemainingTickets,
       allowRefunds,
       maxTickets,
-      enableCountdown,
       verticalImage,
       horizontalImage,
       galleryImages,
@@ -2500,7 +2491,7 @@ export default function CreateEvent() {
               allowRefunds: allowRefunds !== undefined ? allowRefunds : evt.allowRefunds,
               allowReviews: allowReviews !== undefined ? allowReviews : evt.allowReviews,
               maxTickets: maxTickets || evt.maxTickets,
-              enableCountdown: enableCountdown !== undefined ? enableCountdown : evt.enableCountdown,
+              enableCountdown: false,
               eventPrivacy: eventPrivacy || evt.eventPrivacy,
               attendeeMessage: attendeeMessage || evt.attendeeMessage,
               status: eventStatus || evt.status || 'pending',
@@ -2587,7 +2578,7 @@ export default function CreateEvent() {
           allowRefunds,
           allowReviews,
           maxTickets,
-          enableCountdown,
+          enableCountdown: false,
           eventPrivacy,
           attendeeMessage,
           status: eventStatus || 'pending',
@@ -5186,21 +5177,7 @@ export default function CreateEvent() {
 
 
 
-                    {dateType !== 'booking' && (
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
-                        <div>
-                          <h4 className="text-adv-slate font-bold mb-1">{t.enableCountdown}</h4>
-                          <p className="text-sm text-gray-500">{t.enableCountdownDesc}</p>
-                        </div>
-                        <button 
-                          onClick={() => setEnableCountdown(!enableCountdown)}
-                          className={`w-11 h-6 rounded-full transition-colors relative ${enableCountdown ? 'bg-adv-orange' : 'bg-gray-300'}`}
-                          type="button"
-                        >
-                          <div className={`w-5 h-5 rounded-full bg-white absolute top-[2px] transition-transform ${enableCountdown ? 'translate-x-5 left-[2px]' : 'translate-x-0 left-[2px]'}`} />
-                        </button>
-                      </div>
-                    )}
+
 
 
 

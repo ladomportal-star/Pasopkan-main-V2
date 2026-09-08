@@ -16,9 +16,10 @@ export function createApp() {
   const app = express();
   app.set("trust proxy", 1); // behind a load balancer / Supabase / Nginx
 
-  // Per-request structured logging (adds a request id)
+  // Per-request structured logging (applied only to API routes)
   if (!env.isTest) {
     app.use(
+      "/api",
       pinoHttp({
         logger: logger.raw,
         // Keep dev logs terse; full detail is still in the JSON fields in prod.
@@ -26,20 +27,32 @@ export function createApp() {
           req: (req) => ({ id: req.id, method: req.method, url: req.url }),
           res: (res) => ({ statusCode: res.statusCode }),
         },
-        autoLogging: { ignore: (req) => req.url === "/api/health" },
+        autoLogging: { ignore: (req) => req.url === "/health" || req.url === "/api/health" },
       }),
     );
   }
 
   // Security + transport
-  app.use(helmet());
-  app.use(compression());
+  // In Google AI Studio iframe environment, disable frameguard and strict CSP to allow preview iframe and external assets
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      frameguard: false,
+      crossOriginEmbedderPolicy: false,
+      crossOriginResourcePolicy: false,
+      crossOriginOpenerPolicy: false,
+    }),
+  );
+
   app.use(
     cors({
       origin: env.corsOrigins.length > 0 ? env.corsOrigins : true,
       credentials: true,
     }),
   );
+
+  // Compress API responses
+  app.use("/api", compression());
 
   // Basic abuse protection on the API surface
   app.use(
@@ -52,33 +65,13 @@ export function createApp() {
     }),
   );
 
-  app.use(express.json({ limit: "10mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+  app.use("/api", express.json({ limit: "10mb" }));
+  app.use("/api", express.urlencoded({ extended: true, limit: "10mb" }));
 
   // API
   app.use("/api", apiRouter);
   app.use("/api", notFound);
-
-  // Optionally serve the built frontend from this same process
-  const candidates = [
-    env.frontendDist,
-    path.resolve(process.cwd(), "dist"),
-    path.resolve(process.cwd(), "Frontend", "dist"),
-    path.resolve(process.cwd(), "..", "Frontend", "dist"),
-  ].filter(Boolean) as string[];
-
-  const distPath = candidates.find((p) => fs.existsSync(p));
-  if (distPath) {
-    app.use(express.static(distPath));
-    app.get("*", (_req, res, next) => {
-      if (_req.path.startsWith("/api/")) return next();
-      res.sendFile(path.join(distPath, "index.html"));
-    });
-    logger.info("[app] serving frontend from", distPath);
-  }
-
-  // Centralized error handler — must be last
-  app.use(errorHandler);
+  app.use("/api", errorHandler);
 
   return app;
 }

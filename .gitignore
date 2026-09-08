@@ -1,9 +1,14 @@
-# Root-level ignores only. Each project has its own .gitignore:
-#   Backend/.gitignore   Frontend/.gitignore
+# Root-level ignores
 .DS_Store
 *.log
+tmp/
+.temp/
+
+# Dependency directories
+node_modules/
+**/node_modules/
+**/.vite/
 
 # Firebase CLI local state
 .firebase/
 firebase-debug.log
-node_modules/

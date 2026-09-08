@@ -3,7 +3,7 @@ import {createRoot} from 'react-dom/client';
 import { HelmetProvider } from 'react-helmet-async';
 import App from './App.tsx';
 import { LanguageProvider } from './context/LanguageContext.tsx';
-import { ErrorBoundary } from './components/ErrorBoundary.tsx';
+import { SafeBoundary } from './components/SafeBoundary.tsx';
 import './index.css';
 
 // Safe-guard browser dialog APIs in sandboxed iframe environments where they are strictly blocked
@@ -72,12 +72,12 @@ if (typeof window !== 'undefined') {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ErrorBoundary>
+    <SafeBoundary>
       <HelmetProvider>
         <LanguageProvider>
           <App />
         </LanguageProvider>
       </HelmetProvider>
-    </ErrorBoundary>
+    </SafeBoundary>
   </StrictMode>,
 );

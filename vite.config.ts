@@ -11,18 +11,6 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
-      {
-        name: 'api-server-middleware',
-        async configureServer(server) {
-          try {
-            const { createApp } = await import('./Backend/src/app.ts');
-            const app = createApp();
-            server.middlewares.use(app);
-          } catch (e) {
-            console.error('Failed to mount Backend API in Vite dev server:', e);
-          }
-        },
-      },
     ],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
