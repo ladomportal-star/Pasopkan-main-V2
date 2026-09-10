@@ -123,7 +123,11 @@ const translations = {
     questionnaireSummaryTitle: 'Activity Questionnaire Analytics & Summary',
     questionnaireSummarySubtitle: 'Aggregated breakdown of all attendee question submissions for this activity',
     exportAllData: 'Export Excel (All Data & Answers)',
-    quickCheckin: 'Quick Check-In'
+    quickCheckin: 'Quick Check-In',
+    appSettings: 'App Settings',
+    selectLanguage: 'Select Language',
+    english: 'English',
+    lao: 'Lao'
   },
   lo: {
     settings: 'ຕັ້ງຄ່າ',
@@ -213,7 +217,11 @@ const translations = {
     questionnaireSummaryTitle: 'ສະຖິຕິ ແລະ ບົດສະຫຼຸບຄຳຕອບແບບສອບຖາມ',
     questionnaireSummarySubtitle: 'ການລວບລວມຄຳຕອບແບບສອບຖາມທັງໝົດສຳລັບກິດຈະກຳນີ້',
     exportAllData: 'ສົ່ງອອກ Excel (ຂໍ້ມູນທັງໝົດ ແລະ ຄຳຕອບ)',
-    quickCheckin: 'ເຊັກອິນດ່ວນ'
+    quickCheckin: 'ເຊັກອິນດ່ວນ',
+    appSettings: 'ຕັ້ງຄ່າແອັບ',
+    selectLanguage: 'ເລືອກພາສາ',
+    english: 'ພາສາອັງກິດ',
+    lao: 'ພາສາລາວ'
   }
 };
 
@@ -316,9 +324,8 @@ export default function Account() {
   const [claimOtpError, setClaimOtpError] = useState('');
   const [showCoolingWarningModal, setShowCoolingWarningModal] = useState(false);
 
-  // Bank Update Success Popup Modal State (Auto-removes after 5 seconds)
-  const [showBankSuccessModal, setShowBankSuccessModal] = useState(false);
-  const [bankSuccessCountdown, setBankSuccessCountdown] = useState(5);
+  // State for Check-in Confirmation Modal
+  const [checkinConfirmAttendee, setCheckinConfirmAttendee] = useState<Attendee | null>(null);
 
   // Global Toast Notifications with 5-Second Auto-Dismiss
   const [toastQueue, setToastQueue] = useState<{id: string, text: string, type: 'error' | 'success' | 'warning' | 'info'}[]>([]);
@@ -340,23 +347,6 @@ export default function Account() {
       return () => clearTimeout(timer);
     }
   }, [toastQueue]);
-
-  // Auto-remove Bank Update Success Popup after 5 seconds
-  useEffect(() => {
-    let timer: any;
-    if (showBankSuccessModal && bankSuccessCountdown > 0) {
-      timer = setInterval(() => {
-        setBankSuccessCountdown(prev => {
-          if (prev <= 1) {
-            setShowBankSuccessModal(false);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [showBankSuccessModal, bankSuccessCountdown]);
 
   // Calculate days since last bank details update
   const getDaysSinceBankUpdate = () => {
@@ -468,14 +458,10 @@ export default function Account() {
       setBankOtpCode('');
       setBankOtpError('');
 
-      // Open Bank Update Success Popup Modal with 5-second auto-dismiss
-      setShowBankSuccessModal(true);
-      setBankSuccessCountdown(5);
-
       addToast(
         lang === 'lo'
-          ? 'ອັບເດດຂໍ້ມູນທະນາຄານສຳເລັດດ້ວຍ OTP! ເລີ່ມໄລຍະລໍຖ້າ 30 ວັນກ່ອນຈະຂໍເບີກເງິນກິດຈະກຳໄດ້'
-          : 'Bank details verified & saved with OTP! 30-day security lock initiated for claiming event money.',
+          ? 'ອັບເດດຂໍ້ມູນທະນາຄານສຳເລັດແລ້ວ!'
+          : 'Bank details updated successfully!',
         'success',
         5000
       );
@@ -582,7 +568,7 @@ export default function Account() {
 
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const { lang } = useLanguage();
+  const { lang, toggleLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const t = translations[lang] as unknown as Record<string, string>;
   const [profilePic, setProfilePic] = useState<string | null>(() => {
@@ -1064,6 +1050,14 @@ export default function Account() {
       color: 'text-adv-orange dark:text-orange-450',
       bg: 'bg-orange-50 dark:bg-orange-500/10'
     },
+    {
+      icon: Globe,
+      label: lang === 'en' ? 'Language' : 'ພາສາ',
+      desc: lang === 'en' ? 'Change application language' : 'ປ່ຽນພາສາຂອງແອັບພລິເຄຊັນ',
+      path: '/language',
+      color: 'text-indigo-500 dark:text-indigo-450',
+      bg: 'bg-indigo-50 dark:bg-indigo-500/10'
+    },
     { 
       icon: Shield, 
       label: t.privacySecurity, 
@@ -1090,6 +1084,7 @@ export default function Account() {
   const [showProfilePicSuccess, setShowProfilePicSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [payoutImagePreview, setPayoutImagePreview] = useState<string | null>(null);
+  const [activeTxTooltip, setActiveTxTooltip] = useState<string | null>(null);
   const [myPayouts, setMyPayouts] = useState<PayoutBill[]>(MOCK_PAYOUTS);
 
   useEffect(() => {
@@ -1212,12 +1207,12 @@ export default function Account() {
         </div>
         
         {/* Tabs - Mobile Segmented Pill Bar */}
-        <div className={`p-1 rounded-xl sm:rounded-2xl flex gap-1 mb-4 sm:mb-8 transition-colors ${
+        <div className={`p-1 rounded-xl sm:rounded-2xl flex overflow-x-auto hide-scrollbar gap-1 mb-4 sm:mb-8 transition-colors ${
           theme === 'dark' ? 'bg-zinc-900/60' : 'bg-gray-200/50'
         } sm:bg-transparent sm:p-0 sm:border-b sm:border-gray-100 sm:rounded-none sm:gap-8`}>
           <button 
             onClick={() => setActiveTab('profile')}
-            className={`flex-1 sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
+            className={`flex-1 min-w-[90px] sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
               activeTab === 'profile' 
                 ? theme === 'dark'
                   ? 'bg-zinc-800 text-white border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange'
@@ -1229,7 +1224,7 @@ export default function Account() {
           </button>
           <button 
             onClick={() => setActiveTab('my-event')}
-            className={`flex-1 sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
+            className={`flex-1 min-w-[90px] sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
               activeTab === 'my-event' 
                 ? theme === 'dark'
                   ? 'bg-zinc-800 text-white border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange'
@@ -1241,7 +1236,7 @@ export default function Account() {
           </button>
           <button 
             onClick={() => setActiveTab('payouts')}
-            className={`flex-1 sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
+            className={`flex-1 min-w-[90px] sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
               activeTab === 'payouts' 
                 ? theme === 'dark'
                   ? 'bg-zinc-800 text-white border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange'
@@ -1281,10 +1276,7 @@ export default function Account() {
             </div>
             <div className="flex-1 text-center sm:text-left min-w-0">
               <h2 className="text-xl sm:text-2xl font-bold truncate">{profile.firstName} {profile.lastName}</h2>
-              <p className="text-gray-400 font-medium mb-4 text-xs sm:text-sm truncate">{profile.email}</p>
-              <Link to="/edit-profile" className="inline-block px-5 py-2 rounded-full text-xs sm:text-sm font-bold bg-adv-orange text-white hover:bg-orange-600 transition-all shadow-md hover:shadow-lg">
-                {t.updateProfile}
-              </Link>
+              <p className="text-gray-400 font-medium mb-1 text-xs sm:text-sm truncate">{profile.email}</p>
             </div>
           </div>
 
@@ -1520,7 +1512,7 @@ export default function Account() {
               />
 
               {/* Seating Map (Only visible if event has one) */}
-              {selectedEvent.hasSeating && (
+              {(selectedEvent.hasSeating === true || String(selectedEvent.hasSeating) === 'true') && (
                 <div className={`rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-8 shadow-sm border transition-all ${
                   theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
                 }`}>
@@ -1798,11 +1790,7 @@ export default function Account() {
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          setCheckinStatus(att.ticketId || att.id, true, 'Organizer Desk');
-                                          addToast(
-                                            lang === 'en' ? `Checked in ${att.attendeeName}` : `ເຊັກອິນ ${att.attendeeName} ສຳເລັດແລ້ວ`,
-                                            'success'
-                                          );
+                                          setCheckinConfirmAttendee(att);
                                         }}
                                         className="w-full sm:w-[138px] h-9 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-xs active:scale-95 shrink-0 whitespace-nowrap"
                                       >
@@ -2195,17 +2183,12 @@ export default function Account() {
                         <span className="px-1.5 py-0.5 text-[8px] sm:text-[9px] font-black uppercase tracking-wider rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
                           {lang === 'lo' ? 'ເຊື່ອມຕໍ່ແລ້ວ' : 'Connected'}
                         </span>
-                        {isBankInCoolingPeriod ? (
+                        {isBankInCoolingPeriod && (
                           <span className="px-1.5 py-0.5 text-[8px] sm:text-[9px] font-bold rounded bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 flex items-center gap-1">
                             <Clock className="w-2.5 h-2.5" />
-                            {lang === 'lo' ? `ອັບເດດເມື່ອ ${daysSinceBankUpdate} ວັນກ່ອນ (ລັອກເບີກເງິນອີກ ${coolingDaysRemaining} ວັນ)` : `Updated ${daysSinceBankUpdate}d ago (Claim locked for ${coolingDaysRemaining}d)`}
+                            {lang === 'lo' ? `ລັອກເບີກເງິນອີກ ${coolingDaysRemaining} ວັນ` : `Claim locked for ${coolingDaysRemaining}d`}
                           </span>
-                        ) : (
-                          <span className="px-1.5 py-0.5 text-[8px] sm:text-[9px] font-bold rounded bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 flex items-center gap-1">
-                            <ShieldCheck className="w-2.5 h-2.5" />
-                            {lang === 'lo' ? `ອັບເດດເມື່ອ ${daysSinceBankUpdate} ວັນກ່ອນ (ເບີກເງິນໄດ້)` : `Updated ${daysSinceBankUpdate}d ago (Eligible for payout)`}
-                          </span>
-            )}
+                        )}
                       </div>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-1">
                         <p className="text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
@@ -2252,9 +2235,17 @@ export default function Account() {
                           <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
                           <span className="text-[9px] sm:text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider sm:tracking-widest">{lang === 'lo' ? 'ສຳເລັດ' : 'Completed'}</span>
                           
-                          <div className="relative group ml-0.5 flex items-center">
-                            <Info className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400 hover:text-adv-slate dark:hover:text-white cursor-help transition-colors" />
-                            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 w-48 p-3 bg-gray-900 dark:bg-zinc-800 text-white text-xs rounded-xl shadow-xl z-10 before:content-[''] before:absolute before:top-full before:left-1/2 before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-gray-900 dark:before:border-t-zinc-800 pointer-events-none">
+                          <div 
+                            className="relative ml-0.5 flex items-center"
+                            onMouseEnter={() => setActiveTxTooltip(bill.id)}
+                            onMouseLeave={() => setActiveTxTooltip(null)}
+                            onTouchStart={() => setActiveTxTooltip(bill.id)}
+                            onTouchEnd={() => setActiveTxTooltip(null)}
+                            onTouchCancel={() => setActiveTxTooltip(null)}
+                          >
+                            <Info className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400 hover:text-adv-slate dark:hover:text-white transition-colors cursor-help" />
+                              
+                            <div className={`absolute left-1/2 -translate-x-1/2 bottom-full mb-2 transition-all duration-200 w-48 p-3 bg-gray-900 dark:bg-zinc-800 text-white text-xs rounded-xl shadow-xl z-10 pointer-events-none before:content-[''] before:absolute before:top-full before:left-1/2 before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-gray-900 dark:before:border-t-zinc-800 ${activeTxTooltip === bill.id ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
                               <p className="font-bold mb-1">Transaction Details</p>
                               <div className="space-y-1 mt-2">
                                 <p className="text-gray-300 flex justify-between"><span className="text-gray-500">Ref:</span> <span className="font-mono text-gray-100">{bill.id}</span></p>
@@ -2266,14 +2257,8 @@ export default function Account() {
                           <span className="text-[9px] sm:text-[10px] font-bold text-gray-400 ml-auto">{bill.date}</span>
                         </div>
                         <h4 className={`text-sm sm:text-base font-bold sm:font-black mb-0.5 sm:mb-1 line-clamp-1 ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>{bill.event}</h4>
-                        <p className="text-[11px] sm:text-xs text-gray-500 font-semibold mb-2 sm:mb-4">{lang === 'lo' ? 'ເລກບັນຊີ:' : 'Account number:'} {bill.account}</p>
+                        <p className="text-[11px] sm:text-xs text-gray-500 font-semibold ">{lang === 'lo' ? 'ເລກບັນຊີ:' : 'Account number:'} {bill.account}</p>
                         
-                        <div className="flex items-center gap-4 sm:gap-6">
-                          <div>
-                            <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{lang === 'lo' ? 'ລະຫັດທຸລະກຳ' : 'Transaction ID'}</p>
-                            <p className="text-xs sm:text-sm font-bold font-mono text-gray-500 dark:text-gray-400">{bill.id}</p>
-                          </div>
-                        </div>
                         </div>
                       
                       <div className={`sm:w-56 p-2.5 sm:p-4 rounded-xl flex flex-col justify-center border ${
@@ -2296,7 +2281,7 @@ export default function Account() {
                   ))}
                 </div>
             )}
-            </div>
+              </div>
           </div>
         </div>
       </div>
@@ -2781,7 +2766,7 @@ export default function Account() {
       </AnimatePresence>
 
       {/* Toast Container with 5-Second Auto-Dismiss Indicator */}
-      <div className="fixed bottom-12 right-1/2 translate-x-1/2 z-[300] flex flex-col gap-3 w-full max-w-sm px-6 pointer-events-none">
+      <div className="fixed bottom-24 sm:bottom-12 right-1/2 translate-x-1/2 z-[300] flex flex-col gap-3 w-full max-w-sm px-6 pointer-events-none">
         <AnimatePresence>
           {toastQueue.map((toast) => (
             <motion.div
@@ -2837,7 +2822,7 @@ export default function Account() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className={`fixed bottom-12 left-1/2 -translate-x-1/2 px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-[200] border ${
+            className={`fixed bottom-24 sm:bottom-12 left-1/2 -translate-x-1/2 px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-[200] border ${
               theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-adv-slate text-white'
             }`}
           >
@@ -2946,6 +2931,7 @@ export default function Account() {
                 </label>
                 <OtpInput
                   length={6}
+                  autoFocus={false}
                   value={bankOtpCode}
                   onChange={(val) => {
                     setBankOtpCode(val);
@@ -3025,110 +3011,6 @@ export default function Account() {
             )}
       </AnimatePresence>
 
-      {/* Bank Update Success Popup Modal (Auto-removes after 5 seconds) */}
-      <AnimatePresence>
-        {showBankSuccessModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[280] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
-            onClick={() => setShowBankSuccessModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className={`max-w-md w-full rounded-2xl sm:rounded-[2rem] p-6 sm:p-7 shadow-2xl border relative overflow-hidden ${
-                theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
-              }`}
-              onClick={e => e.stopPropagation()}
-            >
-              {/* Animated 5-second countdown progress bar along the top edge */}
-              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gray-100 dark:bg-zinc-800 overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-1000 ease-linear"
-                  style={{ width: `${Math.max(0, (bankSuccessCountdown / 5) * 100)}%` }}
-                />
-              </div>
-
-              {/* Close (X) icon button */}
-              <button
-                type="button"
-                onClick={() => setShowBankSuccessModal(false)}
-                className="absolute top-4 right-4 p-1.5 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                title="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-
-              {/* Success Badge Icon with soft emerald aura */}
-              <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-3.5 border border-emerald-500/25 shadow-xs">
-                <CheckCircle2 className="w-7 h-7" />
-              </div>
-
-              <h3 className="text-base sm:text-lg font-black text-center mb-1 text-adv-slate dark:text-white">
-                {lang === 'lo' ? 'ອັບເດດຂໍ້ມູນທະນາຄານສຳເລັດແລ້ວ!' : 'Bank Details Updated Successfully!'}
-              </h3>
-              <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium text-center mb-4 leading-relaxed">
-                {lang === 'lo'
-                  ? 'ຂໍ້ມູນບັນຊີທະນາຄານຮັບເງິນຂອງທ່ານຖືກບັນທຶກ ແລະ ຢືນຢັນດ້ວຍ OTP ຮຽບຮ້ອຍແລ້ວ.'
-                  : 'Your payout bank details have been verified and saved securely.'}
-              </p>
-
-              {/* Updated Bank Summary Card */}
-              {bankAccount && (
-                <div className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl mb-3.5 space-y-2 text-xs border ${
-                  theme === 'dark' ? 'bg-zinc-950/60 border-zinc-800' : 'bg-gray-50 border-gray-150'
-                }`}>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ທະນາຄານ:' : 'Bank:'}</span>
-                    <span className="font-black text-adv-slate dark:text-white">{bankAccount.bankName}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ຊື່ບັນຊີ:' : 'Account Holder:'}</span>
-                    <span className="font-bold text-adv-slate dark:text-white">{bankAccount.accountName}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ເລກບັນຊີ:' : 'Account Number:'}</span>
-                    <span className="font-mono font-black text-adv-orange">{bankAccount.accountNumber}</span>
-                  </div>
-                </div>
-            )}
-
-              {/* 30-Day Security Cooling Period Alert */}
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-700 dark:text-amber-300 text-[11px] font-medium mb-4 flex items-start gap-2">
-                <Clock className="w-4 h-4 shrink-0 text-amber-500 mt-0.5" />
-                <span>
-                  {lang === 'lo'
-                    ? 'ເລີ່ມໄລຍະລໍຖ້າຄວາມປອດໄພ 30 ວັນ ກ່ອນຈະຂໍເບີກເງິນກິດຈະກຳໄດ້ (ປ້ອງກັນການສໍ້ໂກງ).'
-                    : 'A 30-day anti-fraud security lock is now active before event revenue can be claimed.'}
-                </span>
-              </div>
-
-              {/* Auto-remove countdown timer footer & manual close button */}
-              <div className="flex items-center justify-between gap-3 pt-1 border-t border-gray-100 dark:border-zinc-800">
-                <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500 dark:text-gray-400">
-                  <Clock className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
-                  <span>
-                    {lang === 'lo'
-                      ? `ປິດຕົວເອງອັດຕະໂນມັດໃນ ${bankSuccessCountdown} ວິ...`
-                      : `Auto-closing in ${bankSuccessCountdown}s...`}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowBankSuccessModal(false)}
-                  className="px-4 py-2 rounded-xl bg-adv-slate dark:bg-white text-white dark:text-adv-slate font-black text-xs shadow-xs hover:opacity-90 transition-opacity cursor-pointer"
-                >
-                  {lang === 'lo' ? 'ປິດດຽວນີ້' : 'Close Now'}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-            )}
-      </AnimatePresence>
-
       {/* Claim Event Money Modal */}
       <AnimatePresence>
         {showClaimOtpModal && (
@@ -3179,9 +3061,9 @@ export default function Account() {
                     {new Intl.NumberFormat('lo-LA').format(unclaimedRevenue * 0.95)} ₭
                   </span>
                 </div>
-                <div className="pt-1.5 border-t border-gray-150 dark:border-zinc-800/80 flex justify-between items-center text-[11px]">
+                <div className="pt-2 border-t border-gray-150 dark:border-zinc-800/80 flex flex-col sm:flex-row justify-between sm:items-center text-[11px] gap-1 sm:gap-2">
                   <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ທະນາຄານຮັບເງິນ:' : 'Payout Account:'}</span>
-                  <span className="font-extrabold">{bankAccount?.bankName || 'BCEL Bank'} (*{bankAccount?.accountNumber?.slice(-4) || '8899'})</span>
+                  <span className="font-extrabold sm:text-right">{bankAccount?.accountNumber || '0000000008899'} - {bankAccount?.accountName || 'Phanyadeth'}</span>
                 </div>
               </div>
 
@@ -3192,6 +3074,7 @@ export default function Account() {
                 </label>
                 <OtpInput
                   length={6}
+                  autoFocus={false}
                   value={claimOtpCode}
                   onChange={(val) => {
                     setClaimOtpCode(val);
@@ -3472,6 +3355,72 @@ export default function Account() {
             </motion.div>
           </motion.div>
             )}
+      </AnimatePresence>
+
+      {/* Quick Check-in Confirmation Modal */}
+      <AnimatePresence>
+        {checkinConfirmAttendee && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[280] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+            onClick={() => setCheckinConfirmAttendee(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className={`max-w-md w-full rounded-2xl sm:rounded-[2rem] p-6 sm:p-7 shadow-2xl border relative overflow-hidden ${
+                theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
+              }`}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-4 border border-emerald-500/25">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              
+              <h3 className="text-xl font-black text-center mb-2">
+                {lang === 'en' ? 'Confirm Check-in?' : 'ຢືນຢັນການເຊັກອິນ?'}
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6">
+                {lang === 'en' 
+                  ? `Are you sure you want to manually check-in ${checkinConfirmAttendee.attendeeName || checkinConfirmAttendee.firstName}?` 
+                  : `ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການເຊັກອິນ ${checkinConfirmAttendee.attendeeName || checkinConfirmAttendee.firstName} ດ້ວຍຕົນເອງ?`}
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCheckinConfirmAttendee(null)}
+                  className={`flex-1 py-3 rounded-xl font-bold text-sm transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-zinc-800 text-white hover:bg-zinc-700'
+                      : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                  }`}
+                >
+                  {lang === 'en' ? 'Cancel' : 'ຍົກເລີກ'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCheckinStatus(checkinConfirmAttendee.ticketId || checkinConfirmAttendee.id, true, 'Organizer Desk');
+                    addToast(
+                      lang === 'en' 
+                        ? `Checked in ${checkinConfirmAttendee.attendeeName || checkinConfirmAttendee.firstName}` 
+                        : `ເຊັກອິນ ${checkinConfirmAttendee.attendeeName || checkinConfirmAttendee.firstName} ສຳເລັດແລ້ວ`,
+                      'success'
+                    );
+                    setCheckinConfirmAttendee(null);
+                  }}
+                  className="flex-1 py-3 rounded-xl font-bold text-sm transition-colors bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg"
+                >
+                  {lang === 'en' ? 'Confirm' : 'ຢືນຢັນ'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );

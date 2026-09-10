@@ -789,7 +789,7 @@ export default function PaymentMethods() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-12 left-1/2 -translate-x-1/2 bg-adv-slate text-white px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-50 border border-white/10"
+            className="fixed bottom-24 sm:bottom-12 left-1/2 -translate-x-1/2 bg-adv-slate text-white px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-50 border border-white/10"
           >
             <CheckCircle2 className="w-5 h-5 text-adv-orange" />
             {toastMessage || t.changesSaved}

@@ -159,13 +159,6 @@ export default function Navbar() {
 
 
             <div className="flex items-center gap-1 lg:gap-3">
-              <button 
-                onClick={toggleLanguage}
-                className="hover:text-adv-orange p-2 transition-colors text-sm font-bold animate-fade-in"
-              >
-                {lang === 'lo' ? 'LA' : lang.toUpperCase()}
-              </button>
-
               <Link 
                 to="/dashboard" 
                 className="hidden md:block p-2 text-adv-slate hover:text-adv-orange transition-all"

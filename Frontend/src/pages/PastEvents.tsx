@@ -432,7 +432,7 @@ export default function PastEvents() {
             initial={{ opacity: 0, y: 50, x: "-50%" }}
             animate={{ opacity: 1, y: 0, x: "-50%" }}
             exit={{ opacity: 0, y: 50, x: "-50%" }}
-            className="fixed bottom-12 left-1/2 bg-adv-slate text-white px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-50 border border-white/10 text-sm"
+            className="fixed bottom-24 sm:bottom-12 left-1/2 bg-adv-slate text-white px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-50 border border-white/10 text-sm"
           >
             <Sparkles className="w-4 h-4 text-adv-orange fill-adv-orange" />
             {toastMessage}

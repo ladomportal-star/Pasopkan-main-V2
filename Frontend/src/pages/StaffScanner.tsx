@@ -492,11 +492,6 @@ export default function StaffScanner() {
               />
             </Link>
             <div className="h-6 w-px bg-gray-200 dark:bg-zinc-800 mx-1 hidden sm:block" />
-            <div className="min-w-0">
-              <span className="px-2 py-0.5 rounded-md bg-adv-orange text-white text-[10px] font-black uppercase tracking-wider inline-block">
-                STAFF DASHBOARD
-              </span>
-            </div>
           </div>
 
           {/* Language Switcher */}
@@ -1071,9 +1066,6 @@ export default function StaffScanner() {
               {/* Header */}
               <div className="p-5 sm:p-6 border-b border-gray-200 dark:border-zinc-800 flex items-start justify-between gap-3 shrink-0">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center justify-center font-black text-base shrink-0">
-                    <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </div>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-base sm:text-lg font-black truncate text-gray-900 dark:text-white">
@@ -1084,7 +1076,7 @@ export default function StaffScanner() {
                       </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-gray-500 dark:text-zinc-400 mt-0.5 font-medium">
-                      <span>Ticket ID: <strong className="font-mono text-gray-900 dark:text-zinc-200">{selectedAttendeeForAnswers.ticketId}</strong></span>
+                      <span><strong className="font-mono text-gray-900 dark:text-zinc-200">{selectedAttendeeForAnswers.ticketId}</strong></span>
                     </div>
                   </div>
                 </div>
@@ -1101,9 +1093,17 @@ export default function StaffScanner() {
               {/* Body */}
               <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
                 {/* Attendee Details Card */}
-                <div className={`p-4 rounded-2xl border grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs ${
+                <div className={`p-4 rounded-2xl border grid grid-cols-2 sm:grid-cols-6 gap-3 text-xs ${
                   theme === 'dark' ? 'bg-zinc-950/60 border-zinc-800 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
                 }`}>
+                  <div>
+                    <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{lang === 'lo' ? 'ໂຊນ' : 'Zone'}</span>
+                    <span className="font-bold text-gray-900 dark:text-zinc-100 truncate block">{selectedAttendeeForAnswers.zone || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{lang === 'lo' ? 'ບ່ອນນັ່ງ' : 'Seat'}</span>
+                    <span className="font-bold text-gray-900 dark:text-zinc-100 truncate block">{selectedAttendeeForAnswers.seat || '-'}</span>
+                  </div>
                   <div>
                     <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t.phone}</span>
                     <span className="font-bold text-emerald-600 dark:text-emerald-400 truncate block">{selectedAttendeeForAnswers.phone || '-'}</span>

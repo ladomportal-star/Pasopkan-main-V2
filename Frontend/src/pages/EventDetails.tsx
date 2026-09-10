@@ -1364,7 +1364,7 @@ export default function EventDetails() {
             initial={{ opacity: 0, y: 100, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: 100, x: '-50%' }}
-            className="fixed bottom-12 left-1/2 z-[150] bg-adv-slate text-white px-6 py-3 rounded-2xl font-bold shadow-2xl flex items-center gap-3 border border-white/10"
+            className="fixed bottom-24 sm:bottom-12 left-1/2 z-[150] bg-adv-slate text-white px-6 py-3 rounded-2xl font-bold shadow-2xl flex items-center gap-3 border border-white/10"
           >
             <Share2 className="w-4 h-4 text-adv-orange" />
             {t.linkCopied}

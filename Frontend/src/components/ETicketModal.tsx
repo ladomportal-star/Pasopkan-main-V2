@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, XCircle } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { LaoEvent, TicketTier } from '../data/events';
 import {
@@ -162,6 +162,7 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
   }, [ticket, currentTicketId, totalQuantity, allCheckins, user]);
 
   const isScanned = !!scannedRecord || ticket?.scanned === true;
+  const isExpired = !isScanned && ticket?.status === 'past';
 
   if (!ticket) return null;
 
@@ -193,8 +194,14 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
 
   // Formatted time
   const formatEventTime = () => {
-    const rawTime = ticket.selectedTime || (ticket as any).time || (ticket as any).selected_time || ticket.event?.time;
+    let rawTime = ticket.selectedTime || (ticket as any).time || (ticket as any).selected_time || ticket.event?.time;
     if (!rawTime) return '18:00';
+    
+    // Extract just the start time if it contains a range (e.g., "18:00 - 23:00")
+    if (typeof rawTime === 'string' && rawTime.includes('-')) {
+      rawTime = rawTime.split('-')[0].trim();
+    }
+    
     // If it has seconds like "18:00:00", trim to "18:00"
     if (/^\d{2}:\d{2}:\d{2}$/.test(rawTime)) {
       return rawTime.substring(0, 5);
@@ -327,7 +334,7 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
 
                 <div>
                   <p className="text-[9.5px] sm:text-[10.5px] font-bold text-gray-500 uppercase tracking-wider">
-                    {lang === 'lo' ? 'ເວລາ' : 'Time'}
+                    {lang === 'lo' ? 'ເວລາເລີ່ມງານ' : 'Start Time'}
                   </p>
                   <p className="text-xs sm:text-sm font-bold text-gray-950 leading-tight mt-0.5">
                     {formatEventTime()}
@@ -381,6 +388,13 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                     )}
                   </span>
                 </div>
+              ) : isExpired ? (
+                <div className="mb-1.5 flex items-center justify-center">
+                  <span className="inline-flex items-center gap-1.5 px-3.5 py-1 sm:px-4 sm:py-1.5 bg-red-500 dark:bg-red-500 text-white rounded-full text-[11px] sm:text-xs font-black uppercase tracking-wider shadow-xs animate-in fade-in zoom-in-95 duration-200">
+                    <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+                    <span>{lang === 'lo' ? 'ໝົດອາຍຸ' : 'EXPIRED'}</span>
+                  </span>
+                </div>
               ) : (
                 <div className="mb-1 text-[10.5px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider text-center">
                   {lang === 'lo' ? 'ສະແກນ QR ເພື່ອເຂົ້າງານ' : 'Scan to enter'}
@@ -392,7 +406,7 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                   value={currentTicketId}
                   size={300}
                   className={`w-52 h-52 sm:w-60 sm:h-60 md:w-64 md:h-64 transition-all duration-300 ${
-                    isScanned ? 'opacity-35 grayscale-[40%]' : 'opacity-100'
+                    isScanned || isExpired ? 'opacity-35 grayscale-[40%]' : 'opacity-100'
                   }`}
                   level="H"
                   includeMargin={false}
@@ -413,6 +427,26 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                       </div>
                       <span className="text-[9px] sm:text-[10px] font-bold text-emerald-100 tracking-wide mt-0.5">
                         {lang === 'lo' ? 'ກວດສອບການເຂົ້າຮ່ວມແລ້ວ' : 'Entry Verified'}
+                      </span>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Expired Badge Stamp Overlay */}
+                {isExpired && (
+                  <motion.div 
+                    initial={{ scale: 0.85, opacity: 0, rotate: -4 }}
+                    animate={{ scale: 1, opacity: 1, rotate: -4 }}
+                    transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                    className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-2"
+                  >
+                    <div className="bg-red-500 text-white px-4 py-2 rounded-xl shadow-xl border-2 border-white flex flex-col items-center justify-center text-center">
+                      <div className="flex items-center gap-1.5 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow-xs">
+                        <XCircle className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
+                        <span>{lang === 'lo' ? 'ໝົດອາຍຸ' : 'EXPIRED'}</span>
+                      </div>
+                      <span className="text-[9px] sm:text-[10px] font-bold text-red-100 tracking-wide mt-0.5">
+                        {lang === 'lo' ? 'ກິດຈະກຳສິ້ນສຸດແລ້ວ' : 'Event Ended'}
                       </span>
                     </div>
                   </motion.div>

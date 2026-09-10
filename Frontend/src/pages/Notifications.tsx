@@ -53,8 +53,8 @@ export default function Notifications() {
   return (
     <div className="min-h-screen bg-[#F9FAFB] py-4 md:py-6">
       <SEO
-        title={t.notifications || 'Notifications'}
-        description="Configure notification preferences and activity alerts on Pasopkan."
+        title={`${t.notifications} | Pasopkan`}
+        description="Configure notification preferences on Pasopkan."
         noindex={true}
       />
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-12">
@@ -100,7 +100,7 @@ export default function Notifications() {
             initial={{ opacity: 0, y: 50, x: "-50%" }}
             animate={{ opacity: 1, y: 0, x: "-50%" }}
             exit={{ opacity: 0, y: 50, x: "-50%" }}
-            className="fixed bottom-12 left-1/2 bg-adv-slate text-white px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-50 border border-white/10 text-sm"
+            className="fixed bottom-24 sm:bottom-12 left-1/2 bg-adv-slate text-white px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-50 border border-white/10 text-sm"
           >
             <CheckCircle2 className="w-4 h-4 text-adv-orange" />
             {toastMessage}

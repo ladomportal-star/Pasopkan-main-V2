@@ -5,9 +5,10 @@ interface OtpInputProps {
   value: string;
   onChange: (value: string) => void;
   length?: number;
+  autoFocus?: boolean;
 }
 
-export default function OtpInput({ value, onChange, length = 6 }: OtpInputProps) {
+export default function OtpInput({ value, onChange, length = 6, autoFocus = true }: OtpInputProps) {
   const { theme } = useTheme();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -18,10 +19,10 @@ export default function OtpInput({ value, onChange, length = 6 }: OtpInputProps)
 
   // Autofocus the first box on mount
   useEffect(() => {
-    if (inputRefs.current[0]) {
+    if (autoFocus && inputRefs.current[0]) {
       inputRefs.current[0].focus();
     }
-  }, []);
+  }, [autoFocus]);
 
   // Split value into array
   const otpArray = value.split('').concat(Array(length).fill('')).slice(0, length);

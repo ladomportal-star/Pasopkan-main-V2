@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';
 import BottomNav from './components/BottomNav';
+import ScrollToTop from './components/ScrollToTop';
 import { ThemeProvider } from './context/ThemeContext';
 
 // Import pages statically to guarantee zero dynamic chunk fetching errors
@@ -17,6 +18,7 @@ import Dashboard from './pages/Dashboard';
 import Account from './pages/Account';
 import EditProfile from './pages/EditProfile';
 import Notifications from './pages/Notifications';
+import LanguageSettings from './pages/LanguageSettings';
 import Security from './pages/Security';
 import UpdatePassword from './pages/UpdatePassword';
 import PaymentMethods from './pages/PaymentMethods';
@@ -35,6 +37,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <AuthProvider>
           <div className="pb-16 md:pb-0 min-h-screen flex flex-col bg-white text-adv-slate transition-colors duration-300">
             <Routes>
@@ -48,6 +51,7 @@ export default function App() {
                 <Route path="category/:categoryId" element={<CategoryEvents />} />
                 <Route path="edit-profile" element={<EditProfile />} />
                 <Route path="notifications" element={<Notifications />} />
+                <Route path="language" element={<LanguageSettings />} />
                 <Route path="security" element={<Security />} />
                 <Route path="security/2fa" element={<UpdatePassword />} />
                 <Route path="security/password" element={<UpdatePassword />} />

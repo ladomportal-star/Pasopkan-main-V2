@@ -22,6 +22,7 @@ const translations = {
     female: 'Female',
     other: 'Other',
     selectGender: 'Select Gender',
+    dateOfBirth: 'Date of Birth',
     cancel: 'Cancel',
     saveChanges: 'Save Changes',
     saving: 'Saving...',
@@ -43,6 +44,7 @@ const translations = {
     female: 'ຍິງ',
     other: 'ອື່ນໆ',
     selectGender: 'ເລືອກເພດ',
+    dateOfBirth: 'ວັນເດືອນປີເກີດ',
     cancel: 'ຍົກເລີກ',
     saveChanges: 'ບັນທຶກການປ່ຽນແປງ',
     saving: 'ກຳລັງບັນທຶກ...',
@@ -69,6 +71,7 @@ export default function EditProfile() {
           email: 'sirithida.ssv@gmail.com',
           phone: '',
           gender: '' as 'male' | 'female' | 'other' | '',
+          dateOfBirth: '',
           ...JSON.parse(saved)
         };
       }
@@ -81,6 +84,7 @@ export default function EditProfile() {
       email: 'sirithida.ssv@gmail.com',
       phone: '',
       gender: '' as 'male' | 'female' | 'other' | '',
+      dateOfBirth: '',
     };
   });
 
@@ -277,6 +281,18 @@ export default function EditProfile() {
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 </div>
               </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="dateOfBirth" className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.dateOfBirth}</label>
+                <input
+                  type="date"
+                  id="dateOfBirth"
+                  name="dateOfBirth"
+                  value={formData.dateOfBirth || ""}
+                  onChange={handleChange}
+                  className="w-full bg-[#F9FAFB] border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-adv-slate font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                />
+              </div>
             </div>
           </div>
 
@@ -313,7 +329,7 @@ export default function EditProfile() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-12 left-1/2 -translate-x-1/2 bg-adv-slate text-white px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-50 border border-white/10"
+            className="fixed bottom-24 sm:bottom-12 left-1/2 -translate-x-1/2 bg-adv-slate text-white px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-50 border border-white/10"
           >
             <CheckCircle2 className="w-5 h-5 text-adv-orange" />
             {t.successMessage}

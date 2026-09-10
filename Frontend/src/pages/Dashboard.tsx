@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Ticket, Calendar, MapPin, QrCode, User, Settings, LogOut, X, CheckCircle2, Loader2, Users, DollarSign, PieChart, Plus, RefreshCcw, ChevronLeft, ChevronRight, Clock, Star, Share2 } from 'lucide-react';
+import { Ticket, Calendar, MapPin, QrCode, User, Settings, LogOut, X, CheckCircle2, XCircle, Loader2, Users, DollarSign, PieChart, Plus, RefreshCcw, ChevronLeft, ChevronRight, Clock, Star, Share2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { LaoEvent, TicketTier } from '../data/events';
 import { useAuth } from '../context/AuthContext';
@@ -65,7 +65,7 @@ const translations = {
       manageEvent: 'Manage Item',
       refund: 'Request Refund',
       refundConfirmTitle: 'Request Refund?',
-      refundConfirmDesc: 'Are you sure you want to refund your tickets for {event}? Refunds are typically processed within 48 hours.',
+      refundConfirmDesc: 'Are you sure you want to refund your tickets for {event}? Refunds will be processed 4-5 business days after the event ends.',
       confirmRefund: 'Confirm Refund',
       cancel: 'Cancel',
       refundSuccess: 'Refund request submitted successfully!',
@@ -132,7 +132,7 @@ const translations = {
       manageEvent: 'ຈັດການກິດຈະກຳ',
       refund: 'ຄືນເງິນປີ້',
       refundConfirmTitle: 'ຕ້ອງການຄືນເງິນປີ້?',
-      refundConfirmDesc: 'ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການຄືນເງິນປີ້ສຳລັບ {event}? ການຄືນເງິນປົກກະຕິຈະຖືກປະມວນຜົນພາຍໃນ 48 ຊົ່ວໂມງ.',
+      refundConfirmDesc: 'ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການຄືນເງິນປີ້ສຳລັບ {event}? ການຄືນເງິນຈະຖືກປະມວນຜົນພາຍໃນ 4-5 ມື້ລັດຖະການ ຫຼັງຈາກກິດຈະກຳສິ້ນສຸດ.',
       confirmRefund: 'ຢືນຢັນການຄືນເງິນ',
       cancel: 'ຍົກເລີກ',
       refundSuccess: 'ສົ່ງຄຳຮ້ອງຂໍຄືນເງິນສຳເລັດແລ້ວ!',
@@ -418,7 +418,37 @@ export default function Dashboard() {
 
   const filteredTickets = tickets.filter(t => getEffectiveStatus(t) === activeTab);
 
+  const isRefundEligible = (ticket: PurchasedTicket): boolean => {
+    const eventDateStr = ticket.selectedDate || ticket.event?.date;
+    const eventTimeStr = ticket.selectedTime || ticket.event?.time || '00:00';
+    
+    if (!eventDateStr) return false;
+  
+    const cleanDate = eventDateStr.trim();
+    
+    let eventDateTime: Date;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
+      eventDateTime = new Date(`${cleanDate}T${eventTimeStr}:00`);
+    } else {
+      eventDateTime = new Date(`${cleanDate} ${eventTimeStr}`);
+    }
+  
+    if (isNaN(eventDateTime.getTime())) {
+       return false; // If we can't parse the date, default to no refund to be safe
+    }
+  
+    const now = new Date();
+    const hoursUntilEvent = (eventDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+  
+    // Eligible if it's more than 48 hours before the event starts
+    return hoursUntilEvent >= 48;
+  };
+
   const handleRefundTicket = (ticket: PurchasedTicket) => {
+    if (!isRefundEligible(ticket)) {
+      alert(lang === 'lo' ? 'ບໍ່ສາມາດຄືນເງິນໄດ້ເນື່ອງຈາກກິດຈະກຳຈະເລີ່ມພາຍໃນ 48 ຊົ່ວໂມງ' : 'Refund is not available because the event starts in less than 48 hours.');
+      return;
+    }
     setRefundTicket(ticket);
   };
 
@@ -622,9 +652,13 @@ export default function Dashboard() {
                               <button 
                                 onClick={() => handleRefundTicket(ticket)}
                                 className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                                  theme === 'dark' 
-                                    ? 'bg-zinc-800/60 text-zinc-400 border border-transparent hover:bg-red-950/20 hover:text-red-400' 
-                                    : 'bg-gray-50 text-gray-400 border border-gray-200 hover:bg-red-50 hover:text-red-500'
+                                  isRefundEligible(ticket)
+                                    ? theme === 'dark' 
+                                      ? 'bg-zinc-800/60 text-zinc-400 border border-transparent hover:bg-red-950/20 hover:text-red-400' 
+                                      : 'bg-gray-50 text-gray-400 border border-gray-200 hover:bg-red-50 hover:text-red-500'
+                                    : theme === 'dark'
+                                      ? 'opacity-40 bg-zinc-800/40 text-zinc-500 hover:bg-zinc-800/40 hover:text-zinc-500 cursor-not-allowed'
+                                      : 'opacity-40 bg-gray-100 text-gray-400 hover:bg-gray-100 hover:text-gray-400 cursor-not-allowed'
                                 }`}
                               >
                                 <RefreshCcw className="w-3 h-3" />
@@ -633,10 +667,20 @@ export default function Dashboard() {
                             </div>
                           ) : (
                             <div className="flex items-center justify-between w-full flex-wrap gap-2">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-zinc-500 flex items-center gap-1.5">
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                                <span>{lang === 'lo' ? 'ກິດຈະກຳສຳເລັດແລ້ວ' : 'Event Completed'}</span>
-                              </span>
+                              {(() => {
+                                const isScanned = ticket.scanned || allCheckins.some(c => (c.ticketId || c.id || '').toLowerCase().includes(ticket.id.toLowerCase()));
+                                return isScanned ? (
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-zinc-500 flex items-center gap-1.5">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                    <span>{lang === 'lo' ? 'ກິດຈະກຳສຳເລັດແລ້ວ' : 'Event Completed'}</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-zinc-500 flex items-center gap-1.5">
+                                    <XCircle className="w-3.5 h-3.5 text-red-500" />
+                                    <span>{lang === 'lo' ? 'ໝົດອາຍຸ' : 'Expired'}</span>
+                                  </span>
+                                );
+                              })()}
                               <button 
                                 onClick={() => setShowQrTicket({ ...ticket, status: 'past' })}
                                 className={`flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${

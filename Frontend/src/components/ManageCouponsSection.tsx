@@ -340,9 +340,10 @@ export const ManageCouponsSection: React.FC<ManageCouponsSectionProps> = ({
             const maxCapLabel = isPercent && coupon.maxDiscountAmount && coupon.maxDiscountAmount > 0
               ? ` (Max ${Number(coupon.maxDiscountAmount).toLocaleString()} ${currency})`
               : '';
+            const discountText = lang === 'lo' ? 'ສ່ວນຫຼຸດ' : 'Discount';
             const discountLabel = isPercent 
-              ? `${coupon.discount}% OFF${maxCapLabel}`
-              : `${Number(String(coupon.discount).replace(/,/g, '') || 0).toLocaleString()} ${currency} OFF`;
+              ? `${coupon.discount}% ${discountText}${maxCapLabel}`
+              : `${Number(String(coupon.discount).replace(/,/g, '') || 0).toLocaleString()} ${currency} ${discountText}`;
 
             const couponUsages = getCouponRedemptions(coupon);
             const usageCount = couponUsages.length;
