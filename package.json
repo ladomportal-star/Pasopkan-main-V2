@@ -47,6 +47,9 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@babel/core": "^8.0.1",
+    "@babel/preset-react": "^8.0.1",
+    "@babel/preset-typescript": "^8.0.1",
     "@firebase/eslint-plugin-security-rules": "^0.0.2",
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.17",

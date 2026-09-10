@@ -123,21 +123,7 @@ const translations = {
     questionnaireSummaryTitle: 'Activity Questionnaire Analytics & Summary',
     questionnaireSummarySubtitle: 'Aggregated breakdown of all attendee question submissions for this activity',
     exportAllData: 'Export Excel (All Data & Answers)',
-    quickCheckin: 'Quick Check-In',
-    close: 'Close',
-    detailUser: 'Detail User',
-    copyTicketId: 'Copy Ticket ID',
-    ticketIdCopied: 'Ticket ID copied!',
-    callAttendee: 'Call Attendee',
-    emailAttendee: 'Email Attendee',
-    undoCheckin: 'Undo Check-In',
-    manageSections: 'Event Sections',
-    allSections: 'All Sections',
-    attendeesTab: 'Ticket Buyers',
-    couponsTab: 'Coupons & Discounts',
-    staffTab: 'Staff Links',
-    seatingTab: 'Seating Map',
-    noQuestionsAnswered: 'No questionnaire required or submitted for this ticket tier.'
+    quickCheckin: 'Quick Check-In'
   },
   lo: {
     settings: 'ຕັ້ງຄ່າ',
@@ -227,21 +213,7 @@ const translations = {
     questionnaireSummaryTitle: 'ສະຖິຕິ ແລະ ບົດສະຫຼຸບຄຳຕອບແບບສອບຖາມ',
     questionnaireSummarySubtitle: 'ການລວບລວມຄຳຕອບແບບສອບຖາມທັງໝົດສຳລັບກິດຈະກຳນີ້',
     exportAllData: 'ສົ່ງອອກ Excel (ຂໍ້ມູນທັງໝົດ ແລະ ຄຳຕອບ)',
-    quickCheckin: 'ເຊັກອິນດ່ວນ',
-    close: 'ປິດ',
-    detailUser: 'ລາຍລະອຽດຜູ້ໃຊ້',
-    copyTicketId: 'ຄັດລອກລະຫັດປີ້',
-    ticketIdCopied: 'ຄັດລອກລະຫັດປີ້ສຳເລັດແລ້ວ!',
-    callAttendee: 'ໂທຫາຜູ້ເຂົ້າຮ່ວມ',
-    emailAttendee: 'ສົ່ງອີເມວຫາຜູ້ເຂົ້າຮ່ວມ',
-    undoCheckin: 'ຍົກເລີກການເຊັກອິນ',
-    manageSections: 'ໝວດໝູ່ການຈັດການ',
-    allSections: 'ທຸກໝວດໝູ່',
-    attendeesTab: 'ຜູ້ຊື້ປີ້',
-    couponsTab: 'ຄູປອງ & ສ່ວນຫຼຸດ',
-    staffTab: 'ລິ້ງພະນັກງານ',
-    seatingTab: 'ແຜນຜັງບ່ອນນັ່ງ',
-    noQuestionsAnswered: 'ບໍ່ມີແບບສອບຖາມເພີ່ມເຕີມສຳລັບປີ້ປະເພດນີ້.'
+    quickCheckin: 'ເຊັກອິນດ່ວນ'
   }
 };
 
@@ -255,7 +227,7 @@ const MOCK_PAYOUTS = [
     platformFee: 500000,
     amount: 15500000,
     status: 'Completed',
-    account: 'BCEL *6701',
+    account: 'BCEL 0101200012346701',
     receiptUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=300'
   },
   {
@@ -266,7 +238,7 @@ const MOCK_PAYOUTS = [
     platformFee: 300000,
     amount: 8200000,
     status: 'Completed',
-    account: 'BCEL *6701',
+    account: 'BCEL 0101200012346701',
     receiptUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=300'
   },
   {
@@ -277,7 +249,7 @@ const MOCK_PAYOUTS = [
     platformFee: 600000,
     amount: 12400000,
     status: 'Completed',
-    account: 'BCEL *6701',
+    account: 'BCEL 0101200012346701',
     receiptUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=300'
   },
   {
@@ -288,7 +260,7 @@ const MOCK_PAYOUTS = [
     platformFee: 300000,
     amount: 3500000,
     status: 'Completed',
-    account: 'BCEL *6701',
+    account: 'BCEL 0101200012346701',
     receiptUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=300'
   }
 ];
@@ -1134,7 +1106,7 @@ export default function Account() {
             platformFee: bill.platformFeeAmount || 0,
             amount: bill.payoutAmount || 0,
             status: bill.status === 'paid' ? 'Completed' : 'Pending',
-            account: bill.bankInfo ? `${bill.bankInfo.bankName} *${bill.bankInfo.accountNumber.slice(-4)}` : 'Unknown',
+            account: bill.bankInfo ? `${bill.bankInfo.bankName} ${bill.bankInfo.accountNumber}` : 'Unknown',
             receiptUrl: bill.billImage
           }));
           
@@ -1294,7 +1266,7 @@ export default function Account() {
                   <img src={profilePic} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
                   <User className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400" />
-                )}
+            )}
               </div>
               <div className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-adv-orange text-white flex items-center justify-center shadow-lg border-2 border-white dark:border-zinc-900 transition-transform group-hover:scale-110">
                 <Camera className="w-4 h-4" />
@@ -1396,54 +1368,38 @@ export default function Account() {
                 <ChevronRight className="w-4.5 h-4.5 rotate-90" />
               </div>
             </div>
-          </div>
 
+          </div>
           {selectedEvent && (
             <div className="space-y-6 sm:space-y-8">
-              {/* Event Stats Card */}
+              {/* Event Card */}
               <div className={`rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm border p-4 sm:p-5 transition-all ${
                 theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
               }`}>
-                <div className="flex flex-col sm:flex-row items-center gap-3.5 sm:gap-5 mb-4 pb-4 border-b border-gray-100/50 dark:border-zinc-800/50">
-                   <img src={selectedEvent.image} alt={selectedEvent.title} className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl object-cover shrink-0 shadow-sm" />
-                   <div className="flex-1 text-center sm:text-left min-w-0">
-                      <div className="flex items-center gap-2.5 justify-center sm:justify-start mb-1">
-                        <h3 className="text-sm sm:text-base font-bold truncate">{selectedEvent.title}</h3>
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5">
+                   <div className={`w-full sm:w-24 shrink-0 aspect-[2/1] sm:aspect-square rounded-xl sm:rounded-2xl overflow-hidden shadow-sm relative ${theme === 'dark' ? 'bg-zinc-950' : 'bg-gray-100'}`}>
+                     {/* Blurred background to match image colors */}
+                     <div className="absolute inset-0 z-0">
+                       <img src={selectedEvent.image} alt="" className="w-full h-full object-cover blur-xl opacity-60 scale-125" aria-hidden="true" />
+                     </div>
+                     <img src={selectedEvent.image} alt={selectedEvent.title} className="w-full h-full object-contain relative z-10" />
+                   </div>
+                   <div className="flex-1 text-center sm:text-left min-w-0 pt-1">
+                      <div className="flex flex-wrap items-center gap-2.5 justify-center sm:justify-start mb-2">
+                        <h3 className="text-base sm:text-lg font-bold truncate">{selectedEvent.title}</h3>
                         {selectedEvent.status === 'pending' && (
                           <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[9px] sm:text-[10px] font-black uppercase tracking-widest shrink-0">
                             Pending Approval
                           </span>
                         )}
                       </div>
-                      <div className="flex flex-wrap justify-center sm:justify-start gap-x-3 gap-y-1 text-[11px] sm:text-xs text-gray-400 font-medium">
-                         <span className="flex items-center gap-1.5"><CalendarIcon className="w-3.5 h-3.5 text-adv-orange shrink-0" /> {selectedEvent.date}</span>
-                         <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-adv-orange shrink-0" /> {selectedEvent.location}</span>
+                      <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-2 sm:gap-4 text-xs text-gray-500 font-medium">
+                         <span className="flex items-center gap-1.5"><CalendarIcon className="w-4 h-4 text-adv-orange shrink-0" /> {selectedEvent.date}</span>
+                         <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-adv-orange shrink-0" /> {selectedEvent.location}</span>
                       </div>
                    </div>
                 </div>
-                
-                <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                  <div className={`rounded-xl sm:rounded-2xl py-2 px-2 sm:py-2.5 sm:px-3 text-center border transition-all ${
-                    theme === 'dark' ? 'bg-zinc-950/40 border-zinc-850' : 'bg-[#F9FAFB] border-gray-100'
-                  }`}>
-                    <div className="text-base sm:text-lg font-black leading-tight mb-0.5">{totalAttendeesCount || selectedEvent.registered || 0}</div>
-                    <div className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider truncate">{t.allBuyers}</div>
-                  </div>
-                  <div className={`rounded-xl sm:rounded-2xl py-2 px-2 sm:py-2.5 sm:px-3 text-center border transition-all ${
-                    theme === 'dark' ? 'bg-emerald-950/20 border-emerald-900/30' : 'bg-emerald-50/50 border-emerald-100'
-                  }`}>
-                    <div className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 leading-tight mb-0.5">{checkedInCount}</div>
-                    <div className="text-[9px] sm:text-[10px] text-emerald-600/70 dark:text-emerald-400/70 font-bold uppercase tracking-wider truncate">{t.checkedIn}</div>
-                  </div>
-                  <div className={`rounded-xl sm:rounded-2xl py-2 px-2 sm:py-2.5 sm:px-3 text-center border transition-all ${
-                    theme === 'dark' ? 'bg-amber-950/20 border-amber-900/30' : 'bg-amber-50/50 border-amber-100'
-                  }`}>
-                    <div className="text-base sm:text-lg font-black text-amber-600 dark:text-amber-400 leading-tight mb-0.5">{pendingCount}</div>
-                    <div className="text-[9px] sm:text-[10px] text-amber-600/70 dark:text-amber-400/70 font-bold uppercase tracking-wider truncate">{t.pendingGate}</div>
-                  </div>
-                </div>
               </div>
-
               {/* Action Buttons */}
               <div className="w-full">
                 <button 
@@ -1497,17 +1453,14 @@ export default function Account() {
                       >
                         <div className="min-w-0 flex-1 flex items-center gap-2">
                           <span className="text-xs sm:text-sm font-black truncate">{link.staffLabel}</span>
-                          <span className="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-bold rounded-full border border-emerald-500/20 shrink-0">
-                            {lang === 'lo' ? 'ໃຊ້ງານໄດ້' : 'Active'}
-                          </span>
                           {link.createdAt && (
                             <span className="text-[10px] text-gray-400 font-medium hidden md:inline-block shrink-0">
                               • {lang === 'lo' ? 'ສ້າງເມື່ອ' : 'Created'}: {link.createdAt}
                             </span>
-                          )}
+            )}
                         </div>
 
-                        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                         <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                           <button
                             onClick={() => handleCopyStaffLink(link.url)}
                             title={t.copyLink}
@@ -1553,11 +1506,11 @@ export default function Account() {
                         </div>
                       </div>
                     ))
-                  )}
+            )}
                 </div>
-              </div>
+               </div>
 
-              {/* Coupons & Discounts Management (Manage existing coupons created with event) */}
+               {/* Coupons & Discounts Management (Manage existing coupons created with event) */}
               <ManageCouponsSection
                 eventId={String(selectedEvent.id)}
                 coupons={selectedEvent.coupons || []}
@@ -1601,14 +1554,14 @@ export default function Account() {
                     </div>
                   </div>
                 </div>
-              )}
+            )}
 
               {/* Ticket Buyers & Registration Directory with Custom Questionnaire Responses */}
               <div className={`rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-8 shadow-sm border transition-all ${
                 theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
               }`}>
                 {/* Header & Primary Actions */}
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 pb-5 border-b border-gray-100/60 dark:border-zinc-800/60">
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6">
                   <div>
                     <div className="flex items-center gap-2.5 mb-1">
                       <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-adv-orange border border-orange-500/20 flex items-center justify-center shrink-0">
@@ -1621,74 +1574,8 @@ export default function Account() {
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    {/* Export to Excel Button */}
-                    <button
-                      onClick={handleExportToExcel}
-                      className="px-4 py-2 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:scale-[1.02] active:scale-[0.98] font-black text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 border border-emerald-500/20 shadow-sm shrink-0 cursor-pointer"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>{lang === 'en' ? 'Export Excel' : 'ສົ່ງອອກ Excel'}</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Status Tabs & Filters */}
-                <div className="space-y-3.5 mb-5">
-                  {/* Status Pills */}
-                  <div className="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-1 sm:gap-1.5 p-1 bg-gray-100/80 dark:bg-zinc-950/60 rounded-xl sm:rounded-2xl border border-gray-200/50 dark:border-zinc-850 w-full sm:w-auto">
-                    <button
-                      onClick={() => { setAttendeeFilter('all'); setAttendeeListPage(1); }}
-                      className={`px-1.5 py-2 sm:px-3.5 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer flex flex-col xs:flex-row sm:flex-row items-center justify-center gap-1 sm:gap-1.5 min-h-[44px] sm:min-h-0 text-center ${
-                        attendeeFilter === 'all'
-                          ? 'bg-adv-orange text-white shadow-xs'
-                          : 'text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white'
-                      }`}
-                    >
-                      <span className="truncate">{t.allBuyers}</span>
-                      <span className={`px-1.5 py-0.2 rounded-full text-[9px] sm:text-[10px] font-black shrink-0 ${attendeeFilter === 'all' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300'}`}>
-                        {totalAttendeesCount}
-                      </span>
-                    </button>
-
-                    <button
-                      onClick={() => { setAttendeeFilter('checked_in'); setAttendeeListPage(1); }}
-                      className={`px-1.5 py-2 sm:px-3.5 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer flex flex-col xs:flex-row sm:flex-row items-center justify-center gap-1 sm:gap-1.5 min-h-[44px] sm:min-h-0 text-center ${
-                        attendeeFilter === 'checked_in'
-                          ? 'bg-emerald-600 text-white shadow-xs'
-                          : 'text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white'
-                      }`}
-                    >
-                      <span className="flex items-center justify-center gap-1 truncate">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-                        <span className="truncate">{t.checkedIn}</span>
-                      </span>
-                      <span className={`px-1.5 py-0.2 rounded-full text-[9px] sm:text-[10px] font-black shrink-0 ${attendeeFilter === 'checked_in' ? 'bg-white/20 text-white' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
-                        {checkedInCount}
-                      </span>
-                    </button>
-
-                    <button
-                      onClick={() => { setAttendeeFilter('pending'); setAttendeeListPage(1); }}
-                      className={`px-1.5 py-2 sm:px-3.5 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer flex flex-col xs:flex-row sm:flex-row items-center justify-center gap-1 sm:gap-1.5 min-h-[44px] sm:min-h-0 text-center ${
-                        attendeeFilter === 'pending'
-                          ? 'bg-amber-600 text-white shadow-xs'
-                          : 'text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white'
-                      }`}
-                    >
-                      <span className="flex items-center justify-center gap-1 truncate">
-                        <Clock className="w-3 h-3 text-amber-400 shrink-0" />
-                        <span className="truncate">{t.pendingGate}</span>
-                      </span>
-                      <span className={`px-1.5 py-0.2 rounded-full text-[9px] sm:text-[10px] font-black shrink-0 ${attendeeFilter === 'pending' ? 'bg-white/20 text-white' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
-                        {pendingCount}
-                      </span>
-                    </button>
-                  </div>
-
-                  {/* Search and Tier Filter Row */}
-                  <div className="flex flex-col sm:flex-row items-center gap-2.5">
-                    <div className="relative flex-1 w-full">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full xl:w-auto">
+                    <div className="relative flex-1 sm:w-64">
                       <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                       <input
                         type="text"
@@ -1732,6 +1619,69 @@ export default function Account() {
                         </select>
                       </div>
                     )}
+
+                    {/* Export to Excel Button */}
+                    <button
+                      onClick={handleExportToExcel}
+                      className="px-4 py-2.5 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:scale-[1.02] active:scale-[0.98] font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 border border-emerald-500/20 shadow-sm shrink-0 cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>{lang === 'en' ? 'Export Excel' : 'ສົ່ງອອກ Excel'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Status Tabs & Filters */}
+                <div className="mb-5">
+                  {/* Status Pills */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 p-1.5 bg-gray-100/80 dark:bg-zinc-950/60 rounded-xl sm:rounded-2xl border border-gray-200/50 dark:border-zinc-850">
+                    <button
+                      onClick={() => { setAttendeeFilter('all'); setAttendeeListPage(1); }}
+                      className={`flex-1 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer flex items-center justify-between gap-2 text-center h-full min-h-[36px] sm:min-h-[44px] ${
+                        attendeeFilter === 'all'
+                          ? 'bg-adv-orange text-white shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-zinc-800/50'
+                      }`}
+                    >
+                      <span className="whitespace-normal leading-tight text-left flex-1 min-w-0">{t.allBuyers}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${attendeeFilter === 'all' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300'}`}>
+                        {totalAttendeesCount}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => { setAttendeeFilter('checked_in'); setAttendeeListPage(1); }}
+                      className={`flex-1 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer flex items-center justify-between gap-2 text-center h-full min-h-[36px] sm:min-h-[44px] ${
+                        attendeeFilter === 'checked_in'
+                          ? 'bg-emerald-600 text-white shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-zinc-800/50'
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5 flex-1 min-w-0">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span className="whitespace-normal leading-tight text-left min-w-0">{t.checkedIn}</span>
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${attendeeFilter === 'checked_in' ? 'bg-white/20 text-white' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
+                        {checkedInCount}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => { setAttendeeFilter('pending'); setAttendeeListPage(1); }}
+                      className={`flex-1 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer flex items-center justify-between gap-2 text-center h-full min-h-[36px] sm:min-h-[44px] ${
+                        attendeeFilter === 'pending'
+                          ? 'bg-amber-600 text-white shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-zinc-800/50'
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5 flex-1 min-w-0">
+                        <Clock className="w-3.5 h-3.5 shrink-0" />
+                        <span className="whitespace-normal leading-tight text-left min-w-0">{t.pendingGate}</span>
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${attendeeFilter === 'pending' ? 'bg-white/20 text-white' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
+                        {pendingCount}
+                      </span>
+                    </button>
                   </div>
                 </div>
 
@@ -1749,7 +1699,7 @@ export default function Account() {
                     </div>
                   ) : (
                     (() => {
-                      const ATTENDEES_PER_PAGE = 8;
+                      const ATTENDEES_PER_PAGE = 10;
                       const totalAttendeePages = Math.ceil(filteredAttendees.length / ATTENDEES_PER_PAGE) || 1;
                       const safePage = Math.min(attendeeListPage, totalAttendeePages);
                       const paginatedAttendees = filteredAttendees.slice((safePage - 1) * ATTENDEES_PER_PAGE, safePage * ATTENDEES_PER_PAGE);
@@ -1775,71 +1725,60 @@ export default function Account() {
                                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                                   {/* Left: Info */}
                                   <div className="min-w-0 flex-1">
-                                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                                    <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1.5 sm:gap-2 mb-2 sm:mb-1">
                                       <span className="text-sm sm:text-base font-black truncate max-w-[200px] sm:max-w-none">
                                         {att.attendeeName || `${att.firstName || ''} ${att.lastName || ''}`.trim() || 'Attendee'}
                                       </span>
-                                      <span className="px-2 py-0.5 bg-adv-slate dark:bg-zinc-800 text-white rounded-lg text-[9px] font-black uppercase tracking-widest">
+                                      <span className="w-fit px-2 py-0.5 bg-adv-slate dark:bg-zinc-800 text-white rounded-lg text-[9px] font-black uppercase tracking-widest">
                                         {att.ticketType || 'Standard'}
                                       </span>
-                                      {/* Checked In status badge */}
-                                      {att.isCheckedIn ? (
-                                        <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider border border-emerald-500/20 flex items-center gap-1">
-                                          <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                                          <span>{lang === 'lo' ? 'ເຊັກອິນແລ້ວ' : 'Checked In'}</span>
-                                        </span>
-                                      ) : (
-                                        <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider border border-amber-500/20 flex items-center gap-1">
-                                          <Clock className="w-3 h-3 text-amber-500" />
-                                          <span>{lang === 'lo' ? 'ລໍຖ້າສະແກນ' : 'Pending Gate'}</span>
-                                        </span>
-                                      )}
                                     </div>
 
                                     {/* Contact and Ticket ID (Removed Order number) */}
-                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-gray-500 dark:text-zinc-400 mb-2">
+                                    <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1.5 sm:gap-x-3 text-xs font-semibold text-gray-500 dark:text-zinc-400 mb-2.5 sm:mb-2">
                                       {att.email && (
-                                        <span className="flex items-center gap-1 truncate">
-                                          <Mail className="w-3 h-3 text-adv-orange shrink-0" />
+                                        <span className="flex items-center gap-1.5 sm:gap-1 truncate">
+                                          <Mail className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-adv-orange shrink-0" />
                                           <span>{att.email}</span>
                                         </span>
-                                      )}
+            )}
                                       {att.phone && (
-                                        <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold truncate">
-                                          <Phone className="w-3 h-3 text-emerald-500 shrink-0" />
+                                        <span className="flex items-center gap-1.5 sm:gap-1 text-emerald-600 dark:text-emerald-400 font-bold truncate">
+                                          <Phone className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-emerald-500 shrink-0" />
                                           <span>{att.phone}</span>
                                         </span>
-                                      )}
-                                      <span className="text-[11px] font-mono text-gray-400 dark:text-zinc-500">
-                                        Ticket ID: <span className="font-bold text-adv-slate dark:text-white">{att.ticketId || att.id}</span>
+            )}
+                                      <span className="text-[11px] font-mono text-gray-400 dark:text-zinc-500 flex items-center gap-1.5 sm:gap-0">
+                                        Ticket ID: <span className="font-bold text-adv-slate dark:text-white sm:ml-1">{att.ticketId || att.id}</span>
                                       </span>
                                     </div>
 
                                     {/* Detail: Price & Time strictly as hh:mm (Removed detail zone, row, seat) */}
-                                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px] sm:text-[11px] font-bold text-gray-400 dark:text-zinc-400 uppercase tracking-wider">
+                                    <div className="flex flex-row flex-wrap items-center gap-2.5 text-[10px] sm:text-[11px] font-bold text-gray-400 dark:text-zinc-400 uppercase tracking-wider">
                                       {att.price && (
                                         <span className="text-adv-orange font-mono font-black">{att.price}</span>
-                                      )}
+            )}
                                       {((att.checkedInTime && att.isCheckedIn) || att.purchaseDate) && (
                                         <>
                                           {att.price && <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />}
                                           <span className={`flex items-center gap-1 font-mono font-bold lowercase ${att.isCheckedIn ? 'text-emerald-500' : 'text-gray-400 dark:text-zinc-400'}`}>
-                                            <Clock className="w-3 h-3 shrink-0" />
+                                            <Clock className="w-3.5 h-3.5 sm:w-3 sm:h-3 shrink-0" />
                                             <span>{formatTimeToHHMM(att.checkedInTime || att.purchaseDate, att.checkedInTimestamp)}</span>
                                           </span>
                                         </>
-                                      )}
+            )}
                                     </div>
-                                  </div>
+                                   </div>
 
                                   {/* Right: Actions */}
-                                  <div className="flex flex-wrap sm:flex-col items-center sm:items-end justify-end gap-2 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-200/60 dark:border-zinc-850 shrink-0">
+                                  <div className="flex items-center gap-2 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-200/60 dark:border-zinc-850 shrink-0 w-full sm:w-auto">
+                                     <div className={`grid ${answerCount > 0 ? 'grid-cols-2' : 'grid-cols-1'} sm:flex sm:flex-col items-center sm:items-end gap-2 w-full sm:w-auto`}>
                                     {/* View Full Answers Button (Always accessible to organizer) */}
                                     {answerCount > 0 ? (
                                       <button
                                         type="button"
                                         onClick={() => setSelectedAttendeeForAnswers(att)}
-                                        className="w-[138px] h-9 px-3 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-adv-orange border border-orange-500/20 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap active:scale-95 shadow-2xs"
+                                        className="w-full sm:w-[138px] h-9 px-3 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-adv-orange border border-orange-500/20 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap active:scale-95 shadow-2xs"
                                       >
                                         <Eye className="w-3.5 h-3.5 shrink-0" />
                                         <span>{t.viewAnswers}</span>
@@ -1849,7 +1788,7 @@ export default function Account() {
                                     {/* Check-in Status / Quick Check-in */}
                                     {att.isCheckedIn ? (
                                       <div 
-                                        className="w-[138px] h-9 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-2xs select-none shrink-0 whitespace-nowrap"
+                                        className="w-full sm:w-[138px] h-9 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-2xs select-none shrink-0 whitespace-nowrap"
                                         title={att.checkedInTime ? `${t.checkedIn} @ ${att.checkedInTime}` : t.checkedIn}
                                       >
                                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -1865,15 +1804,16 @@ export default function Account() {
                                             'success'
                                           );
                                         }}
-                                        className="w-[138px] h-9 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-xs active:scale-95 shrink-0 whitespace-nowrap"
+                                        className="w-full sm:w-[138px] h-9 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-xs active:scale-95 shrink-0 whitespace-nowrap"
                                       >
                                         <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                                         <span>{t.quickCheckin}</span>
                                       </button>
-                                    )}
+            )}
                                   </div>
-                                </div>
-                              </motion.div>
+                                  </div>
+                                   </div>
+                               </motion.div>
                             );
                           })}
 
@@ -1896,20 +1836,32 @@ export default function Account() {
                                   <ChevronLeft className="w-4 h-4" />
                                 </button>
 
-                                {Array.from({ length: totalAttendeePages }, (_, i) => i + 1).map(p => (
-                                  <button
-                                    key={p}
-                                    type="button"
-                                    onClick={() => setAttendeeListPage(p)}
-                                    className={`w-8 h-8 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                                      safePage === p
-                                        ? 'bg-adv-orange text-white shadow-sm'
-                                        : 'border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800'
-                                    }`}
-                                  >
-                                    {p}
-                                  </button>
-                                ))}
+                                {Array.from({ length: totalAttendeePages }, (_, i) => i + 1).map(p => {
+                                  // Show first page, last page, current page, and pages immediately around current
+                                  if (p === 1 || p === totalAttendeePages || (p >= safePage - 1 && p <= safePage + 1)) {
+                                    return (
+                                      <button
+                                        key={p}
+                                        type="button"
+                                        onClick={() => setAttendeeListPage(p)}
+                                        className={`w-8 h-8 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                          safePage === p
+                                            ? 'bg-adv-orange text-white shadow-sm'
+                                            : 'border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800'
+                                        }`}
+                                      >
+                                        {p}
+                                      </button>
+                                    );
+                                  }
+                                  
+                                  // Show ellipsis for gaps
+                                  if (p === safePage - 2 || p === safePage + 2) {
+                                    return <span key={p} className="text-gray-400 dark:text-zinc-500 font-bold px-1">...</span>;
+                                  }
+                                  
+                                  return null;
+                                })}
 
                                 <button
                                   type="button"
@@ -1921,36 +1873,25 @@ export default function Account() {
                                 </button>
                               </div>
                             </div>
-                          )}
+            )}
                         </>
                       );
                     })()
-                  )}
+            )}
+            </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
         </div>
 
         <div className={activeTab === 'payouts' ? 'block' : 'hidden'}>
           <div className="max-w-4xl mx-auto space-y-4 sm:space-y-8">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2.5 sm:gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2.5 sm:gap-4 mb-4">
               <div>
                 <h2 className={`text-xl sm:text-3xl font-black transition-colors tracking-tight ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>
                   {t.payouts || (lang === 'lo' ? 'ໃບບິນເບີກຈ່າຍ' : 'Payout Bills')}
                 </h2>
                 <p className="text-xs sm:text-sm font-semibold text-gray-500 mt-0.5 sm:mt-1">{lang === 'lo' ? 'ຈັດການຂໍ້ມູນທະນາຄານ ແລະ ເບິ່ງປະຫວັດການເບີກຈ່າຍ.' : 'Manage your bank details and view past payouts.'}</p>
-              </div>
-              <div className="p-2.5 sm:p-4 bg-orange-50/80 dark:bg-orange-950/30 border border-orange-100 dark:border-orange-900/40 rounded-xl sm:rounded-2xl flex items-center gap-3 sm:gap-4 shadow-2xs shrink-0 backdrop-blur-xl">
-                <div className="p-2 sm:p-2.5 bg-orange-100 dark:bg-orange-900/50 text-adv-orange dark:text-orange-400 rounded-lg sm:rounded-xl">
-                  <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
-                </div>
-                <div>
-                  <p className="text-[9px] sm:text-[10px] font-black text-adv-orange dark:text-orange-400 uppercase tracking-wider sm:tracking-widest">{t.totalReceived || 'Total Received'}</p>
-                  <p className="text-base sm:text-xl font-black text-emerald-700 dark:text-emerald-300">
-                    {new Intl.NumberFormat('lo-LA').format(myPayouts.reduce((sum, p) => sum + p.amount, 0))} ₭
-                  </p>
-                </div>
               </div>
             </div>
 
@@ -1982,7 +1923,7 @@ export default function Account() {
                           <CheckCircle2 className="w-3 h-3" />
                           {lang === 'lo' ? 'ພ້ອມເບີກ' : 'Ready to Claim'}
                         </span>
-                      )}
+            )}
                     </div>
                     <p className={`text-lg sm:text-2xl font-black mt-0.5 ${
                       isBankInCoolingPeriod ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
@@ -2011,7 +1952,7 @@ export default function Account() {
                       <KeyRound className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-200" />
                       <span>{lang === 'lo' ? 'ຂໍເບີກຈ່າຍເງິນ (OTP)' : 'Claim Event Money (OTP)'}</span>
                     </>
-                  )}
+            )}
                 </button>
               </div>
 
@@ -2032,30 +1973,32 @@ export default function Account() {
                     </p>
                   </div>
                 </div>
-              )}
+            )}
             </div>
 
-            {/* Terms & Conditions: Claim Event Money & Bank Updates */}
-            <div className={`p-4 sm:p-7 rounded-2xl sm:rounded-[2rem] shadow-2xs sm:shadow-sm border transition-all ${
-              theme === 'dark' ? 'bg-zinc-900/80 border-zinc-800' : 'bg-white border-gray-100'
-            }`}>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3.5 border-b border-gray-100 dark:border-zinc-800">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-adv-orange/10 text-adv-orange">
-                    <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </div>
-                  <div>
-                    <h3 className={`text-sm sm:text-base font-bold ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>
-                      {lang === 'lo' ? 'ເງື່ອນໄຂ ແລະ ຂໍ້ກຳນົດການເບີກຈ່າຍເງິນກິດຈະກຳ (Terms & Conditions)' : 'Terms & Conditions for Claiming Event Money'}
-                    </h3>
-                    <p className="text-[10px] sm:text-xs text-gray-500 font-semibold">
-                      {lang === 'lo' ? 'ກະລຸນາອ່ານເງື່ອນໄຂຄວາມປອດໄພ ແລະ ຂັ້ນຕອນ OTP ກ່ອນດຳເນີນການ' : 'Security guidelines, 30-day cooling rule, and OTP verification policies'}
-                    </p>
-                  </div>
+            {/* Terms & Conditions (Simplified) */}
+            <div className="px-2 sm:px-4">
+              <div className="flex flex-col lg:flex-row justify-between items-start gap-4">
+                <div className="space-y-2 max-w-3xl">
+                  <p className="text-[10px] sm:text-[11px] text-gray-500 font-medium">
+                    • {lang === 'lo'
+                      ? 'ຫາກຜູ້ຈັດງານມີການແກ້ໄຂຂໍ້ມູນບັນຊີທະນາຄານ ຈະຕ້ອງລໍຖ້າໃຫ້ຄົບ 30 ວັນ ຈຶ່ງຈະສາມາດກົດຂໍເບີກຈ່າຍເງິນກິດຈະກຳໄດ້ ເພື່ອປ້ອງກັນການສໍ້ໂກງ ແລະ ການລັກລອບປ່ຽນບັນຊີ.'
+                      : 'If the organizer edits bank details, they must wait 30 days before they can claim event money. This cooling-off lock prevents unauthorized account hijack payouts.'}
+                  </p>
+                  <p className="text-[10px] sm:text-[11px] text-gray-500 font-medium">
+                    • {lang === 'lo'
+                      ? 'ທຸກໆຄັ້ງທີ່ມີການເພີ່ມ ຫຼື ແກ້ໄຂຂໍ້ມູນບັນຊີທະນາຄານ ລະບົບຈະສົ່ງລະຫັດ OTP 6 ຫຼັກ ເພື່ອຢືນຢັນຕົວຕົນຂອງເຈົ້າຂອງບັນຊີຕົວຈິງກ່ອນບັນທຶກ.'
+                      : 'Updating bank details strictly requires a 6-digit One-Time Password (OTP) verification sent to the verified organizer device before changes are saved.'}
+                  </p>
+                  <p className="text-[10px] sm:text-[11px] text-gray-500 font-medium">
+                    • {lang === 'lo'
+                      ? 'ການກົດຂໍເບີກຈ່າຍເງິນລາຍຮັບກິດຈະກຳຕ້ອງໄດ້ຮັບການຢືນຢັນດ້ວຍລະຫັດ OTP 6 ຫຼັກ ເພື່ອຮັບປະກັນວ່າເຈົ້າຂອງງານເປັນຜູ້ອະນຸມັດການໂອນເງິນ.'
+                      : 'Claiming event money strictly requires 6-digit OTP confirmation to ensure that only the authorized organizer executes the fund transfer.'}
+                  </p>
                 </div>
 
                 {/* Interactive Testing Simulation Toggle */}
-                <div className="flex items-center gap-1.5 self-start sm:self-auto bg-gray-100 dark:bg-zinc-800/80 p-1 rounded-xl">
+                <div className="flex items-center gap-1.5 self-start bg-gray-100 dark:bg-zinc-800/80 p-1 rounded-xl shrink-0">
                   <span className="text-[10px] font-bold text-gray-400 px-2 hidden sm:inline">
                     {lang === 'lo' ? 'ທົດສອບ:' : 'Test Sim:'}
                   </span>
@@ -2085,70 +2028,7 @@ export default function Account() {
                   </button>
                 </div>
               </div>
-
-              {/* Policy Highlights Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mt-4">
-                {/* Rule 1: 30-Day Cooling-off */}
-                <div className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all ${
-                  isBankInCoolingPeriod
-                    ? 'bg-amber-500/10 border-amber-500/30'
-                    : (theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800' : 'bg-gray-50/80 border-gray-150')
-                }`}>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-black text-xs">
-                      1
-                    </div>
-                    <h4 className="text-xs sm:text-sm font-black text-adv-slate dark:text-white">
-                      {lang === 'lo' ? 'ກົດລະບຽບ 30 ວັນຫຼັງແກ້ໄຂບັນຊີ' : '30-Day Rule Post-Bank Edit'}
-                    </h4>
-                  </div>
-                  <p className="text-[11px] sm:text-xs text-gray-600 dark:text-zinc-300 font-medium leading-relaxed">
-                    {lang === 'lo'
-                      ? 'ຫາກຜູ້ຈັດງານມີການແກ້ໄຂຂໍ້ມູນບັນຊີທະນາຄານ ຈະຕ້ອງລໍຖ້າໃຫ້ຄົບ 30 ວັນ ຈຶ່ງຈະສາມາດກົດຂໍເບີກຈ່າຍເງິນກິດຈະກຳໄດ້ ເພື່ອປ້ອງກັນການສໍ້ໂກງ ແລະ ການລັກລອບປ່ຽນບັນຊີ.'
-                      : 'If the organizer edits bank details, they must wait 30 days before they can claim event money. This cooling-off lock prevents unauthorized account hijack payouts.'}
-                  </p>
-                </div>
-
-                {/* Rule 2: OTP for Bank Details */}
-                <div className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all ${
-                  theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800' : 'bg-gray-50/80 border-gray-150'
-                }`}>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-xs">
-                      2
-                    </div>
-                    <h4 className="text-xs sm:text-sm font-black text-adv-slate dark:text-white">
-                      {lang === 'lo' ? 'ອັບເດດບັນຊີຕ້ອງໃຊ້ລະຫັດ OTP' : 'Update Bank Requires OTP'}
-                    </h4>
-                  </div>
-                  <p className="text-[11px] sm:text-xs text-gray-600 dark:text-zinc-300 font-medium leading-relaxed">
-                    {lang === 'lo'
-                      ? 'ທຸກໆຄັ້ງທີ່ມີການເພີ່ມ ຫຼື ແກ້ໄຂຂໍ້ມູນບັນຊີທະນາຄານ ລະບົບຈະສົ່ງລະຫັດ OTP 6 ຫຼັກ ເພື່ອຢືນຢັນຕົວຕົນຂອງເຈົ້າຂອງບັນຊີຕົວຈິງກ່ອນບັນທຶກ.'
-                      : 'Updating bank details strictly requires a 6-digit One-Time Password (OTP) verification sent to the verified organizer device before changes are saved.'}
-                  </p>
-                </div>
-
-                {/* Rule 3: OTP for Claiming Money */}
-                <div className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all ${
-                  theme === 'dark' ? 'bg-zinc-950/40 border-zinc-800' : 'bg-gray-50/80 border-gray-150'
-                }`}>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-xs">
-                      3
-                    </div>
-                    <h4 className="text-xs sm:text-sm font-black text-adv-slate dark:text-white">
-                      {lang === 'lo' ? 'ຂໍເບີກເງິນຕ້ອງໃຊ້ລະຫັດ OTP' : 'Claim Payout Requires OTP'}
-                    </h4>
-                  </div>
-                  <p className="text-[11px] sm:text-xs text-gray-600 dark:text-zinc-300 font-medium leading-relaxed">
-                    {lang === 'lo'
-                      ? 'ການກົດຂໍເບີກຈ່າຍເງິນລາຍຮັບກິດຈະກຳຕ້ອງໄດ້ຮັບການຢືນຢັນດ້ວຍລະຫັດ OTP 6 ຫຼັກ ເພື່ອຮັບປະກັນວ່າເຈົ້າຂອງງານເປັນຜູ້ອະນຸມັດການໂອນເງິນ.'
-                      : 'Claiming event money strictly requires 6-digit OTP confirmation to ensure that only the authorized organizer executes the fund transfer.'}
-                  </p>
-                </div>
-              </div>
             </div>
-
             {/* Bank Settings Card */}
             <div className={`p-3.5 sm:p-7 rounded-2xl sm:rounded-[2rem] shadow-2xs sm:shadow-sm border transition-all ${
               theme === 'dark' ? 'bg-zinc-900/80 border-zinc-800' : 'bg-white border-gray-100'
@@ -2171,7 +2051,7 @@ export default function Account() {
                   >
                     <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </button>
-                )}
+            )}
                 {bankAccount && !isEditingBank && (
                   <button 
                     onClick={handleEditBankClick}
@@ -2184,7 +2064,7 @@ export default function Account() {
                     <Edit2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                     {lang === 'lo' ? 'ແກ້ໄຂຂໍ້ມູນທະນາຄານ' : 'Edit Bank Details'}
                   </button>
-                )}
+            )}
               </div>
 
               {isEditingBank || !bankAccount ? (
@@ -2287,7 +2167,7 @@ export default function Account() {
                       >
                         {t.cancel || (lang === 'lo' ? 'ຍົກເລີກ' : 'Cancel')}
                       </button>
-                    )}
+            )}
                   </div>
                 </form>
               ) : (
@@ -2325,13 +2205,23 @@ export default function Account() {
                             <ShieldCheck className="w-2.5 h-2.5" />
                             {lang === 'lo' ? `ອັບເດດເມື່ອ ${daysSinceBankUpdate} ວັນກ່ອນ (ເບີກເງິນໄດ້)` : `Updated ${daysSinceBankUpdate}d ago (Eligible for payout)`}
                           </span>
-                        )}
+            )}
                       </div>
-                      <p className="text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400">{bankAccount.accountName} <span className="mx-1 text-gray-300 dark:text-zinc-700">•</span> {bankAccount.accountNumber}</p>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-1">
+                        <p className="text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                          <span className="text-gray-400 dark:text-zinc-500 font-medium">{lang === 'lo' ? 'ຊື່ບັນຊີ:' : 'Account Name:'}</span>
+                          <span className="text-gray-900 dark:text-white font-black">{bankAccount.accountName}</span>
+                        </p>
+                        <span className="hidden sm:inline text-gray-300 dark:text-zinc-700">•</span>
+                        <p className="text-[11px] sm:text-xs font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                          <span className="text-gray-400 dark:text-zinc-500 font-medium">{lang === 'lo' ? 'ເລກບັນຊີ:' : 'Account Number:'}</span>
+                          <span className="text-gray-900 dark:text-white font-black">{bankAccount.accountNumber}</span>
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              )}
+            )}
             </div>
 
             <div className="pt-1 sm:pt-2">
@@ -2371,12 +2261,12 @@ export default function Account() {
                                 <p className="text-gray-300 flex justify-between"><span className="text-gray-500">Status:</span> <span className="text-emerald-400">{bill.status}</span></p>
                               </div>
                             </div>
-                          </div>
 
+                          </div>
                           <span className="text-[9px] sm:text-[10px] font-bold text-gray-400 ml-auto">{bill.date}</span>
                         </div>
                         <h4 className={`text-sm sm:text-base font-bold sm:font-black mb-0.5 sm:mb-1 line-clamp-1 ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>{bill.event}</h4>
-                        <p className="text-[11px] sm:text-xs text-gray-500 font-semibold mb-2 sm:mb-4">{lang === 'lo' ? 'ໂອນໄປຫາ:' : 'Transferred to:'} {bill.account}</p>
+                        <p className="text-[11px] sm:text-xs text-gray-500 font-semibold mb-2 sm:mb-4">{lang === 'lo' ? 'ເລກບັນຊີ:' : 'Account number:'} {bill.account}</p>
                         
                         <div className="flex items-center gap-4 sm:gap-6">
                           <div>
@@ -2384,7 +2274,7 @@ export default function Account() {
                             <p className="text-xs sm:text-sm font-bold font-mono text-gray-500 dark:text-gray-400">{bill.id}</p>
                           </div>
                         </div>
-                      </div>
+                        </div>
                       
                       <div className={`sm:w-56 p-2.5 sm:p-4 rounded-xl flex flex-col justify-center border ${
                         theme === 'dark' ? 'bg-zinc-950/50 border-zinc-800/50' : 'bg-gray-50 border-gray-100'
@@ -2400,16 +2290,15 @@ export default function Account() {
                         <div className="pt-2 sm:pt-3 border-t border-gray-200 dark:border-zinc-800/80 flex sm:flex-col justify-between sm:justify-start items-center sm:items-start">
                           <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0 sm:mb-1">{lang === 'lo' ? 'ຮັບເງິນສຸດທິ' : 'Net Payout'}</p>
                           <p className="text-base sm:text-xl font-black text-emerald-600 dark:text-emerald-400">{new Intl.NumberFormat('lo-LA').format(bill.amount)} ₭</p>
+                    </div>
                         </div>
                       </div>
-                    </div>
                   ))}
                 </div>
-              )}
+            )}
             </div>
           </div>
         </div>
-
       </div>
 
       <AnimatePresence>
@@ -2486,7 +2375,7 @@ export default function Account() {
               </div>
             </motion.div>
           </motion.div>
-        )}
+            )}
       </AnimatePresence>
 
       {/* QR Scanner Modal */}
@@ -2555,7 +2444,7 @@ export default function Account() {
                         }}
                       />
                     </React.Suspense>
-                  )}
+            )}
                   
                   {scannerError && (
                     <div className={`absolute inset-0 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center z-20 transition-colors ${
@@ -2588,7 +2477,7 @@ export default function Account() {
                         </button>
                       </div>
                     </div>
-                  )}
+            )}
                   <div className="absolute inset-0 pointer-events-none border-2 border-adv-orange/30 rounded-2xl m-10">
                      <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-adv-orange -mt-1 -ml-1"></div>
                      <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-adv-orange -mt-1 -mr-1"></div>
@@ -2619,7 +2508,7 @@ export default function Account() {
                               <AlertCircle className="w-5 h-5 text-amber-500 animate-pulse" />
                             ) : (
                               <CheckCircle2 className="w-5 h-5" />
-                            )}
+            )}
                           </div>
                           <div>
                             <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
@@ -2676,7 +2565,7 @@ export default function Account() {
                               <span className="font-bold text-gray-500 block">Just now</span>
                             </div>
                           </div>
-                        </div>
+                      </div>
                       </div>
 
                       <div className={`mt-4 flex gap-2 flex-shrink-0 pt-3 border-t ${theme === 'dark' ? 'border-zinc-800' : 'border-gray-100'}`}>
@@ -2696,7 +2585,7 @@ export default function Account() {
                         </button>
                       </div>
                     </motion.div>
-                  )}
+            )}
                 </AnimatePresence>
 
                 {/* Manual Check-in and Simulator Controls */}
@@ -2741,13 +2630,12 @@ export default function Account() {
                       {t.simulateScan}
                     </button>
                   </div>
-                </div>
+                                 </div>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Create Staff Link Modal */}
       <AnimatePresence>
         {showCreateStaffModal && (
@@ -2819,7 +2707,7 @@ export default function Account() {
               </div>
             </motion.div>
           </motion.div>
-        )}
+            )}
       </AnimatePresence>
 
       {/* Staff QR Code View Modal */}
@@ -2889,7 +2777,7 @@ export default function Account() {
               </div>
             </motion.div>
           </motion.div>
-        )}
+            )}
       </AnimatePresence>
 
       {/* Toast Container with 5-Second Auto-Dismiss Indicator */}
@@ -2956,7 +2844,7 @@ export default function Account() {
             <CheckCircle2 className="w-5 h-5 text-adv-orange" />
             {t.profileUpdated}
           </motion.div>
-        )}
+            )}
       </AnimatePresence>
       {/* Payout Image Preview Modal */}
       <AnimatePresence>
@@ -2988,7 +2876,7 @@ export default function Account() {
               />
             </motion.div>
           </motion.div>
-        )}
+            )}
       </AnimatePresence>
 
       {/* Bank Edit 30-Day Limit Confirmation Modal */}
@@ -3070,7 +2958,7 @@ export default function Account() {
                     <AlertCircle className="w-3.5 h-3.5" />
                     <span>{bankOtpError}</span>
                   </p>
-                )}
+            )}
               </div>
 
               {/* Resend & Demo Helper */}
@@ -3090,7 +2978,7 @@ export default function Account() {
                       <RefreshCw className="w-3.5 h-3.5" />
                       {lang === 'lo' ? 'ສົ່ງລະຫັດໃໝ່' : 'Resend OTP Code'}
                     </button>
-                  )}
+            )}
                 </div>
 
                 {/* Demo OTP Helper Pill */}
@@ -3128,13 +3016,13 @@ export default function Account() {
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <ShieldCheck className="w-4 h-4" />
-                  )}
+            )}
                   <span>{lang === 'lo' ? 'ຢືນຢັນ ແລະ ບັນທຶກ' : 'Verify & Save Bank'}</span>
                 </button>
               </div>
             </motion.div>
           </motion.div>
-        )}
+            )}
       </AnimatePresence>
 
       {/* Bank Update Success Popup Modal (Auto-removes after 5 seconds) */}
@@ -3206,7 +3094,7 @@ export default function Account() {
                     <span className="font-mono font-black text-adv-orange">{bankAccount.accountNumber}</span>
                   </div>
                 </div>
-              )}
+            )}
 
               {/* 30-Day Security Cooling Period Alert */}
               <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-700 dark:text-amber-300 text-[11px] font-medium mb-4 flex items-start gap-2">
@@ -3238,7 +3126,7 @@ export default function Account() {
               </div>
             </motion.div>
           </motion.div>
-        )}
+            )}
       </AnimatePresence>
 
       {/* Claim Event Money Modal */}
@@ -3297,16 +3185,6 @@ export default function Account() {
                 </div>
               </div>
 
-              {/* 30-Day Rule Eligibility Badge */}
-              <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold flex items-center gap-2 mb-4">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>
-                  {lang === 'lo'
-                    ? `ກວດສອບແລ້ວ: ຂໍ້ມູນບັນຊີທະນາຄານຖືກຕ້ອງ ແລະ ຜ່ານເກນ 30 ວັນແລ້ວ (${daysSinceBankUpdate} ວັນ)`
-                    : `Verified: Bank account passed the 30-day security rule (${daysSinceBankUpdate} days on record)`}
-                </span>
-              </div>
-
               {/* OTP Input Component */}
               <div className="mb-4">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block text-center mb-2">
@@ -3326,7 +3204,7 @@ export default function Account() {
                     <AlertCircle className="w-3.5 h-3.5" />
                     <span>{claimOtpError}</span>
                   </p>
-                )}
+            )}
               </div>
 
               {/* Resend & Demo Helper */}
@@ -3346,7 +3224,7 @@ export default function Account() {
                       <RefreshCw className="w-3.5 h-3.5" />
                       {lang === 'lo' ? 'ສົ່ງລະຫັດໃໝ່' : 'Resend OTP Code'}
                     </button>
-                  )}
+            )}
                 </div>
 
                 {/* Demo OTP Helper Pill */}
@@ -3384,13 +3262,13 @@ export default function Account() {
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <DollarSign className="w-4 h-4" />
-                  )}
+            )}
                   <span>{lang === 'lo' ? 'ຢືນຢັນເບີກຈ່າຍເງິນ' : 'Confirm & Claim'}</span>
                 </button>
               </div>
             </motion.div>
           </motion.div>
-        )}
+            )}
       </AnimatePresence>
 
       {/* 30-Day Cooling-off Period Notice Modal */}
@@ -3460,7 +3338,7 @@ export default function Account() {
               </div>
             </motion.div>
           </motion.div>
-        )}
+            )}
 
         {/* Individual Attendee Questionnaire Answers Modal */}
         {selectedAttendeeForAnswers && (
@@ -3482,28 +3360,22 @@ export default function Account() {
             >
               {/* Header */}
               <div className="p-5 sm:p-6 border-b border-gray-200 dark:border-zinc-800 flex items-start justify-between gap-3 shrink-0">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center justify-center font-black text-base shrink-0">
-                    <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </div>
-                  <div className="min-w-0">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="min-w-0 w-full">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-base sm:text-lg font-black truncate text-gray-900 dark:text-white">
                         {selectedAttendeeForAnswers.attendeeName || `${selectedAttendeeForAnswers.firstName || ''} ${selectedAttendeeForAnswers.lastName || ''}`.trim() || 'Attendee'}
                       </h3>
-                      <span className="px-2 py-0.5 rounded-md bg-adv-slate dark:bg-zinc-800 text-white text-[9px] font-black uppercase tracking-widest">
-                        {selectedAttendeeForAnswers.ticketType || 'Standard'}
-                      </span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-gray-500 dark:text-zinc-400 mt-0.5 font-medium">
+                    <div className="flex flex-col gap-0.5 text-xs text-gray-500 dark:text-zinc-400 mt-1 font-medium">
+                      <span className="text-gray-900 dark:text-zinc-300 break-all">{selectedAttendeeForAnswers.email || '-'}</span>
                       <span>Ticket ID: <strong className="font-mono text-gray-900 dark:text-zinc-200">{selectedAttendeeForAnswers.ticketId || selectedAttendeeForAnswers.id}</strong></span>
                     </div>
                   </div>
                 </div>
-
                 <button
                   onClick={() => setSelectedAttendeeForAnswers(null)}
-                  className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+                  className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors shrink-0"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -3512,16 +3384,12 @@ export default function Account() {
               {/* Body */}
               <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
                 {/* Attendee Details Card */}
-                <div className={`p-4 rounded-2xl border grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs ${
+                <div className={`p-4 rounded-2xl border grid grid-cols-2 gap-3 text-xs ${
                   theme === 'dark' ? 'bg-zinc-950/60 border-zinc-800 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
                 }`}>
                   <div>
-                    <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t.phone}</span>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400 truncate block">{selectedAttendeeForAnswers.phone || '-'}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t.email}</span>
-                    <span className="font-bold text-gray-900 dark:text-zinc-100 truncate block">{selectedAttendeeForAnswers.email || '-'}</span>
+                    <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{lang === 'lo' ? 'ປະເພດປີ້' : 'Ticket'}</span>
+                    <span className="font-bold text-gray-900 dark:text-zinc-100 truncate block">{selectedAttendeeForAnswers.ticketType || 'Standard'}</span>
                   </div>
                   <div>
                     <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{lang === 'lo' ? 'ເວລາ' : 'Time'}</span>
@@ -3533,6 +3401,10 @@ export default function Account() {
                       {selectedAttendeeForAnswers.isCheckedIn ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
                       {selectedAttendeeForAnswers.isCheckedIn ? 'Verified' : 'Pending Gate'}
                     </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{lang === 'lo' ? 'ເບີໂທລະສັບ' : 'Phone Number'}</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400 truncate block">{selectedAttendeeForAnswers.phone || '-'}</span>
                   </div>
                 </div>
 
@@ -3583,7 +3455,7 @@ export default function Account() {
                         </div>
                       );
                     })
-                  )}
+            )}
                 </div>
               </div>
 
@@ -3599,7 +3471,7 @@ export default function Account() {
               </div>
             </motion.div>
           </motion.div>
-        )}
+            )}
       </AnimatePresence>
     </div>
   );
