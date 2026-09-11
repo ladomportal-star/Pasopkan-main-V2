@@ -58,6 +58,7 @@ const translations = {
     autoVerifyNotice:
       "This page will automatically update once payment is verified.",
     checkout: "Pay Now",
+    book: "Book",
     startingFrom: "From",
     ticketOwnerInfo: "Guest Information",
     ticketOwnerDesc:
@@ -96,6 +97,7 @@ const translations = {
     autoVerifyNotice:
       "ໜ້າຈໍຈະປ່ຽນໄປໜ້າສຳເລັດໂດຍອັດຕະໂນມັດເມື່ອໄດ້ຮັບການຊຳລະເງິນ.",
     checkout: "ຊຳລະເງິນ",
+    book: "ຈອງ",
     startingFrom: "ເລີ່ມຕົ້ນທີ່",
     ticketOwnerInfo: "ຂໍ້ມູນຜູ້ເຂົ້າຮ່ວມ",
     ticketOwnerDesc: "ກະລຸນາລະບຸຂໍ້ມູນຂອງຜູ້ທີ່ຈະເຂົ້າຮ່ວມກິດຈະກຳ.",
@@ -467,7 +469,52 @@ export default function Checkout() {
   const discount = calculateDiscount();
   const total = Math.max(0, subtotal - discount);
 
+  const validateContactDetails = () => {
+    for (let i = 0; i < ticketOwners.length; i++) {
+      const owner = ticketOwners[i];
+      const phone = owner.phone.trim();
+      const email = owner.email.trim();
+      
+      const phoneRegex = /^\+?[0-9]{7,15}$/; 
+      if (phone.includes(" ") || !phoneRegex.test(phone)) {
+        alert(lang === "lo" ? `ກະລຸນາປ້ອນເບີໂທລະສັບໃຫ້ຖືກຕ້ອງ ສຳລັບຜູ້ເຂົ້າຮ່ວມທີ ${i + 1} (ຫ້າມຍະຫວ່າງ).` : `Please enter a valid phone number for Guest ${i + 1} without spaces.`);
+        return false;
+      }
+      
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (email.includes(" ") || !emailRegex.test(email)) {
+        alert(lang === "lo" ? `ກະລຸນາປ້ອນອີເມວໃຫ້ຖືກຕ້ອງ ສຳລັບຜູ້ເຂົ້າຮ່ວມທີ ${i + 1} (ຫ້າມຍະຫວ່າງ).` : `Please enter a valid email for Guest ${i + 1} without spaces.`);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const handleFreeCheckout = () => {
+    if (!validateContactDetails()) return;
+    setIsProcessing(true);
+    setTimeout(() => {
+      setIsProcessing(false);
+      setStep("success");
+      setTimeout(() => {
+        navigate("/dashboard", {
+          state: {
+            newTicket: {
+              event,
+              tier,
+              quantity: totalQuantity,
+              selectedTiers: selectedTiersList,
+              selectedDate: state.selectedDate,
+              selectedTime: state.selectedTime,
+            },
+          },
+        });
+      }, 3000);
+    }, 1500);
+  };
+
   const handleBankSelection = async () => {
+    if (!validateContactDetails()) return;
     if (!selectedBank) return;
     setIsProcessing(true);
 
@@ -1421,82 +1468,86 @@ export default function Checkout() {
 
               {/* 3. Payment Method (Mobile: 3rd, Desktop: Left Column Bottom) */}
               <div className="order-3 lg:order-none lg:col-span-7 lg:col-start-1 lg:row-start-2 space-y-4">
-                <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-150/60">
-                  <h3 className="text-lg sm:text-xl font-bold text-adv-slate mb-3 sm:mb-4">
-                    {lang === "en" ? "Payment Method" : "ວິທີການຊຳລະເງິນ"}
-                  </h3>
-                  <div className="space-y-2 mb-4">
-                    {LAOS_BANKS.map((bank) => (
+                {total > 0 && (
+                  <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-150/60">
+                    <h3 className="text-lg sm:text-xl font-bold text-adv-slate mb-3 sm:mb-4">
+                      {lang === "en" ? "Payment Method" : "ວິທີການຊຳລະເງິນ"}
+                    </h3>
+                    <div className="space-y-2 mb-4">
+                      {LAOS_BANKS.map((bank) => (
+                        <button
+                          key={bank.id}
+                          onClick={() => setSelectedBank(bank.id)}
+                          className={`w-full flex items-center p-3 rounded-xl border-2 transition-all ${
+                            selectedBank === bank.id
+                              ? "border-adv-orange bg-orange-50/50"
+                              : "border-gray-50 hover:border-gray-100 bg-gray-50/50"
+                          }`}
+                        >
+                          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center mr-3 shrink-0 shadow-xs p-1">
+                            {bank.logo ? (
+                              <img
+                                src={bank.logo}
+                                alt={bank.name}
+                                className="w-full h-full object-contain rounded-lg"
+                              />
+                            ) : (
+                              <div
+                                className={`w-full h-full rounded-lg ${bank.color} flex items-center justify-center`}
+                              >
+                                <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 text-left">
+                            <h4 className="text-sm sm:text-base font-bold text-adv-slate">
+                              {bank.name}
+                            </h4>
+                            <p className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                              Mobile Banking
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+
                       <button
-                        key={bank.id}
-                        onClick={() => setSelectedBank(bank.id)}
+                        key="credit_card"
+                        onClick={() => setSelectedBank("credit_card")}
                         className={`w-full flex items-center p-3 rounded-xl border-2 transition-all ${
-                          selectedBank === bank.id
+                          selectedBank === "credit_card"
                             ? "border-adv-orange bg-orange-50/50"
                             : "border-gray-50 hover:border-gray-100 bg-gray-50/50"
                         }`}
                       >
                         <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center mr-3 shrink-0 shadow-xs p-1">
-                          {bank.logo ? (
-                            <img
-                              src={bank.logo}
-                              alt={bank.name}
-                              className="w-full h-full object-contain rounded-lg"
-                            />
-                          ) : (
-                            <div
-                              className={`w-full h-full rounded-lg ${bank.color} flex items-center justify-center`}
-                            >
-                              <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                            </div>
-                          )}
+                          <img
+                            src="/Card.png"
+                            alt="Credit Card"
+                            className="w-full h-full object-contain rounded-lg"
+                          />
                         </div>
                         <div className="flex-1 text-left">
                           <h4 className="text-sm sm:text-base font-bold text-adv-slate">
-                            {bank.name}
+                            {lang === "en" ? "Credit Card" : "ບັດເຄຣດິດ"}
                           </h4>
                           <p className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                            Mobile Banking
+                            Visa / Mastercard (3DS)
                           </p>
                         </div>
                       </button>
-                    ))}
-
-                    <button
-                      key="credit_card"
-                      onClick={() => setSelectedBank("credit_card")}
-                      className={`w-full flex items-center p-3 rounded-xl border-2 transition-all ${
-                        selectedBank === "credit_card"
-                          ? "border-adv-orange bg-orange-50/50"
-                          : "border-gray-50 hover:border-gray-100 bg-gray-50/50"
-                      }`}
-                    >
-                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center mr-3 shrink-0 shadow-xs p-1">
-                        <img
-                          src="/Card.png"
-                          alt="Credit Card"
-                          className="w-full h-full object-contain rounded-lg"
-                        />
-                      </div>
-                      <div className="flex-1 text-left">
-                        <h4 className="text-sm sm:text-base font-bold text-adv-slate">
-                          {lang === "en" ? "Credit Card" : "ບັດເຄຣດິດ"}
-                        </h4>
-                        <p className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                          Visa / Mastercard (3DS)
-                        </p>
-                      </div>
-                    </button>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <button
-                  disabled={!isDetailsValid || !selectedBank || isProcessing}
-                  onClick={handleBankSelection}
+                  disabled={!isDetailsValid || (total > 0 && !selectedBank) || isProcessing}
+                  onClick={total === 0 ? handleFreeCheckout : handleBankSelection}
                   className="w-full py-3 bg-adv-orange text-white rounded-xl font-bold text-sm sm:text-base hover:bg-orange-600 transition-all flex items-center justify-center gap-2 shadow-md shadow-orange-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isProcessing ? (
                     <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
+                  ) : total === 0 ? (
+                    t.book || "Book"
                   ) : (
                     t.checkout
                   )}

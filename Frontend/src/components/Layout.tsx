@@ -11,6 +11,21 @@ export default function Layout() {
   const isEventDetailsPage = location.pathname.startsWith('/event/');
   const [showScrollTop, setShowScrollTop] = useState(false);
 
+  const getDirection = (prev: string, curr: string) => {
+    if (curr.startsWith('/event/') && !prev.startsWith('/event/')) return 1;
+    if (!curr.startsWith('/event/') && prev.startsWith('/event/')) return -1;
+    return 0;
+  };
+
+  const [pathState, setPathState] = useState({ prev: location.pathname, curr: location.pathname, dir: 0 });
+  if (location.pathname !== pathState.curr) {
+    setPathState({
+      prev: pathState.curr,
+      curr: location.pathname,
+      dir: getDirection(pathState.curr, location.pathname)
+    });
+  }
+
   useEffect(() => {
     const handleScroll = () => {
       if (window.scrollY > 300) {
@@ -31,6 +46,29 @@ export default function Layout() {
     });
   };
 
+  const pageVariants = {
+    initial: (dir: number) => {
+      const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+      if (!isMobile || dir === 0) return { opacity: 0, y: 15, x: 0 };
+      if (dir === 1) return { opacity: 0, x: 100, y: 0 }; 
+      if (dir === -1) return { opacity: 0, x: -100, y: 0 }; 
+      return { opacity: 0, y: 15, x: 0 };
+    },
+    animate: {
+      opacity: 1,
+      x: 0,
+      y: 0,
+      transition: { duration: 0.25, ease: [0.25, 1, 0.5, 1] }
+    },
+    exit: (dir: number) => {
+      const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+      if (!isMobile || dir === 0) return { opacity: 0, y: -15, x: 0 };
+      if (dir === 1) return { opacity: 0, x: -100, y: 0 }; 
+      if (dir === -1) return { opacity: 0, x: 100, y: 0 }; 
+      return { opacity: 0, y: -15, x: 0 };
+    }
+  };
+
   return (
     <div className="flex-1 bg-white text-adv-slate selection:bg-adv-orange/30 font-sans flex flex-col">
       <Navbar />
@@ -38,10 +76,11 @@ export default function Layout() {
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+            custom={pathState.dir}
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
             className="flex-1 flex flex-col w-full h-full"
           >
             <Outlet />

@@ -1,7 +1,7 @@
 import { EventData, PayoutBill } from "../types";
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Download, RefreshCw, Shield, Users, Calendar, CheckCircle2, XCircle, Trash2, Edit, ExternalLink, Search, Filter, X, MessageSquare, ChevronDown, MapPin, Save, LayoutDashboard, TrendingUp, DollarSign, Activity, Loader2, AlertCircle, Menu, Globe, User, Bell, Plus, Info, Upload, Image as ImageIcon, Printer, CreditCard, Lock, Eye, EyeOff, LogIn, LogOut, Settings, UploadCloud, Clock, Ticket, Monitor, Smartphone } from 'lucide-react';
+import { Download, RefreshCw, RotateCcw, Shield, Users, Calendar, CheckCircle2, XCircle, Trash2, Edit, ExternalLink, Search, Filter, X, MessageSquare, ChevronDown, MapPin, Save, LayoutDashboard, TrendingUp, DollarSign, Activity, Loader2, AlertCircle, Menu, Globe, User, Bell, Plus, Info, Upload, Image as ImageIcon, Printer, CreditCard, Lock, Eye, EyeOff, LogIn, LogOut, Settings, UploadCloud, Clock, Ticket, Monitor, Smartphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { events } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
@@ -12,8 +12,10 @@ import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import Logo from '../components/Logo';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import SiteSettingsTab from '../components/SiteSettingsTab';
+import RefundsManagementTab from '../components/RefundsManagementTab';
 import { safeStorage } from '../lib/storage';
 import SEO from '../components/SEO';
+import { AdaptiveImage } from '../components/AdaptiveImage';
 
 // Utility for exporting data
 const exportToCSV = (filename: string, rows: any[]) => {
@@ -285,6 +287,8 @@ const translations = {
     pendingPayout: 'Pending',
     paid: 'Paid',
     amount: 'Amount',
+    refunds: 'Refunds',
+    manageRefunds: 'Refund Management',
   },
   lo: {
     adminPortal: 'ການເຂົ້າເຖິງລະບົບແອັດມິນ',
@@ -426,6 +430,8 @@ const translations = {
     pendingPayout: 'ລໍຖ້າຈ່າຍ',
     paid: 'ຈ່າຍແລ້ວ',
     amount: 'ຈຳນວນເງິນ',
+    refunds: 'ການຄືນເງິນ',
+    manageRefunds: 'ຈັດການການຄືນເງິນ',
   }
 };
 
@@ -515,7 +521,19 @@ export default function AdminDashboard() {
     setAdminPassword('');
   };
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'approvals' | 'users' | 'events' | 'past-events' | 'payouts' | 'activity-log' | 'notifications' | 'site-settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'approvals' | 'users' | 'events' | 'past-events' | 'payouts' | 'refunds' | 'activity-log' | 'notifications' | 'site-settings'>('overview');
+  const [pendingRefundsCount, setPendingRefundsCount] = useState<number>(() => {
+    try {
+      const stored = safeStorage.getItem('pasopkan_admin_refunds');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((r: any) => r.status === 'pending').length;
+        }
+      }
+    } catch (e) {}
+    return 1;
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMonth, setFilterMonth] = useState('all');
   const [filterYear, setFilterYear] = useState('all');
@@ -691,6 +709,14 @@ export default function AdminDashboard() {
           setPendingEventsList([...pending, ...initialMockPendingEvents.filter(mock => !pending.some(p => p.id === mock.id))]);
         }
       }
+
+      const refundsStored = safeStorage.getItem('pasopkan_admin_refunds');
+      if (refundsStored) {
+        const parsedRefunds = JSON.parse(refundsStored);
+        if (Array.isArray(parsedRefunds)) {
+          setPendingRefundsCount(parsedRefunds.filter((r: any) => r.status === 'pending').length);
+        }
+      }
     } catch (err) {
       console.error('Failed to sync events in Admin Dashboard:', err);
     }
@@ -737,6 +763,14 @@ export default function AdminDashboard() {
         break;
       case 'payouts':
         exportToCSV('pasopkan_payouts.csv', payoutsList);
+        break;
+      case 'refunds':
+        try {
+          const refundsData = safeStorage.getItem('pasopkan_admin_refunds');
+          if (refundsData) {
+            exportToCSV('pasopkan_refunds.csv', JSON.parse(refundsData));
+          }
+        } catch(e) {}
         break;
       case 'activity-log':
         exportToCSV('pasopkan_activity_logs.csv', activityLogs);
@@ -1420,6 +1454,27 @@ export default function AdminDashboard() {
             </button>
 
             <button
+               onClick={() => setActiveTab('refunds')}
+               className={`flex items-center justify-between gap-3 px-5 py-3 lg:px-6 lg:py-4 rounded-2xl text-sm font-bold transition-all duration-200 whitespace-nowrap shrink-0 ${
+                 activeTab === 'refunds' 
+                   ? 'bg-adv-orange text-white shadow-lg shadow-orange-100' 
+                   : 'text-gray-500 bg-white border border-gray-100 hover:border-adv-orange/30'
+               }`}
+            >
+              <div className="flex items-center gap-3">
+                <RotateCcw className={`w-4 h-4 ${activeTab === 'refunds' ? 'text-white' : 'text-gray-400'}`} />
+                {t.refunds || (lang === 'lo' ? 'ການຄືນເງິນ' : 'Refunds')}
+              </div>
+              {pendingRefundsCount > 0 && (
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
+                  activeTab === 'refunds' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {pendingRefundsCount}
+                </span>
+              )}
+            </button>
+
+            <button
                onClick={() => setActiveTab('activity-log')}
                className={`flex items-center gap-3 px-5 py-3 lg:px-6 lg:py-4 rounded-2xl text-sm font-bold transition-all duration-200 whitespace-nowrap shrink-0 ${
                  activeTab === 'activity-log' 
@@ -1470,6 +1525,7 @@ export default function AdminDashboard() {
                      activeTab === 'events' ? t.eventUpcoming : 
                      activeTab === 'past-events' ? t.eventAlreadyDone :
                      activeTab === 'payouts' ? t.payouts :
+                     activeTab === 'refunds' ? (t.manageRefunds || (lang === 'lo' ? 'ຈັດການການຄືນເງິນ' : 'Refund Management')) :
                      activeTab === 'activity-log' ? 'Activity Log' :
                      activeTab === 'notifications' ? t.notifications :
                      activeTab === 'site-settings' ? (lang === 'lo' ? 'ຕັ້ງຄ່າເວັບໄຊ' : 'Site Settings') :
@@ -2646,6 +2702,14 @@ export default function AdminDashboard() {
                 </div>
               )}
 
+              {activeTab === 'refunds' && (
+                <RefundsManagementTab
+                  lang={lang}
+                  t={t}
+                  addActivityLog={addActivityLog}
+                />
+              )}
+
               {activeTab === 'site-settings' && (
                 <SiteSettingsTab
                   lang={lang}
@@ -2706,12 +2770,14 @@ export default function AdminDashboard() {
                             <div className="p-8 overflow-y-auto flex-1 custom-scrollbar bg-gray-50">
                 {/* Hero Banner Cover */}
                 <div className="relative rounded-[2.5rem] overflow-hidden bg-slate-800 aspect-[21/9] min-h-[260px] shadow-2xl border border-gray-200 mb-8 mx-auto max-w-6xl">
-                  <img 
+                  <AdaptiveImage 
                     src={selectedEvent.horizontalImage || selectedEvent.image} 
                     alt={selectedEvent.title} 
-                    className="w-full h-full object-cover"
+                    className="absolute inset-0 w-full h-full"
+                    showBlurBackdrop={true}
+                    fitMode="contain"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent flex flex-col justify-end p-10">
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent flex flex-col justify-end p-10 pointer-events-none">
                     <div className="flex flex-wrap items-center gap-2 mb-3">
                       <span className="px-3 py-1 bg-adv-orange text-white text-xs font-black uppercase tracking-wider rounded-lg shadow-md">
                         {selectedEvent.category}

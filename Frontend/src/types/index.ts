@@ -21,6 +21,7 @@ export interface PayoutBill {
   date?: string;
   event?: string;
   account?: string;
+  accountName?: string;
   grossAmount?: number;
   platformFee?: number;
   amount?: number;

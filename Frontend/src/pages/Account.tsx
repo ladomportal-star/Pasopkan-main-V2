@@ -226,7 +226,7 @@ const translations = {
 };
 
 
-const MOCK_PAYOUTS = [
+const MOCK_PAYOUTS: PayoutBill[] = [
   {
     id: 'TXN-98472-LA',
     date: '2026-07-01',
@@ -236,6 +236,7 @@ const MOCK_PAYOUTS = [
     amount: 15500000,
     status: 'Completed',
     account: 'BCEL 0101200012346701',
+    accountName: 'Sirithida Souksavat',
     receiptUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=300'
   },
   {
@@ -247,6 +248,7 @@ const MOCK_PAYOUTS = [
     amount: 8200000,
     status: 'Completed',
     account: 'BCEL 0101200012346701',
+    accountName: 'Sirithida Souksavat',
     receiptUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=300'
   },
   {
@@ -258,6 +260,7 @@ const MOCK_PAYOUTS = [
     amount: 12400000,
     status: 'Completed',
     account: 'BCEL 0101200012346701',
+    accountName: 'Sirithida Souksavat',
     receiptUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=300'
   },
   {
@@ -269,6 +272,7 @@ const MOCK_PAYOUTS = [
     amount: 3500000,
     status: 'Completed',
     account: 'BCEL 0101200012346701',
+    accountName: 'Sirithida Souksavat',
     receiptUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=300'
   }
 ];
@@ -516,8 +520,9 @@ export default function Account() {
         grossAmount: claimedAmt,
         platformFee: claimedAmt * 0.05,
         amount: claimedAmt * 0.95,
-        status: 'Completed',
+        status: 'Pending',
         account: bankAccount ? `${bankAccount.bankName} *${bankAccount.accountNumber.slice(-4)}` : 'BCEL Bank *8899',
+        accountName: bankAccount?.accountName || 'Sirithida Souksavat',
         receiptUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=800'
       };
 
@@ -533,7 +538,7 @@ export default function Account() {
           revenue: newPayout.grossAmount,
           platformFeeAmount: newPayout.platformFee,
           payoutAmount: newPayout.amount,
-          status: 'paid',
+          status: 'pending',
           bankInfo: bankAccount,
           billImage: newPayout.receiptUrl
         });
@@ -1102,6 +1107,7 @@ export default function Account() {
             amount: bill.payoutAmount || 0,
             status: bill.status === 'paid' ? 'Completed' : 'Pending',
             account: bill.bankInfo ? `${bill.bankInfo.bankName} ${bill.bankInfo.accountNumber}` : 'Unknown',
+            accountName: bill.bankInfo?.accountName || bill.accountName || bankAccount?.accountName || 'Sirithida Souksavat',
             receiptUrl: bill.billImage
           }));
           
@@ -1112,10 +1118,8 @@ export default function Account() {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
+    // Instant execution for mobile responsiveness
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -2232,8 +2236,17 @@ export default function Account() {
 
                       <div className="flex-1">
                         <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-3">
-                          <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
-                          <span className="text-[9px] sm:text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider sm:tracking-widest">{lang === 'lo' ? 'ສຳເລັດ' : 'Completed'}</span>
+                          {bill.status.toLowerCase() === 'pending' ? (
+                            <>
+                              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 shrink-0" />
+                              <span className="text-[9px] sm:text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider sm:tracking-widest">{lang === 'lo' ? 'ກຳລັງດຳເນີນການ' : 'Pending'}</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 shrink-0" />
+                              <span className="text-[9px] sm:text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider sm:tracking-widest">{lang === 'lo' ? 'ສຳເລັດ' : 'Completed'}</span>
+                            </>
+                          )}
                           
                           <div 
                             className="relative ml-0.5 flex items-center"
@@ -2245,19 +2258,31 @@ export default function Account() {
                           >
                             <Info className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400 hover:text-adv-slate dark:hover:text-white transition-colors cursor-help" />
                               
-                            <div className={`absolute left-1/2 -translate-x-1/2 bottom-full mb-2 transition-all duration-200 w-48 p-3 bg-gray-900 dark:bg-zinc-800 text-white text-xs rounded-xl shadow-xl z-10 pointer-events-none before:content-[''] before:absolute before:top-full before:left-1/2 before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-gray-900 dark:before:border-t-zinc-800 ${activeTxTooltip === bill.id ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
-                              <p className="font-bold mb-1">Transaction Details</p>
-                              <div className="space-y-1 mt-2">
-                                <p className="text-gray-300 flex justify-between"><span className="text-gray-500">Ref:</span> <span className="font-mono text-gray-100">{bill.id}</span></p>
-                                <p className="text-gray-300 flex justify-between"><span className="text-gray-500">Status:</span> <span className="text-emerald-400">{bill.status}</span></p>
+                            <div className={`absolute -left-6 sm:left-1/2 sm:-translate-x-1/2 bottom-full mb-2.5 transition-all duration-200 w-56 p-3 bg-gray-900 dark:bg-zinc-800 text-white text-xs rounded-xl shadow-xl z-50 pointer-events-none before:content-[''] before:absolute before:top-full before:left-[30px] sm:before:left-1/2 before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-gray-900 dark:before:border-t-zinc-800 ${activeTxTooltip === bill.id ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+                              <p className="font-bold mb-1">{lang === 'lo' ? 'ລາຍລະອຽດທຸລະກຳ' : 'Transaction Details'}</p>
+                              <div className="space-y-1 mt-2 text-[11px]">
+                                <p className="text-gray-300 flex justify-between"><span className="text-gray-400">Ref:</span> <span className="font-mono text-gray-100">{bill.id}</span></p>
+                                <p className="text-gray-300 flex justify-between"><span className="text-gray-400">Status:</span> <span className={bill.status.toLowerCase() === 'pending' ? "text-amber-400" : "text-emerald-400"}>{bill.status}</span></p>
+                                <p className="text-gray-300 flex justify-between gap-2"><span className="text-gray-400 shrink-0">{lang === 'lo' ? 'ຊື່ບັນຊີ:' : 'Account Name:'}</span> <span className="font-bold text-gray-100 truncate text-right">{bill.accountName || bankAccount?.accountName || 'Sirithida Souksavat'}</span></p>
+                                <p className="text-gray-300 flex justify-between gap-2"><span className="text-gray-400 shrink-0">{lang === 'lo' ? 'ເລກບັນຊີ:' : 'Account No:'}</span> <span className="font-mono text-gray-100 truncate text-right">{bill.account}</span></p>
                               </div>
                             </div>
 
                           </div>
                           <span className="text-[9px] sm:text-[10px] font-bold text-gray-400 ml-auto">{bill.date}</span>
                         </div>
-                        <h4 className={`text-sm sm:text-base font-bold sm:font-black mb-0.5 sm:mb-1 line-clamp-1 ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>{bill.event}</h4>
-                        <p className="text-[11px] sm:text-xs text-gray-500 font-semibold ">{lang === 'lo' ? 'ເລກບັນຊີ:' : 'Account number:'} {bill.account}</p>
+                        <h4 className={`text-sm sm:text-base font-bold sm:font-black mb-1 line-clamp-1 ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>{bill.event}</h4>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] sm:text-xs">
+                          <p className="text-gray-500 font-medium flex items-center gap-1">
+                            <span className="text-gray-400 dark:text-zinc-500">{lang === 'lo' ? 'ຊື່ບັນຊີ:' : 'Account Name:'}</span>
+                            <span className="text-adv-slate dark:text-zinc-200 font-bold">{bill.accountName || bankAccount?.accountName || 'Sirithida Souksavat'}</span>
+                          </p>
+                          <span className="text-gray-300 dark:text-zinc-700 hidden sm:inline">•</span>
+                          <p className="text-gray-500 font-medium flex items-center gap-1">
+                            <span className="text-gray-400 dark:text-zinc-500">{lang === 'lo' ? 'ເລກບັນຊີ:' : 'Account Number:'}</span>
+                            <span className="font-mono text-adv-slate dark:text-zinc-200 font-bold">{bill.account}</span>
+                          </p>
+                        </div>
                         
                         </div>
                       

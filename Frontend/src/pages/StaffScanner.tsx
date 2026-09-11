@@ -31,7 +31,8 @@ import {
   X,
   Eye,
   FileText,
-  CheckSquare
+  CheckSquare,
+  AlertTriangle
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { events, LaoEvent } from '../data/events';
@@ -292,6 +293,7 @@ export default function StaffScanner() {
     checkedInRecord?: CheckinRecord;
     customAnswers?: Record<string, string | string[]>;
     isValid: boolean;
+    isRefunded?: boolean;
   } | null>(null);
 
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' | 'warning' } | null>(null);
@@ -339,8 +341,27 @@ export default function StaffScanner() {
     if (userTicketsStr) {
       try {
         const userTickets = JSON.parse(userTicketsStr);
-        foundUserTicket = userTickets.find((ut: any) => ut.id === cleanCode || ut.ticketId === cleanCode);
+        foundUserTicket = userTickets.find((ut: any) => 
+          ut.id?.toLowerCase() === cleanCode.toLowerCase() || 
+          ut.ticketId?.toLowerCase() === cleanCode.toLowerCase()
+        );
       } catch (e) {}
+    }
+
+    // Check if ticket is refunded via registry or status
+    const refundedTicketsStr = localStorage.getItem('pasopkan_refunded_tickets');
+    let isRefunded = false;
+    if (refundedTicketsStr) {
+      try {
+        const refundedList = JSON.parse(refundedTicketsStr);
+        if (Array.isArray(refundedList) && refundedList.some((id: string) => id?.toLowerCase() === cleanCode.toLowerCase())) {
+          isRefunded = true;
+        }
+      } catch (e) {}
+    }
+
+    if (foundUserTicket && (foundUserTicket.status === 'pending_refund' || foundUserTicket.status === 'refunded')) {
+      isRefunded = true;
     }
 
     const firstNames = ['Alex', 'Sarah', 'Sengdeuan', 'John', 'Michael', 'Emma', 'Daniel', 'Sophia', 'James', 'Khamla'];
@@ -362,9 +383,29 @@ export default function StaffScanner() {
         tierName = foundUserTicket.tier.name;
         priceText = foundUserTicket.tier.price ? `${foundUserTicket.tier.price.toLocaleString()} LAK` : priceText;
       }
-      if (foundUserTicket.purchaseDate) {
-        bookingDate = new Date(foundUserTicket.purchaseDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      if (foundUserTicket.purchaseDate || foundUserTicket.bookingDate) {
+        bookingDate = new Date(foundUserTicket.purchaseDate || foundUserTicket.bookingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       }
+    }
+
+    // Handle refunded ticket - strictly invalidate entry
+    if (isRefunded) {
+      setScannedTicket({
+        ticketId: cleanCode,
+        attendeeName: foundUserTicket?.attendeeName || foundUserTicket?.userName || mockName,
+        email: foundUserTicket?.email || mockEmail,
+        phone: foundUserTicket?.phone || mockPhone,
+        ticketType: tierName,
+        zone: selectedEvent.hasSeating ? 'VIP Zone A' : 'Main Arena',
+        seat: selectedEvent.hasSeating ? `Row ${(index % 12) + 1}, Seat ${(index % 20) + 1}` : 'Standing Area',
+        price: priceText,
+        bookingDate: bookingDate,
+        alreadyCheckedIn: false,
+        isValid: false,
+        isRefunded: true
+      });
+      showToast(lang === 'lo' ? 'ປີ້ຖືກຄືນເງິນແລ້ວ - ລະຫັດບໍ່ຖືກຕ້ອງ!' : 'Ticket has been refunded - Invalid QR Code!', 'error');
+      return;
     }
 
     setScannedTicket({
@@ -662,6 +703,12 @@ export default function StaffScanner() {
                   >
                     + Demo Pass
                   </button>
+                  <button 
+                    onClick={() => lookupTicket('tk_refund_eligible')}
+                    className="px-1.5 py-0.5 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-mono font-bold text-[9px] border border-red-500/20 transition-all cursor-pointer"
+                  >
+                    {lang === 'lo' ? 'ທົດສອບຄືນເງິນ' : 'Refund Test'}
+                  </button>
                 </div>
               </div>
 
@@ -690,15 +737,15 @@ export default function StaffScanner() {
                   <div className="flex items-center gap-2.5">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                       !scannedTicket.isValid
-                        ? 'bg-red-500 text-white'
+                        ? 'bg-red-500 text-white shadow-md shadow-red-500/30'
                         : scannedTicket.alreadyCheckedIn
                         ? 'bg-amber-500 text-white'
                         : 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
                     }`}>
                       {!scannedTicket.isValid ? (
-                        <XCircle className="w-5 h-5" />
+                        <XCircle className="w-5 h-5 stroke-[2.5]" />
                       ) : scannedTicket.alreadyCheckedIn ? (
-                        <AlertCircle className="w-5 h-5" />
+                        <AlertCircle className="w-5 h-5 stroke-[2.5]" />
                       ) : (
                         <CheckCircle2 className="w-5 h-5 animate-bounce" />
                       )}
@@ -706,7 +753,9 @@ export default function StaffScanner() {
                     <div>
                       <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider">
                         {!scannedTicket.isValid
-                          ? t.invalidTicket
+                          ? (scannedTicket.isRefunded 
+                              ? (lang === 'lo' ? 'ປີ້ຖືກຄືນເງິນແລ້ວ (ບໍ່ຖືກຕ້ອງ)' : 'TICKET REFUNDED (INVALID)')
+                              : t.invalidTicket)
                           : scannedTicket.alreadyCheckedIn
                           ? t.alreadyScanned
                           : t.validTicket}
@@ -724,6 +773,23 @@ export default function StaffScanner() {
                     <RotateCcw className="w-3.5 h-3.5" />
                   </button>
                 </div>
+
+                {/* Refunded Ticket Alert Banner */}
+                {scannedTicket.isRefunded && (
+                  <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-red-600 dark:text-red-400 mb-3 flex items-start gap-2.5">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-wide">
+                        {lang === 'lo' ? 'ປີ້ໂມຄະ - ຫ້າມເຂົ້າຮ່ວມງານ' : 'Void Ticket - Entry Prohibited'}
+                      </div>
+                      <div className="text-[11px] font-medium leading-relaxed mt-0.5 opacity-90">
+                        {lang === 'lo' 
+                          ? 'ປີ້ໃບນີ້ໄດ້ຜ່ານການຂໍຄືນເງິນແລ້ວ ລະຫັດ QR Code ຖືກຍົກເລີກ ແລະ ບໍ່ສາມາດໃຊ້ເຂົ້າງານໄດ້ໂດຍເດັດຂາດ.' 
+                          : 'This ticket has been refunded. The QR code is permanently void and check-in is strictly prohibited.'}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Attendee Details Grid */}
                 {scannedTicket.isValid && (

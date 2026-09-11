@@ -257,8 +257,8 @@ export const DEFAULT_SUPPORT_SETTINGS: SupportSettings = {
     {
       q_en: "How do I get a refund?",
       q_lo: "ຂ້ອຍຈະຂໍເງິນຄືນໄດ້ແນວໃດ?",
-      a_en: "Refunds can be requested up to 24 hours before the event starts. Go to your Dashboard, select the ticket, and click 'Request Refund'.",
-      a_lo: "ສາມາດຂໍເງິນຄືນໄດ້ເຖິງ 24 ຊົ່ວໂມງກ່ອນງານເລີ່ມ. ໄປທີ່ Dashboard ຂອງທ່ານ, ເລືອກປີ້, ແລະກົດ 'ຂໍເງິນຄືນ'."
+      a_en: "Refunds can be requested up to 48 hours before the event starts. Go to your Dashboard, select the ticket, and click 'Request Refund'.",
+      a_lo: "ສາມາດຂໍເງິນຄືນໄດ້ເຖິງ 48 ຊົ່ວໂມງກ່ອນງານເລີ່ມ. ໄປທີ່ Dashboard ຂອງທ່ານ, ເລືອກປີ້, ແລະກົດ 'ຂໍເງິນຄືນ'."
     },
     {
       q_en: "Where can I find my tickets?",

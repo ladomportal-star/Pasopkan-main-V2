@@ -147,7 +147,8 @@ const MOCK_PAYOUTS = [
     event: 'Vang Vieng Music Festival 2026',
     amount: 15500000,
     status: 'Completed',
-    account: 'BCEL *6701'
+    account: 'BCEL *6701',
+    accountName: 'Somsack Xayarath'
   },
   {
     id: 'TXN-47201-LA',
@@ -155,7 +156,8 @@ const MOCK_PAYOUTS = [
     event: 'That Luang Cultural Workshop',
     amount: 8200000,
     status: 'Completed',
-    account: 'BCEL *6701'
+    account: 'BCEL *6701',
+    accountName: 'Somsack Xayarath'
   },
   {
     id: 'TXN-21049-LA',
@@ -163,7 +165,8 @@ const MOCK_PAYOUTS = [
     event: 'Luang Prabang Film & Food Experience',
     amount: 12400000,
     status: 'Completed',
-    account: 'BCEL *6701'
+    account: 'BCEL *6701',
+    accountName: 'Somsack Xayarath'
   },
   {
     id: 'TXN-11590-LA',
@@ -171,7 +174,8 @@ const MOCK_PAYOUTS = [
     event: 'Kip Exchange Artisan Bazaar',
     amount: 3500000,
     status: 'Completed',
-    account: 'BCEL *2209'
+    account: 'BCEL *2209',
+    accountName: 'Somsack Xayarath'
   }
 ];
 
@@ -658,6 +662,13 @@ export default function PaymentMethods() {
                     {payout.event}
                   </div>
 
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-500 font-medium">
+                    <span className="text-gray-400">{lang === 'lo' ? 'ຊື່ບັນຊີ:' : 'Name:'}</span>
+                    <span className="font-bold text-gray-700">{payout.accountName || bankAccount?.accountName}</span>
+                    <span className="text-gray-300">•</span>
+                    <span className="font-mono text-gray-500">{payout.account}</span>
+                  </div>
+
                   <div className="flex items-center justify-between pt-2 border-t border-gray-200/60 text-xs">
                     <span className="text-[11px] font-medium text-gray-400">{payout.date}</span>
                     <span className="font-black text-adv-slate font-mono">
@@ -682,6 +693,7 @@ export default function PaymentMethods() {
                     <th className="px-3 py-2 text-[10px] font-black text-gray-400 uppercase tracking-wider">{t.date}</th>
                     <th className="px-3 py-2 text-[10px] font-black text-gray-400 uppercase tracking-wider">{t.reference}</th>
                     <th className="px-3 py-2 text-[10px] font-black text-gray-400 uppercase tracking-wider">{t.event}</th>
+                    <th className="px-3 py-2 text-[10px] font-black text-gray-400 uppercase tracking-wider">{lang === 'lo' ? 'ບັນຊີຮັບເງິນ' : 'Account'}</th>
                     <th className="px-3 py-2 text-[10px] font-black text-gray-400 uppercase tracking-wider text-right">{t.amount}</th>
                     <th className="px-3 py-2 text-[10px] font-black text-gray-400 uppercase tracking-wider text-center">{t.status}</th>
                   </tr>
@@ -692,7 +704,11 @@ export default function PaymentMethods() {
                       <tr key={payout.id} className="hover:bg-gray-50/60 transition-colors">
                         <td className="px-3 py-2.5 text-xs font-bold text-gray-500 whitespace-nowrap">{payout.date}</td>
                         <td className="px-3 py-2.5 text-xs font-mono font-bold text-adv-slate whitespace-nowrap">{payout.id}</td>
-                        <td className="px-3 py-2.5 text-xs font-bold text-gray-700 max-w-[240px] truncate">{payout.event}</td>
+                        <td className="px-3 py-2.5 text-xs font-bold text-gray-700 max-w-[200px] truncate">{payout.event}</td>
+                        <td className="px-3 py-2.5 text-xs text-gray-600 whitespace-nowrap">
+                          <div className="font-bold text-adv-slate text-[11px]">{payout.accountName || bankAccount?.accountName}</div>
+                          <div className="text-[10px] font-mono text-gray-400">{payout.account}</div>
+                        </td>
                         <td className="px-3 py-2.5 text-xs font-black text-adv-slate text-right font-mono whitespace-nowrap">
                           {payout.amount.toLocaleString()} <span className="text-[10px] font-bold text-gray-400">{t.currency}</span>
                         </td>
@@ -710,7 +726,7 @@ export default function PaymentMethods() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={5} className="px-3 py-6 text-center text-xs font-bold text-gray-400">
+                      <td colSpan={6} className="px-3 py-6 text-center text-xs font-bold text-gray-400">
                         {t.noTransactions}
                       </td>
                     </tr>

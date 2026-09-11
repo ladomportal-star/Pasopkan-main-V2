@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight, CheckCircle2, XCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { LaoEvent, TicketTier } from '../data/events';
 import {
@@ -17,7 +17,7 @@ export interface PurchasedTicket {
   tier: TicketTier;
   quantity: number;
   bookingDate: string;
-  status: 'upcoming' | 'past';
+  status: 'upcoming' | 'past' | 'pending_refund';
   scanned?: boolean;
   selectedDate?: string;
   selectedTime?: string;
@@ -144,7 +144,7 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
     if (found) return found;
 
     // Fallback if marked scanned on ticket object
-    if (ticket.scanned || ticket.status === 'past') {
+    if (ticket.scanned === true) {
       return {
         id: `chk_${ticket.id}`,
         ticketId: currentTicketId,
@@ -161,8 +161,43 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
     return null;
   }, [ticket, currentTicketId, totalQuantity, allCheckins, user]);
 
-  const isScanned = !!scannedRecord || ticket?.scanned === true;
-  const isExpired = !isScanned && ticket?.status === 'past';
+  const isPast = useMemo(() => {
+    if (!ticket) return false;
+    if (ticket.status === 'past') return true;
+    const dateStr = ticket.selectedDate || ticket.event?.endDate || ticket.event?.date;
+    if (!dateStr) return false;
+    const now = new Date();
+    const curY = now.getFullYear();
+    const curM = String(now.getMonth() + 1).padStart(2, '0');
+    const curD = String(now.getDate()).padStart(2, '0');
+    const todayLocal = `${curY}-${curM}-${curD}`;
+    const cleanDate = dateStr.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
+      return cleanDate < todayLocal;
+    }
+    try {
+      const parsed = new Date(cleanDate);
+      if (!isNaN(parsed.getTime())) {
+        const pY = parsed.getFullYear();
+        const pM = String(parsed.getMonth() + 1).padStart(2, '0');
+        const pD = String(parsed.getDate()).padStart(2, '0');
+        return `${pY}-${pM}-${pD}` < todayLocal;
+      }
+    } catch {
+      // ignore
+    }
+    return false;
+  }, [ticket]);
+
+  const isRefunded = ticket?.status === 'pending_refund' || ticket?.status === 'refunded' || (typeof window !== 'undefined' && (() => {
+    try {
+      const refunded = localStorage.getItem('pasopkan_refunded_tickets');
+      return refunded ? JSON.parse(refunded).includes(ticket?.id) : false;
+    } catch { return false; }
+  })());
+
+  const isScanned = !isRefunded && (!!scannedRecord || ticket?.scanned === true);
+  const isExpired = !isRefunded && !isScanned && isPast;
 
   if (!ticket) return null;
 
@@ -376,7 +411,14 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
             {/* Direct QR Code Section (Enlarged and optimized for fast scanning) */}
             <div className="flex-1 flex flex-col items-center justify-center min-h-0 py-1">
               {/* Scanned / Status Notification Badge */}
-              {isScanned ? (
+              {isRefunded ? (
+                <div className="mb-1.5 flex items-center justify-center">
+                  <span className="inline-flex items-center gap-1.5 px-3.5 py-1 sm:px-4 sm:py-1.5 bg-red-600 text-white rounded-full text-[11px] sm:text-xs font-black uppercase tracking-wider shadow-xs animate-in fade-in zoom-in-95 duration-200">
+                    <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+                    <span>{lang === 'lo' ? 'ປີ້ຖືກຄືນເງິນແລ້ວ (ໂມຄະ)' : 'REFUNDED - QR VOIDED'}</span>
+                  </span>
+                </div>
+              ) : isScanned ? (
                 <div className="mb-1.5 flex items-center justify-center">
                   <span className="inline-flex items-center gap-1.5 px-3.5 py-1 sm:px-4 sm:py-1.5 bg-emerald-600 dark:bg-emerald-500 text-white rounded-full text-[11px] sm:text-xs font-black uppercase tracking-wider shadow-xs animate-in fade-in zoom-in-95 duration-200">
                     <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
@@ -401,55 +443,83 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                 </div>
               )}
 
+              {/* Subtitle / Notice for Refunded */}
+              {isRefunded && (
+                <div className="mb-1 text-[10.5px] sm:text-xs font-bold text-red-500 uppercase tracking-wider text-center">
+                  {lang === 'lo' ? 'QR Code ຖືກຍົກເລີກແລ້ວ ບໍ່ສາມາດສະແກນໄດ້' : 'QR code deactivated - Entry prohibited'}
+                </div>
+              )}
+
               <div className="relative bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-md p-3 sm:p-4 flex items-center justify-center overflow-hidden shrink-0">
-                <QRCodeSVG
-                  value={currentTicketId}
-                  size={300}
-                  className={`w-52 h-52 sm:w-60 sm:h-60 md:w-64 md:h-64 transition-all duration-300 ${
-                    isScanned || isExpired ? 'opacity-35 grayscale-[40%]' : 'opacity-100'
-                  }`}
-                  level="H"
-                  includeMargin={false}
-                />
-
-                {/* Scanned Badge Stamp Overlay */}
-                {isScanned && (
-                  <motion.div 
-                    initial={{ scale: 0.85, opacity: 0, rotate: -4 }}
-                    animate={{ scale: 1, opacity: 1, rotate: -4 }}
-                    transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-                    className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-2"
-                  >
-                    <div className="bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-xl border-2 border-white flex flex-col items-center justify-center text-center">
-                      <div className="flex items-center gap-1.5 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow-xs">
-                        <CheckCircle2 className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
-                        <span>{lang === 'lo' ? 'ສະແກນແລ້ວ' : 'ALREADY SCANNED'}</span>
-                      </div>
-                      <span className="text-[9px] sm:text-[10px] font-bold text-emerald-100 tracking-wide mt-0.5">
-                        {lang === 'lo' ? 'ກວດສອບການເຂົ້າຮ່ວມແລ້ວ' : 'Entry Verified'}
-                      </span>
+                {isRefunded ? (
+                  <div className="w-52 h-52 sm:w-60 sm:h-60 md:w-64 md:h-64 flex flex-col items-center justify-center text-center p-4 bg-red-50/70 rounded-xl border-2 border-dashed border-red-300">
+                    <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-2.5 shadow-inner">
+                      <XCircle className="w-7 h-7 sm:w-8 sm:h-8 stroke-[2.5]" />
                     </div>
-                  </motion.div>
-                )}
-
-                {/* Expired Badge Stamp Overlay */}
-                {isExpired && (
-                  <motion.div 
-                    initial={{ scale: 0.85, opacity: 0, rotate: -4 }}
-                    animate={{ scale: 1, opacity: 1, rotate: -4 }}
-                    transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-                    className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-2"
-                  >
-                    <div className="bg-red-500 text-white px-4 py-2 rounded-xl shadow-xl border-2 border-white flex flex-col items-center justify-center text-center">
-                      <div className="flex items-center gap-1.5 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow-xs">
-                        <XCircle className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
-                        <span>{lang === 'lo' ? 'ໝົດອາຍຸ' : 'EXPIRED'}</span>
-                      </div>
-                      <span className="text-[9px] sm:text-[10px] font-bold text-red-100 tracking-wide mt-0.5">
-                        {lang === 'lo' ? 'ກິດຈະກຳສິ້ນສຸດແລ້ວ' : 'Event Ended'}
-                      </span>
+                    <div className="text-xs sm:text-sm font-black text-red-600 uppercase tracking-wider">
+                      {lang === 'lo' ? 'QR Code ຖືກຍົກເລີກແລ້ວ' : 'QR CODE VOIDED'}
                     </div>
-                  </motion.div>
+                    <p className="text-[10px] sm:text-xs font-medium text-gray-500 mt-1.5 leading-relaxed max-w-[210px]">
+                      {lang === 'lo' 
+                        ? 'ປີ້ໃບນີ້ໄດ້ຖືກຂໍຄືນເງິນແລ້ວ ລະຫັດຖືກຍົກເລີກ ແລະ ບໍ່ສາມາດສະແກນເຂົ້າງານໄດ້ອີກຕໍ່ໄປ.' 
+                        : 'This ticket was refunded. The QR code has been permanently deactivated and cannot be scanned.'}
+                    </p>
+                    <div className="mt-3 px-3 py-0.5 rounded-full bg-red-500/10 text-red-600 text-[9.5px] font-black uppercase tracking-wider border border-red-500/20">
+                      {lang === 'lo' ? 'ສະຖານະ: ໂມຄະ' : 'STATUS: VOID'}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <QRCodeSVG
+                      value={currentTicketId}
+                      size={300}
+                      className={`w-52 h-52 sm:w-60 sm:h-60 md:w-64 md:h-64 transition-all duration-300 ${
+                        isScanned || isExpired ? 'opacity-35 grayscale-[40%]' : 'opacity-100'
+                      }`}
+                      level="H"
+                      includeMargin={false}
+                    />
+
+                    {/* Scanned Badge Stamp Overlay */}
+                    {isScanned && (
+                      <motion.div 
+                        initial={{ scale: 0.85, opacity: 0, rotate: -4 }}
+                        animate={{ scale: 1, opacity: 1, rotate: -4 }}
+                        transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                        className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-2"
+                      >
+                        <div className="bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-xl border-2 border-white flex flex-col items-center justify-center text-center">
+                          <div className="flex items-center gap-1.5 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow-xs">
+                            <CheckCircle2 className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
+                            <span>{lang === 'lo' ? 'ສະແກນແລ້ວ' : 'ALREADY SCANNED'}</span>
+                          </div>
+                          <span className="text-[9px] sm:text-[10px] font-bold text-emerald-100 tracking-wide mt-0.5">
+                            {lang === 'lo' ? 'ກວດສອບການເຂົ້າຮ່ວມແລ້ວ' : 'Entry Verified'}
+                          </span>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Expired Badge Stamp Overlay */}
+                    {isExpired && (
+                      <motion.div 
+                        initial={{ scale: 0.85, opacity: 0, rotate: -4 }}
+                        animate={{ scale: 1, opacity: 1, rotate: -4 }}
+                        transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                        className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-2"
+                      >
+                        <div className="bg-red-500 text-white px-4 py-2 rounded-xl shadow-xl border-2 border-white flex flex-col items-center justify-center text-center">
+                          <div className="flex items-center gap-1.5 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow-xs">
+                            <XCircle className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
+                            <span>{lang === 'lo' ? 'ໝົດອາຍຸ' : 'EXPIRED'}</span>
+                          </div>
+                          <span className="text-[9px] sm:text-[10px] font-bold text-red-100 tracking-wide mt-0.5">
+                            {lang === 'lo' ? 'ກິດຈະກຳສິ້ນສຸດແລ້ວ' : 'Event Ended'}
+                          </span>
+                        </div>
+                      </motion.div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

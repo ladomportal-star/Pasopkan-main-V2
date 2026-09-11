@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Ticket, Calendar, MapPin, QrCode, User, Settings, LogOut, X, CheckCircle2, XCircle, Loader2, Users, DollarSign, PieChart, Plus, RefreshCcw, ChevronLeft, ChevronRight, Clock, Star, Share2 } from 'lucide-react';
+import { Ticket, Calendar, MapPin, QrCode, User, Settings, LogOut, X, CheckCircle2, XCircle, Loader2, Users, DollarSign, PieChart, Plus, RefreshCcw, ChevronLeft, ChevronRight, Clock, Star, Share2, FileText } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { LaoEvent, TicketTier } from '../data/events';
 import { useAuth } from '../context/AuthContext';
@@ -69,6 +69,16 @@ const translations = {
       confirmRefund: 'Confirm Refund',
       cancel: 'Cancel',
       refundSuccess: 'Refund request submitted successfully!',
+      refundInProgress: 'Refund in Progress',
+      refundStepSubmitted: 'Request Sent',
+      refundStepProcessing: 'Bank Review',
+      refundStepCompleted: 'Funds Credited',
+      refundStepCounter: 'Step 2 of 3',
+      refundEstimatedArrival: 'Refund will be deposited 4–5 business days after the event ends.',
+      refundDisabledTooltip: 'Refund unavailable (event starts in less than 48 hours)',
+      refundNotAllowed: 'The organizer does not allow refunds for this event',
+      refundSuccessBadge: 'Refunded Successfully',
+      ticketRefundSuccessStatus: 'This ticket was refunded successfully',
       saveTicket: 'SAVE TICKET',
       ticketCount: 'Ticket {current} of {total}',
       activity: 'Activity',
@@ -136,6 +146,16 @@ const translations = {
       confirmRefund: 'ຢືນຢັນການຄືນເງິນ',
       cancel: 'ຍົກເລີກ',
       refundSuccess: 'ສົ່ງຄຳຮ້ອງຂໍຄືນເງິນສຳເລັດແລ້ວ!',
+      refundInProgress: 'ກຳລັງດຳເນີນການຄືນເງິນ',
+      refundStepSubmitted: 'ສົ່ງຄຳຮ້ອງແລ້ວ',
+      refundStepProcessing: 'ກວດສອບທະນາຄານ',
+      refundStepCompleted: 'ໂອນເງິນສຳເລັດ',
+      refundStepCounter: 'ຂັ້ນຕອນ 2 / 3',
+      refundEstimatedArrival: 'ເງິນຈະໂອນຄືນພາຍໃນ 4-5 ມື້ລັດຖະການຫຼັງກິດຈະກຳສິ້ນສຸດ.',
+      refundDisabledTooltip: 'ບໍ່ສາມາດຄືນເງິນໄດ້ (ກິດຈະກຳຈະເລີ່ມພາຍໃນ 48 ຊົ່ວໂມງ)',
+      refundNotAllowed: 'ຜູ້ຈັດງານບໍ່ອະນຸຍາດໃຫ້ຄືນເງິນສຳລັບກິດຈະກຳນີ້',
+      refundSuccessBadge: 'ຄືນເງິນສຳເລັດແລ້ວ',
+      ticketRefundSuccessStatus: 'ປີ້ໃບນີ້ໄດ້ຮັບການຄືນເງິນສຳເລັດແລ້ວ',
       saveTicket: 'ບັນທຶກປີ້',
       ticketCount: 'ປີ້ທີ {current} ຈາກທັງໝົດ {total}',
       activity: 'ກິດຈະກຳ',
@@ -154,7 +174,7 @@ interface PurchasedTicket {
   tier: TicketTier;
   quantity: number;
   bookingDate: string;
-  status: 'upcoming' | 'past';
+  status: 'upcoming' | 'past' | 'pending_refund' | 'refunded';
   scanned?: boolean;
   selectedDate?: string;
   selectedTime?: string;
@@ -177,13 +197,15 @@ export default function Dashboard() {
 
   useEffect(() => {
     setIsLoading(true);
-    const timer = setTimeout(() => {
+    // Instant execution for mobile responsiveness
+    const execute = () => {
       const now = new Date();
-      const in48Hours = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-      const in12Hours = new Date(now.getTime() + 12 * 60 * 60 * 1000);
+      // Refund eligible test ticket: Event scheduled in 3 days (72h) starting at 18:00
+      const in72Hours = new Date(now.getTime() + 72 * 60 * 60 * 1000);
+      // Non-refundable test ticket: Event scheduled in 18h (<48h) starting at 09:00
+      const in18Hours = new Date(now.getTime() + 18 * 60 * 60 * 1000);
 
       const formatDate = (d: Date) => d.toISOString().split('T')[0];
-      const formatTime = (d: Date) => d.toTimeString().split(' ')[0].substring(0, 5);
 
       const mockTickets: PurchasedTicket[] = [
         {
@@ -191,8 +213,8 @@ export default function Dashboard() {
           event: {
             id: 'mock_elig',
             title: 'Vientiane Light Festival',
-            date: formatDate(in48Hours),
-            time: formatTime(in48Hours),
+            date: formatDate(in72Hours),
+            time: '18:00',
             location: 'Vientiane, LA',
             venue: 'Mekong Riverside',
             image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=2000&auto=format&fit=crop',
@@ -204,16 +226,16 @@ export default function Dashboard() {
           quantity: 1,
           bookingDate: new Date().toISOString(),
           status: 'upcoming',
-          selectedDate: formatDate(in48Hours),
-          selectedTime: formatTime(in48Hours)
+          selectedDate: formatDate(in72Hours),
+          selectedTime: '18:00'
         },
         {
           id: 'tk_refund_disabled',
           event: {
             id: 'mock_dis',
             title: 'Digital Arts Workshop',
-            date: formatDate(in12Hours),
-            time: formatTime(in12Hours),
+            date: formatDate(in18Hours),
+            time: '09:00',
             location: 'Vientiane, LA',
             venue: 'Pasopkan Creative Space',
             image: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?q=80&w=2000&auto=format&fit=crop',
@@ -225,8 +247,8 @@ export default function Dashboard() {
           quantity: 2,
           bookingDate: new Date().toISOString(),
           status: 'upcoming',
-          selectedDate: formatDate(in12Hours),
-          selectedTime: formatTime(in12Hours)
+          selectedDate: formatDate(in18Hours),
+          selectedTime: '09:00'
         },
         {
           id: 'tk_past_1',
@@ -268,7 +290,7 @@ export default function Dashboard() {
           quantity: 3,
           bookingDate: '2026-01-05T14:30:00Z',
           status: 'past',
-          scanned: true,
+          scanned: false,
           selectedDate: '2026-01-10',
           selectedTime: '10:00'
         }
@@ -277,15 +299,35 @@ export default function Dashboard() {
       let loadedTickets = [...mockTickets];
       
       try {
+        // Read refunded registry first
+        const refundedRaw = localStorage.getItem('pasopkan_refunded_tickets');
+        const refundedIds = new Set<string>(refundedRaw ? JSON.parse(refundedRaw) : []);
+
         const savedTicketsRaw = localStorage.getItem('pasopkan_user_tickets');
         if (savedTicketsRaw) {
           const savedTickets = JSON.parse(savedTicketsRaw);
           if (Array.isArray(savedTickets)) {
-            // Deduplicate by ID - User's real purchased tickets take precedence
-            const savedTicketIds = new Set(savedTickets.map(t => t.id));
-            loadedTickets = [...savedTickets, ...loadedTickets.filter(t => !savedTicketIds.has(t.id))];
+            // Track any saved tickets that were marked pending_refund or refunded
+            savedTickets.forEach(t => {
+              if (t.status === 'pending_refund' || t.status === 'refunded') {
+                refundedIds.add(t.id);
+              }
+            });
+
+            // Keep real user purchased tickets, filtering out mock tickets so fresh mock definitions with accurate event start times take effect
+            const realTickets = savedTickets.filter(t => !['tk_refund_eligible', 'tk_refund_disabled', 'tk_past_1', 'tk_past_2'].includes(t.id));
+            const realTicketIds = new Set(realTickets.map(t => t.id));
+            loadedTickets = [...realTickets, ...loadedTickets.filter(t => !realTicketIds.has(t.id))];
           }
         }
+
+        // Apply refunded status to any ticket in loadedTickets that is marked as refunded
+        loadedTickets = loadedTickets.map(t => {
+          if (refundedIds.has(t.id)) {
+            return { ...t, status: 'refunded' as const };
+          }
+          return t;
+        });
       } catch (e) {
         console.error('Failed to load tickets from local storage:', e);
       }
@@ -326,9 +368,9 @@ export default function Dashboard() {
         setTickets(loadedTickets);
       }
       setIsLoading(false);
-    }, 1000);
+    };
     
-    return () => clearTimeout(timer);
+    execute();
   }, [location.state]);
 
   // Helper to format event date cleanly without UTC timezone shift
@@ -359,12 +401,65 @@ export default function Dashboard() {
     }
   };
 
+  // Helper to format event start time cleanly (extracting start time from slots, ranges, or event.time)
+  const formatTicketStartTime = (ticket: PurchasedTicket): string => {
+    let raw = ticket.selectedTime || (ticket as any).time || (ticket as any).selected_time || ticket.event?.time || '';
+    if (!raw) return '';
+
+    // If it contains a range like "18:00 - 23:00" or "09:00-12:00", take the start time
+    if (typeof raw === 'string' && raw.includes('-')) {
+      raw = raw.split('-')[0].trim();
+    }
+
+    // Extract standard HH:MM time if embedded in text like "Check-in 14:00" or "Starts at 19:30"
+    if (typeof raw === 'string') {
+      const match = raw.match(/\b\d{1,2}:\d{2}\b/);
+      if (match) {
+        return match[0];
+      }
+    }
+
+    // If "18:00:00", trim to "18:00"
+    if (typeof raw === 'string' && /^\d{2}:\d{2}:\d{2}$/.test(raw.trim())) {
+      return raw.trim().substring(0, 5);
+    }
+
+    return String(raw).trim();
+  };
+
+  /**
+   * Determine if a ticket has been refunded.
+   */
+  const isTicketRefunded = (ticket: PurchasedTicket): boolean => {
+    if (ticket.status === 'refunded' || ticket.status === 'pending_refund') {
+      return true;
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        const refundedRaw = localStorage.getItem('pasopkan_refunded_tickets');
+        if (refundedRaw) {
+          const list = JSON.parse(refundedRaw);
+          if (Array.isArray(list) && list.includes(ticket.id)) {
+            return true;
+          }
+        }
+      } catch (e) {}
+    }
+    return false;
+  };
+
   /**
    * Determine whether a ticket belongs in 'past' vs 'upcoming'.
    * CRITICAL: We evaluate the EVENT'S start/end date, NOT the ticket purchase/booking date!
    * A ticket purchased today for an event today or in the future is strictly UPCOMING.
+   * If a ticket is refunded successfully, it is moved to the 'past' tab.
    */
   const isTicketPast = (ticket: PurchasedTicket): boolean => {
+    // 0. Tickets with successful refund are strictly placed in the Past tab
+    if (isTicketRefunded(ticket)) {
+      return true;
+    }
+
     // 1. Explicit historical past mock tickets
     if (ticket.id === 'tk_past_1' || ticket.id === 'tk_past_2') {
       return true;
@@ -419,8 +514,13 @@ export default function Dashboard() {
   const filteredTickets = tickets.filter(t => getEffectiveStatus(t) === activeTab);
 
   const isRefundEligible = (ticket: PurchasedTicket): boolean => {
+    // If the event organizer explicitly disabled refunds
+    if (ticket.event && ticket.event.allowRefunds === false) {
+      return false;
+    }
+
     const eventDateStr = ticket.selectedDate || ticket.event?.date;
-    const eventTimeStr = ticket.selectedTime || ticket.event?.time || '00:00';
+    const eventTimeStr = formatTicketStartTime(ticket) || '00:00';
     
     if (!eventDateStr) return false;
   
@@ -445,6 +545,10 @@ export default function Dashboard() {
   };
 
   const handleRefundTicket = (ticket: PurchasedTicket) => {
+    if (ticket.event && ticket.event.allowRefunds === false) {
+      alert(lang === 'lo' ? 'ຜູ້ຈັດງານບໍ່ອະນຸຍາດໃຫ້ຄືນເງິນສຳລັບກິດຈະກຳນີ້' : 'The organizer does not allow refunds for this event.');
+      return;
+    }
     if (!isRefundEligible(ticket)) {
       alert(lang === 'lo' ? 'ບໍ່ສາມາດຄືນເງິນໄດ້ເນື່ອງຈາກກິດຈະກຳຈະເລີ່ມພາຍໃນ 48 ຊົ່ວໂມງ' : 'Refund is not available because the event starts in less than 48 hours.');
       return;
@@ -456,10 +560,61 @@ export default function Dashboard() {
     if (!refundTicket) return;
     setIsRefunding(true);
     await new Promise(resolve => setTimeout(resolve, 1500));
-    setTickets(tickets.filter(t => t.id !== refundTicket.id));
+    
+    // Update ticket status to 'refunded'
+    const updatedTickets = tickets.map(t => 
+      t.id === refundTicket.id ? { ...t, status: 'refunded' as const } : t
+    );
+    
+    setTickets(updatedTickets);
+    
+    // Save updated tickets to localStorage
+    try {
+      localStorage.setItem('pasopkan_user_tickets', JSON.stringify(updatedTickets));
+      const existingRefundedRaw = localStorage.getItem('pasopkan_refunded_tickets');
+      const refundedList: string[] = existingRefundedRaw ? JSON.parse(existingRefundedRaw) : [];
+      if (!refundedList.includes(refundTicket.id)) {
+        refundedList.push(refundTicket.id);
+      }
+      localStorage.setItem('pasopkan_refunded_tickets', JSON.stringify(refundedList));
+
+      // Also register in admin refunds for immediate visibility
+      const existingRefundsRaw = localStorage.getItem('pasopkan_admin_refunds');
+      const adminRefunds = existingRefundsRaw ? JSON.parse(existingRefundsRaw) : [];
+      if (!adminRefunds.some((r: any) => r.ticketId === refundTicket.id)) {
+        const price = Number(refundTicket.tier?.price) || 0;
+        const qty = Number(refundTicket.quantity) || 1;
+        adminRefunds.unshift({
+          id: `REF-${Date.now().toString().slice(-4)}-${Math.floor(Math.random() * 900 + 100)}`,
+          ticketId: refundTicket.id,
+          orderId: `ORD-${refundTicket.id.slice(-6).toUpperCase()}`,
+          eventId: refundTicket.event?.id || 1,
+          eventTitle: refundTicket.event?.title || 'Event Ticket',
+          eventDate: refundTicket.event?.date || 'Upcoming',
+          eventLocation: refundTicket.event?.location || 'Vientiane',
+          customerName: user?.displayName || user?.name || 'Registered Customer',
+          customerEmail: user?.email || 'customer@pasopkan.com',
+          tierName: refundTicket.tier?.name || 'Standard',
+          quantity: qty,
+          amount: price * qty,
+          requestDate: new Date().toISOString().replace('T', ' ').slice(0, 16),
+          reason: 'Customer initiated refund from User Dashboard.',
+          status: 'approved',
+          processedDate: new Date().toISOString().replace('T', ' ').slice(0, 16),
+          processedBy: 'User Self-Service'
+        });
+        localStorage.setItem('pasopkan_admin_refunds', JSON.stringify(adminRefunds));
+      }
+      window.dispatchEvent(new Event('pasopkan_storage_update'));
+    } catch (e) {
+      console.error('Failed to save refund status to local storage:', e);
+    }
+    
     alert(t.refundSuccess);
     setIsRefunding(false);
     setRefundTicket(null);
+    // Switch to 'past' tab immediately so user sees the refunded ticket moved here
+    setActiveTab('past');
   };
 
   if (isLoading) {
@@ -595,10 +750,16 @@ export default function Dashboard() {
                             }`}>
                               {ticket.event.category}
                             </span>
-                            {(ticket.scanned || allCheckins.some(c => (c.ticketId || c.id || '').toLowerCase().includes(ticket.id.toLowerCase()))) && (
+                            {isTicketRefunded(ticket) && (
                               <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
                                 <CheckCircle2 className="w-2.5 h-2.5 stroke-[2.5]" />
-                                {lang === 'lo' ? 'ສະແກນແລ້ວ' : 'Scanned'}
+                                <span>{t.refundSuccessBadge}</span>
+                              </span>
+                            )}
+                            {!isTicketPastStatus && !isTicketRefunded(ticket) && (ticket.scanned || allCheckins.some(c => (c.ticketId || c.id || '').toLowerCase().includes(ticket.id.toLowerCase()))) && (
+                              <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                                <CheckCircle2 className="w-2.5 h-2.5 stroke-[2.5]" />
+                                <span>{lang === 'lo' ? 'ສະແກນແລ້ວ' : 'Scanned'}</span>
                               </span>
                             )}
                             <div className="flex items-center gap-1 text-gray-400 text-[10px] sm:text-xs font-semibold">
@@ -607,10 +768,10 @@ export default function Dashboard() {
                                 {formatTicketEventDate(ticket.selectedDate || ticket.event?.date, ticket.event?.date || '')}
                               </span>
                             </div>
-                            {ticket.selectedTime && (
+                            {formatTicketStartTime(ticket) && (
                               <div className="flex items-center gap-1 text-[10px] sm:text-xs font-bold text-adv-orange font-mono pl-1 border-l border-gray-200 dark:border-zinc-750">
                                 <Clock className="w-3 h-3 shrink-0" />
-                                <span>{ticket.selectedTime}</span>
+                                <span>{formatTicketStartTime(ticket)}</span>
                               </div>
                             )}
                           </div>
@@ -634,67 +795,83 @@ export default function Dashboard() {
                           </div>
                         </div>
 
-                        <div className={`flex items-center justify-between pt-2 border-t ${theme === 'dark' ? 'border-zinc-800/80' : 'border-gray-100'}`}>
-                          {!isTicketPastStatus ? (
-                            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
-                              <button 
-                                onClick={() => setShowQrTicket({ ...ticket, status: 'upcoming' })}
-                                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                                  theme === 'dark' 
-                                    ? 'bg-adv-orange/15 text-adv-orange border border-adv-orange/30 hover:bg-adv-orange hover:text-white' 
-                                    : 'bg-adv-orange/10 text-adv-orange border border-adv-orange/20 hover:bg-adv-orange hover:text-white hover:shadow-xs'
-                                }`}
-                              >
-                                <QrCode className="w-3.5 h-3.5" />
-                                <span>{t.viewTicket}</span>
-                              </button>
-                              
-                              <button 
-                                onClick={() => handleRefundTicket(ticket)}
-                                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                                  isRefundEligible(ticket)
-                                    ? theme === 'dark' 
-                                      ? 'bg-zinc-800/60 text-zinc-400 border border-transparent hover:bg-red-950/20 hover:text-red-400' 
-                                      : 'bg-gray-50 text-gray-400 border border-gray-200 hover:bg-red-50 hover:text-red-500'
-                                    : theme === 'dark'
-                                      ? 'opacity-40 bg-zinc-800/40 text-zinc-500 hover:bg-zinc-800/40 hover:text-zinc-500 cursor-not-allowed'
-                                      : 'opacity-40 bg-gray-100 text-gray-400 hover:bg-gray-100 hover:text-gray-400 cursor-not-allowed'
-                                }`}
-                              >
-                                <RefreshCcw className="w-3 h-3" />
-                                <span>{t.refund}</span>
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between w-full flex-wrap gap-2">
-                              {(() => {
-                                const isScanned = ticket.scanned || allCheckins.some(c => (c.ticketId || c.id || '').toLowerCase().includes(ticket.id.toLowerCase()));
-                                return isScanned ? (
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-zinc-500 flex items-center gap-1.5">
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                                    <span>{lang === 'lo' ? 'ກິດຈະກຳສຳເລັດແລ້ວ' : 'Event Completed'}</span>
-                                  </span>
-                                ) : (
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-zinc-500 flex items-center gap-1.5">
-                                    <XCircle className="w-3.5 h-3.5 text-red-500" />
-                                    <span>{lang === 'lo' ? 'ໝົດອາຍຸ' : 'Expired'}</span>
-                                  </span>
-                                );
-                              })()}
-                              <button 
-                                onClick={() => setShowQrTicket({ ...ticket, status: 'past' })}
-                                className={`flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                                  theme === 'dark' 
-                                    ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700' 
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                }`}
-                              >
-                                <QrCode className="w-3 h-3 text-adv-orange" />
-                                <span>{t.viewTicket}</span>
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        {!isTicketRefunded(ticket) && (
+                          <div className={`pt-2.5 border-t ${theme === 'dark' ? 'border-zinc-800/80' : 'border-gray-100'}`}>
+                            {!isTicketPastStatus ? (
+                              <div className="flex items-center justify-between w-full flex-wrap gap-2">
+                                <button 
+                                  onClick={() => setShowQrTicket({ ...ticket, status: 'upcoming' })}
+                                  className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                                    theme === 'dark' 
+                                      ? 'bg-adv-orange/15 text-adv-orange border border-adv-orange/30 hover:bg-adv-orange hover:text-white' 
+                                      : 'bg-adv-orange/10 text-adv-orange border border-adv-orange/20 hover:bg-adv-orange hover:text-white hover:shadow-xs'
+                                  }`}
+                                >
+                                  <QrCode className="w-3.5 h-3.5" />
+                                  <span>{t.viewTicket}</span>
+                                </button>
+                                
+                                {(() => {
+                                  const isEligible = isRefundEligible(ticket);
+                                  return (
+                                    <button 
+                                      onClick={() => isEligible && handleRefundTicket(ticket)}
+                                      disabled={!isEligible}
+                                      aria-disabled={!isEligible}
+                                      title={
+                                        !isEligible
+                                          ? ticket.event?.allowRefunds === false
+                                            ? t.refundNotAllowed
+                                            : t.refundDisabledTooltip
+                                          : t.refund
+                                      }
+                                      className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all duration-200 ${
+                                        isEligible
+                                          ? theme === 'dark' 
+                                            ? 'bg-zinc-800/60 text-zinc-300 border border-zinc-700/60 hover:bg-red-950/20 hover:text-red-400 hover:border-red-900/30 cursor-pointer' 
+                                            : 'bg-gray-50 text-gray-700 border border-gray-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 cursor-pointer'
+                                          : theme === 'dark'
+                                            ? 'opacity-35 bg-zinc-800/40 text-zinc-500 border border-zinc-800/60 cursor-not-allowed select-none'
+                                            : 'opacity-35 bg-gray-100 text-gray-400 border border-gray-200/80 cursor-not-allowed select-none'
+                                      }`}
+                                    >
+                                      <RefreshCcw className="w-3 h-3" />
+                                      <span>{t.refund}</span>
+                                    </button>
+                                  );
+                                })()}
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between w-full flex-wrap gap-2">
+                                {(() => {
+                                  const isScanned = ticket.scanned || allCheckins.some(c => (c.ticketId || c.id || '').toLowerCase().includes(ticket.id.toLowerCase()));
+                                  return isScanned ? (
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-zinc-500 flex items-center gap-1.5">
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                      <span>{lang === 'lo' ? 'ກິດຈະກຳສຳເລັດແລ້ວ' : 'Event Completed'}</span>
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-zinc-500 flex items-center gap-1.5">
+                                      <XCircle className="w-3.5 h-3.5 text-red-500" />
+                                      <span>{lang === 'lo' ? 'ໝົດອາຍຸ' : 'Expired'}</span>
+                                    </span>
+                                  );
+                                })()}
+                                <button 
+                                  onClick={() => setShowQrTicket({ ...ticket, status: 'past' })}
+                                  className={`flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                                    theme === 'dark' 
+                                      ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700' 
+                                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                  }`}
+                                >
+                                  <QrCode className="w-3 h-3 text-adv-orange" />
+                                  <span>{t.viewTicket}</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

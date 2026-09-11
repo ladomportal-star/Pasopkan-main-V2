@@ -207,7 +207,7 @@ const translations = {
     requireEveryTicketInfo: 'Require Guest Info for Every Ticket',
     requireEveryTicketInfoDesc: 'If disabled, only the buyer\'s information is required even when purchasing multiple tickets.',
     allowRefunds: 'Allow Refunds',
-    allowRefundsDesc: 'Let attendees request refunds up to 24 hours before the event.',
+    allowRefundsDesc: 'Let attendees request refunds up to 48 hours before the event starts.',
     maxTicketsPerUser: 'Max Tickets Per User',
     maxTicketsPerUserDesc: 'Limit the number of tickets a single user can purchase.',
     ticketUnit: 'Ticket',
@@ -471,7 +471,7 @@ const translations = {
     requireEveryTicketInfo: 'ຕ້ອງການຂໍ້ມູນແຂກສຳລັບທຸກໆປີ້',
     requireEveryTicketInfoDesc: 'ຖ້າປິດການນຳໃຊ້, ຈະຕ້ອງການພຽງແຕ່ຂໍ້ມູນຂອງຜູ້ຊື້ເທົ່ານັ້ນ ເຖິງແມ່ນວ່າຈະຊື້ຫຼາຍປີ້ກໍຕາມ.',
     allowRefunds: 'ອະນຸຍາດໃຫ້ຄືນເງິນ',
-    allowRefundsDesc: 'ໃຫ້ຜູ້ເຂົ້າຮ່ວມຮ້ອງຂໍຄືນເງິນໄດ້ເຖິງ 24 ຊົ່ວໂມງກ່ອນ event.',
+    allowRefundsDesc: 'ໃຫ້ຜູ້ເຂົ້າຮ່ວມຮ້ອງຂໍຄືນເງິນໄດ້ເຖິງ 48 ຊົ່ວໂມງກ່ອນ event ເລີ່ມຕົ້ນ.',
     maxTicketsPerUser: 'ຈຳນວນປີ້ສູງສຸດຕໍ່ຜູ້ໃຊ້',
     maxTicketsPerUserDesc: 'ຈຳກັດຈຳນວນປີ້ທີ່ຜູ້ໃຊ້ໜຶ່ງຄົນສາມາດຊື້ໄດ້.',
     ticketUnit: 'ປີ້',
@@ -1575,15 +1575,21 @@ export default function CreateEvent() {
 
   // Event Information Toolbar Reference State
   const [selectedFont, setSelectedFont] = useState('Inter');
-  const [selectedFontSize, setSelectedFontSize] = useState('18');
-  const [selectedTextColor, setSelectedTextColor] = useState('#EF4444');
+  const [selectedFontSize, setSelectedFontSize] = useState('16');
+  const [selectedTextColor, setSelectedTextColor] = useState('#000000');
   const [selectedAlign, setSelectedAlign] = useState<'left' | 'center' | 'right' | 'justify'>('left');
   const [showFontMenu, setShowFontMenu] = useState(false);
   const [showFontSizeMenu, setShowFontSizeMenu] = useState(false);
   const [showColorMenu, setShowColorMenu] = useState(false);
+  const fontSizeDropdownRef = useRef<HTMLDivElement | null>(null);
+  const colorDropdownRef = useRef<HTMLDivElement | null>(null);
+  const colorInputRef = useRef<HTMLInputElement | null>(null);
+  const savedSelectionRangeRef = useRef<Range | null>(null);
+  const [customHexInput, setCustomHexInput] = useState('000000');
   const [showAlignMenu, setShowAlignMenu] = useState(false);
   const [showToolbarLinkModal, setShowToolbarLinkModal] = useState(false);
   const [toolbarLinkUrl, setToolbarLinkUrl] = useState('');
+  const [toolbarLinkText, setToolbarLinkText] = useState('');
 
   const fontOptions = [
     { label: 'Inter', value: 'Inter, sans-serif' },
@@ -1595,9 +1601,10 @@ export default function CreateEvent() {
     { label: 'Courier New', value: "'Courier New', monospace" }
   ];
 
-  const fontSizeOptions = ['12', '14', '16', '18', '20', '24', '28', '32', '36'];
+  const fontSizeOptions = ['12', '14', '16', '18', '19', '20', '21', '22', '23', '24', '28', '32', '36'];
 
   const colorPalette = [
+    { label: 'Black', value: '#000000' },
     { label: 'Charcoal', value: '#1E293B' },
     { label: 'Red', value: '#EF4444' },
     { label: 'Orange', value: '#FF5500' },
@@ -1605,8 +1612,7 @@ export default function CreateEvent() {
     { label: 'Emerald', value: '#10B981' },
     { label: 'Blue', value: '#3B82F6' },
     { label: 'Purple', value: '#8B5CF6' },
-    { label: 'Pink', value: '#EC4899' },
-    { label: 'Gray', value: '#64748B' }
+    { label: 'Pink', value: '#EC4899' }
   ];
 
   const applyToolbarFont = (fontName: string, fontVal: string) => {
@@ -1619,6 +1625,16 @@ export default function CreateEvent() {
   const applyToolbarFontSize = (sizePx: string) => {
     setSelectedFontSize(sizePx);
     setShowFontSizeMenu(false);
+
+    // Restore selection if saved
+    if (savedSelectionRange) {
+      const sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(savedSelectionRange);
+      }
+    }
+
     const sel = window.getSelection();
     if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
       document.execCommand('fontSize', false, '7');
@@ -1628,18 +1644,96 @@ export default function CreateEvent() {
           el.removeAttribute('size');
           (el as HTMLElement).style.fontSize = `${sizePx}px`;
         });
+    isInternalEditorUpdateRef.current = true;
         setEditorContent(editorRef.current.innerHTML);
       }
-    } else {
-      document.execCommand('fontSize', false, '4');
+    } else if (editorRef.current) {
+      editorRef.current.focus();
+      document.execCommand('fontSize', false, '7');
+      const fontElements = editorRef.current.querySelectorAll('font[size="7"]');
+      fontElements.forEach((el) => {
+        el.removeAttribute('size');
+        (el as HTMLElement).style.fontSize = `${sizePx}px`;
+      });
+    isInternalEditorUpdateRef.current = true;
+      setEditorContent(editorRef.current.innerHTML);
     }
+    setSavedSelectionRange(null);
   };
 
-  const applyToolbarTextColor = (color: string) => {
-    setSelectedTextColor(color);
-    setShowColorMenu(false);
-    document.execCommand('foreColor', false, color);
-    if (editorRef.current) setEditorContent(editorRef.current.innerHTML);
+  // Helper to validate and normalize HEX color
+  const normalizeHexColor = (input: string): string | null => {
+    if (!input) return null;
+    const clean = input.trim().replace(/^#/, '');
+    if (/^[0-9a-fA-F]{6}$/.test(clean)) {
+      return `#${clean.toUpperCase()}`;
+    }
+    if (/^[0-9a-fA-F]{3}$/.test(clean)) {
+      return `#${clean.split('').map((c) => c + c).join('').toUpperCase()}`;
+    }
+    return null;
+  };
+
+  const applyToolbarTextColor = (color: string, closeMenu = true) => {
+    if (!color) return;
+    const formattedColor = normalizeHexColor(color) || (color.startsWith('#') ? color : `#${color}`);
+    
+    setSelectedTextColor(formattedColor);
+    setCustomHexInput(formattedColor.replace('#', ''));
+    
+    if (closeMenu) {
+      setShowColorMenu(false);
+    }
+
+    if (!editorRef.current) return;
+
+    // Determine range to use: preference to saved selection ref or current window selection
+    const sel = window.getSelection();
+    let rangeToUse: Range | null = null;
+
+    if (savedSelectionRangeRef.current && editorRef.current.contains(savedSelectionRangeRef.current.commonAncestorContainer)) {
+      rangeToUse = savedSelectionRangeRef.current;
+    } else if (sel && sel.rangeCount > 0 && !sel.isCollapsed && editorRef.current.contains(sel.anchorNode)) {
+      rangeToUse = sel.getRangeAt(0);
+    } else if (savedSelectionRange && editorRef.current.contains(savedSelectionRange.commonAncestorContainer)) {
+      rangeToUse = savedSelectionRange;
+    }
+
+    if (rangeToUse && !rangeToUse.collapsed && editorRef.current.contains(rangeToUse.commonAncestorContainer)) {
+      // 1. Focus editor and restore the exact active range
+      editorRef.current.focus();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(rangeToUse);
+      }
+
+      // 2. Enable styleWithCSS so foreColor outputs standard <span> elements with style="color: ..."
+      try {
+        document.execCommand('styleWithCSS', false, 'true');
+      } catch {
+        // Fallback for browsers that don't support styleWithCSS
+      }
+      document.execCommand('foreColor', false, formattedColor);
+
+      // 3. Immediately capture the active range after execCommand so subsequent color changes work smoothly
+      const postSel = window.getSelection();
+      if (postSel && postSel.rangeCount > 0 && !postSel.isCollapsed && editorRef.current.contains(postSel.anchorNode)) {
+        const postRange = postSel.getRangeAt(0).cloneRange();
+        savedSelectionRangeRef.current = postRange;
+        setSavedSelectionRange(postRange);
+      }
+    } else {
+      // If no text is selected or cursor is at an insertion point, set foreColor for upcoming typing
+      editorRef.current.focus();
+      try {
+        document.execCommand('styleWithCSS', false, 'true');
+      } catch {}
+      document.execCommand('foreColor', false, formattedColor);
+    }
+
+    // Sync content state for draft saving and form submission without re-triggering innerHTML reassignment
+    isInternalEditorUpdateRef.current = true;
+    setEditorContent(editorRef.current.innerHTML);
   };
 
   const applyToolbarAlign = (align: 'left' | 'center' | 'right' | 'justify') => {
@@ -1651,31 +1745,85 @@ export default function CreateEvent() {
     else if (align === 'justify') execCommand('justifyFull');
   };
 
+  // Continuously record active selection inside editor so toolbar interactions never lose it
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0 && !sel.isCollapsed && editorRef.current) {
+        const range = sel.getRangeAt(0);
+        if (editorRef.current.contains(range.commonAncestorContainer)) {
+          savedSelectionRangeRef.current = range.cloneRange();
+          setSavedSelectionRange(range.cloneRange());
+        }
+      }
+    };
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  }, []);
+
+  // Close rich text editor dropdowns when clicking outside
+  useEffect(() => {
+    const handleToolbarClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (fontSizeDropdownRef.current && !fontSizeDropdownRef.current.contains(target)) {
+        setShowFontSizeMenu(false);
+      }
+      if (colorDropdownRef.current && !colorDropdownRef.current.contains(target)) {
+        setShowColorMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleToolbarClickOutside);
+    return () => document.removeEventListener('mousedown', handleToolbarClickOutside);
+  }, []);
+
   const applyToolbarLink = () => {
     if (toolbarLinkUrl.trim()) {
       let formattedUrl = toolbarLinkUrl.trim();
       if (!/^https?:\/\//i.test(formattedUrl) && !formattedUrl.startsWith('mailto:') && !formattedUrl.startsWith('tel:')) {
         formattedUrl = `https://${formattedUrl}`;
       }
-      document.execCommand('createLink', false, formattedUrl);
+      
+      const textToDisplay = toolbarLinkText.trim() || formattedUrl;
+      const htmlToInsert = `<a href="${formattedUrl}" target="_blank" rel="noopener noreferrer" class="text-adv-orange underline hover:text-orange-600 font-semibold transition-colors">${textToDisplay}</a>&nbsp;`;
+      
+      // Restore selection if we saved it
+      if (savedSelectionRange) {
+        const sel = window.getSelection();
+        if (sel) {
+          sel.removeAllRanges();
+          sel.addRange(savedSelectionRange);
+        }
+      } else if (editorRef.current) {
+         // Focus editor and place cursor at end if no selection saved
+         editorRef.current.focus();
+         const sel = window.getSelection();
+         if (sel) {
+           const range = document.createRange();
+           range.selectNodeContents(editorRef.current);
+           range.collapse(false);
+           sel.removeAllRanges();
+           sel.addRange(range);
+         }
+      }
+      
+      document.execCommand('insertHTML', false, htmlToInsert);
+      
       if (editorRef.current) {
-        const anchors = editorRef.current.querySelectorAll('a');
-        anchors.forEach(a => {
-          a.setAttribute('target', '_blank');
-          a.setAttribute('rel', 'noopener noreferrer');
-          a.className = 'text-adv-orange underline hover:text-orange-600 font-semibold transition-colors';
-        });
+    isInternalEditorUpdateRef.current = true;
         setEditorContent(editorRef.current.innerHTML);
       }
     }
     setShowToolbarLinkModal(false);
     setToolbarLinkUrl('');
+    setToolbarLinkText('');
+    setSavedSelectionRange(null);
   };
 
   const insertCalloutBlock = () => {
     const calloutHtml = `<blockquote class="border-l-4 border-adv-orange pl-4 py-2.5 my-3 italic text-gray-700 bg-orange-50/70 rounded-r-2xl shadow-xs font-medium">“${lang === 'lo' ? 'ເພີ່ມຂໍ້ຄວາມໝາຍເຫດ ຫຼື ຄຳເວົ້າພິເສດຢູ່ທີ່ນີ້...' : 'Add your special note, quote, or highlight here...'}”</blockquote><p><br></p>`;
     execCommand('insertHTML', calloutHtml);
     if (editorRef.current) {
+    isInternalEditorUpdateRef.current = true;
       setEditorContent(editorRef.current.innerHTML);
     }
   };
@@ -1705,6 +1853,7 @@ export default function CreateEvent() {
             a.setAttribute('target', '_blank');
             a.setAttribute('rel', 'noopener noreferrer');
           });
+    isInternalEditorUpdateRef.current = true;
           setEditorContent(editorRef.current.innerHTML);
         }
         return;
@@ -1714,6 +1863,7 @@ export default function CreateEvent() {
         const linkHtml = `<a href="${formattedUrl}" target="_blank" rel="noopener noreferrer" class="text-adv-orange underline hover:text-orange-600 font-semibold transition-colors">${pasteText}</a>&nbsp;`;
         document.execCommand('insertHTML', false, linkHtml);
         if (editorRef.current) {
+    isInternalEditorUpdateRef.current = true;
           setEditorContent(editorRef.current.innerHTML);
         }
         return;
@@ -1722,7 +1872,32 @@ export default function CreateEvent() {
   };
   
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null);
+  const draggedImageRef = useRef<HTMLImageElement | null>(null);
   const [imageRect, setImageRect] = useState<{top: number, left: number, width: number, height: number} | null>(null);
+  const [imageDropIndicator, setImageDropIndicator] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+    isBlock: boolean;
+  } | null>(null);
+
+  const getCaretRangeFromPoint = (x: number, y: number): Range | null => {
+    if (typeof document.caretRangeFromPoint === 'function') {
+      return document.caretRangeFromPoint(x, y);
+    }
+    const doc = document as unknown as { caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null };
+    if (typeof doc.caretPositionFromPoint === 'function') {
+      const pos = doc.caretPositionFromPoint(x, y);
+      if (pos) {
+        const range = document.createRange();
+        range.setStart(pos.offsetNode, pos.offset);
+        range.collapse(true);
+        return range;
+      }
+    }
+    return null;
+  };
 
   const updateImageRect = React.useCallback(() => {
     if (selectedImage && editorRef.current && editorRef.current.parentElement) {
@@ -1747,7 +1922,8 @@ export default function CreateEvent() {
   useEffect(() => {
     const handleGlobalClick = (e: MouseEvent) => {
       if (editorRef.current && !editorRef.current.contains(e.target as Node) && selectedImage) {
-        if ((e.target as HTMLElement).style.cursor === 'nwse-resize') return;
+        const cursor = (e.target as HTMLElement).style?.cursor;
+        if (cursor === 'nwse-resize' || cursor === 'nesw-resize' || (e.target as HTMLElement).dataset.resizeHandle) return;
         setSelectedImage(null);
       }
     };
@@ -1803,7 +1979,7 @@ export default function CreateEvent() {
     }
   };
 
-  const startResize = (e: React.MouseEvent) => {
+  const startResize = (e: React.MouseEvent, corner: 'nw' | 'ne' | 'se' | 'sw' = 'se') => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -1812,11 +1988,21 @@ export default function CreateEvent() {
     const startX = e.clientX;
     const startWidth = selectedImage.offsetWidth;
     const startHeight = selectedImage.offsetHeight;
-    const ratio = startHeight / startWidth;
+    const ratio = startHeight / Math.max(1, startWidth);
 
     const onMouseMove = (moveEvent: MouseEvent) => {
-      const newWidth = Math.max(50, startWidth + (moveEvent.clientX - startX));
-      const newHeight = newWidth * ratio;
+      const deltaX = moveEvent.clientX - startX;
+      let newWidth = startWidth;
+
+      if (corner === 'se' || corner === 'ne') {
+        newWidth = Math.max(60, startWidth + deltaX);
+      } else {
+        // 'sw' or 'nw' - dragging leftwards increases width
+        newWidth = Math.max(60, startWidth - deltaX);
+      }
+
+      const newHeight = Math.round(newWidth * ratio);
+
       selectedImage.style.width = `${newWidth}px`;
       selectedImage.style.height = `${newHeight}px`;
       updateImageRect();
@@ -1825,6 +2011,10 @@ export default function CreateEvent() {
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
+      if (editorRef.current) {
+        isInternalEditorUpdateRef.current = true;
+        setEditorContent(editorRef.current.innerHTML);
+      }
     };
 
     document.addEventListener('mousemove', onMouseMove);
@@ -1839,6 +2029,7 @@ export default function CreateEvent() {
       setSelectedImage(null);
       setImageRect(null);
       if (editorRef.current) {
+    isInternalEditorUpdateRef.current = true;
         setEditorContent(editorRef.current.innerHTML);
       }
     }
@@ -1888,53 +2079,159 @@ export default function CreateEvent() {
     input.click();
   };
 
+  const handleEditorDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'IMG') {
+      draggedImageRef.current = target as HTMLImageElement;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', 'internal-image-drag');
+      setSelectedImage(null);
+      setImageRect(null);
+    }
+  };
+
+  const handleEditorDragEnd = () => {
+    draggedImageRef.current = null;
+    setImageDropIndicator(null);
+  };
+
+  const handleEditorDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!editorRef.current?.contains(e.relatedTarget as Node)) {
+      setImageDropIndicator(null);
+    }
+  };
+
+  const handleEditorDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (draggedImageRef.current) {
+      e.dataTransfer.dropEffect = 'move';
+    } else if (e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+      e.dataTransfer.dropEffect = 'copy';
+    } else {
+      return;
+    }
+
+    const range = getCaretRangeFromPoint(e.clientX, e.clientY);
+    if (range && editorRef.current && editorRef.current.contains(range.startContainer)) {
+      // Synchronize caret selection in real time as cursor moves
+      const sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+
+      // Calculate real-time drop indicator coordinates relative to editor container
+      const parentContainer = editorRef.current.parentElement;
+      if (parentContainer) {
+        const parentBounds = parentContainer.getBoundingClientRect();
+        const rects = range.getClientRects();
+        if (rects.length > 0 && rects[0].height > 0) {
+          const r = rects[0];
+          setImageDropIndicator({
+            top: r.top - parentBounds.top,
+            left: Math.max(0, r.left - parentBounds.left - 1.5),
+            width: 3,
+            height: Math.max(r.height, 22),
+            isBlock: false
+          });
+        } else {
+          const elem = range.startContainer.nodeType === Node.ELEMENT_NODE
+            ? (range.startContainer as HTMLElement)
+            : range.startContainer.parentElement;
+          if (elem && editorRef.current.contains(elem)) {
+            const bounds = elem.getBoundingClientRect();
+            const isLowerHalf = e.clientY > bounds.top + bounds.height / 2;
+            setImageDropIndicator({
+              top: (isLowerHalf ? bounds.bottom : bounds.top) - parentBounds.top - 1.5,
+              left: bounds.left - parentBounds.left,
+              width: Math.max(bounds.width, 240),
+              height: 3,
+              isBlock: true
+            });
+          }
+        }
+      }
+    }
+  };
+
   const handleEditorDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    setImageDropIndicator(null);
+
+    // 1. If dragging an internal image within the editor, move it in real time to the drop position
+    if (draggedImageRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      const imgToMove = draggedImageRef.current;
+      draggedImageRef.current = null;
+
+      // Find drop caret position
+      const range = getCaretRangeFromPoint(e.clientX, e.clientY);
+      
+      if (range && editorRef.current?.contains(range.startContainer)) {
+        // Prevent inserting into itself if dropped onto itself
+        if (!imgToMove.contains(range.startContainer)) {
+          range.insertNode(imgToMove);
+          range.setStartAfter(imgToMove);
+          range.collapse(true);
+          const sel = window.getSelection();
+          if (sel) {
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
+        }
+      } else if (editorRef.current) {
+        editorRef.current.appendChild(imgToMove);
+      }
+
+      setSelectedImage(imgToMove);
+      if (editorRef.current) {
+        isInternalEditorUpdateRef.current = true;
+        setEditorContent(editorRef.current.innerHTML);
+      }
+      setTimeout(updateImageRect, 30);
+      return;
+    }
+
+    // 2. External file drop (upload new image at cursor position)
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       e.preventDefault();
+      e.stopPropagation();
       
       // Update caret position to drop point
-      if (document.caretRangeFromPoint) {
-        const range = document.caretRangeFromPoint(e.clientX, e.clientY);
-        if (range) {
-          const sel = window.getSelection();
-          sel?.removeAllRanges();
-          sel?.addRange(range);
-        }
+      const range = getCaretRangeFromPoint(e.clientX, e.clientY);
+      if (range) {
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
       }
 
       const file = e.dataTransfer.files[0];
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
-        reader.onload = (event) => {
-          if (event.target?.result) {
-            const img = new Image();
-            img.onload = () => {
-              const canvas = document.createElement('canvas');
-              const MAX_WIDTH = 800;
-              let width = img.width;
-              let height = img.height;
-              
-              if (width > MAX_WIDTH) {
-                height = Math.round((height * MAX_WIDTH) / width);
-                width = MAX_WIDTH;
-              }
-              
-              canvas.width = width;
-              canvas.height = height;
-              const ctx = canvas.getContext('2d');
-              ctx?.drawImage(img, 0, 0, width, height);
-              
-              const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-              execCommand('insertImage', dataUrl);
-            };
-            img.src = event.target.result.toString();
+        reader.onload = (uploadEvt) => {
+          const img = document.createElement('img');
+          img.src = uploadEvt.target?.result as string;
+          img.className = 'my-3 rounded-xl max-w-full cursor-pointer transition-all inline-block';
+          img.style.maxHeight = '380px';
+          
+          if (range && editorRef.current?.contains(range.startContainer)) {
+            range.insertNode(img);
+            range.setStartAfter(img);
+            range.collapse(true);
+          } else if (editorRef.current) {
+            editorRef.current.appendChild(img);
           }
+
+          setSelectedImage(img);
+          if (editorRef.current) {
+            isInternalEditorUpdateRef.current = true;
+            setEditorContent(editorRef.current.innerHTML);
+          }
+          setTimeout(updateImageRect, 40);
         };
-        reader.readAsDataURL(file as File);
+        reader.readAsDataURL(file);
       }
-    } else {
-      // It's a native drag of an existing element inside the editor. Let the browser handle it.
-      setTimeout(updateImageRect, 50);
+      return;
     }
   };
 
@@ -2031,10 +2328,21 @@ export default function CreateEvent() {
     }
   }, []);
 
+  // Flag to avoid re-injecting innerHTML when changes originate from the editor or toolbar itself
+  const isInternalEditorUpdateRef = useRef(false);
+  const prevStepRef = useRef(activeStep);
+
   useEffect(() => {
+    // Only synchronize innerHTML from external sources (e.g. initial draft load or step switch),
+    // NEVER when the update was triggered internally by typing or formatting!
     if (activeStep === 1 && editorRef.current && editorContent !== null) {
-      editorRef.current.innerHTML = editorContent;
+      if (isInternalEditorUpdateRef.current) {
+        isInternalEditorUpdateRef.current = false;
+      } else if (prevStepRef.current !== 1 || editorRef.current.innerHTML !== editorContent) {
+        editorRef.current.innerHTML = editorContent;
+      }
     }
+    prevStepRef.current = activeStep;
   }, [activeStep, editorContent]);
 
   const handleSaveDraft = async () => {
@@ -2942,14 +3250,6 @@ export default function CreateEvent() {
                             : 'Upload 1 main event cover photo and up to 10 slideshow images for your event page'}
                         </p>
                       </div>
-
-                      {/* Image Count Badge */}
-                      <div className="flex items-center gap-2 self-start sm:self-center bg-orange-50 text-adv-orange px-3.5 py-1.5 rounded-xl border border-orange-100 font-bold text-xs">
-                        <ImageIcon className="w-4 h-4 text-adv-orange" />
-                        <span>
-                          {lang === 'lo' ? 'ຮູບສະໄລ້:' : 'Slideshow:'} {galleryImages.length} / 10
-                        </span>
-                      </div>
                     </div>
 
                     {/* 1. COVER EVENT IMAGE BOX */}
@@ -2993,7 +3293,7 @@ export default function CreateEvent() {
                             <span className="text-xs text-gray-500 font-bold">{Math.round(Math.min(horizontalUploadProgress, 100))}%</span>
                           </div>
                         ) : horizontalImage || verticalImage ? (
-                          <AdaptiveImage
+                          <AdaptiveImage showBlurBackdrop={true}
                             src={horizontalImage || verticalImage}
                             alt="Main cover preview"
                             fitMode={coverFitMode}
@@ -3131,7 +3431,7 @@ export default function CreateEvent() {
                             {galleryImages.map((imgUrl, index) => {
                               const isCover = (horizontalImage === imgUrl || verticalImage === imgUrl);
                               return (
-                                <AdaptiveImage 
+                                <AdaptiveImage showBlurBackdrop={true} 
                                   key={index}
                                   src={imgUrl}
                                   fitMode="contain"
@@ -3328,6 +3628,7 @@ export default function CreateEvent() {
                       <div className="mt-3">
                         <div className="space-y-4">
                           <EventMapPicker 
+                            showOpenInMapsButton={false}
                             address={streetAddress}
                             onChangeAddress={(addr, lat, lng) => {
                               setStreetAddress(addr);
@@ -3499,46 +3800,80 @@ export default function CreateEvent() {
                 <div className="w-full bg-[#F6F4EF] border border-[#E8E5DC] rounded-[20px] p-2.5 mb-4 shadow-sm select-none">
                   <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                     
-                    {/* History */}
+                                        {/* History (Undo / Redo) */}
                     <div className="h-8 bg-[#EAE8E2] rounded-xl p-0.5 flex items-center gap-0.5 shadow-xs border border-black/5">
-                      <button type="button" onClick={() => document.execCommand('undo')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Undo">
+                      <button 
+                        type="button" 
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          document.execCommand('undo');
+                          editorRef.current?.focus();
+                          if (editorRef.current) {
+                            isInternalEditorUpdateRef.current = true;
+                            setEditorContent(editorRef.current.innerHTML);
+                          }
+                        }} 
+                        className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-black flex items-center justify-center transition-all cursor-pointer" 
+                        title={lang === 'lo' ? 'ຍົກເລີກ (Undo)' : 'Undo (Ctrl+Z)'}
+                      >
                         <Undo className="w-3.5 h-3.5" />
                       </button>
-                      <button type="button" onClick={() => document.execCommand('redo')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Redo">
+                      <button 
+                        type="button" 
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          document.execCommand('redo');
+                          editorRef.current?.focus();
+                          if (editorRef.current) {
+                            isInternalEditorUpdateRef.current = true;
+                            setEditorContent(editorRef.current.innerHTML);
+                          }
+                        }} 
+                        className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-black flex items-center justify-center transition-all cursor-pointer" 
+                        title={lang === 'lo' ? 'ເຮັດຄືນ (Redo)' : 'Redo (Ctrl+Y)'}
+                      >
                         <Redo className="w-3.5 h-3.5" />
                       </button>
                     </div>
 
-                    <div className="w-px h-5 bg-gray-300 mx-0.5"></div>
-
-                    {/* Font Dropdown */}
-                    <div className="relative">
-                      <button type="button" onClick={() => { setShowFontMenu(!showFontMenu); setShowFontSizeMenu(false); setShowColorMenu(false); setShowToolbarLinkModal(false); }} className="h-8 bg-[#EAE8E2] hover:bg-[#E2DFD8] active:scale-95 text-gray-800 text-xs font-semibold px-2.5 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-xs border border-black/5" title="Font Family">
-                        <span className="truncate max-w-[70px]">{selectedFont}</span>
-                        <ChevronDown className="w-3 h-3 text-gray-500 shrink-0" />
-                      </button>
-                      {showFontMenu && (
-                        <div className="absolute top-full left-0 mt-1 w-44 bg-white rounded-xl shadow-xl border border-gray-150 py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
-                          {fontOptions.map((f) => (
-                            <button key={f.label} type="button" onClick={() => applyToolbarFont(f.label, f.value)} className={`w-full text-left px-3 py-1.5 text-xs hover:bg-orange-50 hover:text-adv-orange flex items-center justify-between transition-colors ${selectedFont === f.label ? 'text-adv-orange font-bold bg-orange-50/50' : 'text-gray-700'}`} style={{ fontFamily: f.value }}>
-                              <span>{f.label}</span>
-                              {selectedFont === f.label && <Check className="w-3 h-3 text-adv-orange" />}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Size Dropdown */}
-                    <div className="relative">
-                      <button type="button" onClick={() => { setShowFontSizeMenu(!showFontSizeMenu); setShowFontMenu(false); setShowColorMenu(false); setShowToolbarLinkModal(false); }} className="h-8 bg-[#EAE8E2] hover:bg-[#E2DFD8] active:scale-95 text-gray-800 text-xs font-semibold px-2 rounded-xl flex items-center gap-1 transition-all cursor-pointer shadow-xs border border-black/5" title="Font Size">
-                        <span>{selectedFontSize}</span>
+                    {/* Text Size Dropdown */}
+                    <div ref={fontSizeDropdownRef} className="relative">
+                      <button 
+                        type="button" 
+                        onMouseDown={() => {
+                          const sel = window.getSelection();
+                          if (sel && sel.rangeCount > 0) {
+                            setSavedSelectionRange(sel.getRangeAt(0).cloneRange());
+                          }
+                        }}
+                        onClick={() => { 
+                          const sel = window.getSelection();
+                          if (sel && sel.rangeCount > 0) {
+                            setSavedSelectionRange(sel.getRangeAt(0).cloneRange());
+                          }
+                          setShowFontSizeMenu(!showFontSizeMenu); 
+                          setShowToolbarLinkModal(false); 
+                        }} 
+                        className="h-8 bg-[#EAE8E2] hover:bg-[#E2DFD8] active:scale-95 text-gray-800 text-xs font-semibold px-2.5 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-xs border border-black/5" 
+                        title="Font Size / ຂະໜາດຕົວໜັງສື"
+                      >
+                        <span className="text-gray-500 text-[11px] font-medium">{lang === 'lo' ? 'ຂະໜາດ' : 'Size'}:</span>
+                        <span className="font-bold text-adv-slate">{selectedFontSize}</span>
                         <ChevronDown className="w-3 h-3 text-gray-500 shrink-0" />
                       </button>
                       {showFontSizeMenu && (
-                        <div className="absolute top-full left-0 mt-1 w-20 bg-white rounded-xl shadow-xl border border-gray-150 py-1 z-50 max-h-48 overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95 duration-100">
+                        <div className="absolute top-full left-0 mt-1 w-24 bg-white rounded-xl shadow-xl border border-gray-150 py-1 z-50 max-h-52 overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95 duration-100">
+                          <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 mb-0.5">
+                            {lang === 'lo' ? 'ຂະໜາດ' : 'Size'}
+                          </div>
                           {fontSizeOptions.map((sz) => (
-                            <button key={sz} type="button" onClick={() => applyToolbarFontSize(sz)} className={`w-full text-left px-3 py-1.5 text-xs hover:bg-orange-50 hover:text-adv-orange flex items-center justify-between transition-colors ${selectedFontSize === sz ? 'text-adv-orange font-bold bg-orange-50/50' : 'text-gray-700'}`}>
+                            <button 
+                              key={sz} 
+                              type="button" 
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => applyToolbarFontSize(sz)} 
+                              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-orange-50 hover:text-adv-orange flex items-center justify-between transition-colors cursor-pointer ${selectedFontSize === sz ? 'text-adv-orange font-bold bg-orange-50/60' : 'text-gray-700'}`}
+                            >
                               <span>{sz}</span>
                               {selectedFontSize === sz && <Check className="w-3 h-3 text-adv-orange" />}
                             </button>
@@ -3547,116 +3882,283 @@ export default function CreateEvent() {
                       )}
                     </div>
 
-                    {/* Color Picker */}
-                    <div className="relative">
-                      <button type="button" onClick={() => { setShowColorMenu(!showColorMenu); setShowFontMenu(false); setShowFontSizeMenu(false); setShowToolbarLinkModal(false); }} className="h-8 bg-[#EAE8E2] hover:bg-[#E2DFD8] active:scale-95 text-gray-800 rounded-xl px-2 flex items-center gap-1 transition-all cursor-pointer shadow-xs border border-black/5" title="Text Color">
+
+                    {/* Color Picker & Custom Color */}
+                    <div ref={colorDropdownRef} className="relative">
+                      <button 
+                        type="button" 
+                        onMouseDown={(e) => {
+                          // Prevent button click from clearing text selection in editor!
+                          e.preventDefault();
+                          const sel = window.getSelection();
+                          if (sel && sel.rangeCount > 0 && !sel.isCollapsed && editorRef.current?.contains(sel.anchorNode)) {
+                            savedSelectionRangeRef.current = sel.getRangeAt(0).cloneRange();
+                            setSavedSelectionRange(sel.getRangeAt(0).cloneRange());
+                          }
+                        }}
+                        onClick={() => { 
+                          const sel = window.getSelection();
+                          if (sel && sel.rangeCount > 0 && !sel.isCollapsed && editorRef.current?.contains(sel.anchorNode)) {
+                            savedSelectionRangeRef.current = sel.getRangeAt(0).cloneRange();
+                            setSavedSelectionRange(sel.getRangeAt(0).cloneRange());
+                          }
+                          setShowColorMenu(!showColorMenu); 
+                          setShowFontSizeMenu(false);
+                          setShowToolbarLinkModal(false); 
+                        }} 
+                        className="h-8 bg-[#EAE8E2] hover:bg-[#E2DFD8] active:scale-95 text-gray-800 rounded-xl px-2.5 flex items-center gap-1.5 transition-all cursor-pointer shadow-xs border border-black/5" 
+                        title="Text Color / ສີຕົວໜັງສື"
+                      >
                         <div className="flex flex-col items-center justify-center leading-none">
-                          <span className="font-extrabold text-[12px] leading-tight text-gray-800">T</span>
-                          <span className="w-3 h-[3px] rounded-full mt-0.5 shadow-xs" style={{ backgroundColor: selectedTextColor }} />
+                          <span className="font-extrabold text-[12px] leading-tight text-gray-800">A</span>
+                          <span className="w-3.5 h-[3.5px] rounded-full mt-0.5 shadow-xs" style={{ backgroundColor: selectedTextColor }} />
                         </div>
                         <ChevronDown className="w-3 h-3 text-gray-500 shrink-0" />
                       </button>
                       {showColorMenu && (
-                        <div className="absolute top-full left-0 mt-1 w-44 bg-white rounded-xl shadow-xl border border-gray-150 p-2.5 z-50 animate-in fade-in zoom-in-95 duration-100 space-y-2">
-                          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Select Color</div>
+                        <div 
+                          className="absolute top-full left-0 mt-1.5 w-60 bg-white rounded-xl shadow-xl border border-gray-200 p-3 z-50 animate-in fade-in zoom-in-95 duration-100 space-y-3"
+                          onMouseDown={(e) => {
+                            // Don't steal editor focus when clicking inside dropdown background
+                            if ((e.target as HTMLElement).tagName !== 'INPUT') {
+                              e.preventDefault();
+                            }
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                              {lang === 'lo' ? 'ເລືອກສີຕົວໜັງສື' : 'Text Colors'}
+                            </span>
+                            <span 
+                              className="w-3.5 h-3.5 rounded-full border border-gray-300 shadow-2xs shrink-0"
+                              style={{ backgroundColor: selectedTextColor }}
+                              title={selectedTextColor}
+                            />
+                          </div>
+
+                          {/* Quick Swatches Grid */}
                           <div className="grid grid-cols-5 gap-1.5">
                             {colorPalette.map((col) => (
-                              <button key={col.value} type="button" onClick={() => applyToolbarTextColor(col.value)} className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-transform hover:scale-110 ${selectedTextColor === col.value ? 'border-gray-800 ring-2 ring-adv-orange/40 scale-105' : 'border-gray-200'}`} style={{ backgroundColor: col.value }} title={col.label}>
-                                {selectedTextColor === col.value && <Check className="w-3 h-3 text-white drop-shadow-xs" />}
+                              <button 
+                                key={col.value} 
+                                type="button" 
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => applyToolbarTextColor(col.value, true)} 
+                                className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer ${
+                                  selectedTextColor.toLowerCase() === col.value.toLowerCase() 
+                                    ? 'border-gray-900 ring-2 ring-adv-orange/40 scale-105' 
+                                    : 'border-gray-200 hover:border-gray-300'
+                                }`} 
+                                style={{ backgroundColor: col.value }} 
+                                title={col.label}
+                              >
+                                {selectedTextColor.toLowerCase() === col.value.toLowerCase() && (
+                                  <Check className="w-3.5 h-3.5 text-white drop-shadow-xs stroke-[2.5]" />
+                                )}
                               </button>
                             ))}
+                            
+                            {/* Native Picker Trigger (+) */}
+                            <label
+                              onMouseDown={(e) => {
+                                // Ensure active range is preserved before opening native color dialog
+                                const sel = window.getSelection();
+                                if (sel && sel.rangeCount > 0 && !sel.isCollapsed && editorRef.current?.contains(sel.anchorNode)) {
+                                  savedSelectionRangeRef.current = sel.getRangeAt(0).cloneRange();
+                                  setSavedSelectionRange(sel.getRangeAt(0).cloneRange());
+                                }
+                              }}
+                              className="w-8 h-8 rounded-lg border-2 border-dashed border-gray-300 hover:border-adv-orange hover:bg-orange-50/50 text-gray-500 hover:text-adv-orange flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer relative overflow-hidden"
+                              title={lang === 'lo' ? 'ສີກຳນົດເອງ (+)' : 'Custom Color (+)'}
+                            >
+                              <Plus className="w-4 h-4 pointer-events-none" />
+                              <input 
+                                ref={colorInputRef}
+                                type="color" 
+                                value={/^#[0-9A-Fa-f]{6}$/.test(selectedTextColor) ? selectedTextColor : '#000000'} 
+                                onInput={(e) => {
+                                  const val = (e.target as HTMLInputElement).value;
+                                  if (val) applyToolbarTextColor(val, false);
+                                }}
+                                onChange={(e) => {
+                                  const val = (e.target as HTMLInputElement).value;
+                                  if (val) applyToolbarTextColor(val, false);
+                                }} 
+                                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" 
+                                title="Custom Color Picker" 
+                              />
+                            </label>
                           </div>
-                          <div className="pt-1 border-t border-gray-100 flex items-center gap-1.5">
-                            <input type="color" value={selectedTextColor} onChange={(e) => applyToolbarTextColor(e.target.value)} className="w-6 h-6 rounded border-0 cursor-pointer p-0 bg-transparent" title="Custom color" />
-                            <span className="text-[11px] text-gray-600 font-mono">{selectedTextColor}</span>
+
+                          {/* Custom Color Row: Palette Clicker + HEX Input */}
+                          <div className="pt-2.5 border-t border-gray-100 space-y-2">
+                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                              {lang === 'lo' ? 'ກຳນົດລະຫັດສີ (HEX)' : 'Custom Color (HEX)'}
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              {/* Color Preview & Native Picker Opener */}
+                              <label 
+                                className="w-8 h-8 rounded-lg border border-gray-300 shadow-2xs overflow-hidden relative cursor-pointer shrink-0 hover:border-adv-orange transition-colors flex items-center justify-center"
+                                style={{ backgroundColor: selectedTextColor }}
+                                title={lang === 'lo' ? 'ກົດເພື່ອເລືອກສີ' : 'Click to pick custom color'}
+                              >
+                                <input 
+                                  type="color" 
+                                  value={/^#[0-9A-Fa-f]{6}$/.test(selectedTextColor) ? selectedTextColor : '#000000'} 
+                                  onMouseDown={() => {
+                                    const sel = window.getSelection();
+                                    if (sel && sel.rangeCount > 0 && !sel.isCollapsed && editorRef.current?.contains(sel.anchorNode)) {
+                                      savedSelectionRangeRef.current = sel.getRangeAt(0).cloneRange();
+                                      setSavedSelectionRange(sel.getRangeAt(0).cloneRange());
+                                    }
+                                  }}
+                                  onInput={(e) => {
+                                    const val = (e.target as HTMLInputElement).value;
+                                    if (val) applyToolbarTextColor(val, false);
+                                  }}
+                                  onChange={(e) => {
+                                    const val = (e.target as HTMLInputElement).value;
+                                    if (val) applyToolbarTextColor(val, false);
+                                  }}
+                                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                                />
+                              </label>
+
+                              {/* Direct HEX Input with # prefix */}
+                              <div className="flex-1 flex items-center bg-gray-50 rounded-lg border border-gray-200 focus-within:border-adv-orange focus-within:ring-2 focus-within:ring-adv-orange/20 overflow-hidden px-2 py-1 transition-all">
+                                <span className="text-xs font-mono font-bold text-gray-400 select-none mr-1">#</span>
+                                <input
+                                  type="text"
+                                  value={customHexInput.replace(/^#/, '').toUpperCase()}
+                                  placeholder="000000"
+                                  maxLength={6}
+                                  onFocus={() => {
+                                    // Make sure active range is captured before input focus
+                                    const sel = window.getSelection();
+                                    if (sel && sel.rangeCount > 0 && !sel.isCollapsed && editorRef.current?.contains(sel.anchorNode)) {
+                                      savedSelectionRangeRef.current = sel.getRangeAt(0).cloneRange();
+                                      setSavedSelectionRange(sel.getRangeAt(0).cloneRange());
+                                    }
+                                  }}
+                                  onChange={(e) => {
+                                    const raw = e.target.value.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6);
+                                    setCustomHexInput(raw);
+                                    if (raw.length === 6 || raw.length === 3) {
+                                      const normalized = normalizeHexColor(raw);
+                                      if (normalized) {
+                                        applyToolbarTextColor(normalized, false);
+                                      }
+                                    }
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      const normalized = normalizeHexColor(customHexInput);
+                                      if (normalized) {
+                                        applyToolbarTextColor(normalized, true);
+                                      }
+                                    }
+                                  }}
+                                  className="w-full text-xs font-mono font-bold text-gray-800 bg-transparent outline-none uppercase"
+                                />
+                              </div>
+
+                              {/* Apply Button */}
+                              <button
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => {
+                                  const normalized = normalizeHexColor(customHexInput);
+                                  if (normalized) {
+                                    applyToolbarTextColor(normalized, true);
+                                  }
+                                }}
+                                className="px-2.5 py-1.5 bg-adv-orange hover:bg-orange-600 active:scale-95 text-white text-[11px] font-bold rounded-lg shadow-xs transition-all cursor-pointer shrink-0"
+                                title={lang === 'lo' ? 'ນຳໃຊ້ສີ' : 'Apply Color'}
+                              >
+                                <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       )}
                     </div>
-
-                    <div className="w-px h-5 bg-gray-300 mx-0.5"></div>
-
-                    {/* Headings & Quote */}
-                    <div className="h-8 bg-[#EAE8E2] rounded-xl p-0.5 flex items-center gap-0.5 shadow-xs border border-black/5">
-                      <button type="button" onClick={() => execCommand('formatBlock', 'H2')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Heading 1">
-                        <Heading1 className="w-3.5 h-3.5" />
-                      </button>
-                      <button type="button" onClick={() => execCommand('formatBlock', 'H3')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Heading 2">
-                        <Heading2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button type="button" onClick={() => { try { execCommand('formatBlock', 'blockquote'); } catch(e) { execCommand('formatBlock', 'BLOCKQUOTE'); } }} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Blockquote">
-                        <Quote className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    <div className="w-px h-5 bg-gray-300 mx-0.5"></div>
-
-                    {/* Inline Formats */}
+                    {/* Basic Formatting */}
                     <div className="h-8 bg-[#EAE8E2] rounded-xl p-0.5 flex items-center gap-0.5 shadow-xs border border-black/5">
                       <button type="button" onClick={() => execCommand('bold')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-800 hover:text-black flex items-center justify-center font-bold text-xs transition-all cursor-pointer" title="Bold">B</button>
                       <button type="button" onClick={() => execCommand('italic')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-800 hover:text-black flex items-center justify-center font-serif italic text-xs transition-all cursor-pointer" title="Italic">I</button>
                       <button type="button" onClick={() => execCommand('underline')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-800 hover:text-black flex items-center justify-center font-semibold underline text-xs transition-all cursor-pointer" title="Underline">U</button>
-                      <button type="button" onClick={() => execCommand('strikethrough')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-800 hover:text-black flex items-center justify-center font-semibold line-through text-xs transition-all cursor-pointer" title="Strikethrough">S</button>
                     </div>
 
-                    {/* Script */}
+                    {/* Lists (Bullet & Number) */}
                     <div className="h-8 bg-[#EAE8E2] rounded-xl p-0.5 flex items-center gap-0.5 shadow-xs border border-black/5">
-                      <button type="button" onClick={() => execCommand('superscript')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center text-xs font-bold transition-all cursor-pointer" title="Superscript"><span className="text-[11px] font-bold">T<sup className="text-[8px]">↑</sup></span></button>
-                      <button type="button" onClick={() => execCommand('subscript')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center text-xs font-bold transition-all cursor-pointer" title="Subscript"><span className="text-[11px] font-bold">T<sub className="text-[8px]">↓</sub></span></button>
+                      <button 
+                        type="button" 
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          document.execCommand('insertUnorderedList');
+                          editorRef.current?.focus();
+                          if (editorRef.current) {
+                            isInternalEditorUpdateRef.current = true;
+                            setEditorContent(editorRef.current.innerHTML);
+                          }
+                        }} 
+                        className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-black flex items-center justify-center transition-all cursor-pointer" 
+                        title={lang === 'lo' ? 'ລາຍການແບບຈຸດ (Bullet List)' : 'Bullet List'}
+                      >
+                        <List className="w-3.5 h-3.5" />
+                      </button>
+                      <button 
+                        type="button" 
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          document.execCommand('insertOrderedList');
+                          editorRef.current?.focus();
+                          if (editorRef.current) {
+                            isInternalEditorUpdateRef.current = true;
+                            setEditorContent(editorRef.current.innerHTML);
+                          }
+                        }} 
+                        className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-black flex items-center justify-center transition-all cursor-pointer" 
+                        title={lang === 'lo' ? 'ລາຍການແບບຕົວເລກ (Numbered List)' : 'Numbered List'}
+                      >
+                        <ListOrdered className="w-3.5 h-3.5" />
+                      </button>
                     </div>
 
-                    <div className="w-px h-5 bg-gray-300 mx-0.5"></div>
 
-                    {/* Alignment */}
-                    <div className="h-8 bg-[#EAE8E2] rounded-xl p-0.5 flex items-center gap-0.5 shadow-xs border border-black/5">
-                      <button type="button" onClick={() => execCommand('justifyLeft')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Align Left"><AlignLeft className="w-3.5 h-3.5" /></button>
-                      <button type="button" onClick={() => execCommand('justifyCenter')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Align Center"><AlignCenter className="w-3.5 h-3.5" /></button>
-                      <button type="button" onClick={() => execCommand('justifyRight')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Align Right"><AlignRight className="w-3.5 h-3.5" /></button>
-                      <button type="button" onClick={() => execCommand('justifyFull')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Justify"><AlignJustify className="w-3.5 h-3.5" /></button>
-                    </div>
-
-                    <div className="w-px h-5 bg-gray-300 mx-0.5"></div>
-
-                    {/* Lists */}
-                    <div className="h-8 bg-[#EAE8E2] rounded-xl p-0.5 flex items-center gap-0.5 shadow-xs border border-black/5">
-                      <button type="button" onClick={() => execCommand('insertUnorderedList')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Bullet List"><List className="w-3.5 h-3.5" /></button>
-                      <button type="button" onClick={() => execCommand('insertOrderedList')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Numbered List"><ListOrdered className="w-3.5 h-3.5" /></button>
-                    </div>
-
-                    <div className="w-px h-5 bg-gray-300 mx-0.5"></div>
-
-                    {/* Inserts & Links */}
+                    {/* Inserts & Media */}
                     <div className="h-8 bg-[#EAE8E2] rounded-xl p-0.5 flex items-center gap-0.5 shadow-xs border border-black/5 relative">
                       {/* Link Modal Popup inside the group */}
                       {showToolbarLinkModal && (
                         <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-150 p-2.5 z-50 animate-in fade-in zoom-in-95 duration-100 space-y-2">
-                          <input type="url" value={toolbarLinkUrl} onChange={(e) => setToolbarLinkUrl(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyToolbarLink(); } else if (e.key === 'Escape') { setShowToolbarLinkModal(false); } }} placeholder="https://example.com" className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-adv-orange focus:ring-1 focus:ring-adv-orange" autoFocus />
+                          <input type="text" value={toolbarLinkText} onChange={(e) => setToolbarLinkText(e.target.value)} placeholder="Display text" className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-adv-orange focus:ring-1 focus:ring-adv-orange" />
+                          <input type="url" value={toolbarLinkUrl} onChange={(e) => setToolbarLinkUrl(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyToolbarLink(); } else if (e.key === 'Escape') { setShowToolbarLinkModal(false); } }} placeholder="https://example.com" className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-adv-orange focus:ring-1 focus:ring-adv-orange" />
                           <div className="flex items-center justify-end gap-1.5">
                             <button type="button" onClick={() => setShowToolbarLinkModal(false)} className="px-2 py-1 text-[11px] text-gray-500 hover:text-gray-800 rounded-md">Cancel</button>
                             <button type="button" onClick={applyToolbarLink} className="px-2.5 py-1 text-[11px] bg-adv-orange text-white font-bold rounded-md shadow-xs hover:bg-orange-600">Apply</button>
                           </div>
                         </div>
                       )}
-                      <button type="button" onClick={() => { const sel = window.getSelection(); if (sel && sel.rangeCount > 0) { setSavedSelectionRange(sel.getRangeAt(0).cloneRange()); } setShowToolbarLinkModal(true); setShowColorMenu(false); setShowFontMenu(false); setShowFontSizeMenu(false); }} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Insert Link"><LinkIcon className="w-3.5 h-3.5" /></button>
-                      <button type="button" onClick={() => execCommand('unlink')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Remove Link"><Unlink className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" /></button>
+                      <button type="button" onClick={() => { const sel = window.getSelection(); if (sel && sel.rangeCount > 0) { const range = sel.getRangeAt(0); setSavedSelectionRange(range.cloneRange()); setToolbarLinkText(range.toString()); } else { setToolbarLinkText(''); } setShowToolbarLinkModal(true); setShowColorMenu(false); setShowFontMenu(false); setShowFontSizeMenu(false); }} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Insert Link"><LinkIcon className="w-3.5 h-3.5" /></button>
                       
-                      <div className="w-px h-4 bg-gray-300 mx-0.5"></div>
-                      
-                      <button type="button" onClick={handleEditorImageUpload} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Insert Image"><ImageIcon className="w-3.5 h-3.5" /></button>
-                      <button type="button" onClick={() => execCommand('insertHorizontalRule')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Divider Line"><Minus className="w-3.5 h-3.5" /></button>
-                      <button type="button" onClick={insertCalloutBlock} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Insert Callout Note"><MessageSquare className="w-3.5 h-3.5" /></button>
+                      {/* Image Upload Button */}
+                      <button 
+                        type="button" 
+                        onClick={handleEditorImageUpload} 
+                        className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" 
+                        title="Upload Image / ອັບໂຫຼດຮູບພາບ"
+                      >
+                        <ImageIcon className="w-3.5 h-3.5" />
+                      </button>
                     </div>
 
-                    <div className="flex-1"></div>
 
-                    {/* Clear Format */}
-                    <div className="h-8 bg-[#EAE8E2] rounded-xl p-0.5 flex items-center shadow-xs border border-black/5">
-                      <button type="button" onClick={() => execCommand('removeFormat')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer" title="Clear Formatting"><RemoveFormatting className="w-3.5 h-3.5" /></button>
-                    </div>
+
 
                   </div>
                 </div>
-                
 <div className="border border-gray-200 rounded-xl bg-white shadow-sm relative focus-within:ring-2 focus-within:ring-adv-orange/20 focus-within:border-adv-orange transition-all overflow-hidden">
                   <div className="p-4 relative">
                     {/* Editor Area */}
@@ -3665,16 +4167,31 @@ export default function CreateEvent() {
                       contentEditable
                       onClick={handleEditorClick}
                       onInput={handleEditorInput}
-                      onKeyUp={handleEditorInput}
-                      onPaste={handleEditorPaste}
-                      onScroll={() => setTimeout(updateImageRect, 10)}
-                      onDrop={handleEditorDrop}
-                      onDragOver={(e) => {
-                        if (e.dataTransfer?.types?.includes('Files')) {
-                          e.preventDefault();
+                      onKeyUp={(e) => {
+                        handleEditorInput();
+                        const sel = window.getSelection();
+                        if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+                          const r = sel.getRangeAt(0).cloneRange();
+                          savedSelectionRangeRef.current = r;
+                          setSavedSelectionRange(r);
                         }
                       }}
-                      className="min-h-[300px] text-base text-gray-800 outline-none rich-text max-w-none prose prose-sm prose-slate"
+                      onMouseUp={() => {
+                        const sel = window.getSelection();
+                        if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+                          const r = sel.getRangeAt(0).cloneRange();
+                          savedSelectionRangeRef.current = r;
+                          setSavedSelectionRange(r);
+                        }
+                      }}
+                      onPaste={handleEditorPaste}
+                      onScroll={() => setTimeout(updateImageRect, 10)}
+                      onDragStart={handleEditorDragStart}
+                      onDragEnd={handleEditorDragEnd}
+                      onDragOver={handleEditorDragOver}
+                      onDragLeave={handleEditorDragLeave}
+                      onDrop={handleEditorDrop}
+                      className="min-h-[300px] text-base text-black outline-none rich-text max-w-none prose prose-sm prose-slate"
                       suppressContentEditableWarning
                     >
                       <p className="font-bold mb-2">{t.intro}</p>
@@ -3693,6 +4210,33 @@ export default function CreateEvent() {
                       <p className="text-gray-600">{t.vatTerms}</p>
                     </div>
 
+                                        {/* Real-Time Drop Position Indicator */}
+                    {imageDropIndicator && (
+                      <div 
+                        style={{
+                          position: 'absolute',
+                          top: imageDropIndicator.top,
+                          left: imageDropIndicator.left,
+                          width: imageDropIndicator.width,
+                          height: imageDropIndicator.height,
+                          pointerEvents: 'none',
+                          zIndex: 20
+                        }}
+                        className={`bg-adv-orange shadow-[0_0_8px_rgba(255,85,0,0.8)] rounded-full transition-all duration-75 ${
+                          imageDropIndicator.isBlock ? 'animate-pulse' : ''
+                        }`}
+                      >
+                        {/* Glowing cursor caret pin */}
+                        <div 
+                          className={`absolute bg-adv-orange rounded-full shadow-sm ${
+                            imageDropIndicator.isBlock 
+                              ? '-top-1 -left-1 w-2.5 h-2.5 ring-2 ring-white' 
+                              : '-top-1.5 -left-1 w-3 h-3 ring-2 ring-white'
+                          }`}
+                        />
+                      </div>
+                    )}
+
                     {selectedImage && imageRect && (
                       <div 
                         style={{
@@ -3706,34 +4250,100 @@ export default function CreateEvent() {
                           zIndex: 10
                         }}
                       >
+                        {/* Top-Left Corner Dot */}
                         <div 
+                          data-resize-handle="nw"
                           style={{
                             position: 'absolute',
-                            right: -6,
-                            bottom: -6,
-                            width: 12,
-                            height: 12,
+                            left: -7,
+                            top: -7,
+                            width: 14,
+                            height: 14,
                             backgroundColor: '#FF5B00',
-                            border: '2px solid white',
+                            border: '2.5px solid white',
                             borderRadius: '50%',
                             cursor: 'nwse-resize',
-                            pointerEvents: 'auto'
+                            pointerEvents: 'auto',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.35)'
                           }}
-                          onMouseDown={startResize}
+                          onMouseDown={(e) => startResize(e, 'nw')}
+                          title="Resize image (Top-Left)"
                         />
+
+                        {/* Top-Right Corner Dot */}
+                        <div 
+                          data-resize-handle="ne"
+                          style={{
+                            position: 'absolute',
+                            right: -7,
+                            top: -7,
+                            width: 14,
+                            height: 14,
+                            backgroundColor: '#FF5B00',
+                            border: '2.5px solid white',
+                            borderRadius: '50%',
+                            cursor: 'nesw-resize',
+                            pointerEvents: 'auto',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.35)'
+                          }}
+                          onMouseDown={(e) => startResize(e, 'ne')}
+                          title="Resize image (Top-Right)"
+                        />
+
+                        {/* Bottom-Left Corner Dot */}
+                        <div 
+                          data-resize-handle="sw"
+                          style={{
+                            position: 'absolute',
+                            left: -7,
+                            bottom: -7,
+                            width: 14,
+                            height: 14,
+                            backgroundColor: '#FF5B00',
+                            border: '2.5px solid white',
+                            borderRadius: '50%',
+                            cursor: 'nesw-resize',
+                            pointerEvents: 'auto',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.35)'
+                          }}
+                          onMouseDown={(e) => startResize(e, 'sw')}
+                          title="Resize image (Bottom-Left)"
+                        />
+
+                        {/* Bottom-Right Corner Dot */}
+                        <div 
+                          data-resize-handle="se"
+                          style={{
+                            position: 'absolute',
+                            right: -7,
+                            bottom: -7,
+                            width: 14,
+                            height: 14,
+                            backgroundColor: '#FF5B00',
+                            border: '2.5px solid white',
+                            borderRadius: '50%',
+                            cursor: 'nwse-resize',
+                            pointerEvents: 'auto',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.35)'
+                          }}
+                          onMouseDown={(e) => startResize(e, 'se')}
+                          title="Resize image (Bottom-Right)"
+                        />
+
+                        {/* Floating Delete Button */}
                         <button
                           type="button"
                           onMouseDown={deleteSelectedImage}
                           style={{
                             position: 'absolute',
-                            top: -12,
-                            right: -12,
+                            top: -14,
+                            right: 18,
                             pointerEvents: 'auto'
                           }}
-                          className="w-8 h-8 bg-white border border-gray-200 text-rose-500 rounded-full flex items-center justify-center shadow-sm hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                          className="w-7 h-7 bg-white border border-gray-200 text-rose-500 hover:text-rose-600 rounded-full flex items-center justify-center shadow-md hover:bg-rose-50 active:scale-95 transition-all cursor-pointer"
                           title={lang === 'lo' ? 'ລຶບຮູບ' : 'Delete image'}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     )}
@@ -4688,7 +5298,7 @@ export default function CreateEvent() {
                                   <span className="text-xs text-gray-500">{Math.round(Math.min(zoneImageProgress, 100))}%</span>
                                 </div>
                               ) : zoneImage ? (
-                                <AdaptiveImage
+                                <AdaptiveImage showBlurBackdrop={true}
                                   src={zoneImage}
                                   alt="Seating map preview"
                                   fitMode="contain"
@@ -5175,6 +5785,21 @@ export default function CreateEvent() {
                       </button>
                     </div>
 
+                    {/* Refund Control (Enable / Disable) */}
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
+                      <div>
+                        <h4 className="text-adv-slate font-bold mb-1">{t.allowRefunds}</h4>
+                        <p className="text-sm text-gray-500">{t.allowRefundsDesc}</p>
+                      </div>
+                      <button 
+                        onClick={() => setAllowRefunds(!allowRefunds)}
+                        className={`w-11 h-6 rounded-full transition-colors relative shrink-0 cursor-pointer ${allowRefunds ? 'bg-adv-orange' : 'bg-gray-300'}`}
+                        type="button"
+                      >
+                        <div className={`w-5 h-5 rounded-full bg-white absolute top-[2px] transition-transform ${allowRefunds ? 'translate-x-5 left-[2px]' : 'translate-x-0 left-[2px]'}`} />
+                      </button>
+                    </div>
+
 
 
 
@@ -5402,7 +6027,7 @@ export default function CreateEvent() {
                          </h4>
                          <div className="aspect-[3/4] rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden relative">
                            {verticalImage ? (
-                             <AdaptiveImage src={verticalImage} fitMode="contain" className="w-full h-full" />
+                             <AdaptiveImage showBlurBackdrop={true} src={verticalImage} fitMode="contain" className="w-full h-full" />
                            ) : (
                              <div className="text-center p-6 text-gray-400">
                                <p className="text-sm font-bold uppercase tracking-widest text-adv-slate/20">Main Poster</p>
@@ -5417,7 +6042,7 @@ export default function CreateEvent() {
                          </h4>
                          <div className="aspect-video rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden relative">
                            {horizontalImage ? (
-                             <AdaptiveImage src={horizontalImage} fitMode="contain" className="w-full h-full" />
+                             <AdaptiveImage showBlurBackdrop={true} src={horizontalImage} fitMode="contain" className="w-full h-full" />
                            ) : (
                              <div className="text-center p-6 text-gray-400">
                                <p className="text-sm font-bold uppercase tracking-widest text-adv-slate/20">Page Cover</p>
@@ -5648,10 +6273,12 @@ export default function CreateEvent() {
 
                   {selectedEvent.image && (
                     <div className="relative rounded-3xl overflow-hidden border border-gray-100 shadow-xl group">
-                      <img 
+                      <AdaptiveImage 
                         src={selectedEvent.image} 
                         alt={selectedEvent.title} 
-                        className="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-700"
+                        className="w-full h-80 group-hover:scale-105 transition-transform duration-700"
+                        showBlurBackdrop={true}
+                        fitMode="contain"
                       />
                     </div>
                   )}
@@ -6043,7 +6670,7 @@ export default function CreateEvent() {
                            transition={{ duration: 0.3 }}
                            className="absolute inset-0 w-full h-full"
                          >
-                           <AdaptiveImage
+                           <AdaptiveImage showBlurBackdrop={true}
                              src={currentHeroImg}
                              alt={previewData.title}
                              fitMode="contain"
@@ -6200,7 +6827,7 @@ export default function CreateEvent() {
                               }}
                               className="relative group/thumb overflow-hidden rounded-xl border border-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-adv-orange h-32 flex items-center justify-center cursor-pointer"
                             >
-                              <AdaptiveImage src={img} alt={`Gallery ${idx}`} fitMode="contain" className="w-full h-full" />
+                              <AdaptiveImage showBlurBackdrop={true} src={img} alt={`Gallery ${idx}`} fitMode="contain" className="w-full h-full" />
                               <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-colors z-20" />
                             </button>
                           ))}
@@ -6216,7 +6843,7 @@ export default function CreateEvent() {
                           {lang === 'lo' ? 'ແຜນຜັງໂຊນບ່ອນນັ່ງ' : 'Zone Seating Map'}
                         </h3>
                         <div className="rounded-xl overflow-hidden border border-gray-200 max-h-[400px] flex justify-center">
-                          <AdaptiveImage src={previewData.zoneImage} alt="Seating Map" fitMode="contain" className="w-full min-h-[220px]" />
+                          <AdaptiveImage showBlurBackdrop={true} src={previewData.zoneImage} alt="Seating Map" fitMode="contain" className="w-full min-h-[220px]" />
                         </div>
                       </div>
                     )}

@@ -79,7 +79,7 @@ export default function EditProfile() {
       console.error(e);
     }
     return {
-      firstName: 'Sirithida',
+          firstName: 'Sirithida',
       lastName: 'Souksavat',
       email: 'sirithida.ssv@gmail.com',
       phone: '',
@@ -232,18 +232,6 @@ export default function EditProfile() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label htmlFor="email" className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.email}</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email || ""}
-                onChange={handleChange}
-                className="w-full bg-[#F9FAFB] border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-adv-slate font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
-              />
-            </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
               <div className="space-y-1.5">
                 <label htmlFor="phone" className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.phone}</label>
@@ -252,10 +240,10 @@ export default function EditProfile() {
                   id="phone"
                   name="phone"
                   maxLength={
-                    formData.phone.startsWith('856020') ? 14 :
-                    formData.phone.startsWith('85620') ? 13 :
-                    formData.phone.startsWith('856') ? 14 :
-                    formData.phone.startsWith('020') ? 11 : 10
+                    formData.phone?.startsWith('856020') ? 14 :
+                    formData.phone?.startsWith('85620') ? 13 :
+                    formData.phone?.startsWith('856') ? 14 :
+                    formData.phone?.startsWith('020') ? 11 : 10
                   }
                   value={formData.phone || ""}
                   onChange={handleChange}
@@ -281,18 +269,30 @@ export default function EditProfile() {
                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 </div>
               </div>
+            </div>
 
-              <div className="space-y-1.5">
-                <label htmlFor="dateOfBirth" className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.dateOfBirth}</label>
-                <input
-                  type="date"
-                  id="dateOfBirth"
-                  name="dateOfBirth"
-                  value={formData.dateOfBirth || ""}
-                  onChange={handleChange}
-                  className="w-full bg-[#F9FAFB] border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-adv-slate font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
-                />
-              </div>
+            <div className="space-y-1.5">
+              <label htmlFor="email" className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.email}</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email || ""}
+                onChange={handleChange}
+                className="w-full bg-[#F9FAFB] border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-adv-slate font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="dateOfBirth" className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.dateOfBirth}</label>
+              <input
+                type="date"
+                id="dateOfBirth"
+                name="dateOfBirth"
+                value={formData.dateOfBirth || ""}
+                onChange={handleChange}
+                className="w-full bg-[#F9FAFB] border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-adv-slate font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+              />
             </div>
           </div>
 
