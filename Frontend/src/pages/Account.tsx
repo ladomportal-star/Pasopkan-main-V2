@@ -1079,6 +1079,14 @@ export default function Account() {
       color: 'text-amber-500 dark:text-amber-450',
       bg: 'bg-amber-50 dark:bg-amber-500/10'
     },
+    {
+      icon: Info,
+      label: lang === 'en' ? 'About' : 'ກ່ຽວກັບ',
+      desc: lang === 'en' ? 'Learn more about our platform' : 'ຮຽນຮູ້ເພີ່ມເຕີມກ່ຽວກັບແພລດຟອມຂອງພວກເຮົາ',
+      path: '/about',
+      color: 'text-sky-500 dark:text-sky-450',
+      bg: 'bg-sky-50 dark:bg-sky-500/10'
+    }
   ];
 
   const pastEvents = events.slice(0, 3);
@@ -1320,17 +1328,63 @@ export default function Account() {
             ))}
           </div>
 
-          <button 
-            onClick={() => logout()}
-            className={`w-full flex items-center justify-center gap-3 p-4 rounded-2xl border transition-all font-bold text-sm sm:text-base ${
-              theme === 'dark' 
-                ? 'bg-zinc-900 border-red-500/20 text-red-400 hover:bg-red-500/5' 
-                : 'bg-white border-red-50 text-red-500 hover:bg-red-50'
-            }`}
-          >
-            <LogOut className="w-5 h-5" />
-            {t.signOut}
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button 
+              onClick={() => logout()}
+              className={`flex-1 flex items-center justify-center gap-3 p-4 rounded-2xl border transition-all font-bold text-sm sm:text-base ${
+                theme === 'dark' 
+                  ? 'bg-zinc-900 border-red-500/20 text-red-400 hover:bg-red-500/5' 
+                  : 'bg-white border-red-50 text-red-500 hover:bg-red-50'
+              }`}
+            >
+              <LogOut className="w-5 h-5" />
+              {t.signOut}
+            </button>
+
+            <button 
+              onClick={() => {
+                if (window.confirm(lang === 'lo' ? 'ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບບັນຊີ? ການກະທຳນີ້ບໍ່ສາມາດແກ້ໄຂໄດ້.' : 'Are you sure you want to delete your account? This action cannot be undone.')) {
+                  logout();
+                }
+              }}
+              className={`flex-1 flex items-center justify-center gap-3 p-4 rounded-2xl border transition-all font-bold text-sm sm:text-base ${
+                theme === 'dark' 
+                  ? 'bg-zinc-900 border-red-500/10 text-red-400 hover:bg-red-500/5' 
+                  : 'bg-white border-red-50 text-red-400 hover:bg-red-50'
+              }`}
+            >
+              <Trash2 className="w-5 h-5" />
+              {lang === 'lo' ? 'ລຶບບັນຊີ' : 'Delete Account'}
+            </button>
+          </div>
+
+          {/* Mobile Legal Actions */}
+          <div className="flex flex-col gap-3 mt-4 sm:hidden">
+            <div className="flex items-center gap-3">
+              <Link 
+                to="/terms"
+                className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-2xl border transition-all font-bold text-xs ${
+                  theme === 'dark'
+                    ? 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800'
+                    : 'bg-white border-gray-100 text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                {lang === 'lo' ? 'ເງື່ອນໄຂການບໍລິການ' : 'Terms & Conditions'}
+              </Link>
+              <Link 
+                to="/privacy"
+                className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-2xl border transition-all font-bold text-xs ${
+                  theme === 'dark'
+                    ? 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800'
+                    : 'bg-white border-gray-100 text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                <Shield className="w-4 h-4" />
+                {lang === 'lo' ? 'ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ' : 'Privacy Policy'}
+              </Link>
+            </div>
+          </div>
         </div>
 
         <div className={activeTab === 'my-event' ? 'block' : 'hidden'}>

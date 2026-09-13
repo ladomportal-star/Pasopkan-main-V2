@@ -1407,20 +1407,39 @@ export default function EventDetails() {
                {event.image && (
                  <div className="block lg:hidden w-full relative p-3 pb-0">
                    <div 
-                     className="relative w-full cursor-zoom-in overflow-hidden shadow-sm border border-gray-100/50 rounded-[2rem] touch-pan-y select-none cursor-grab active:cursor-grabbing"
+                     className="relative h-[220px] sm:h-[360px] landscape:h-[260px] w-full cursor-zoom-in overflow-hidden shadow-sm border border-gray-100/50 rounded-[2rem] touch-pan-y select-none cursor-grab active:cursor-grabbing"
                      onTouchStart={handleMobileTouchStart}
                      onTouchMove={handleMobileTouchMove}
                      onTouchEnd={handleMobileTouchEnd}
                      onClick={() => setFullscreenImageIndex(activeImageIndex)}
                    >
-                     <AdaptiveImage
-                       key={activeImageIndex}
-                       src={galleryImages[activeImageIndex]} 
-                       alt={event.title} 
-                       autoFrame={true}
-                       className="aspect-[4/5] sm:aspect-[4/3] w-full p-4 sm:p-6"
-                       imageClassName="rounded-lg sm:rounded-xl"
-                     >
+                      <div className="relative w-full h-full bg-black">
+                       <AnimatePresence mode="wait">
+                         <motion.div
+                           key={activeImageIndex}
+                           initial={{ opacity: 0 }}
+                           animate={{ opacity: 1 }}
+                           exit={{ opacity: 0 }}
+                           transition={{ duration: 0.5, ease: "linear" }}
+                           className="absolute inset-0 w-full h-full overflow-hidden"
+                         >
+                           {/* Blurred Background */}
+                           <img 
+                             src={galleryImages[activeImageIndex]}
+                             alt=""
+                             className="absolute inset-0 w-full h-full object-cover blur-sm scale-105 opacity-90"
+                           />
+                           {/* Main Image */}
+                           <img
+                             src={galleryImages[activeImageIndex]}
+                             alt={event.title}
+                             className="absolute inset-0 w-full h-full object-contain z-10"
+                           />
+                         </motion.div>
+                       </AnimatePresence>
+
+                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none z-20" />
+
                        {/* Round White Back Button */}
                        <button 
                          onClick={(e) => { e.stopPropagation(); handleBack(); }} 
@@ -1478,7 +1497,7 @@ export default function EventDetails() {
                            ))}
                          </div>
                        )}
-                     </AdaptiveImage>
+                     </div>
                    </div>
 
                    {/* Mobile Horizontal Thumbnail Strip for quick tap/slide */}
@@ -1559,17 +1578,36 @@ export default function EventDetails() {
                   {event.image ? (
                   <div className="relative">
                     <div 
-                      className="relative h-72 sm:h-[360px] md:h-[420px] lg:h-[460px] w-full cursor-zoom-in overflow-hidden shadow-sm border border-gray-100/50 rounded-[2rem] lg:rounded-[3rem]"
+                      className="relative h-[220px] sm:h-[360px] md:h-[420px] lg:h-[460px] xl:h-[560px] w-full cursor-zoom-in overflow-hidden shadow-sm border border-gray-100/50 rounded-[2rem] lg:rounded-[3rem]"
                       onClick={() => setFullscreenImageIndex(activeImageIndex)}
                     >
-                      <AdaptiveImage
-                        key={activeImageIndex}
-                        src={galleryImages[activeImageIndex]}
-                        alt={event.title}
-                        autoFrame={true}
-                        className="w-full h-full p-4 sm:p-6 lg:p-10"
-                        imageClassName="rounded-lg sm:rounded-xl"
-                      >
+                      <div className="relative w-full h-full bg-black">
+                        <AnimatePresence mode="wait">
+                          <motion.div
+                            key={activeImageIndex}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.5, ease: "linear" }}
+                            className="absolute inset-0 w-full h-full overflow-hidden"
+                          >
+                            {/* Blurred Background */}
+                            <img 
+                              src={galleryImages[activeImageIndex]}
+                              alt=""
+                              className="absolute inset-0 w-full h-full object-cover blur-sm scale-105 opacity-90"
+                            />
+                            {/* Main Image */}
+                            <img
+                              src={galleryImages[activeImageIndex]}
+                              alt={event.title}
+                              className="absolute inset-0 w-full h-full object-contain z-10"
+                            />
+                          </motion.div>
+                        </AnimatePresence>
+
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none z-20" />
+
                         {/* Left/Right Arrows on Hover */}
                         {galleryImages.length > 1 && (
                           <>
@@ -1597,7 +1635,7 @@ export default function EventDetails() {
                         <div className="absolute top-4 right-4 bg-black/40 hover:bg-black/70 backdrop-blur-md border border-white/15 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-all active:scale-95 group/btn z-20 pointer-events-auto" title="Full Screen">
                           <Maximize2 className="w-4 h-4 transition-transform duration-300 group-hover/btn:scale-110" />
                         </div>
-                      </AdaptiveImage>
+                      </div>
                     </div>
 
                     {/* Thumbnail strip */}

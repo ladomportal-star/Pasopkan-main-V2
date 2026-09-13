@@ -1,201 +1,162 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Link } from 'react-router-dom';
-import { Calendar, Ticket, Compass, TrendingUp, Users, ShieldCheck, ArrowRight, Sparkles, MapPin } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ShieldCheck, Rocket, Users, Smartphone, Sparkles, Server, QrCode, Globe, ArrowLeft, Building2 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import SEO from '../components/SEO';
 
 const translations = {
   en: {
+    back: 'Back to Account',
     title: 'About Pasopkan',
-    subtitle: 'The ultimate event hosting and ticket-selling platform in Laos.',
-    introTitle: 'Empowering Experiences, Connecting People',
-    introText: 'Pasopkan (meaning "experience" in Lao) is a modern full-stack event management and ticketing platform designed to connect people with unforgettable moments. Whether you are hosting a community workshop, a major concert, a sports trek, or offering lifestyle vouchers, Pasopkan provides the complete suite of tools you need to turn your vision into a highly successful, fully booked reality.',
+    subtitle: 'Laos\' Premier Event Management & Ticketing Platform',
+    introTitle: 'Elevating Event Experiences',
+    introText: 'Pasopkan is the leading event management and ticketing platform in Laos. Whether you are hosting a local workshop or a massive concert, our platform makes it incredibly easy for anyone to create, manage, and attend unforgettable events with total peace of mind.',
     
     // Core Pillars
-    featuresTitle: 'Why Choose Pasopkan?',
-    featuresSubtitle: 'Everything you need to successfully launch events and fill seats.',
+    featuresTitle: 'Platform Capabilities',
+    featuresSubtitle: 'Built for ease of use, security, and seamless experiences for everyone.',
     
-    feature1Title: 'Create & Customize Events',
-    feature1Desc: 'Design fully detailed event pages with ease. Support for event dates and slot bookings, custom categories, elegant markdown descriptions, and interactive high-fidelity maps for exact venue coordinates.',
+    feature1Title: 'Intuitive Event Creation',
+    feature1Desc: 'Whether you are a first-time host or an experienced agency, our platform empowers anyone to easily set up and launch a professional event page in minutes.',
     
-    feature2Title: 'Sell Tickets & Track Orders',
-    feature2Desc: 'Setup multiple ticket tiers, offer promo coupons, and track transaction histories in real time. Attendees get automated secure booking confirmations, printable PDF tickets, and personalized QR codes.',
+    feature2Title: 'Seamless Buyer Experience',
+    feature2Desc: 'We provide a frictionless, mobile-optimized checkout process that makes discovering events and securing tickets incredibly easy for attendees.',
     
-    feature3Title: 'In-app Verification & Scanning',
-    feature3Desc: 'No external scanners required. Event organizers can use our secure built-in QR scanner directly on their mobile device or laptop to securely check-in and validate attendee tickets at the gate.',
-
-    feature4Title: 'Live Reports & Analytics',
-    feature4Desc: 'Gain valuable insights with our smart reports tab. Monitor ticketing charts, sales volume, daily attendee check-in ratios, and manage ticket distribution from a unified admin console.',
-
-    // Simple 3 Step process
-    processTitle: 'How It Works',
-    processStep1Title: '1. Create Your Event',
-    processStep1Desc: 'Enter your event name, date/time, upload an eye-catching banner, specify location, and set ticket price tiers.',
-    processStep2Title: '2. Launch & Sell Tickets',
-    processStep2Desc: 'Publish your event instantly on our platform. Attendees can browse, book tickets online, and receive digital QR codes.',
-    processStep3Title: '3. Scan & Check-in',
-    processStep3Desc: 'Open our secure mobile camera scanner at the door, scan attendees\' QR codes, verify their booking, and welcome them in.',
-
+    feature3Title: 'Automated Refund Protection',
+    feature3Desc: 'Buy with confidence. If an event gets officially canceled, our built-in protection policies ensure ticket buyers receive secure, hassle-free refunds.',
+    
+    feature4Title: 'Powerful Organizer Tools',
+    feature4Desc: 'Manage your event on the go. From real-time sales analytics to built-in QR code scanning for lightning-fast gate check-ins, everything is right on your phone.',
+    
     // Stats
     statsHosts: 'Active Organizers',
-    statsTickets: 'Tickets Sold',
-    statsEvents: 'Events Hosted',
-    statsHappy: 'Satisfied Customers',
-
+    statsTickets: 'Tickets Processed',
+    statsEvents: 'Events Powered',
+    statsUptime: 'Platform Uptime',
+    
     // CTA
-    ctaTitle: 'Ready to launch your next experience?',
-    ctaSubtitle: 'Join hundreds of event organizers in Laos who trust Pasopkan to power their ticket sales and crowd management.',
-    ctaBtnCreate: 'Create Event Now',
-    ctaBtnExplore: 'Browse Experiences',
+    ctaTitle: 'Experience the Standard',
+    ctaSubtitle: 'Join the growing ecosystem of users and organizers who rely on Pasopkan every day.',
+    ctaBtnExplore: 'Explore Upcoming Events',
+    ctaBtnContact: 'Contact Support',
   },
   lo: {
+    back: 'ກັບຄືນໄປໜ້າບັນຊີ',
     title: 'ກ່ຽວກັບ Pasopkan',
-    subtitle: 'ແພລດຟອມຈັດງານ ແລະ ຂາຍປີ້ແບບຄົບວົງຈອນອັນດັບໜຶ່ງໃນລາວ.',
-    introTitle: 'ສ້າງປະສົບການທີ່ດີ, ເຊື່ອມຕໍ່ຜູ້ຄົນເຂົ້າກັນ',
-    introText: 'Pasopkan (ປະສົບການ) ແມ່ນແພລດຟອມຈັດການ event ແລະ ຈອງປີ້ທີ່ທັນສະໄໝ ທີ່ອອກແບບມາເພື່ອເຊື່ອມຕໍ່ທຸກຄົນເຂົ້າກັບຊ່ວງເວລາທີ່ໜ້າຈົດຈຳ. ບໍ່ວ່າທ່ານຈະຈັດເວີກຊອບຂະໜາດນ້ອຍ, ຄອນເສີດໃຫຍ່, ການຜະຈົນໄພໃນປ່າ, ຫຼື ການສະເໜີບັດສ່ວນຫຼຸດ (Vouchers), Pasopkan ມີເຄື່ອງມືລະດັບພຣີມຽມທັງໝົດທີ່ທ່ານຕ້ອງການເພື່ອໃຫ້ປະສົບຜົນສຳເລັດ.',
+    subtitle: 'ແພລດຟອມຈັດງານ ແລະ ຂາຍປີ້ອັນດັບໜຶ່ງໃນລາວ',
+    introTitle: 'ຍົກລະດັບປະສົບການການຈັດງານ',
+    introText: 'Pasopkan ແມ່ນແພລດຟອມການຂາຍປີ້ ແລະ ຈັດການງານອັນດັບໜຶ່ງໃນລາວ. ບໍ່ວ່າທ່ານຈະຈັດເວີກຊັອບຂະໜາດນ້ອຍ ຫຼື ຄອນເສີດໃຫຍ່, ແພລດຟອມຂອງພວກເຮົາເຮັດໃຫ້ມັນງ່າຍດາຍສຳລັບທຸກຄົນໃນການສ້າງ, ຈັດການ ແລະ ເຂົ້າຮ່ວມງານຢ່າງໝັ້ນໃຈ.',
     
     // Core Pillars
-    featuresTitle: 'ເປັນຫຍັງຕ້ອງເລືອກ Pasopkan?',
-    featuresSubtitle: 'ທຸກສິ່ງທີ່ທ່ານຕ້ອງການເພື່ອເລີ່ມຈັດງານ ແລະ ຂາຍປີ້ຢ່າງມີປະສິດທິພາບ.',
+    featuresTitle: 'ຄວາມສາມາດຂອງແພລດຟອມ',
+    featuresSubtitle: 'ສ້າງຂຶ້ນເພື່ອຄວາມງ່າຍໃນການໃຊ້ງານ, ຄວາມປອດໄພ ແລະ ປະສົບການທີ່ດີສຳລັບທຸກຄົນ.',
     
-    feature1Title: 'ສ້າງ ແລະ ປັບແຕ່ງກິດຈະກຳ',
-    feature1Desc: 'ອອກແບບໜ້າ event ທີ່ສວຍງາມ ແລະ ໜ້າສົນໃຈພາຍໃນບໍ່ເທົ່າໃດນາທີ. ຮອງຮັບທັງວັນທີຄົງທີ່ ແລະ ວັນທີແບບປ່ຽນແປງໄດ້, ການແບ່ງປະເພດທີ່ຊັດເຈນ, ພ້ອມກັບແຜນທີ່ປັກໝຸດສະຖານທີ່ຈັດງານ.',
+    feature1Title: 'ສ້າງກິດຈະກຳໄດ້ງ່າຍສຳລັບທຸກຄົນ',
+    feature1Desc: 'ບໍ່ວ່າທ່ານຈະເປັນຜູ້ຈັດງານມືໃໝ່ ຫຼື ບໍລິສັດໃຫຍ່, ແພລດຟອມຂອງພວກເຮົາຊ່ວຍໃຫ້ທຸກຄົນສາມາດສ້າງ ແລະ ເປີດຕົວງານລະດັບມືອາຊີບໄດ້ຢ່າງງ່າຍດາຍພາຍໃນບໍ່ເທົ່າໃດນາທີ.',
     
-    feature2Title: 'ຂາຍປີ້ ແລະ ຕິດຕາມຄຳສັ່ງຊື້',
-    feature2Desc: 'ຕັ້ງຄ່າປີ້ໄດ້ຫຼາຍລະດັບ, ສະເໜີຄູປອງສ່ວນຫຼຸດ, ແລະ ຕິດຕາມປະຫວັດການຊື້ຂາຍແບບຮຽລທາມ. ຜູ້ເຂົ້າຮ່ວມຈະໄດ້ຮັບໃບຢືນຢັນການຈອງ, ປີ້ PDF ທີ່ປອດໄພ, ແລະ QR Code ສ່ວນຕົວ.',
+    feature2Title: 'ປະສົບການຊື້ປີ້ທີ່ສະດວກສະບາຍ',
+    feature2Desc: 'ພວກເຮົາສະໜອງລະບົບການຊື້ປີ້ທີ່ລ່ຽນໄຫຼ ແລະ ຮອງຮັບມືຖືຢ່າງສົມບູນແບບ ເຮັດໃຫ້ການຄົ້ນຫາງານ ແລະ ການຊື້ປີ້ເປັນເລື່ອງງ່າຍສຳລັບທຸກຄົນ.',
     
-    feature3Title: 'ສະແກນກວດສອບປີ້ໃນແອັບ',
-    feature3Desc: 'ບໍ່ຈຳເປັນຕ້ອງໃຊ້ເຄື່ອງສະແກນພິເສດ. ຜູ້ຈັດງານສາມາດໃຊ້ລະບົບສະແກນ QR ທີ່ປອດໄພຂອງພວກເຮົາຜ່ານມືຖື ຫຼື ແລັບທັອບເພື່ອເຊັກອິນ ແລະ ຢືນຢັນປີ້ຂອງຜູ້ເຂົ້າຮ່ວມໄດ້ທັນທີ.',
-
-    feature4Title: 'ລາຍງານ ແລະ ບົດວິເຄາະແບບຮຽລທາມ',
-    feature4Desc: 'ຮັບຂໍ້ມູນເຈາະເລິກທີ່ເປັນປະໂຫຍດດ້ວຍແທັບລາຍງານອັດສະລິຍະ. ຕິດຕາມກຣາຟຍອດຂາຍ, ປະລິມານການຂາຍ, ອັດຕາການເຊັກອິນ, ແລະ ຈັດການປີ້ທັງໝົດຈາກບ່ອນດຽວ.',
-
-    // Simple 3 Step process
-    processTitle: 'ຂັ້ນຕອນການເຮັດວຽກ',
-    processStep1Title: '1. ສ້າງກິດຈະກຳຂອງທ່ານ',
-    processStep1Desc: 'ໃສ່ຊື່ກິດຈະກຳ, ວັນທີ/ເວລາ, ອັບໂຫຼດຮູບແບນເນີ, ລະບຸສະຖານທີ່ຈັດງານ, ແລະ ກຳນົດລາຄາປີ້.',
-    processStep2Title: '2. ເຜີຍແຜ່ ແລະ ຂາຍປີ້',
-    processStep2Desc: 'ເຜີຍແຜ່ກິດຈະກຳຂອງທ່ານເທິງແພລດຟອມທັນທີ. ຜູ້ເຂົ້າຮ່ວມສາມາດເລືອກຊື້ປີ້ອອນລາຍ ແລະ ຮັບ QR Code ທັນທີ.',
-    processStep3Title: '3. ສະແກນ ແລະ ເຊັກອິນ',
-    processStep3Desc: 'ເປີດກ້ອງສະແກນ QR ຢູ່ໜ້າປະຕູທາງເຂົ້າ, ສະແກນປີ້ຂອງຜູ້ເຂົ້າຮ່ວມເພື່ອຢືນຢັນ ແລະ ຕ້ອນຮັບພວກເຂົາເຂົ້າຮ່ວມງານ.',
-
+    feature3Title: 'ລະບົບປົກປ້ອງການຄືນເງິນ',
+    feature3Desc: 'ຊື້ປີ້ດ້ວຍຄວາມໝັ້ນໃຈ. ຫາກງານຖືກຍົກເລີກຢ່າງເປັນທາງການ, ລະບົບປົກປ້ອງຂອງພວກເຮົາຈະດຳເນີນການຄືນເງິນໃຫ້ຜູ້ຊື້ຢ່າງປອດໄພ ແລະ ບໍ່ຫຍຸ້ງຍາກ.',
+    
+    feature4Title: 'ເຄື່ອງມືຄົບວົງຈອນສຳລັບຜູ້ຈັດງານ',
+    feature4Desc: 'ຈັດການງານຂອງທ່ານໄດ້ທຸກທີ່. ຕັ້ງແຕ່ການວິເຄາະຍອດຂາຍແບບຣຽລທາມ ຈົນເຖິງລະບົບສະແກນ QR code ເພື່ອກວດປີ້ໜ້າປະຕູຢ່າງວ່ອງໄວ ທຸກຢ່າງຢູ່ເທິງມືຖືຂອງທ່ານ.',
+    
     // Stats
     statsHosts: 'ຜູ້ຈັດງານທີ່ເຄື່ອນໄຫວ',
-    statsTickets: 'ປີ້ທີ່ຂາຍແລ້ວ',
-    statsEvents: 'ງານທີ່ໄດ້ຈັດຂຶ້ນ',
-    statsHappy: 'ລູກຄ້າທີ່ພຶງພໍໃຈ',
-
+    statsTickets: 'ປີ້ທີ່ປະມວນຜົນແລ້ວ',
+    statsEvents: 'ງານທີ່ໃຊ້ລະບົບເຮົາ',
+    statsUptime: 'ຄວາມໝັ້ນຄົງຂອງລະບົບ',
+    
     // CTA
-    ctaTitle: 'ພ້ອມທີ່ຈະເລີ່ມສ້າງປະສົບການໃໝ່ຂອງທ່ານແລ້ວບໍ?',
-    ctaSubtitle: 'ຮ່ວມເປັນສ່ວນໜຶ່ງກັບຜູ້ຈັດງານຫຼາຍຮ້ອຍຄົນໃນປະເທດລາວ ທີ່ໄວ້ວາງໃຈ Pasopkan ໃນການຂາຍປີ້ ແລະ ຈັດການຜູ້ເຂົ້າຮ່ວມງານ.',
-    ctaBtnCreate: 'ສ້າງກິດຈະກຳຕອນນີ້',
+    ctaTitle: 'ສຳຜັດກັບມາດຕະຖານໃໝ່',
+    ctaSubtitle: 'ເຂົ້າຮ່ວມກັບເຄືອຂ່າຍຜູ້ໃຊ້ ແລະ ຜູ້ຈັດງານທີ່ໄວ້ວາງໃຈໃນ Pasopkan ໃນທຸກໆມື້.',
     ctaBtnExplore: 'ຄົ້ນຫາກິດຈະກຳທັງໝົດ',
+    ctaBtnContact: 'ຕິດຕໍ່ທີມງານຊ່ວຍເຫຼືອ',
   }
 };
 
 export default function About() {
+  const navigate = useNavigate();
   const { lang } = useLanguage();
   const t = translations[lang as keyof typeof translations];
 
   return (
-    <div className="pt-24 pb-16 min-h-screen bg-white">
+    <div className="pt-4 sm:pt-6 pb-16 min-h-screen bg-[#F9FAFB]">
       <SEO
         title={t.title}
-        description={t.subtitle || 'Learn about Pasopkan, the premier event hosting and digital ticketing platform in Laos.'}
+        description={t.subtitle}
         keywords={['About Pasopkan', 'Event Ticketing Platform Laos', 'Event Management Laos', 'Pasopkan Story']}
       />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <button 
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-gray-500 hover:text-adv-slate transition-colors mb-6 group cursor-pointer"
+        >
+          <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+          <span className="font-bold text-sm">{t.back}</span>
+        </button>
         
         {/* Hero Section */}
-        <div className="text-center mb-16 md:mb-24 relative">
-          {/* Decorative gradients */}
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-72 h-72 bg-adv-orange/10 blur-[80px] rounded-full pointer-events-none" />
+        <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-12 md:p-16 mb-8 border border-gray-100 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-adv-orange/5 blur-[100px] rounded-full pointer-events-none" />
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10">
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="space-y-6"
+            >
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-50 text-adv-orange text-xs font-bold uppercase tracking-wider">
+                <Building2 className="w-4 h-4" />
+                <span>{t.title}</span>
+              </div>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-adv-slate leading-[1.1] tracking-tight">
+                {t.introTitle}
+              </h1>
+              <p className="text-gray-500 leading-relaxed text-base sm:text-lg font-medium max-w-xl">
+                {t.introText}
+              </p>
+            </motion.div>
 
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-4xl md:text-6xl font-black text-adv-slate uppercase tracking-tight mb-6"
-          >
-            {t.title}
-          </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-gray-500 max-w-3xl mx-auto text-lg md:text-xl font-medium leading-relaxed"
-          >
-            {t.subtitle}
-          </motion.p>
-        </div>
-
-        {/* Intro Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-24 bg-gray-50/50 p-8 md:p-12 rounded-[32px] border border-gray-100">
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-            className="space-y-6"
-          >
-            <h2 className="text-2xl md:text-3xl font-black text-adv-slate leading-tight">
-              {t.introTitle}
-            </h2>
-            <p className="text-gray-600 leading-relaxed text-base font-medium">
-              {t.introText}
-            </p>
-            <div className="flex flex-wrap gap-4 pt-4">
-              <Link
-                to="/create"
-                className="px-6 py-3 bg-adv-orange hover:bg-orange-600 text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-orange-100 flex items-center gap-2"
-              >
-                {t.ctaBtnCreate}
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-              <Link
-                to="/"
-                className="px-6 py-3 bg-white hover:bg-gray-50 text-adv-slate border border-gray-200 rounded-xl font-bold text-sm transition-all"
-              >
-                {t.ctaBtnExplore}
-              </Link>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.4 }}
-            className="relative rounded-3xl overflow-hidden shadow-xl aspect-video border border-gray-100 bg-white p-2"
-          >
-            <img 
-              src="https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?q=80&w=1200&auto=format&fit=crop" 
-              alt="People at Event" 
-              referrerPolicy="no-referrer"
-              className="w-full h-full object-cover rounded-2xl"
-            />
-          </motion.div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2 }}
+              className="relative rounded-[2rem] overflow-hidden shadow-xl aspect-[4/3] border border-gray-100 bg-white p-2"
+            >
+              <img 
+                src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1200&auto=format&fit=crop" 
+                alt="Professional Event Infrastructure" 
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover rounded-[1.5rem]"
+              />
+            </motion.div>
+          </div>
         </div>
 
         {/* Dynamic Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-24">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-16">
           {[
             { label: t.statsHosts, val: '250+', icon: Users, color: 'bg-orange-50 text-adv-orange' },
-            { label: t.statsTickets, val: '50,000+', icon: Ticket, color: 'bg-emerald-50 text-emerald-600' },
-            { label: t.statsEvents, val: '1,200+', icon: Calendar, color: 'bg-blue-50 text-blue-600' },
-            { label: t.statsHappy, val: '99.4%', icon: Sparkles, color: 'bg-purple-50 text-purple-600' },
+            { label: t.statsTickets, val: '50,000+', icon: Sparkles, color: 'bg-emerald-50 text-emerald-600' },
+            { label: t.statsEvents, val: '1,200+', icon: Globe, color: 'bg-blue-50 text-blue-600' },
+            { label: t.statsUptime, val: '99.9%', icon: Server, color: 'bg-purple-50 text-purple-600' },
           ].map((stat, idx) => (
             <motion.div
               key={idx}
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 * idx }}
-              className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow text-center flex flex-col items-center justify-center space-y-3"
+              className="bg-white border border-gray-100 p-6 rounded-[2rem] shadow-sm flex flex-col items-center justify-center space-y-4 text-center"
             >
-              <div className={`p-3 rounded-xl ${stat.color}`}>
-                <stat.icon className="w-6 h-6" />
+              <div className={`p-4 rounded-2xl ${stat.color}`}>
+                <stat.icon className="w-7 h-7" />
               </div>
               <div>
-                <h3 className="text-2xl md:text-3xl font-black text-adv-slate tracking-tight">{stat.val}</h3>
+                <h3 className="text-2xl sm:text-3xl font-black text-adv-slate tracking-tight">{stat.val}</h3>
                 <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mt-1">{stat.label}</p>
               </div>
             </motion.div>
@@ -203,41 +164,41 @@ export default function About() {
         </div>
 
         {/* Feature Highlights Block */}
-        <div className="mb-24">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl md:text-4xl font-black text-adv-slate tracking-tight mb-4">
+        <div className="mb-16">
+          <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-12">
+            <h2 className="text-2xl sm:text-3xl font-black text-adv-slate tracking-tight mb-4">
               {t.featuresTitle}
             </h2>
-            <p className="text-gray-500 font-semibold">
+            <p className="text-gray-500 font-medium">
               {t.featuresSubtitle}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {[
               {
                 title: t.feature1Title,
                 desc: t.feature1Desc,
-                icon: Calendar,
-                tag: 'Creation',
+                icon: Rocket,
+                tag: 'For Organizers',
               },
               {
                 title: t.feature2Title,
                 desc: t.feature2Desc,
-                icon: Ticket,
-                tag: 'Sales',
+                icon: Smartphone,
+                tag: 'For Buyers',
               },
               {
                 title: t.feature3Title,
                 desc: t.feature3Desc,
-                icon: Compass,
-                tag: 'Verification',
+                icon: ShieldCheck,
+                tag: 'Protection',
               },
               {
                 title: t.feature4Title,
                 desc: t.feature4Desc,
-                icon: TrendingUp,
-                tag: 'Analytics',
+                icon: QrCode,
+                tag: 'Management',
               },
             ].map((feat, idx) => (
               <motion.div
@@ -245,79 +206,21 @@ export default function About() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 * idx }}
-                className="bg-white border border-gray-100 p-8 rounded-3xl shadow-sm hover:shadow-md transition-all group flex flex-col justify-between"
+                className="bg-white border border-gray-100 p-6 sm:p-8 rounded-[2rem] shadow-sm hover:shadow-md transition-shadow flex gap-5 sm:gap-6"
               >
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div className="p-3 bg-orange-50 text-adv-orange rounded-2xl group-hover:bg-adv-orange group-hover:text-white transition-colors">
-                      <feat.icon className="w-6 h-6" />
-                    </div>
-                    <span className="text-[10px] font-extrabold text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-100 uppercase tracking-wider">
-                      {feat.tag}
-                    </span>
+                <div className="shrink-0">
+                  <div className="p-3 sm:p-4 bg-gray-50 text-adv-slate rounded-2xl border border-gray-100">
+                    <feat.icon className="w-6 h-6 sm:w-8 sm:h-8" />
                   </div>
-                  <h3 className="text-lg font-bold text-adv-slate">{feat.title}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed font-semibold">{feat.desc}</p>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="text-lg font-bold text-adv-slate">{feat.title}</h3>
+                  </div>
+                  <p className="text-gray-500 text-sm leading-relaxed font-medium">{feat.desc}</p>
                 </div>
               </motion.div>
             ))}
-          </div>
-        </div>
-
-        {/* Simple Steps Section */}
-        <div className="bg-gray-50 p-8 md:p-16 rounded-[40px] border border-gray-100 mb-24">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="text-3xl font-black text-adv-slate tracking-tight mb-2">
-              {t.processTitle}
-            </h2>
-            <p className="text-xs text-orange-600 font-extrabold uppercase tracking-widest">
-              Simple 3-Step Lifecycle
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              { title: t.processStep1Title, desc: t.processStep1Desc, bg: 'bg-white' },
-              { title: t.processStep2Title, desc: t.processStep2Desc, bg: 'bg-white' },
-              { title: t.processStep3Title, desc: t.processStep3Desc, bg: 'bg-white' },
-            ].map((step, idx) => (
-              <div key={idx} className={`${step.bg} p-8 rounded-3xl border border-gray-100/50 shadow-sm relative flex flex-col justify-between h-full`}>
-                <div className="space-y-3">
-                  <h3 className="text-base font-black text-adv-slate">{step.title}</h3>
-                  <p className="text-gray-500 text-xs leading-relaxed font-medium">{step.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* CTA section */}
-        <div className="relative rounded-[40px] bg-adv-slate text-white p-8 md:p-16 overflow-hidden text-center">
-          {/* Background orange blobs */}
-          <div className="absolute -top-12 -left-12 w-96 h-96 bg-adv-orange/10 blur-[80px] rounded-full pointer-events-none" />
-          <div className="absolute -bottom-12 -right-12 w-96 h-96 bg-orange-600/10 blur-[80px] rounded-full pointer-events-none" />
-          
-          <div className="relative max-w-3xl mx-auto space-y-6">
-            <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight leading-tight">
-              {t.ctaTitle}
-            </h2>
-            <p className="text-zinc-400 text-sm md:text-base leading-relaxed max-w-2xl mx-auto font-medium">
-              {t.ctaSubtitle}
-            </p>
-            <div className="flex flex-wrap gap-4 justify-center pt-4">
-              <Link
-                to="/create"
-                className="px-8 py-4 bg-adv-orange hover:bg-orange-600 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-orange-950/20"
-              >
-                {t.ctaBtnCreate}
-              </Link>
-              <Link
-                to="/"
-                className="px-8 py-4 bg-white/10 hover:bg-white/15 text-white border border-white/10 rounded-xl font-bold text-sm transition-all"
-              >
-                {t.ctaBtnExplore}
-              </Link>
-            </div>
           </div>
         </div>
 

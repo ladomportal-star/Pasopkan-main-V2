@@ -112,7 +112,7 @@ const CategoryRowSkeleton: React.FC<{ title: string }> = ({ title }) => {
           {title}
         </h3>
         {/* Actions */}
-        <div className="flex items-center gap-2 sm:gap-6 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-6 shrink-0 mb-1 sm:mb-0">
           <div className="w-16 sm:w-20 h-3.5 sm:h-4 bg-gray-150 rounded-md animate-pulse" />
           <div className="hidden sm:flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-gray-150 animate-pulse" />
@@ -122,10 +122,11 @@ const CategoryRowSkeleton: React.FC<{ title: string }> = ({ title }) => {
       </div>
 
       {/* Horizontal List */}
-      <div className="flex overflow-x-auto pb-2 sm:pb-5 -mx-4 px-4 sm:-mx-8 sm:px-8 hide-scrollbar gap-3 sm:gap-6">
+      <div className="flex overflow-x-auto pb-2 sm:pb-5 -ml-5 -mr-4 pl-5 sm:mx-0 sm:pl-0 hide-scrollbar gap-3 sm:gap-6 snap-x snap-mandatory scroll-pl-5 sm:scroll-pl-0">
         {[1, 2, 3, 4].map((n) => (
           <LandscapeEventCardSkeleton key={n} />
         ))}
+        <div className="w-1 shrink-0 sm:hidden"></div>
       </div>
     </div>
   );
@@ -136,21 +137,60 @@ const CategoryRow: React.FC<{ category: string, events: LaoEvent[], title: strin
   const { lang } = useLanguage();
   const categoryId = categoryToId[category] || category.toLowerCase();
   
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+  const [hasScrolled, setHasScrolled] = useState(false);
+
+  const checkScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      // If the content doesn't overflow the container at all, hide both buttons
+      if (scrollWidth <= clientWidth + 5) {
+        setCanScrollLeft(false);
+        setCanScrollRight(false);
+        return;
+      }
+      // Require a larger scroll amount to confirm intentional scrolling
+      if (scrollLeft > 50) {
+        setHasScrolled(true);
+      } else if (scrollLeft <= 10) {
+        setHasScrolled(false);
+      }
+      
+      setCanScrollLeft(scrollLeft > 10);
+      setCanScrollRight(Math.ceil(scrollLeft + clientWidth) < scrollWidth - 10);
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    // Re-check after a short delay to account for layout shifts/image loads
+    const timeout = setTimeout(checkScroll, 150);
+    window.addEventListener('resize', checkScroll);
+    return () => {
+      clearTimeout(timeout);
+      window.removeEventListener('resize', checkScroll);
+    }
+  }, [events]);
+
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
+      if (direction === 'right') setHasScrolled(true);
       const { scrollLeft, clientWidth } = scrollRef.current;
       const scrollTo = direction === 'left' ? scrollLeft - clientWidth : scrollLeft + clientWidth;
       scrollRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
+      // Call checkScroll slightly after the scroll animation starts
+      setTimeout(checkScroll, 350);
     }
   };
 
   return (
-    <div className="flex flex-col mb-0 group">
+    <div className="flex flex-col mb-0 group relative">
       <div className="flex items-end justify-between mb-2.5 sm:mb-6">
         <h3 className="text-lg sm:text-2xl md:text-3xl font-display font-bold text-adv-slate">
           {title}
         </h3>
-        <div className="flex items-center gap-2 sm:gap-6 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-6 shrink-0 mb-1 sm:mb-0">
           <Link 
             to={`/category/${categoryId}`}
             className="text-[10px] sm:text-xs font-black text-adv-orange hover:text-black transition-colors uppercase tracking-wider sm:tracking-widest flex items-center gap-1 group/btn"
@@ -158,34 +198,45 @@ const CategoryRow: React.FC<{ category: string, events: LaoEvent[], title: strin
             {lang === 'en' ? 'Show More' : 'ເບິ່ງເພີ່ມເຕີມ'}
             <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover/btn:translate-x-1" />
           </Link>
-          <div className="hidden sm:flex items-center gap-2">
-            <button 
-              onClick={() => scroll('left')} 
-              className="w-10 h-10 flex items-center justify-center rounded-full border border-adv-border bg-white text-adv-slate hover:bg-adv-gray transition-colors shadow-sm"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button 
-              onClick={() => scroll('right')} 
-              className="w-10 h-10 flex items-center justify-center rounded-full border border-adv-border bg-white text-adv-slate hover:bg-adv-gray transition-colors shadow-sm"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
         </div>
       </div>
       
-      <div 
-        ref={scrollRef}
-        className="flex overflow-x-auto overflow-y-hidden pb-2 sm:pb-5 -mx-4 px-4 sm:-mx-8 sm:px-8 hide-scrollbar gap-3 sm:gap-6 snap-x snap-mandatory scroll-smooth hardware-accelerated"
-      >
-        {events.map((event, index) => (
-          <LandscapeEventCard 
-            key={event.id} 
-            event={event} 
-            index={index}
-          />
-        ))}
+      <div className="relative group/carousel">
+        <div 
+          ref={scrollRef}
+          onScroll={checkScroll}
+          className="flex overflow-x-auto overflow-y-hidden pb-2 sm:pb-5 -ml-5 -mr-4 pl-5 sm:mx-0 sm:pl-0 hide-scrollbar gap-3 sm:gap-6 snap-x snap-mandatory scroll-pl-5 sm:scroll-pl-0 scroll-smooth hardware-accelerated"
+        >
+          {events.map((event, index) => (
+            <LandscapeEventCard 
+              key={event.id} 
+              event={event} 
+              index={index}
+            />
+          ))}
+          <div className="w-1 shrink-0 sm:hidden"></div>
+        </div>
+        
+        {/* Nav Buttons overlay */}
+        {canScrollLeft && hasScrolled && (
+          <button 
+            onClick={() => scroll('left')} 
+            className="absolute left-0 sm:-left-4 top-1/2 -translate-y-1/2 z-50 hidden sm:flex w-12 h-12 items-center justify-center rounded-full border border-gray-200 bg-white/95 text-adv-slate hover:bg-white hover:text-adv-orange hover:border-adv-orange/30 transition-all shadow-[0_4px_20px_rgba(0,0,0,0.12)] backdrop-blur-sm opacity-0 group-hover/carousel:opacity-100 hover:scale-105 cursor-pointer"
+            aria-label="Previous"
+          >
+            <ChevronLeft className="w-6 h-6 text-current" />
+          </button>
+        )}
+        
+        {canScrollRight && (
+          <button 
+            onClick={() => scroll('right')} 
+            className="absolute right-0 sm:-right-4 top-1/2 -translate-y-1/2 z-50 hidden sm:flex w-12 h-12 items-center justify-center rounded-full border border-gray-200 bg-white/95 text-adv-slate hover:bg-white hover:text-adv-orange hover:border-adv-orange/30 transition-all shadow-[0_4px_20px_rgba(0,0,0,0.12)] backdrop-blur-sm opacity-0 group-hover/carousel:opacity-100 hover:scale-105 cursor-pointer"
+            aria-label="Next"
+          >
+            <ChevronRight className="w-6 h-6 text-current" />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -286,94 +337,89 @@ export default function Home() {
 
   const currentSlide = heroSlides[currentImageIndex] || heroSlides[0];
   const isUnsplash = currentSlide?.imageUrl?.includes('images.unsplash.com');
-  const mainHeroTitle = lang === 'lo' 
-    ? (heroSettings.mainTitle_lo || t.mainTitle) 
-    : (heroSettings.mainTitle_en || t.mainTitle);
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB]">
+    <div className="min-h-screen bg-white">
       <SEO 
         title={lang === 'lo' ? 'ໜ້າຫຼັກ - ຄົ້ນພົບກິດຈະກຳ ແລະ ງານເທດສະການ' : 'Home - Discover Events & Experiences in Laos'}
         description={lang === 'lo' ? 'ຄົ້ນພົບ ແລະ ຈອງປີ້ງານກິດຈະກຳ, ເວີກຊັອບ, ກິລາ ແລະ ເທດສະການຊັ້ນນຳໃນປະເທດລາວ' : 'Explore and book tickets for the best workshops, outdoor adventures, festivals, and cultural events across Laos.'}
       />
-      <section className="relative h-[220px] sm:h-[360px] landscape:h-[260px] lg:h-[550px] flex flex-col justify-center items-center pb-4 sm:pb-8 lg:pb-12 overflow-hidden">
-        <div className="absolute inset-0">
-          <AnimatePresence mode="wait">
-            <motion.img 
-              key={currentSlide?.id || currentSlide?.imageUrl || currentImageIndex}
-              src={isUnsplash ? `${currentSlide.imageUrl}&w=1200` : currentSlide.imageUrl}
-              srcSet={isUnsplash ? `${currentSlide.imageUrl}&w=600 600w, 
-                       ${currentSlide.imageUrl}&w=1200 1200w, 
-                       ${currentSlide.imageUrl}&w=2070 2000w` : undefined}
-              sizes="(max-width: 768px) 600px, (max-width: 1200px) 1200px, 100vw"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 1.5, ease: "linear" }}
-              className="absolute inset-0 w-full h-full object-cover"
-              alt={currentSlide?.title_en || 'Hero Background'}
-              fetchPriority="high"
-            />
-          </AnimatePresence>
-          <div className="absolute inset-0 bg-black/40" />
-        </div>
+      
+      <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 pt-4">
+        <section className="relative h-[220px] sm:h-[360px] landscape:h-[260px] lg:h-[1080px] flex flex-col justify-center items-center overflow-hidden rounded-[1.5rem] sm:rounded-[2rem]">
+          <div className="absolute inset-0">
+            <AnimatePresence mode="wait">
+              <motion.img 
+                key={currentSlide?.id || currentSlide?.imageUrl || currentImageIndex}
+                src={isUnsplash ? `${currentSlide.imageUrl}&w=1200` : currentSlide.imageUrl}
+                srcSet={isUnsplash ? `${currentSlide.imageUrl}&w=600 600w, 
+                         ${currentSlide.imageUrl}&w=1200 1200w, 
+                         ${currentSlide.imageUrl}&w=2070 2000w` : undefined}
+                sizes="(max-width: 768px) 600px, (max-width: 1200px) 1200px, 100vw"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1.5, ease: "linear" }}
+                className="absolute inset-0 w-full h-full object-cover"
+                alt={currentSlide?.title_en || 'Hero Background'}
+                fetchPriority="high"
+              />
+            </AnimatePresence>
+          </div>
+        </section>
 
-        <div className="relative z-10 max-w-7xl mx-auto pl-6 pr-2 sm:pl-12 sm:pr-4 lg:pl-16 lg:pr-8 w-full text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-2 md:space-y-6"
-          >
-             <h1 className="text-2xl sm:text-4xl md:text-6xl lg:text-7xl text-white font-black tracking-tight uppercase leading-[0.95] landscape:text-3xl landscape:md:text-5xl">
-               {mainHeroTitle}
-             </h1>
-          </motion.div>
+        {/* Carousel Pagination Dots */}
+        <div className="flex items-center justify-center gap-2 mt-4 sm:mt-5">
+           {heroSlides.map((_, idx) => (
+             <button 
+               key={idx}
+               onClick={() => setCurrentImageIndex(idx)}
+               className={`h-2 sm:h-2.5 rounded-full transition-all duration-300 ${idx === currentImageIndex ? 'w-8 sm:w-10 bg-adv-orange' : 'w-2 sm:w-2.5 bg-adv-orange/30 hover:bg-adv-orange/50'}`}
+               aria-label={`Go to slide ${idx + 1}`}
+             />
+           ))}
         </div>
-      </section>
+      </div>
 
-      <section className="relative -mt-4 sm:-mt-8 md:-mt-12 lg:-mt-14 z-20 pl-5 pr-2 sm:pl-11 sm:pr-5 lg:pl-16 lg:pr-8 max-w-7xl mx-auto mb-6 sm:mb-16 md:mb-20">
+      <section className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 mt-6 sm:mt-8 mb-8 sm:mb-16">
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white/85 backdrop-blur-xl border border-white/30 rounded-xl sm:rounded-2xl md:rounded-3xl shadow-[0_16px_32px_-12px_rgba(0,0,0,0.08)] sm:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] p-2.5 sm:p-5 md:p-8 landscape:p-3"
+          className="flex justify-between sm:justify-center overflow-x-auto hide-scrollbar sm:gap-12 md:gap-16 lg:gap-24 pb-4 max-w-2xl mx-auto"
         >
-          <div className="grid grid-cols-4 gap-1.5 sm:gap-6 lg:gap-10 landscape:grid-cols-4">
-             {[
-               { id: 'workshop', label: t.workshops, icon: Lightbulb, color: 'bg-amber-50 text-amber-600' },
-               { id: 'sports', label: t.adventure, icon: Mountain, color: 'bg-orange-50 text-orange-600' },
-               { id: 'festival', label: t.festivals, icon: PartyPopper, color: 'bg-purple-50 text-purple-600' },
-               { id: 'voucher', label: t.vouchers, icon: Ticket, color: 'bg-emerald-50 text-emerald-600' },
-             ].map((cat, idx) => (
-               <motion.div
-                 key={cat.id}
-                 initial={{ opacity: 0, scale: 0.9 }}
-                 animate={{ opacity: 1, scale: 1 }}
-                 transition={{ delay: idx * 0.05 }}
+           {[
+             { id: 'workshop', label: t.workshops, icon: Lightbulb },
+             { id: 'sports', label: t.adventure, icon: Mountain },
+             { id: 'festival', label: t.festivals, icon: PartyPopper },
+             { id: 'voucher', label: t.vouchers, icon: Ticket },
+           ].map((cat, idx) => (
+             <motion.div
+               key={cat.id}
+               initial={{ opacity: 0, scale: 0.9 }}
+               animate={{ opacity: 1, scale: 1 }}
+               transition={{ delay: idx * 0.05 }}
+               className="shrink-0"
+             >
+               <Link 
+                 to={`/category/${cat.id}`}
+                 className="flex flex-col items-center gap-2 sm:gap-3 group relative"
                >
-                 <Link 
-                   to={`/category/${cat.id}`}
-                   className="flex flex-col items-center gap-1.5 sm:gap-3 group relative py-0.5"
-                 >
-                    <div className={`w-9 h-9 sm:w-13 sm:h-13 md:w-16 md:h-16 rounded-lg sm:rounded-[1.25rem] md:rounded-[1.75rem] ${cat.color} flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-active:scale-95 shadow-2xs`}>
-                       <cat.icon className="w-4 h-4 sm:w-6 sm:h-6 md:w-7 md:h-7" />
-                    </div>
-                    <div className="text-center">
-                       <span className="block text-[9px] sm:text-xs md:text-sm font-bold text-adv-slate group-hover:translate-y-[-1px] transition-transform uppercase tracking-tight sm:tracking-normal line-clamp-1">
-                         {cat.label}
-                       </span>
-                    </div>
-                    
-                    {/* Hover indicator */}
-                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-adv-orange opacity-0 group-hover:opacity-100 transition-all duration-300" />
-                 </Link>
-               </motion.div>
-             ))}
-          </div>
+                  <div className="w-[64px] h-[64px] xs:w-[72px] xs:h-[72px] sm:w-[88px] sm:h-[88px] rounded-[1.25rem] sm:rounded-[1.75rem] bg-orange-50 flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:bg-adv-orange group-hover:shadow-lg group-hover:shadow-adv-orange/30">
+                     <cat.icon strokeWidth={1.5} className="w-7 h-7 xs:w-8 xs:h-8 sm:w-10 sm:h-10 text-adv-orange group-hover:text-white transition-colors duration-300" />
+                  </div>
+                  <div className="text-center w-full max-w-[72px] sm:max-w-[96px]">
+                     <span className="block text-[10px] xs:text-[11px] sm:text-xs font-bold text-gray-800 leading-tight group-hover:text-adv-orange transition-colors duration-300">
+                       {cat.label}
+                     </span>
+                  </div>
+               </Link>
+             </motion.div>
+           ))}
         </motion.div>
       </section>
 
-      <section id="events-section" className="pl-5 pr-2 sm:pl-11 sm:pr-5 lg:pl-16 lg:pr-8 max-w-7xl mx-auto pb-4 sm:pb-16">
-        <div className="space-y-6 sm:space-y-16 md:space-y-20">
+      <section id="events-section" className="pl-5 pr-4 sm:pl-11 sm:pr-5 lg:pl-16 lg:pr-8 max-w-7xl mx-auto pb-4 sm:pb-16">
+        <div className="space-y-14 sm:space-y-16 md:space-y-20">
           {isLoading ? (
             <>
               {/* Skeletons for Categories list */}

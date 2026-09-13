@@ -114,11 +114,11 @@ export default function Navbar() {
         <div className="mx-auto flex h-16 sm:h-20 lg:h-24 max-w-[1400px] items-center justify-between px-3 sm:px-8 lg:px-12">
           {/* Brand/Logo Section */}
           <div className="flex items-center gap-10">
-            <Link to="/" className="flex items-center shrink-0">
+            <Link to="/" className="flex items-center shrink-0 mt-3 sm:mt-4">
               <img 
                 src="/pasopkan_logo.png" 
                 alt="Pasopkan Logo" 
-                className="h-12 sm:h-18 lg:h-24 w-auto object-contain transition-transform duration-300 hover:scale-[1.03]" 
+                className="h-20 sm:h-24 lg:h-28 w-auto object-contain transition-transform duration-300 hover:scale-[1.03]" 
                 referrerPolicy="no-referrer"
               />
             </Link>
