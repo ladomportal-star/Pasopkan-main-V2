@@ -1,5 +1,4 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { supabase } from './supabase';
 
 // ==========================================
 // TYPES DEFINITIONS
@@ -502,20 +501,24 @@ export const DEFAULT_TICKET_SPONSOR_SETTINGS: TicketSponsorSettings = {
 // PERSISTENCE HELPER FUNCTIONS
 // ==========================================
 
-// Helper to load settings from Firestore, with LocalStorage and Hardcoded fallbacks
+// Helper to load settings from Supabase, with LocalStorage and Hardcoded fallbacks
 async function getSettings<T>(docId: string, defaultValue: T): Promise<T> {
   try {
-    // Try to get from Firestore first
-    const docRef = doc(db, 'site_settings', docId);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      const data = docSnap.data() as T;
+    // Try to get from Supabase first
+    const { data: row, error } = await supabase
+      .from('site_settings')
+      .select('data')
+      .eq('id', docId)
+      .single();
+
+    if (row && row.data && !error) {
+      const data = row.data as T;
       // Backup to localStorage for lightning fast loading
       localStorage.setItem(`pasopkan_setting_${docId}`, JSON.stringify(data));
       return data;
     }
   } catch (error) {
-    console.warn(`Firestore load failed for site_settings/${docId}:`, error);
+    console.warn(`Supabase load failed for site_settings/${docId}:`, error);
   }
 
   // Fallback to localStorage
@@ -531,18 +534,23 @@ async function getSettings<T>(docId: string, defaultValue: T): Promise<T> {
   return defaultValue;
 }
 
-// Helper to save settings to Firestore and LocalStorage
+// Helper to save settings to Supabase and LocalStorage
 async function saveSettings<T extends object>(docId: string, data: T): Promise<void> {
   // Save to LocalStorage instantly
   localStorage.setItem(`pasopkan_setting_${docId}`, JSON.stringify(data));
 
-  // Save to Firestore asynchronously
+  // Save to Supabase asynchronously
   try {
-    const docRef = doc(db, 'site_settings', docId);
-    await setDoc(docRef, data);
+    const { error } = await supabase
+      .from('site_settings')
+      .upsert({ id: docId, data: data }, { onConflict: 'id' });
+      
+    if (error) {
+      console.error(`Supabase save failed for site_settings/${docId}:`, error);
+    }
   } catch (error) {
-    console.error(`Firestore save failed for site_settings/${docId}:`, error);
-    // Even if Firestore fails (no permission or offline), we already persisted locally.
+    console.error(`Supabase save failed for site_settings/${docId}:`, error);
+    // Even if Supabase fails (no permission or offline), we already persisted locally.
   }
 }
 

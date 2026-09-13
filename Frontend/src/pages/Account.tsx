@@ -1340,22 +1340,6 @@ export default function Account() {
               <LogOut className="w-5 h-5" />
               {t.signOut}
             </button>
-
-            <button 
-              onClick={() => {
-                if (window.confirm(lang === 'lo' ? 'ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບບັນຊີ? ການກະທຳນີ້ບໍ່ສາມາດແກ້ໄຂໄດ້.' : 'Are you sure you want to delete your account? This action cannot be undone.')) {
-                  logout();
-                }
-              }}
-              className={`flex-1 flex items-center justify-center gap-3 p-4 rounded-2xl border transition-all font-bold text-sm sm:text-base ${
-                theme === 'dark' 
-                  ? 'bg-zinc-900 border-red-500/10 text-red-400 hover:bg-red-500/5' 
-                  : 'bg-white border-red-50 text-red-400 hover:bg-red-50'
-              }`}
-            >
-              <Trash2 className="w-5 h-5" />
-              {lang === 'lo' ? 'ລຶບບັນຊີ' : 'Delete Account'}
-            </button>
           </div>
 
           {/* Mobile Legal Actions */}

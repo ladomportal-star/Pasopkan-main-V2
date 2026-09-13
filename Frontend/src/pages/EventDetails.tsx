@@ -34,6 +34,7 @@ import {
   Sliders,
   Settings,
   Save,
+  Check,
   Lock,
   Unlock,
   FileEdit,
@@ -43,23 +44,21 @@ import {
   Phone,
   ShieldCheck,
   Image as ImageIcon,
+  Copy,
   Ticket,
   ExternalLink,
-  Video,
-  RefreshCcw,
-  XCircle
+  Video
 } from 'lucide-react';
 import { events, LaoEvent, TicketTier } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
 import { EventMapPicker } from '../components/EventMapPicker';
 import { AdaptiveImage } from '../components/AdaptiveImage';
+import { CountdownTimer } from '../components/CountdownTimer';
 import DotsLoader from '../components/DotsLoader';
 import { safeStorage } from '../lib/storage';
-import { api } from '../lib/api';
 import { getReviewsForEvent, getAverageRatingForEvent, saveReview } from '../data/reviews';
 import { useAuth } from '../context/AuthContext';
-import { collection, query, where, onSnapshot, doc, setDoc, getDocs } from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
 import SEO from '../components/SEO';
 
 const XIcon = ({ className = "w-3.5 h-3.5" }: { className?: string }) => (
@@ -90,9 +89,7 @@ const translations = {
     selectTimeSlot: 'Select Session Time',
     pleaseSelectTime: 'Please select a session time.',
     instant: 'Instant Confirmation',
-    cancellation: 'Full refund if cancelled up to 48 hours before the event starts',
-    refundableBadge: 'Refundable',
-    nonRefundableBadge: 'Non-refundable',
+    cancellation: 'Full refund if cancelled up to 24 hours before the experience starts',
     duration: 'Duration',
     promoCode: 'Promo Code',
     apply: 'Apply',
@@ -148,9 +145,7 @@ const translations = {
     selectTimeSlot: 'ເລືອກຊ່ວງເວລາ',
     pleaseSelectTime: 'ກະລຸນາເລືອກຊ່ວງເວລາກ່ອນ.',
     instant: 'ຢືນຢັນທັນທີ',
-    cancellation: 'ຄືນເງິນເຕັມຈຳນວນຫາກຍົກເລີກກ່ອນກິດຈະກຳເລີ່ມຕົ້ນຢ່າງໜ້ອຍ 48 ຊົ່ວໂມງ',
-    refundableBadge: 'ຂໍຄືນເງິນໄດ້',
-    nonRefundableBadge: 'ບໍ່ສາມາດຄືນເງິນໄດ້',
+    cancellation: 'ຄືນເງິນເຕັມຈຳນວນຫາກຍົກເລີກກ່ອນກິດຈະກຳເລີ່ມຕົ້ນຢ່າງໜ້ອຍ 24 ຊົ່ວໂມງ',
     duration: 'ໄລຍະເວລາ',
     promoCode: 'ລະຫັດສ່ວນຫຼຸດ',
     apply: 'ໃຊ້ງານ',
@@ -309,7 +304,7 @@ function InlineCalendar({
   const dayNamesFull = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   return (
-    <div className="bg-gray-50/50 border border-gray-150/80 rounded-2xl p-3.5 sm:p-4 space-y-3 sm:space-y-3.5 shadow-inner">
+    <div className="bg-gray-50/50 border border-gray-150/80 rounded-2xl p-4 space-y-3.5 shadow-inner">
       {/* Month Year Header */}
       <div className="flex items-center justify-between px-1">
         <span className="font-bold text-sm text-adv-slate">
@@ -568,7 +563,7 @@ export default function EventDetails() {
   const [searchParams] = useSearchParams();
   const { lang } = useLanguage();
   const { isAuthenticated, user } = useAuth();
-  const t = translations[lang] as unknown as Record<string, string>;
+  const t = translations[lang];
   const currency = lang === 'lo' ? 'ກີບ' : 'Kip';
   
   const [event, setEvent] = useState<LaoEvent | null>(null);
@@ -611,6 +606,7 @@ export default function EventDetails() {
     setTouchEndX(null);
   };
   const [shareSuccess, setShareSuccess] = useState(false);
+  const [copiedMapAddress, setCopiedMapAddress] = useState(false);
   const [showOrganizerDetails, setShowOrganizerDetails] = useState(false);
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -767,9 +763,9 @@ export default function EventDetails() {
       }
 
       // Check Firestore tickets collection
-      const activeUser = user || auth.currentUser;
+      const activeUser = user;
       if (activeUser) {
-        if (auth.currentUser && activeUser.uid === auth.currentUser.uid) {
+        if (activeUser) {
           try {
             const ticketsRef = collection(db, 'tickets');
             const q = query(
@@ -843,7 +839,7 @@ export default function EventDetails() {
       return;
     }
 
-    const activeUser = user || auth.currentUser;
+    const activeUser = user;
     if (!activeUser) {
       setCommentStatus({
         type: 'error',
@@ -865,20 +861,10 @@ export default function EventDetails() {
       date: new Date().toISOString().slice(0, 10)
     };
 
-    if (auth.currentUser && activeUser.uid === auth.currentUser.uid) {
+    if (activeUser) {
       try {
         const reviewRef = doc(collection(db, 'reviews'));
         await setDoc(reviewRef, reviewData);
-
-        // Persist to Postgres (source of truth); non-blocking.
-        api.createReview({
-          eventId: String(id),
-          rating: reviewData.rating,
-          comment: reviewData.comment,
-          userName: reviewData.userName,
-          userRealName: reviewData.userRealName || undefined,
-          date: reviewData.date,
-        });
 
         // Local fallback / sync
         saveReview({
@@ -923,45 +909,45 @@ export default function EventDetails() {
   useEffect(() => {
     if (!id) return;
 
-    // Listen to real-time reviews from Firestore for this event
-    const reviewsRef = collection(db, 'reviews');
-    const q = query(reviewsRef, where('eventId', '==', id));
+    const fetchReviews = async () => {
+      try {
+        const { data, error } = await supabase.from('reviews').select('*').eq('event_id', id).order('created_at', { ascending: false });
+        if (data && !error) {
+          const supabaseReviews = data.map((r: any) => ({
+            id: r.id,
+            eventId: r.event_id,
+            userId: r.user_id,
+            userName: r.user_name,
+            rating: r.rating,
+            comment: r.comment,
+            createdAt: r.created_at
+          }));
+          const localReviews = getReviewsForEvent(id).filter(mock => !supabaseReviews.some(fire => fire.eventId === mock.eventId && (fire.comment === mock.comment || fire.id === mock.id)));
+          const combined = [...supabaseReviews, ...localReviews];
+          
+          const sum = combined.reduce((acc, curr) => acc + curr.rating, 0);
+          const average = combined.length > 0 ? Math.round((sum / combined.length) * 10) / 10 : 0;
+          
+          setReviews(combined);
+          setAvgRating(average);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
     
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const firestoreReviews: any[] = [];
-      snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        firestoreReviews.push({
-          id: docSnap.id,
-          ...data
-        });
-      });
-
-      // Sort Firestore reviews by date/createdAt descending
-      firestoreReviews.sort((a, b) => {
-        const dateA = new Date(a.date || a.createdAt || 0).getTime();
-        const dateB = new Date(b.date || b.createdAt || 0).getTime();
-        return dateB - dateA;
-      });
-
-      // Combine with local / mock reviews
-      const localReviews = getReviewsForEvent(id).filter(mock => 
-        !firestoreReviews.some(fire => fire.eventId === mock.eventId && (fire.comment === mock.comment || fire.id === mock.id))
-      );
-
-      const combined = [...firestoreReviews, ...localReviews];
+    fetchReviews();
+    
+    const channel = supabase
+      .channel('public:reviews')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews', filter: `event_id=eq.${id}` }, payload => {
+        fetchReviews();
+      })
+      .subscribe();
       
-      // Calculate average rating
-      const sum = combined.reduce((acc, curr) => acc + curr.rating, 0);
-      const average = combined.length > 0 ? Math.round((sum / combined.length) * 10) / 10 : 0;
-
-      setReviews(combined);
-      setAvgRating(average);
-    }, (err) => {
-      handleFirestoreError(err, OperationType.GET, 'reviews');
-    });
-
-    return () => unsubscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [id]);
 
   const galleryImages = event ? getGalleryImages(event) : [];
@@ -1370,7 +1356,7 @@ export default function EventDetails() {
             initial={{ opacity: 0, y: 100, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: 100, x: '-50%' }}
-            className="fixed bottom-24 sm:bottom-12 left-1/2 z-[150] bg-adv-slate text-white px-6 py-3 rounded-2xl font-bold shadow-2xl flex items-center gap-3 border border-white/10"
+            className="fixed bottom-12 left-1/2 z-[150] bg-adv-slate text-white px-6 py-3 rounded-2xl font-bold shadow-2xl flex items-center gap-3 border border-white/10"
           >
             <Share2 className="w-4 h-4 text-adv-orange" />
             {t.linkCopied}
@@ -1405,40 +1391,30 @@ export default function EventDetails() {
             <div className="bg-white rounded-3xl overflow-hidden shadow-md border border-gray-100 relative group/hero">
                {/* Mobile Cover Image & Centered Title */}
                {event.image && (
-                 <div className="block lg:hidden w-full relative p-3 pb-0">
+                 <div className="block lg:hidden w-full relative">
                    <div 
-                     className="relative h-[220px] sm:h-[360px] landscape:h-[260px] w-full cursor-zoom-in overflow-hidden shadow-sm border border-gray-100/50 rounded-[2rem] touch-pan-y select-none cursor-grab active:cursor-grabbing"
+                     className="relative w-full aspect-square sm:aspect-[4/3] overflow-hidden rounded-t-3xl touch-pan-y select-none cursor-grab active:cursor-grabbing"
                      onTouchStart={handleMobileTouchStart}
                      onTouchMove={handleMobileTouchMove}
                      onTouchEnd={handleMobileTouchEnd}
                      onClick={() => setFullscreenImageIndex(activeImageIndex)}
                    >
-                      <div className="relative w-full h-full bg-black">
+                     <div className="absolute inset-0">
                        <AnimatePresence mode="wait">
-                         <motion.div
+                         <motion.img 
                            key={activeImageIndex}
+                           src={galleryImages[activeImageIndex]}
                            initial={{ opacity: 0 }}
                            animate={{ opacity: 1 }}
                            exit={{ opacity: 0 }}
-                           transition={{ duration: 0.5, ease: "linear" }}
-                           className="absolute inset-0 w-full h-full overflow-hidden"
-                         >
-                           {/* Blurred Background */}
-                           <img 
-                             src={galleryImages[activeImageIndex]}
-                             alt=""
-                             className="absolute inset-0 w-full h-full object-cover blur-sm scale-105 opacity-90"
-                           />
-                           {/* Main Image */}
-                           <img
-                             src={galleryImages[activeImageIndex]}
-                             alt={event.title}
-                             className="absolute inset-0 w-full h-full object-contain z-10"
-                           />
-                         </motion.div>
+                           transition={{ duration: 0.3, ease: "linear" }}
+                           className="absolute inset-0 w-full h-full object-cover"
+                           alt={event.title}
+                         />
                        </AnimatePresence>
-
-                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none z-20" />
+                     </div>
+                       {/* Subtle dark gradient overlay at top and bottom */}
+                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/40 pointer-events-none z-10" />
 
                        {/* Round White Back Button */}
                        <button 
@@ -1497,30 +1473,7 @@ export default function EventDetails() {
                            ))}
                          </div>
                        )}
-                     </div>
                    </div>
-
-                   {/* Mobile Horizontal Thumbnail Strip for quick tap/slide */}
-                   {galleryImages.length > 1 && (
-                     <div className="flex gap-2 overflow-x-auto px-4 py-3 bg-gray-50/70 border-b border-gray-100 scrollbar-none">
-                       {galleryImages.map((img, idx) => {
-                         const isActive = idx === activeImageIndex;
-                         return (
-                           <button
-                             key={idx}
-                             onClick={() => setActiveImageIndex(idx)}
-                             className={`relative w-16 h-12 rounded-xl overflow-hidden flex-shrink-0 transition-all duration-200 border-2 cursor-pointer ${
-                               isActive 
-                                 ? 'border-adv-orange ring-1 ring-orange-200 scale-95 shadow-xs' 
-                                 : 'border-transparent opacity-60 hover:opacity-100'
-                             }`}
-                           >
-                             <AdaptiveImage src={img} alt={`Thumbnail ${idx + 1}`} fitMode="contain" className="w-full h-full" showBlurBackdrop={true} />
-                           </button>
-                         );
-                       })}
-                     </div>
-                   )}
 
                     {/* Title & Metadata Centered Section */}
                    <div className="text-center space-y-4 px-4 py-6 border-b border-gray-100 bg-gray-50/20">
@@ -1533,188 +1486,136 @@ export default function EventDetails() {
                        </h1>
                      </div>
 
-                     <div className="flex flex-col items-center justify-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-gray-500 w-full">
-                       {/* Date, Time, and Refund on the same line - perfectly sized to fit without scrollbar */}
-                       <div className="flex items-center justify-center gap-1 sm:gap-1.5 flex-nowrap max-w-full">
-                         {event.dateType !== 'flexible' && (
-                           <span className="inline-flex items-center gap-1 bg-white px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border border-gray-150/60 shadow-3xs whitespace-nowrap shrink-0">
-                             <Calendar className="w-3 h-3 text-adv-orange shrink-0" />
-                             <span>{new Date(event.date).toLocaleDateString()}</span>
-                           </span>
-                         )}
-                         {event.dateType !== 'flexible' && event.time && (
-                           <span className="inline-flex items-center gap-1 bg-white px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border border-gray-150/60 shadow-3xs whitespace-nowrap shrink-0">
-                             <Clock className="w-3 h-3 text-adv-orange shrink-0" />
-                             <span>{event.time}</span>
-                           </span>
-                         )}
-                         {Boolean(event.allowRefunds) ? (
-                           <span className="inline-flex items-center gap-1 bg-white text-black px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border border-gray-150 shadow-3xs font-bold whitespace-nowrap shrink-0">
-                             <RefreshCcw className="w-3 h-3 text-emerald-600 shrink-0" />
-                             <span>{t.refundableBadge}</span>
-                           </span>
-                         ) : (
-                           <span className="inline-flex items-center gap-1 bg-white text-black px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border border-gray-150 shadow-3xs font-bold whitespace-nowrap shrink-0">
-                             <XCircle className="w-3 h-3 text-rose-600 shrink-0" />
-                             <span>{t.nonRefundableBadge}</span>
-                           </span>
-                         )}
-                       </div>
-
-                       {/* Location on under */}
-                       <div className="flex items-center justify-center w-full mt-0.5">
-                         <span className="inline-flex items-center gap-1 bg-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border border-gray-150/60 shadow-3xs text-adv-slate max-w-[95%]">
-                           <MapPin className="w-3 h-3 text-adv-orange shrink-0" />
-                           <span className="truncate">{event.location}</span>
+                     <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-bold text-gray-500">
+                       {event.dateType !== 'flexible' && (
+                         <span className="inline-flex items-center gap-1.5 bg-white px-3 py-2 rounded-xl border border-gray-150/60 shadow-3xs text-adv-slate">
+                           <Calendar className="w-3.5 h-3.5 text-adv-orange" />
+                           {new Date(event.date).toLocaleDateString()}
                          </span>
-                       </div>
+                       )}
+                       {event.dateType !== 'flexible' && event.time && (
+                         <span className="inline-flex items-center gap-1.5 bg-white px-3 py-2 rounded-xl border border-gray-150/60 shadow-3xs text-adv-slate">
+                           <Clock className="w-3.5 h-3.5 text-adv-orange" />
+                           {event.time}
+                         </span>
+                       )}
+                       <span className="inline-flex items-center gap-1.5 bg-white px-3 py-2 rounded-xl border border-gray-150/60 shadow-3xs text-adv-slate">
+                         <MapPin className="w-3.5 h-3.5 text-adv-orange shrink-0" />
+                         <span>{event.location}</span>
+                       </span>
                      </div>
                    </div>
                  </div>
                )}
 
                {/* Desktop Hero Image */}
-                <div className="hidden lg:block p-4">
-                  {event.image ? (
-                  <div className="relative">
-                    <div 
-                      className="relative h-[220px] sm:h-[360px] md:h-[420px] lg:h-[460px] xl:h-[560px] w-full cursor-zoom-in overflow-hidden shadow-sm border border-gray-100/50 rounded-[2rem] lg:rounded-[3rem]"
-                      onClick={() => setFullscreenImageIndex(activeImageIndex)}
-                    >
-                      <div className="relative w-full h-full bg-black">
-                        <AnimatePresence mode="wait">
-                          <motion.div
-                            key={activeImageIndex}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.5, ease: "linear" }}
-                            className="absolute inset-0 w-full h-full overflow-hidden"
-                          >
-                            {/* Blurred Background */}
-                            <img 
-                              src={galleryImages[activeImageIndex]}
-                              alt=""
-                              className="absolute inset-0 w-full h-full object-cover blur-sm scale-105 opacity-90"
-                            />
-                            {/* Main Image */}
-                            <img
-                              src={galleryImages[activeImageIndex]}
-                              alt={event.title}
-                              className="absolute inset-0 w-full h-full object-contain z-10"
-                            />
-                          </motion.div>
-                        </AnimatePresence>
+               <div className="hidden lg:block">
+                 {event.image ? (
+                 <div className="relative">
+                   {/* Ambient glow backdrop underneath */}
+                   <div 
+                     className="absolute inset-0 -m-8 bg-cover bg-center blur-3xl opacity-15 select-none pointer-events-none rounded-[40px] transition-opacity duration-500 group-hover/hero:opacity-25" 
+                     style={{ backgroundImage: `url(${galleryImages[activeImageIndex]})` }} 
+                   />
+                   
+                   <div 
+                     className="relative h-72 sm:h-[360px] md:h-[420px] lg:h-[460px] w-full cursor-zoom-in overflow-hidden rounded-3xl"
+                     onClick={() => setFullscreenImageIndex(activeImageIndex)}
+                   >
+                     <div className="absolute inset-0">
+                       <AnimatePresence mode="wait">
+                         <motion.img 
+                           key={activeImageIndex}
+                           src={galleryImages[activeImageIndex]}
+                           initial={{ opacity: 0 }}
+                           animate={{ opacity: 1 }}
+                           exit={{ opacity: 0 }}
+                           transition={{ duration: 0.3, ease: "linear" }}
+                           className="absolute inset-0 w-full h-full object-cover"
+                           alt={event.title}
+                         />
+                       </AnimatePresence>
+                     </div>
+                       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent pointer-events-none z-10" />
+                       <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent pointer-events-none z-10" />
+                       
+                       {/* Left/Right Arrows on Hover */}
+                       {galleryImages.length > 1 && (
+                         <>
+                           <button 
+                             className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/30 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/90 hover:text-white transition-all active:scale-90 z-20 md:opacity-0 md:group-hover/hero:opacity-100 pointer-events-auto"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               setActiveImageIndex(prev => (prev === 0 ? galleryImages.length - 1 : prev - 1));
+                             }}
+                           >
+                             <ChevronLeft className="w-5 h-5" />
+                           </button>
+                           <button 
+                             className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/30 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/90 hover:text-white transition-all active:scale-90 z-20 md:opacity-0 md:group-hover/hero:opacity-100 pointer-events-auto"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               setActiveImageIndex(prev => (prev === galleryImages.length - 1 ? 0 : prev + 1));
+                             }}
+                           >
+                             <ChevronRight className="w-5 h-5" />
+                           </button>
+                         </>
+                       )}
 
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none z-20" />
+                       {/* Overlay Title on Image */}
+                       <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 text-white flex flex-col justify-end h-full z-20 pointer-events-none">
+                         <div className="mb-2.5">
+                           <span className="inline-flex items-center gap-1 bg-adv-orange/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/10 border border-white/10">
+                             {event.category || 'Event'}
+                           </span>
+                         </div>
+                         
+                         <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight mb-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] font-sans text-white">
+                           {event.title}
+                         </h1>
 
-                        {/* Left/Right Arrows on Hover */}
-                        {galleryImages.length > 1 && (
-                          <>
-                            <button 
-                              className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/90 hover:text-white transition-all active:scale-90 z-20 md:opacity-0 md:group-hover/hero:opacity-100 pointer-events-auto shadow-md"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveImageIndex(prev => (prev === 0 ? galleryImages.length - 1 : prev - 1));
-                              }}
-                            >
-                              <ChevronLeft className="w-5 h-5" />
-                            </button>
-                            <button 
-                              className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/90 hover:text-white transition-all active:scale-90 z-20 md:opacity-0 md:group-hover/hero:opacity-100 pointer-events-auto shadow-md"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveImageIndex(prev => (prev === galleryImages.length - 1 ? 0 : prev + 1));
-                              }}
-                            >
-                              <ChevronRight className="w-5 h-5" />
-                            </button>
-                          </>
-                        )}
-
-                        <div className="absolute top-4 right-4 bg-black/40 hover:bg-black/70 backdrop-blur-md border border-white/15 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-all active:scale-95 group/btn z-20 pointer-events-auto" title="Full Screen">
-                          <Maximize2 className="w-4 h-4 transition-transform duration-300 group-hover/btn:scale-110" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Thumbnail strip */}
-                    {galleryImages.length > 1 && (
-                      <div className="flex gap-2.5 overflow-x-auto px-6 py-4 border-b border-gray-100/80 bg-gray-50/45 scrollbar-none">
-                        {galleryImages.map((img, idx) => {
-                          const isActive = idx === activeImageIndex;
-                          return (
-                            <button
-                              key={idx}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveImageIndex(idx);
-                              }}
-                              className={`relative w-20 h-14 sm:w-24 sm:h-16 rounded-2xl overflow-hidden flex-shrink-0 transition-all duration-300 border-2 cursor-pointer ${
-                                isActive 
-                                  ? 'border-adv-orange ring-2 ring-orange-100 scale-[0.96] shadow-md shadow-orange-500/10' 
-                                  : 'border-transparent hover:border-gray-200 hover:scale-[1.02] opacity-70 hover:opacity-100'
-                              }`}
-                            >
-                              <AdaptiveImage 
-                                src={img} 
-                                alt={`Event thumbnail ${idx + 1}`} 
-                                fitMode="contain"
-                                className="w-full h-full"
-                                showBlurBackdrop={true}
-                              />
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* Title & Metadata Section */}
-                    <div className="p-6 border-b border-gray-150/60 bg-gray-50/50 space-y-4">
-                      <div className="space-y-2">
-                        <span className="inline-block bg-adv-orange/10 text-adv-orange px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-adv-orange/20">
-                          {event.category || 'Event'}
-                        </span>
-                        <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight text-adv-slate">
-                          {event.title}
-                        </h1>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-                        {event.dateType !== 'flexible' && (
-                          <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-xs text-gray-600 whitespace-nowrap">
-                            <Calendar className="w-3.5 h-3.5 text-adv-orange" />
-                            {new Date(event.date).toLocaleDateString()}
-                          </span>
-                        )}
-                        <div className="inline-flex items-center gap-2 shrink-0">
-                          {event.dateType !== 'flexible' && event.time && (
-                            <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-xs text-gray-600 whitespace-nowrap">
-                              <Clock className="w-3.5 h-3.5 text-adv-orange animate-pulse" />
-                              {event.time}
+                         <div className="flex flex-wrap items-center gap-2.5 text-xs font-semibold font-sans">
+                            {event.dateType !== 'flexible' && (
+                              <span className="inline-flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/20 shadow-lg text-white transition-all hover:bg-black/60">
+                                <Calendar className="w-3.5 h-3.5 text-adv-orange" />
+                                {new Date(event.date).toLocaleDateString()}
+                              </span>
+                            )}
+                            {event.dateType !== 'flexible' && event.time && (
+                              <span className="inline-flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/20 shadow-lg text-white transition-all hover:bg-black/60">
+                                <Clock className="w-3.5 h-3.5 text-adv-orange animate-pulse" />
+                                {event.time}
+                              </span>
+                            )}
+                            <span className="inline-flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/20 shadow-lg text-white">
+                              <MapPin className="w-3.5 h-3.5 text-adv-orange shrink-0" />
+                              <span>{event.location}</span>
                             </span>
-                          )}
-                          {Boolean(event.allowRefunds) ? (
-                            <span className="inline-flex items-center gap-1.5 bg-white text-black px-3 py-1.5 rounded-xl border border-gray-150 shadow-xs font-bold whitespace-nowrap">
-                              <RefreshCcw className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                              <span>{t.refundableBadge}</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 bg-white text-black px-3 py-1.5 rounded-xl border border-gray-150 shadow-xs font-bold whitespace-nowrap">
-                              <XCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                              <span>{t.nonRefundableBadge}</span>
-                            </span>
-                          )}
-                        </div>
-                        <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-xs text-adv-slate whitespace-nowrap">
-                          <MapPin className="w-3.5 h-3.5 text-adv-orange shrink-0" />
-                          <span>{event.location}</span>
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* Title with NO background image - should be black / text-adv-slate */
+                         </div>
+                       </div>
+
+                       <div className="absolute top-4 right-4 bg-black/20 hover:bg-white/20 backdrop-blur-md border border-white/15 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-all active:scale-95 group/btn z-20 pointer-events-auto" title="Full Screen">
+                         <Maximize2 className="w-4 h-4 transition-transform duration-300 group-hover/btn:scale-110" />
+                       </div>
+                   </div>
+
+                   {/* Carousel Pagination Dots */}
+                   {galleryImages.length > 1 && (
+                     <div className="flex items-center justify-center gap-2 py-4 bg-gray-50/45 border-b border-gray-100/80">
+                        {galleryImages.map((_, idx) => (
+                          <button 
+                            key={idx}
+                            onClick={() => setActiveImageIndex(idx)}
+                            className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${idx === activeImageIndex ? 'w-8 bg-adv-orange' : 'w-2 bg-adv-orange/30 hover:bg-adv-orange/50'}`}
+                            aria-label={`Go to slide ${idx + 1}`}
+                          />
+                        ))}
+                     </div>
+                   )}
+                 </div>
+               ) : (
+                 /* Title with NO background image - should be black / text-adv-slate */
                  <div className={`p-6 border-b border-gray-150/60 bg-gray-50/50 ${event.allowReviews !== false && mobileActiveTab === 'reviews' ? 'hidden lg:block' : 'block'}`}>
                     <h1 className="text-xl sm:text-3xl font-black tracking-tight leading-tight mb-4 text-adv-slate">
                       {event.title}
@@ -1723,33 +1624,24 @@ export default function EventDetails() {
 
                     <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
                        {event.dateType !== 'flexible' && (
-                         <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-sm text-gray-600 whitespace-nowrap">
+                         <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-sm text-gray-600">
                            <Calendar className="w-3.5 h-3.5 text-adv-orange" />
                            {new Date(event.date).toLocaleDateString()}
                          </span>
                        )}
-                       <div className="inline-flex items-center gap-2 shrink-0">
-                         {event.dateType !== 'flexible' && event.time && (
-                           <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-sm text-gray-600 whitespace-nowrap">
-                             <Clock className="w-3.5 h-3.5 text-adv-orange animate-pulse" />
-                             {event.time}
-                           </span>
-                         )}
-                         {Boolean(event.allowRefunds) ? (
-                           <span className="inline-flex items-center gap-1.5 bg-white text-black px-3 py-1.5 rounded-xl border border-gray-150 shadow-sm font-bold whitespace-nowrap">
-                             <RefreshCcw className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                             <span>{t.refundableBadge}</span>
-                           </span>
-                         ) : (
-                           <span className="inline-flex items-center gap-1.5 bg-white text-black px-3 py-1.5 rounded-xl border border-gray-150 shadow-sm font-bold whitespace-nowrap">
-                             <XCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                             <span>{t.nonRefundableBadge}</span>
-                           </span>
-                         )}
-                       </div>
-                       <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-sm text-gray-700 whitespace-nowrap">
+                       {event.dateType !== 'flexible' && event.time && (
+                         <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-sm text-gray-600">
+                           <Clock className="w-3.5 h-3.5 text-adv-orange animate-pulse" />
+                           {event.time}
+                         </span>
+                       )}
+                       <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-sm text-gray-700">
                          <MapPin className="w-3.5 h-3.5 text-adv-orange shrink-0" />
                          <span>{event.location}</span>
+                       </span>
+                       <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-sm text-gray-600">
+                         <Languages className="w-3.5 h-3.5 text-adv-orange" />
+                         {(event.languages || ['Lao', 'English']).join(', ')}
                        </span>
                     </div>
                  </div>
@@ -1770,25 +1662,25 @@ export default function EventDetails() {
 
              {/* Public Map & Location Venue Section */}
              {event.eventType !== 'online' ? (
-               <div className="mx-3.5 sm:mx-6 mb-3 sm:mb-6 mt-2 bg-white p-3 sm:p-5 rounded-2xl border border-gray-150/80 shadow-xs space-y-2.5 sm:space-y-4" id="event-map-venue">
-                 <div className="pb-2 sm:pb-3 border-b border-gray-100">
+               <div className="my-4 bg-white p-4 sm:p-5 rounded-2xl border border-gray-150/80 shadow-xs space-y-4" id="event-map-venue">
+                 <div className="pb-3 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                    <div>
-                     <div className="flex items-center gap-1.5">
-                       <MapPin className="w-3.5 h-3.5 text-adv-orange shrink-0" />
-                       <h3 className="font-bold text-adv-slate text-xs sm:text-base">
+                     <div className="flex items-center gap-2">
+                       <MapPin className="w-4 h-4 text-adv-orange shrink-0" />
+                       <h3 className="font-bold text-adv-slate text-sm sm:text-base">
                          {lang === 'lo' ? 'ສະຖານທີ່ຈັດງານ' : 'Event Location & Venue'}
                        </h3>
                      </div>
 
                      {/* Organizer Venue Name */}
                      {event.venue && (
-                       <div className="mt-1 text-sm sm:text-lg font-black text-adv-slate">
+                       <div className="mt-2 text-base sm:text-lg font-black text-adv-slate">
                          {event.venue}
                        </div>
                      )}
 
                      {/* Specific Address, District & Province */}
-                     <p className="text-gray-700 text-xs sm:text-sm font-medium mt-0.5 leading-snug">
+                     <p className="text-gray-700 text-xs sm:text-sm font-medium mt-1 leading-relaxed">
                        {event.location && (
                          <span className="text-gray-800 font-semibold">{event.location}</span>
                        )}
@@ -1798,6 +1690,44 @@ export default function EventDetails() {
                          <span className="text-gray-500 italic">Vientiane, Laos</span>
                        )}
                      </p>
+                   </div>
+
+                   {/* Quick Action Buttons */}
+                   <div className="flex items-center gap-2 shrink-0">
+                     <button
+                       type="button"
+                       onClick={() => {
+                         const fullAddr = [event.venue, event.location, event.district, event.province, 'Laos'].filter(Boolean).join(', ');
+                         navigator.clipboard.writeText(fullAddr || 'Vientiane, Laos');
+                         setCopiedMapAddress(true);
+                         setTimeout(() => setCopiedMapAddress(false), 2000);
+                       }}
+                       className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                     >
+                       {copiedMapAddress ? (
+                         <>
+                           <Check className="w-3.5 h-3.5 text-emerald-600" />
+                           <span className="text-emerald-600">{lang === 'lo' ? 'ສຳເນົາແລ້ວ' : 'Copied'}</span>
+                         </>
+                       ) : (
+                         <>
+                           <Copy className="w-3.5 h-3.5 text-gray-500" />
+                           <span>{lang === 'lo' ? 'ສຳເນົາທີ່ຢູ່' : 'Copy Address'}</span>
+                         </>
+                       )}
+                     </button>
+
+                     {event.googleMapUrl && (
+                       <a
+                         href={event.googleMapUrl}
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-xl text-xs font-bold text-adv-orange transition-all flex items-center gap-1.5 shadow-2xs"
+                       >
+                         <ExternalLink className="w-3.5 h-3.5" />
+                         <span>{lang === 'lo' ? 'ເປີດໃນ Maps' : 'Google Maps'}</span>
+                       </a>
+                     )}
                    </div>
                  </div>
 
@@ -1811,11 +1741,10 @@ export default function EventDetails() {
                    latitude={event.latitude}
                    longitude={event.longitude}
                    lang={lang as 'en' | 'lo'}
-                   showOpenInMapsButton={false}
                  />
                </div>
              ) : (
-               <div className="mx-4 sm:mx-6 mb-4 sm:mb-6 mt-2 bg-white p-4 sm:p-5 rounded-2xl border border-gray-150/80 shadow-xs space-y-3" id="event-online-venue">
+               <div className="my-4 bg-white p-4 sm:p-5 rounded-2xl border border-gray-150/80 shadow-xs space-y-3" id="event-online-venue">
                  <div className="flex items-center gap-2.5 pb-2 border-b border-gray-100">
                    <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center text-adv-orange shrink-0">
                      <Video className="w-4 h-4" />
@@ -1907,6 +1836,26 @@ export default function EventDetails() {
                         : `${event.organizer || 'ພັນທະມິດ Pasopkan'} ແມ່ນຜູ້ຈັດງານລະດັບພຣີມ່ຽມທີ່ໄດ້ຮັບການຢືນຢັນໃນ Pasopkan, ມຸ່ງໝັ້ນທີ່ຈະສ້າງສັນ ແລະ ນຳສະເໜີກິດຈະກຳວັດທະນະທຳ, ການຜະຈົນໄພ ແລະ ງານສັງຄົມ ທີ່ປອດໄພ ແລະ ໜ້າຈົດຈຳທີ່ສຸດໃນລາວ.`
                     )}
                   </p>
+
+                  {/* Contact Channels & Interactive Send Message Form */}
+                  <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
+                        {lang === 'en' ? 'Contact Channels' : 'ຊ່ອງທາງຕິດຕໍ່'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2">
+                      <a
+                        href="tel:+8562099999999"
+                        className="py-2.5 px-3 bg-gray-50 hover:bg-gray-100 active:scale-[0.98] transition-all border border-gray-150 rounded-xl text-xs font-bold text-gray-700 flex items-center justify-center gap-1.5 shadow-2xs"
+                      >
+                        <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span className="truncate">{lang === 'en' ? 'Call' : 'ໂທຫາ'}</span>
+                      </a>
+                    </div>
+
+                  </div>
                 </div>
               )}
             </div>
@@ -1917,9 +1866,9 @@ export default function EventDetails() {
           </div>
 
           {/* Ticket Sidebar */}
-          <div className="lg:col-span-5 block -mt-3 sm:-mt-4 lg:mt-0" ref={ticketSidebarRef}>
+          <div className="lg:col-span-5 block" ref={ticketSidebarRef}>
             {isPast ? (
-              <div className="sticky top-24 bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-150/80 space-y-4 text-center">
+              <div className="sticky top-24 bg-white rounded-3xl p-6 shadow-sm border border-gray-150/80 space-y-4 text-center">
                 <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto text-slate-700 border border-slate-200/60 shadow-xs">
                   <Calendar className="w-6 h-6 text-slate-600" />
                 </div>
@@ -1943,7 +1892,7 @@ export default function EventDetails() {
                 </div>
               </div>
             ) : (
-              <div className="sticky top-24 bg-white rounded-3xl p-4 sm:p-5 lg:p-6 shadow-[0_10px_35px_rgba(0,0,0,0.06)] border border-gray-150/80 space-y-4 sm:space-y-5 relative overflow-hidden">
+              <div className="sticky top-24 bg-white rounded-3xl p-6 shadow-[0_10px_35px_rgba(0,0,0,0.06)] border border-gray-150/80 space-y-5 relative overflow-hidden">
                {/* Decorative top accent line */}
                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-adv-orange via-amber-500 to-adv-orange" />
 
@@ -2260,6 +2209,8 @@ export default function EventDetails() {
                  </div>
                </div>
 
+
+
                {/* Total Summary & Checkout Button */}
                <div className="pt-3 border-t border-gray-100 space-y-3">
                  <button 
@@ -2341,6 +2292,26 @@ export default function EventDetails() {
                       : `${event.organizer || 'ພັນທະມິດ Pasopkan'} ແມ່ນຜູ້ຈັດງານລະດັບພຣີມ່ຽມທີ່ໄດ້ຮັບການຢືນຢັນໃນ Pasopkan, ມຸ່ງໝັ້ນທີ່ຈະສ້າງສັນ ແລະ ນຳສະເໜີກິດຈະກຳວັດທະນະທຳ, ການຜະຈົນໄພ ແລະ ງານສັງຄົມ ທີ່ປອດໄພ ແລະ ໜ້າຈົດຈຳທີ່ສຸດໃນລາວ.`
                   )}
                 </p>
+
+                {/* Contact Channels & Interactive Send Message Form */}
+                <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
+                      {lang === 'en' ? 'Contact Channels' : 'ຊ່ອງທາງຕິດຕໍ່'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2">
+                    <a
+                      href="tel:+8562099999999"
+                      className="py-2.5 px-3 bg-gray-50 hover:bg-gray-100 active:scale-[0.98] transition-all border border-gray-150 rounded-xl text-xs font-bold text-gray-700 flex items-center justify-center gap-1.5 shadow-2xs"
+                    >
+                      <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className="truncate">{lang === 'en' ? 'Call' : 'ໂທຫາ'}</span>
+                    </a>
+                  </div>
+
+                </div>
               </div>
             )}
           </div>

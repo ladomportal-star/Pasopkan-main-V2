@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Ticket, User, Compass, Target, Shield } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 
 const translations = {
   en: {
@@ -18,6 +19,7 @@ const translations = {
 export default function BottomNav() {
   const location = useLocation();
   const { lang } = useLanguage();
+  const { isAuthenticated } = useAuth();
   const t = translations[lang];
 
   if (location.pathname === '/staff-scanner' || location.pathname === '/admin' || location.pathname === '/create') {
@@ -51,7 +53,7 @@ export default function BottomNav() {
         </Link>
         
         <Link 
-          to="/account" 
+          to={isAuthenticated ? "/account" : "/login"} 
           className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-all ${
             location.pathname === '/account' ? 'text-adv-orange' : 'text-gray-400'
           }`}

@@ -7,6 +7,7 @@ import eventRoutes from "./event.routes.ts";
 import ticketRoutes from "./ticket.routes.ts";
 import checkinRoutes from "./checkin.routes.ts";
 import reviewRoutes from "./review.routes.ts";
+import otpRoutes from "./otp.routes.ts";
 
 const apiRouter = Router();
 
@@ -18,5 +19,6 @@ apiRouter.use(eventRoutes);
 apiRouter.use(ticketRoutes);
 apiRouter.use(checkinRoutes);
 apiRouter.use(reviewRoutes);
+apiRouter.use(otpRoutes);
 
 export default apiRouter;

@@ -75,9 +75,9 @@ const getEventStats = (event: LaoEvent) => {
 
 const LandscapeEventCardSkeleton: React.FC = () => {
   return (
-    <div className="relative flex flex-col bg-white border border-gray-150/60 rounded-2xl sm:rounded-[2rem] shadow-xs shrink-0 w-[230px] sm:w-[280px] md:w-[320px] overflow-hidden">
+    <div className="relative flex flex-col bg-white border border-gray-150/60 rounded-2xl sm:rounded-[2rem] shadow-xs shrink-0 w-[200px] sm:w-[240px] md:w-[280px] overflow-hidden">
       {/* Image header skeleton */}
-      <div className="h-32 sm:h-40 md:h-44 bg-gray-100 animate-pulse" />
+      <div className="aspect-[4/5] bg-gray-100 animate-pulse" />
 
       {/* Body container */}
       <div className="p-3 sm:p-4 flex flex-col flex-1">
@@ -251,6 +251,44 @@ export default function Home() {
   const [heroSettings, setHeroSettings] = useState<HomeHeroSettings>(DEFAULT_HOME_HERO_SETTINGS);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
+    setTouchEndX(null);
+    if ('touches' in e) {
+      setTouchStartX(e.targetTouches[0].clientX);
+    } else {
+      setTouchStartX((e as React.MouseEvent).clientX);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
+    if ('touches' in e) {
+      setTouchEndX(e.targetTouches[0].clientX);
+    } else if (touchStartX !== null) {
+      setTouchEndX((e as React.MouseEvent).clientX);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX === null || touchEndX === null) return;
+    const distance = touchStartX - touchEndX;
+    const minSwipeDistance = 35;
+    
+    // heroSlides isn't defined here yet, but we can compute it inside the effect or use a functional update
+    if (distance > minSwipeDistance) {
+      setCurrentImageIndex((prev) => (prev + 1) % Math.max(1, (heroSettings.slides?.length || DEFAULT_HOME_HERO_SETTINGS.slides.length)));
+    } else if (distance < -minSwipeDistance) {
+      setCurrentImageIndex((prev) => {
+        const len = Math.max(1, (heroSettings.slides?.length || DEFAULT_HOME_HERO_SETTINGS.slides.length));
+        return prev === 0 ? len - 1 : prev - 1;
+      });
+    }
+    setTouchStartX(null);
+    setTouchEndX(null);
+  };
+
   // Fetch dynamic hero settings from Firestore / LocalStorage
   useEffect(() => {
     let isMounted = true;
@@ -346,8 +384,19 @@ export default function Home() {
       />
       
       <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 pt-4">
-        <section className="relative h-[220px] sm:h-[360px] landscape:h-[260px] lg:h-[1080px] flex flex-col justify-center items-center overflow-hidden rounded-[1.5rem] sm:rounded-[2rem]">
-          <div className="absolute inset-0">
+        <section 
+          className="relative h-[220px] sm:h-[360px] landscape:h-[260px] lg:h-[1080px] flex flex-col justify-center items-center overflow-hidden rounded-[1.5rem] sm:rounded-[2rem] touch-pan-y select-none cursor-grab active:cursor-grabbing"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onMouseDown={handleTouchStart}
+          onMouseMove={handleTouchMove}
+          onMouseUp={handleTouchEnd}
+          onMouseLeave={() => {
+            if (touchStartX !== null) handleTouchEnd();
+          }}
+        >
+          <div className="absolute inset-0 pointer-events-none">
             <AnimatePresence mode="wait">
               <motion.img 
                 key={currentSlide?.id || currentSlide?.imageUrl || currentImageIndex}
@@ -359,7 +408,7 @@ export default function Home() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 1.5, ease: "linear" }}
+                transition={{ duration: 0.3, ease: "linear" }}
                 className="absolute inset-0 w-full h-full object-cover"
                 alt={currentSlide?.title_en || 'Hero Background'}
                 fetchPriority="high"

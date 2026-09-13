@@ -6,6 +6,7 @@ import Logo from './Logo';
 import SearchModal from './SearchModal';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 const translations = {
   en: {
@@ -86,6 +87,7 @@ export default function Navbar() {
   const hasUnread = notifications.some(n => n.isUnread);
   const { lang, toggleLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
+  const { isAuthenticated } = useAuth();
   const t = translations[lang];
 
   useEffect(() => {
@@ -160,7 +162,7 @@ export default function Navbar() {
 
             <div className="flex items-center gap-1 lg:gap-3">
               <Link 
-                to="/dashboard" 
+                to={isAuthenticated ? "/dashboard" : "/login"} 
                 className="hidden md:block p-2 text-adv-slate hover:text-adv-orange transition-all"
                 title={t.myTickets}
               >
@@ -168,7 +170,7 @@ export default function Navbar() {
               </Link>
 
               <Link 
-                to="/account" 
+                to={isAuthenticated ? "/account" : "/login"} 
                 className="hidden sm:block p-2 text-adv-slate hover:text-adv-orange transition-all"
                 title={t.account}
               >

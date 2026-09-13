@@ -25,8 +25,8 @@ import {
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
 import { QRCodeSVG } from "qrcode.react";
-import { doc, setDoc, collection } from "firebase/firestore";
-import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
+import { supabase } from "../lib/supabase";
+
 import { addEventAttendee } from "../lib/checkinsStore";
 import SEO from "../components/SEO";
 
@@ -814,7 +814,7 @@ export default function Checkout() {
             const redemptionsList = existingRedemptionsRaw
               ? JSON.parse(existingRedemptionsRaw)
               : [];
-            const activeUsr = user || auth.currentUser;
+            const activeUsr = user;
             redemptionsList.push({
               id: `red_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
               couponId: String(appliedCoupon.id || appliedCoupon.code),
@@ -860,82 +860,24 @@ export default function Checkout() {
       // 2. Firestore tickets collection tracking
       const eventId = event.id;
       const rawTitle = event.title;
-      const createFirestoreTicket = async () => {
-        const activeUser = user || auth.currentUser;
-        if (activeUser) {
-          const titleStr = rawTitle
-            ? typeof rawTitle === "object" && rawTitle !== null
-              ? (rawTitle as any).en || (rawTitle as any).lo || "Event"
-              : String(rawTitle)
-            : "Event";
-
-          if (auth.currentUser && activeUser.uid === auth.currentUser.uid) {
-            try {
-              const ticketRef = doc(collection(db, "tickets"));
-              await setDoc(ticketRef, {
-                eventId: eventId,
-                userId: activeUser.uid,
-                tierId: tier?.id || "standard",
-                quantity: quantity,
-                eventTitle: titleStr,
-                tierName: tier?.name || "Standard",
-                price: Number(tier?.price) || 0,
-                selectedDate: state?.selectedDate || "",
-                selectedTime: state?.selectedTime || "",
-                status: "confirmed",
-              });
-              console.log(
-                "Ticket synced with Firestore successfully:",
-                ticketRef.id,
-              );
-            } catch (err) {
-              handleFirestoreError(err, OperationType.CREATE, "tickets");
-            }
-          } else {
-            console.log(
-              "Operating in mock local session mode, bypassing Firestore write for tickets.",
-            );
-          }
-
-          // Sync with Cloud SQL PostgreSQL
-          const currentToken = token || localStorage.getItem("token");
-          if (currentToken) {
-            try {
-              const cloudSqlResponse = await fetch("/api/tickets", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${currentToken}`,
-                },
-                body: JSON.stringify({
-                  eventId: eventId,
-                  eventTitle: titleStr,
-                  tierId: tier?.id || "standard",
-                  tierName: tier?.name || "Standard",
-                  price: Number(tier?.price) || 0,
-                  quantity: quantity,
-                  selectedDate: state?.selectedDate || "",
-                  selectedTime: state?.selectedTime || "",
-                }),
-              });
-              if (cloudSqlResponse.ok) {
-                console.log("Ticket synced with Cloud SQL successfully!");
-              } else {
-                console.error(
-                  "Failed to sync ticket to Cloud SQL:",
-                  await cloudSqlResponse.text(),
-                );
-              }
-            } catch (sqlErr) {
-              console.error(
-                "Error sending ticket to Cloud SQL backend:",
-                sqlErr,
-              );
-            }
-          }
+      const createSupabaseTicket = async () => {
+        if (!user) return;
+        try {
+          const { error } = await supabase.from('tickets').insert({
+            user_id: user.id,
+            event_id: event.id,
+            ticket_type: state.ticketType,
+            quantity: state.quantity,
+            total_price: finalTotal,
+            status: 'valid'
+          });
+          if (error) throw error;
+        } catch (err: any) {
+          console.error("Failed to sync ticket to database:", err);
         }
       };
-      createFirestoreTicket();
+
+      createSupabaseTicket();
     }
   }, [step, event, tier, quantity, state?.selectedDate, state?.selectedTime]);
 

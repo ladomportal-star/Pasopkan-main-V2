@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Facebook, Instagram, Youtube, Mail, Phone, MapPin, Ticket, X, Shield } from 'lucide-react';
+import { Facebook, Instagram, Youtube, Mail, Phone, MapPin, Ticket, X, Shield, Cookie } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../context/LanguageContext';
 import Logo from './Logo';
@@ -27,6 +27,7 @@ const translations = {
     help: 'Help Center',
     privacy: 'Privacy Policy',
     terms: 'Terms & Conditions',
+    cookie: 'Cookie Policy',
     allRights: 'All rights reserved.',
     weAccept: 'Accepted Payments',
     sports: 'Adventure and Tour',
@@ -46,6 +47,7 @@ const translations = {
     help: 'ສູນຊ່ວຍເຫຼືອ',
     privacy: 'ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ',
     terms: 'ເງື່ອນໄຂການນຳໃຊ້',
+    cookie: 'ນະໂຍບາຍຄຸກກີ',
     allRights: 'ສະຫງວນລິຂະສິດ.',
     weAccept: 'ຊ່ອງທາງການຊຳລະເງິນ',
     sports: 'ການຜະຈົນໄພ ແລະ ທ່ອງທ່ຽວ',
@@ -99,6 +101,7 @@ export default function Footer() {
   const t = translations[lang as keyof typeof translations] || translations.en;
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+  const [isCookieOpen, setIsCookieOpen] = useState(false);
 
   const [termsSettings, setTermsSettings] = useState<TermsSettings>(DEFAULT_TERMS_SETTINGS);
   const [privacySettings, setPrivacySettings] = useState<PrivacySettings>(DEFAULT_PRIVACY_SETTINGS);
@@ -179,8 +182,6 @@ export default function Footer() {
                   {t.supportContact}
                 </Link>
               </li>
-              <li><button onClick={() => setIsTermsOpen(true)} className="text-sm font-medium text-gray-500 hover:text-adv-orange transition-colors text-left focus:outline-none cursor-pointer">{t.terms}</button></li>
-              <li><button onClick={() => setIsPrivacyOpen(true)} className="text-sm font-medium text-gray-500 hover:text-adv-orange transition-colors text-left focus:outline-none cursor-pointer">{t.privacy}</button></li>
               <li><Link to="/admin" className="text-sm font-medium text-gray-500 hover:text-adv-orange transition-colors inline-flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-adv-orange" />{t.admin}</Link></li>
             </ul>
           </div>
@@ -220,9 +221,19 @@ export default function Footer() {
 
         {/* Bottom Bar: Copyright & Payment Methods */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <p className="text-xs text-gray-400 font-medium">
-            © {new Date().getFullYear()} Pasopkan. {t.allRights}
-          </p>
+          <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-xs text-gray-400 font-medium">
+            <p>
+              © {new Date().getFullYear()} Pasopkan. {t.allRights}
+            </p>
+            <div className="hidden md:flex items-center gap-4 text-gray-300">
+              <span className="hidden md:inline">|</span>
+              <button onClick={() => setIsTermsOpen(true)} className="hover:text-adv-orange transition-colors cursor-pointer text-gray-400">Terms of Service</button>
+              <span className="hidden md:inline">|</span>
+              <button onClick={() => setIsPrivacyOpen(true)} className="hover:text-adv-orange transition-colors cursor-pointer text-gray-400">Privacy Policy</button>
+              <span className="hidden md:inline">|</span>
+              <button onClick={() => setIsCookieOpen(true)} className="hover:text-adv-orange transition-colors cursor-pointer text-gray-400">Cookie</button>
+            </div>
+          </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
@@ -344,6 +355,75 @@ export default function Footer() {
               <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
                 <button
                   onClick={() => setIsPrivacyOpen(false)}
+                  className="px-5 py-2 rounded-xl bg-adv-orange hover:bg-orange-600 text-white font-bold text-xs transition-colors cursor-pointer"
+                >
+                  {lang === 'en' ? 'I Understand' : 'ຂ້ອຍເຂົ້າໃຈແລ້ວ'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Cookie Policy Modal */}
+      <AnimatePresence>
+        {isCookieOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsCookieOpen(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', duration: 0.5 }}
+              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden z-10"
+            >
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-adv-orange">
+                    <Cookie className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-xl font-black text-adv-slate tracking-tight">{t.cookie}</h3>
+                </div>
+                <button
+                  onClick={() => setIsCookieOpen(false)}
+                  className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-6 max-h-[60vh] overflow-y-auto space-y-6 text-sm text-gray-500 leading-relaxed font-sans">
+                <div>
+                  <h4 className="font-bold text-adv-slate text-base mb-2">
+                    {lang === 'en' ? 'How we use cookies' : 'ວິທີທີ່ພວກເຮົານຳໃຊ້ຄຸກກີ'}
+                  </h4>
+                  <p className="whitespace-pre-wrap">
+                    {lang === 'en' 
+                      ? 'We use cookies and similar technologies to help personalize content, tailor and measure ads, and provide a better experience. By clicking accept, you agree to this, as outlined in our Cookie Policy.' 
+                      : 'ພວກເຮົານຳໃຊ້ຄຸກກີ ແລະ ເຕັກໂນໂລຊີທີ່ຄ້າຍຄືກັນ ເພື່ອຊ່ວຍປັບແຕ່ງເນື້ອຫາ, ປັບແຕ່ງ ແລະ ວັດແທກໂຄສະນາ ແລະ ສະໜອງປະສົບການທີ່ດີຂຶ້ນ. ໂດຍການຄລິກຍອມຮັບ, ທ່ານຕົກລົງເຫັນດີກັບສິ່ງນີ້, ຕາມທີ່ລະບຸໄວ້ໃນນະໂຍບາຍຄຸກກີຂອງພວກເຮົາ.'}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-bold text-adv-slate text-base mb-2">
+                    {lang === 'en' ? 'Essential Cookies' : 'ຄຸກກີທີ່ຈຳເປັນ'}
+                  </h4>
+                  <p className="whitespace-pre-wrap">
+                    {lang === 'en'
+                      ? 'These cookies are necessary for the website to function and cannot be switched off in our systems. They are usually only set in response to actions made by you which amount to a request for services, such as setting your privacy preferences, logging in or filling in forms.'
+                      : 'ຄຸກກີເຫຼົ່ານີ້ແມ່ນມີຄວາມຈຳເປັນສຳລັບເວັບໄຊທ໌ເພື່ອໃຫ້ສາມາດເຮັດວຽກໄດ້ ແລະ ບໍ່ສາມາດປິດໄດ້ໃນລະບົບຂອງພວກເຮົາ. ພວກມັນມັກຈະຖືກຕັ້ງຄ່າເພື່ອຕອບສະໜອງຕໍ່ການກະທຳຂອງທ່ານທີ່ເປັນການຮ້ອງຂໍບໍລິການ ເຊັ່ນ: ການຕັ້ງຄ່າຄວາມເປັນສ່ວນຕົວຂອງທ່ານ, ການເຂົ້າສູ່ລະບົບ ຫຼື ການຕື່ມແບບຟອມ.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+                <button
+                  onClick={() => setIsCookieOpen(false)}
                   className="px-5 py-2 rounded-xl bg-adv-orange hover:bg-orange-600 text-white font-bold text-xs transition-colors cursor-pointer"
                 >
                   {lang === 'en' ? 'I Understand' : 'ຂ້ອຍເຂົ້າໃຈແລ້ວ'}

@@ -7,8 +7,7 @@ import { events } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { doc, getDoc } from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
+import { supabase } from "../lib/supabase";
 import Logo from '../components/Logo';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import SiteSettingsTab from '../components/SiteSettingsTab';
@@ -465,19 +464,15 @@ export default function AdminDashboard() {
         }
 
         // Only query Firestore if we have a real active Firebase authenticated user matching our user.uid
-        if (auth.currentUser && auth.currentUser.uid === user.uid) {
+        if (user.id) {
           try {
-            const userDocRef = doc(db, 'users', user.uid);
-            const userDoc = await getDoc(userDocRef);
-            if (userDoc.exists()) {
-              const data = userDoc.data();
-              if (data.role === 'admin') {
-                setIsAdminAuthenticated(true);
-                sessionStorage.setItem('pasopkan_admin_authorized', 'true');
-              }
+            const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
+            if (data && data.role === 'admin' && !error) {
+              setIsAdminAuthenticated(true);
+              sessionStorage.setItem('pasopkan_admin_authorized', 'true');
             }
           } catch (err) {
-            handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
+            console.error(err);
           }
         }
       }

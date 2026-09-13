@@ -31,6 +31,8 @@ import PastEvents from './pages/PastEvents';
 import CategoryEvents from './pages/CategoryEvents';
 import Contact from './pages/Contact';
 import About from './pages/About';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
 import AdminDashboard from './pages/AdminDashboard';
 import StaffScanner from './pages/StaffScanner';
 
@@ -92,6 +94,8 @@ function AnimatedRoutes() {
           <Route path="help" element={<Help />} />
           <Route path="contact" element={<Contact />} />
           <Route path="about" element={<About />} />
+          <Route path="terms" element={<Terms />} />
+          <Route path="privacy" element={<Privacy />} />
         </Route>
         
         {/* Standalone Pages */}

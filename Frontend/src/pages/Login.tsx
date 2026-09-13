@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Ticket, Phone, Key, ArrowRight, ArrowLeft, Globe, Loader2, AlertCircle, Smartphone, Lock } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Ticket, Phone, Key, ArrowRight, ArrowLeft, Globe, Loader2, AlertCircle, Smartphone, Lock, X, Mail } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
@@ -9,6 +9,14 @@ import Logo from '../components/Logo';
 import OtpInput from '../components/OtpInput';
 import { safeStorage } from '../lib/storage';
 import SEO from '../components/SEO';
+import { 
+  getTermsSettings, 
+  getPrivacySettings,
+  TermsSettings, 
+  PrivacySettings, 
+  DEFAULT_TERMS_SETTINGS, 
+  DEFAULT_PRIVACY_SETTINGS
+} from '../lib/siteSettings';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -25,15 +33,38 @@ export default function Login() {
   const [countdown, setCountdown] = useState(0);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
 
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+  const [termsSettings, setTermsSettings] = useState<TermsSettings>(DEFAULT_TERMS_SETTINGS);
+  const [privacySettings, setPrivacySettings] = useState<PrivacySettings>(DEFAULT_PRIVACY_SETTINGS);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadSettings = async () => {
+      try {
+        const termsData = await getTermsSettings();
+        const privacyData = await getPrivacySettings();
+        if (isMounted) {
+          setTermsSettings(termsData);
+          setPrivacySettings(privacyData);
+        }
+      } catch (err) {
+        console.warn('Error loading settings:', err);
+      }
+    };
+    loadSettings();
+    return () => { isMounted = false; };
+  }, []);
+
   const translations = {
     en: {
       back: 'Back',
-      signInTitle: 'Sign in to Pasopkan',
+      signInTitle: 'Sign in',
       verifyTitle: 'Enter verification code',
       or: 'Or',
       sentCode: 'We sent a code to',
       phoneLabel: 'Phone number',
-      phonePlaceholder: '+856 20 XXXXXXXX',
+      phonePlaceholder: '20 XXXXXXXX',
       sendCodeBtn: 'Send Code',
       verifyLabel: 'Verification Code',
       verifyPlaceholder: '123456',
@@ -49,16 +80,22 @@ export default function Login() {
       twoFactorTitle: '2FA Authenticator Security Lock',
       twoFactorPrompt: '2FA is enabled on your account. Please enter the 6-digit code from your Google Authenticator or Authy app.',
       twoFactorLabel: '2FA Authenticator Code',
-      verify2faBtn: 'Verify 2FA & Log In'
+      verify2faBtn: 'Verify 2FA & Log In',
+      termsText1: 'By creating an account you agree to our',
+      termsLink: 'Terms & Conditions',
+      termsText2: 'and',
+      privacyLink: 'Privacy Policy',
+      terms: 'Terms & Conditions',
+      privacy: 'Privacy Policy'
     },
     lo: {
       back: 'ກັບຄືນ',
-      signInTitle: 'ເຂົ້າສູ່ລະບົບ Pasopkan',
+      signInTitle: 'ເຂົ້າສູ່ລະບົບ',
       verifyTitle: 'ໃສ່ລະຫັດຢືນຢັນ',
       or: 'ຫຼື',
       sentCode: 'ພວກເຮົາໄດ້ສົ່ງລະຫັດໄປທີ່',
       phoneLabel: 'ເບີໂທລະສັບ',
-      phonePlaceholder: '+856 20 XXXXXXXX',
+      phonePlaceholder: '20 XXXXXXXX',
       sendCodeBtn: 'ສົ່ງລະຫັດ',
       verifyLabel: 'ລະຫັດຢືນຢັນ',
       verifyPlaceholder: '123456',
@@ -74,7 +111,13 @@ export default function Login() {
       twoFactorTitle: 'ການຢືນຢັນ 2FA ເພື່ອຄວາມປອດໄພ',
       twoFactorPrompt: 'ບັນຊີຂອງທ່ານເປີດໃຊ້ 2FA ຢູ່. ກະລຸນາປ້ອນລະຫັດ 6 ຫຼັກຈາກແອັບ Google Authenticator ຫຼື Authy ຂອງທ່ານ.',
       twoFactorLabel: 'ລະຫັດ 2FA Authenticator',
-      verify2faBtn: 'ຢືນຢັນ 2FA & ເຂົ້າສູ່ລະບົບ'
+      verify2faBtn: 'ຢືນຢັນ 2FA & ເຂົ້າສູ່ລະບົບ',
+      termsText1: 'ໂດຍການສ້າງບັນຊີທ່ານເຫັນດີກັບ',
+      termsLink: 'ຂໍ້ກຳນົດ & ເງື່ອນໄຂ',
+      termsText2: 'ແລະ',
+      privacyLink: 'ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ',
+      terms: 'ຂໍ້ກຳນົດ & ເງື່ອນໄຂ',
+      privacy: 'ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ'
     }
   };
 
@@ -123,12 +166,33 @@ export default function Login() {
       }
     }
 
+    
+    let formattedPhone = digits;
+    if (formattedPhone.startsWith('856020')) {
+      formattedPhone = '85620' + formattedPhone.substring(6);
+    } else if (formattedPhone.startsWith('020')) {
+      formattedPhone = '85620' + formattedPhone.substring(3);
+    } else if (formattedPhone.startsWith('20')) {
+      formattedPhone = '85620' + formattedPhone.substring(2);
+    }
+
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsLoading(false);
-    setStep('otp');
-    setCountdown(60);
-    setResendMessage(null);
+    try {
+      const res = await fetch('/api/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: formattedPhone })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send OTP');
+      setStep('otp');
+      setCountdown(60);
+      setResendMessage(null);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -148,10 +212,27 @@ export default function Login() {
     setIsLoading(true);
     setError(null);
     setResendMessage(null);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsLoading(false);
-    setCountdown(60);
-    setResendMessage(t.codeResent);
+    try {
+      const digits = phoneNumber.replace(/\D/g, '');
+      let formattedPhone = digits;
+      if (formattedPhone.startsWith('856020')) formattedPhone = '85620' + formattedPhone.substring(6);
+      else if (formattedPhone.startsWith('020')) formattedPhone = '85620' + formattedPhone.substring(3);
+      else if (formattedPhone.startsWith('20')) formattedPhone = '85620' + formattedPhone.substring(2);
+
+      const res = await fetch('/api/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: formattedPhone })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to resend OTP');
+      setCountdown(60);
+      setResendMessage(t.codeResent);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
@@ -165,13 +246,26 @@ export default function Login() {
       setError(lang === 'en' ? 'Please enter the 6-digit verification code' : 'ກະລຸນາໃສ່ລະຫັດຢືນຢັນ 6 ຕົວເລກ');
       return;
     }
-    if (otp !== '123456') {
-      setError(t.incorrectOtp);
-      return;
-    }
-
     setIsLoading(true);
     try {
+      const digits = phoneNumber.replace(/\D/g, '');
+      let formattedPhone = digits;
+      if (formattedPhone.startsWith('856020')) formattedPhone = '85620' + formattedPhone.substring(6);
+      else if (formattedPhone.startsWith('020')) formattedPhone = '85620' + formattedPhone.substring(3);
+      else if (formattedPhone.startsWith('20')) formattedPhone = '85620' + formattedPhone.substring(2);
+
+      const res = await fetch('/api/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: formattedPhone, code: otp })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setError(t.incorrectOtp);
+        setIsLoading(false);
+        return;
+      }
+
       await loginAnonymously();
       
       // Link phone number in local profile and sync
@@ -308,8 +402,9 @@ export default function Login() {
                   {t.phoneLabel}
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                    <Phone className={`h-5 w-5 ${theme === 'dark' ? 'text-zinc-500' : 'text-gray-400'}`} />
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none gap-2">
+                    <Phone className={`h-4 w-4 ${theme === 'dark' ? 'text-zinc-500' : 'text-gray-400'}`} />
+                    <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-zinc-300' : 'text-gray-600'}`}>+856</span>
                   </div>
                   <input
                     id="phone"
@@ -335,7 +430,7 @@ export default function Login() {
                         digitsOnly.startsWith('020') ? 11 : 10;
                       setPhoneNumber(digitsOnly.slice(0, maxLen));
                     }}
-                    className={`block w-full pl-11 border rounded-xl py-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 ${
+                    className={`block w-full pl-[88px] border rounded-xl py-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 ${
                       theme === 'dark' 
                         ? 'bg-zinc-950 border-white/10 text-white placeholder-zinc-600' 
                         : 'bg-gray-50/50 border-gray-200 text-gray-900 placeholder-gray-400 focus:bg-white'
@@ -555,8 +650,135 @@ export default function Login() {
               </div>
             </div>
           )}
+
+          <div className={`mt-8 text-center text-[10px] sm:text-xs leading-relaxed ${
+            theme === 'dark' ? 'text-zinc-500' : 'text-gray-500'
+          }`}>
+            {t.termsText1}{' '}
+            <button onClick={() => setIsTermsOpen(true)} className="underline hover:text-adv-orange transition-colors cursor-pointer">
+              {t.termsLink}
+            </button>{' '}
+            {t.termsText2}{' '}
+            <button onClick={() => setIsPrivacyOpen(true)} className="underline hover:text-adv-orange transition-colors cursor-pointer">
+              {t.privacyLink}
+            </button>
+          </div>
         </div>
       </div>
+      
+      {/* Terms Modal */}
+      <AnimatePresence>
+        {isTermsOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsTermsOpen(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', duration: 0.5 }}
+              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden z-10"
+            >
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-adv-orange">
+                    <Ticket className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-xl font-black text-adv-slate tracking-tight">{t.terms}</h3>
+                </div>
+                <button
+                  onClick={() => setIsTermsOpen(false)}
+                  className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 max-h-[60vh] overflow-y-auto space-y-6 text-sm text-gray-500 leading-relaxed font-sans text-left">
+                {termsSettings.sections && termsSettings.sections.map((section, idx) => (
+                  <div key={idx}>
+                    <h4 className="font-bold text-adv-slate text-base mb-2">
+                      {lang === 'en' ? section.title_en : section.title_lo}
+                    </h4>
+                    <p className="whitespace-pre-wrap">
+                      {lang === 'en' ? section.content_en : section.content_lo}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+                <button
+                  onClick={() => setIsTermsOpen(false)}
+                  className="px-5 py-2 rounded-xl bg-adv-orange hover:bg-orange-600 text-white font-bold text-xs transition-colors cursor-pointer"
+                >
+                  {lang === 'en' ? 'I Understand' : 'ຂ້ອຍເຂົ້າໃຈແລ້ວ'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Privacy Policy Modal */}
+      <AnimatePresence>
+        {isPrivacyOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsPrivacyOpen(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', duration: 0.5 }}
+              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden z-10"
+            >
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-adv-orange">
+                    <Mail className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-xl font-black text-adv-slate tracking-tight">{t.privacy}</h3>
+                </div>
+                <button
+                  onClick={() => setIsPrivacyOpen(false)}
+                  className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 max-h-[60vh] overflow-y-auto space-y-6 text-sm text-gray-500 leading-relaxed font-sans text-left">
+                {privacySettings.sections && privacySettings.sections.map((section, idx) => (
+                  <div key={idx}>
+                    <h4 className="font-bold text-adv-slate text-base mb-2">
+                      {lang === 'en' ? section.title_en : section.title_lo}
+                    </h4>
+                    <p className="whitespace-pre-wrap">
+                      {lang === 'en' ? section.content_en : section.content_lo}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+                <button
+                  onClick={() => setIsPrivacyOpen(false)}
+                  className="px-5 py-2 rounded-xl bg-adv-orange hover:bg-orange-600 text-white font-bold text-xs transition-colors cursor-pointer"
+                >
+                  {lang === 'en' ? 'I Understand' : 'ຂ້ອຍເຂົ້າໃຈແລ້ວ'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
