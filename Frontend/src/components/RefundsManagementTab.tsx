@@ -835,7 +835,7 @@ export default function RefundsManagementTab({ lang, t, addActivityLog }: Refund
       {/* MODAL: View Refund Details */}
       <AnimatePresence>
         {selectedRefund && !isRejectModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1021,7 +1021,7 @@ export default function RefundsManagementTab({ lang, t, addActivityLog }: Refund
       {/* MODAL: Reject Confirmation */}
       <AnimatePresence>
         {isRejectModalOpen && selectedRefund && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1082,7 +1082,7 @@ export default function RefundsManagementTab({ lang, t, addActivityLog }: Refund
       {/* MODAL: Manual Issue Refund */}
       <AnimatePresence>
         {isManualModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}

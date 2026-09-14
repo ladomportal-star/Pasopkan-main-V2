@@ -41,7 +41,6 @@ import {
   ShieldAlert,
   User,
   Mail,
-  Phone,
   ShieldCheck,
   Image as ImageIcon,
   Copy,
@@ -208,6 +207,40 @@ const formatDateString = (year: number, month: number, day: number) => {
   const mm = String(month + 1).padStart(2, '0');
   const dd = String(day).padStart(2, '0');
   return `${year}-${mm}-${dd}`;
+};
+
+// Helper to format event date cleanly without UTC timezone shift (Dashboard Ticket style)
+const formatEventDetailsDate = (dateStr?: string, lang: 'en' | 'lo' = 'en', fallback = '') => {
+  if (!dateStr) return fallback;
+  try {
+    const clean = dateStr.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+      const [year, month, day] = clean.split('-').map(Number);
+      const dayStr = day.toString().padStart(2, '0');
+      const monthStr = month.toString().padStart(2, '0');
+      return `${dayStr}/${monthStr}/${year}`;
+    }
+    const d = new Date(clean);
+    if (!isNaN(d.getTime())) {
+      const dayStr = d.getDate().toString().padStart(2, '0');
+      const monthStr = (d.getMonth() + 1).toString().padStart(2, '0');
+      const yearStr = d.getFullYear();
+      return `${dayStr}/${monthStr}/${yearStr}`;
+    }
+    return clean;
+  } catch {
+    return dateStr || fallback;
+  }
+};
+
+// Helper to extract clean start time (Dashboard Ticket style)
+const formatEventStartTime = (timeStr?: string): string => {
+  if (!timeStr) return '';
+  let raw = timeStr.trim();
+  if (raw.includes('-')) {
+    raw = raw.split('-')[0].trim();
+  }
+  return raw;
 };
 
 function InlineCalendar({ 
@@ -606,7 +639,6 @@ export default function EventDetails() {
     setTouchEndX(null);
   };
   const [shareSuccess, setShareSuccess] = useState(false);
-  const [copiedMapAddress, setCopiedMapAddress] = useState(false);
   const [showOrganizerDetails, setShowOrganizerDetails] = useState(false);
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -657,24 +689,10 @@ export default function EventDetails() {
         userId: user?.uid || 'anonymous'
       };
 
-      // Try sending to firebase first
-      if (auth.currentUser) {
-        try {
-          const inquiryRef = doc(collection(db, 'organizer_inquiries'));
-          await setDoc(inquiryRef, messageData);
-        } catch (fbErr) {
-          console.warn('Could not save to Firestore collection, fallback to local storage:', fbErr);
-          // Standard local storage backup
-          const savedInquiries = JSON.parse(safeStorage.getItem('pasopkan_local_inquiries') || '[]');
-          savedInquiries.push({ id: `inq_${Date.now()}`, ...messageData });
-          safeStorage.setItem('pasopkan_local_inquiries', JSON.stringify(savedInquiries));
-        }
-      } else {
-        // Local storage backup
-        const savedInquiries = JSON.parse(safeStorage.getItem('pasopkan_local_inquiries') || '[]');
-        savedInquiries.push({ id: `inq_${Date.now()}`, ...messageData });
-        safeStorage.setItem('pasopkan_local_inquiries', JSON.stringify(savedInquiries));
-      }
+      // Local storage backup
+      const savedInquiries = JSON.parse(safeStorage.getItem('pasopkan_local_inquiries') || '[]');
+      savedInquiries.push({ id: `inq_${Date.now()}`, ...messageData });
+      safeStorage.setItem('pasopkan_local_inquiries', JSON.stringify(savedInquiries));
 
       // Simulate a bit of network latency for polished feel
       await new Promise(resolve => setTimeout(resolve, 1200));
@@ -762,38 +780,16 @@ export default function EventDetails() {
         return;
       }
 
-      // Check Firestore tickets collection
-      const activeUser = user;
-      if (activeUser) {
-        if (activeUser) {
-          try {
-            const ticketsRef = collection(db, 'tickets');
-            const q = query(
-              ticketsRef,
-              where('userId', '==', activeUser.uid),
-              where('eventId', '==', id)
-            );
-            const snap = await getDocs(q);
-            if (!snap.empty) {
-              setHasPurchasedTicket(true);
-              return;
-            }
-          } catch (err) {
-            handleFirestoreError(err, OperationType.LIST, 'tickets');
+      // Check local purchased tickets
+      const purchasedIdsStr = localStorage.getItem('pasopkan_purchased_event_ids');
+      if (purchasedIdsStr) {
+        try {
+          const purchasedIds = JSON.parse(purchasedIdsStr);
+          if (purchasedIds.includes(id)) {
+            setHasPurchasedTicket(true);
+            return;
           }
-        } else {
-          // Fallback to localStorage for mock/offline session
-          const purchasedIdsStr = localStorage.getItem('pasopkan_purchased_event_ids');
-          if (purchasedIdsStr) {
-            try {
-              const purchasedIds = JSON.parse(purchasedIdsStr);
-              if (purchasedIds.includes(id)) {
-                setHasPurchasedTicket(true);
-                return;
-              }
-            } catch (e) {}
-          }
-        }
+        } catch (e) {}
       }
 
       setHasPurchasedTicket(false);
@@ -853,7 +849,7 @@ export default function EventDetails() {
     const anonymousName = lang === 'en' ? 'Anonymous User' : 'ຜູ້ໃຊ້ບໍ່ປະສົງອອກຊື່';
     const reviewData = {
       eventId: id,
-      userId: activeUser.uid,
+      userId: activeUser.id,
       rating: userRating,
       comment: userComment.trim(),
       userName: isAnonymous ? anonymousName : (getAccountUserName() || anonymousName),
@@ -861,34 +857,7 @@ export default function EventDetails() {
       date: new Date().toISOString().slice(0, 10)
     };
 
-    if (activeUser) {
-      try {
-        const reviewRef = doc(collection(db, 'reviews'));
-        await setDoc(reviewRef, reviewData);
-
-        // Local fallback / sync
-        saveReview({
-          id: reviewRef.id,
-          ...reviewData
-        });
-
-        // Reset form except name
-        setUserComment('');
-        setUserRating(5);
-        setCommentStatus({
-          type: 'success',
-          message: translations[lang].commentSuccess
-        });
-
-        // Clear success message after 5 seconds
-        setTimeout(() => {
-          setCommentStatus(prev => prev.type === 'success' ? { type: 'idle', message: '' } : prev);
-        }, 5000);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.CREATE, 'reviews');
-      }
-    } else {
-      // Mock / Local fallback mode
+    // Mock / Local fallback mode
       const mockId = `mock_rev_${Math.random().toString(36).substring(2, 11)}`;
       saveReview({
         id: mockId,
@@ -903,9 +872,7 @@ export default function EventDetails() {
       setTimeout(() => {
         setCommentStatus(prev => prev.type === 'success' ? { type: 'idle', message: '' } : prev);
       }, 5000);
-    }
   };
-
   useEffect(() => {
     if (!id) return;
 
@@ -1209,8 +1176,25 @@ export default function EventDetails() {
     if (!event) return;
     
     const shareUrl = window.location.href;
-    let copied = false;
+
+    // 1. Try Native Share API first (best for mobile and modern desktop browsers)
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: event.title,
+          text: `Check out ${event.title} on Pasopkan`,
+          url: shareUrl,
+        });
+        return; // Success!
+      }
+    } catch (err: any) {
+      // If user cancelled, don't show an error or try clipboard
+      if (err.name === 'AbortError') return;
+      console.warn('Native share failed', err);
+    }
     
+    // 2. Fallback to Clipboard API
+    let copied = false;
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(shareUrl);
@@ -1220,6 +1204,7 @@ export default function EventDetails() {
       console.warn('Failed to use navigator.clipboard, trying fallback:', err);
     }
     
+    // 3. Ultimate fallback to execCommand
     if (!copied) {
       try {
         const textarea = document.createElement('textarea');
@@ -1242,7 +1227,6 @@ export default function EventDetails() {
       setShareSuccess(true);
       setTimeout(() => setShareSuccess(false), 3000);
     } else {
-      // In case copy failed completely, alert or still show toast advising manually copying
       console.warn('Could not copy link automatically.');
     }
   };
@@ -1270,7 +1254,7 @@ export default function EventDetails() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setFullscreenImageIndex(null)}
-            className="fixed inset-0 z-[999] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 cursor-zoom-out"
+            className="fixed inset-0 z-[999] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 cursor-zoom-out overflow-y-auto"
           >
             {/* Close button */}
             <motion.button 
@@ -1486,23 +1470,29 @@ export default function EventDetails() {
                        </h1>
                      </div>
 
-                     <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-bold text-gray-500">
+                     <div className="flex flex-col items-center gap-1.5 pt-0.5">
+                       <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-xs font-medium text-gray-400">
+                         <div className="flex items-center gap-1 text-gray-500">
+                           <MapPin className="w-3.5 h-3.5 text-adv-orange/70 shrink-0" />
+                           <span className="truncate max-w-[260px]">{event.venue || event.location}</span>
+                         </div>
+                         {event.venue && event.location && event.venue !== event.location && (
+                           <>
+                             <span className="text-gray-300">•</span>
+                             <span className="truncate max-w-[200px]">{event.location}</span>
+                           </>
+                         )}
+                       </div>
+
                        {event.dateType !== 'flexible' && (
-                         <span className="inline-flex items-center gap-1.5 bg-white px-3 py-2 rounded-xl border border-gray-150/60 shadow-3xs text-adv-slate">
-                           <Calendar className="w-3.5 h-3.5 text-adv-orange" />
-                           {new Date(event.date).toLocaleDateString()}
-                         </span>
+                         <div className="flex flex-wrap items-center justify-center gap-3 text-[11px] sm:text-xs font-semibold">
+                           <div className="flex items-center gap-1 text-gray-500">
+                             <Calendar className="w-3.5 h-3.5 text-adv-orange shrink-0" />
+                             <span>{formatEventDetailsDate(event.date, lang as 'en' | 'lo')}</span>
+                           </div>
+                           
+                         </div>
                        )}
-                       {event.dateType !== 'flexible' && event.time && (
-                         <span className="inline-flex items-center gap-1.5 bg-white px-3 py-2 rounded-xl border border-gray-150/60 shadow-3xs text-adv-slate">
-                           <Clock className="w-3.5 h-3.5 text-adv-orange" />
-                           {event.time}
-                         </span>
-                       )}
-                       <span className="inline-flex items-center gap-1.5 bg-white px-3 py-2 rounded-xl border border-gray-150/60 shadow-3xs text-adv-slate">
-                         <MapPin className="w-3.5 h-3.5 text-adv-orange shrink-0" />
-                         <span>{event.location}</span>
-                       </span>
                      </div>
                    </div>
                  </div>
@@ -1575,23 +1565,30 @@ export default function EventDetails() {
                            {event.title}
                          </h1>
 
-                         <div className="flex flex-wrap items-center gap-2.5 text-xs font-semibold font-sans">
-                            {event.dateType !== 'flexible' && (
-                              <span className="inline-flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/20 shadow-lg text-white transition-all hover:bg-black/60">
-                                <Calendar className="w-3.5 h-3.5 text-adv-orange" />
-                                {new Date(event.date).toLocaleDateString()}
-                              </span>
-                            )}
-                            {event.dateType !== 'flexible' && event.time && (
-                              <span className="inline-flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/20 shadow-lg text-white transition-all hover:bg-black/60">
-                                <Clock className="w-3.5 h-3.5 text-adv-orange animate-pulse" />
-                                {event.time}
-                              </span>
-                            )}
-                            <span className="inline-flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/20 shadow-lg text-white">
-                              <MapPin className="w-3.5 h-3.5 text-adv-orange shrink-0" />
-                              <span>{event.location}</span>
-                            </span>
+                         {/* Ticket Dashboard style location on line 1, date and time on line 2 */}
+                         <div className="flex flex-col items-start gap-2">
+                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-white/85">
+                             <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1 rounded-lg border border-white/15">
+                               <MapPin className="w-3.5 h-3.5 text-adv-orange/90 shrink-0" />
+                               <span className="truncate max-w-[280px]">{event.venue || event.location}</span>
+                             </div>
+                             {event.venue && event.location && event.venue !== event.location && (
+                               <>
+                                 <span className="text-white/40">•</span>
+                                 <span className="truncate max-w-[240px] text-white/70 drop-shadow-sm">{event.location}</span>
+                               </>
+                             )}
+                           </div>
+
+                           {event.dateType !== 'flexible' && (
+                             <div className="flex flex-wrap items-center gap-3 text-xs font-semibold">
+                               <div className="flex items-center gap-1.5 text-white/90 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/15 shadow-sm">
+                                 <Calendar className="w-3.5 h-3.5 text-adv-orange shrink-0" />
+                                 <span>{formatEventDetailsDate(event.date, lang as 'en' | 'lo')}</span>
+                               </div>
+                               
+                             </div>
+                           )}
                          </div>
                        </div>
 
@@ -1622,27 +1619,34 @@ export default function EventDetails() {
                     </h1>
 
 
-                    <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-                       {event.dateType !== 'flexible' && (
-                         <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-sm text-gray-600">
-                           <Calendar className="w-3.5 h-3.5 text-adv-orange" />
-                           {new Date(event.date).toLocaleDateString()}
-                         </span>
-                       )}
-                       {event.dateType !== 'flexible' && event.time && (
-                         <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-sm text-gray-600">
-                           <Clock className="w-3.5 h-3.5 text-adv-orange animate-pulse" />
-                           {event.time}
-                         </span>
-                       )}
-                       <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-sm text-gray-700">
-                         <MapPin className="w-3.5 h-3.5 text-adv-orange shrink-0" />
-                         <span>{event.location}</span>
-                       </span>
-                       <span className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-150 shadow-sm text-gray-600">
-                         <Languages className="w-3.5 h-3.5 text-adv-orange" />
-                         {(event.languages || ['Lao', 'English']).join(', ')}
-                       </span>
+                    {/* Ticket Dashboard style location on line 1, date and time on line 2 */}
+                    <div className="flex flex-col items-start gap-2">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs font-medium text-gray-500">
+                        <div className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-lg border border-gray-150 shadow-xs">
+                          <MapPin className="w-3.5 h-3.5 text-adv-orange shrink-0" />
+                          <span className="truncate max-w-[280px]">{event.venue || event.location}</span>
+                        </div>
+                        {event.venue && event.location && event.venue !== event.location && (
+                          <>
+                            <span className="text-gray-300">•</span>
+                            <span className="truncate max-w-[240px] text-gray-500">{event.location}</span>
+                          </>
+                        )}
+                        <div className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-lg border border-gray-150 shadow-xs text-gray-600">
+                          <Languages className="w-3.5 h-3.5 text-adv-orange shrink-0" />
+                          <span>{(event.languages || ['Lao', 'English']).join(', ')}</span>
+                        </div>
+                      </div>
+
+                      {event.dateType !== 'flexible' && (
+                        <div className="flex flex-wrap items-center gap-3 text-xs font-semibold">
+                          <div className="flex items-center gap-1.5 text-gray-600 bg-white px-3 py-1.5 rounded-lg border border-gray-150 shadow-xs">
+                            <Calendar className="w-3.5 h-3.5 text-adv-orange shrink-0" />
+                            <span>{formatEventDetailsDate(event.date, lang as 'en' | 'lo')}</span>
+                          </div>
+                          
+                        </div>
+                      )}
                     </div>
                  </div>
                )}
@@ -1692,43 +1696,7 @@ export default function EventDetails() {
                      </p>
                    </div>
 
-                   {/* Quick Action Buttons */}
-                   <div className="flex items-center gap-2 shrink-0">
-                     <button
-                       type="button"
-                       onClick={() => {
-                         const fullAddr = [event.venue, event.location, event.district, event.province, 'Laos'].filter(Boolean).join(', ');
-                         navigator.clipboard.writeText(fullAddr || 'Vientiane, Laos');
-                         setCopiedMapAddress(true);
-                         setTimeout(() => setCopiedMapAddress(false), 2000);
-                       }}
-                       className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                     >
-                       {copiedMapAddress ? (
-                         <>
-                           <Check className="w-3.5 h-3.5 text-emerald-600" />
-                           <span className="text-emerald-600">{lang === 'lo' ? 'ສຳເນົາແລ້ວ' : 'Copied'}</span>
-                         </>
-                       ) : (
-                         <>
-                           <Copy className="w-3.5 h-3.5 text-gray-500" />
-                           <span>{lang === 'lo' ? 'ສຳເນົາທີ່ຢູ່' : 'Copy Address'}</span>
-                         </>
-                       )}
-                     </button>
 
-                     {event.googleMapUrl && (
-                       <a
-                         href={event.googleMapUrl}
-                         target="_blank"
-                         rel="noopener noreferrer"
-                         className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-xl text-xs font-bold text-adv-orange transition-all flex items-center gap-1.5 shadow-2xs"
-                       >
-                         <ExternalLink className="w-3.5 h-3.5" />
-                         <span>{lang === 'lo' ? 'ເປີດໃນ Maps' : 'Google Maps'}</span>
-                       </a>
-                     )}
-                   </div>
                  </div>
 
                  <EventMapPicker 
@@ -1838,24 +1806,6 @@ export default function EventDetails() {
                   </p>
 
                   {/* Contact Channels & Interactive Send Message Form */}
-                  <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
-                        {lang === 'en' ? 'Contact Channels' : 'ຊ່ອງທາງຕິດຕໍ່'}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-2">
-                      <a
-                        href="tel:+8562099999999"
-                        className="py-2.5 px-3 bg-gray-50 hover:bg-gray-100 active:scale-[0.98] transition-all border border-gray-150 rounded-xl text-xs font-bold text-gray-700 flex items-center justify-center gap-1.5 shadow-2xs"
-                      >
-                        <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span className="truncate">{lang === 'en' ? 'Call' : 'ໂທຫາ'}</span>
-                      </a>
-                    </div>
-
-                  </div>
                 </div>
               )}
             </div>
@@ -2294,24 +2244,6 @@ export default function EventDetails() {
                 </p>
 
                 {/* Contact Channels & Interactive Send Message Form */}
-                <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
-                      {lang === 'en' ? 'Contact Channels' : 'ຊ່ອງທາງຕິດຕໍ່'}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-2">
-                    <a
-                      href="tel:+8562099999999"
-                      className="py-2.5 px-3 bg-gray-50 hover:bg-gray-100 active:scale-[0.98] transition-all border border-gray-150 rounded-xl text-xs font-bold text-gray-700 flex items-center justify-center gap-1.5 shadow-2xs"
-                    >
-                      <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span className="truncate">{lang === 'en' ? 'Call' : 'ໂທຫາ'}</span>
-                    </a>
-                  </div>
-
-                </div>
               </div>
             )}
           </div>
@@ -2363,4 +2295,5 @@ export default function EventDetails() {
       </AnimatePresence>
     </motion.div>
   );
+
 }

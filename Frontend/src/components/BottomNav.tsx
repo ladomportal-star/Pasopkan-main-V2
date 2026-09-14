@@ -34,6 +34,11 @@ export default function BottomNav() {
       <div className="flex items-center justify-around h-16 px-2">
         <Link 
           to="/" 
+          onClick={() => {
+            if (location.pathname === '/') {
+              window.scrollTo(0, 0);
+            }
+          }}
           className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-all ${
             location.pathname === '/' ? 'text-adv-orange' : 'text-gray-400'
           }`}
@@ -44,6 +49,11 @@ export default function BottomNav() {
         
         <Link 
           to="/dashboard" 
+          onClick={() => {
+            if (location.pathname === '/dashboard') {
+              window.scrollTo(0, 0);
+            }
+          }}
           className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-all ${
             location.pathname === '/dashboard' ? 'text-adv-orange' : 'text-gray-400'
           }`}
@@ -53,7 +63,13 @@ export default function BottomNav() {
         </Link>
         
         <Link 
-          to={isAuthenticated ? "/account" : "/login"} 
+          to="/account" 
+          state={{ targetTab: 'profile', timestamp: Date.now() }}
+          onClick={() => {
+            if (location.pathname === '/account') {
+              window.scrollTo(0, 0);
+            }
+          }}
           className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-all ${
             location.pathname === '/account' ? 'text-adv-orange' : 'text-gray-400'
           }`}

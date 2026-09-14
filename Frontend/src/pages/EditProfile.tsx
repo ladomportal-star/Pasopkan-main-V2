@@ -95,15 +95,47 @@ export default function EditProfile() {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64Pic = reader.result as string;
-        setProfilePic(base64Pic);
-        try {
-          localStorage.setItem('pasopkan_user_profile_pic', base64Pic);
-          await syncProfileToFirestore({ profilePic: base64Pic });
-        } catch (err) {
-          console.error(err);
-        }
+      reader.onloadend = () => {
+        const img = new Image();
+        img.onload = async () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 500;
+          const MAX_HEIGHT = 500;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          const base64Pic = canvas.toDataURL('image/jpeg', 0.8);
+          
+          setProfilePic(base64Pic);
+          
+          try {
+            localStorage.setItem('pasopkan_user_profile_pic', base64Pic);
+          } catch (err) {
+            console.error('LocalStorage quota exceeded, skipping local cache', err);
+          }
+          
+          try {
+            await syncProfileToFirestore({ profilePic: base64Pic });
+          } catch (err) {
+            console.error('Firestore sync error:', err);
+          }
+        };
+        img.src = reader.result as string;
       };
       reader.readAsDataURL(file);
     }
@@ -154,7 +186,7 @@ export default function EditProfile() {
     
     setTimeout(() => {
       navigate('/account');
-    }, 1500);
+    }, 5000);
   };
 
   return (
@@ -188,6 +220,9 @@ export default function EditProfile() {
               </div>
               <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <Camera className="w-6 h-6 text-white" />
+              </div>
+              <div className="absolute bottom-0 right-0 w-7 h-7 sm:w-8 sm:h-8 bg-adv-orange rounded-full border-2 border-white flex items-center justify-center shadow-sm">
+                <Camera className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
               </div>
               <input 
                 type="file" 
@@ -232,7 +267,7 @@ export default function EditProfile() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+            <div className="grid grid-cols-2 gap-4 sm:gap-5">
               <div className="space-y-1.5">
                 <label htmlFor="phone" className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.phone}</label>
                 <input
@@ -329,10 +364,18 @@ export default function EditProfile() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-24 sm:bottom-12 left-1/2 -translate-x-1/2 bg-adv-slate text-white px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-50 border border-white/10"
+            className="fixed bottom-24 sm:bottom-12 pointer-events-none left-1/2 -translate-x-1/2 bg-white text-black px-6 py-3 sm:py-2 sm:px-5 sm:text-sm rounded-2xl sm:rounded-xl font-bold shadow-2xl flex items-center gap-2 sm:gap-3 z-[100] border border-gray-200 relative overflow-hidden whitespace-nowrap w-[90%] sm:w-auto justify-center"
           >
-            <CheckCircle2 className="w-5 h-5 text-adv-orange" />
-            {t.successMessage}
+            <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+            <span>{t.successMessage}</span>
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 overflow-hidden">
+              <motion.div
+                initial={{ width: '100%' }}
+                animate={{ width: '0%' }}
+                transition={{ duration: 5, ease: 'linear' }}
+                className="h-full bg-adv-orange"
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

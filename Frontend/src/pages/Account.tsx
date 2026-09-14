@@ -576,6 +576,8 @@ export default function Account() {
   const { lang, toggleLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const t = translations[lang] as unknown as Record<string, string>;
+
+
   const [profilePic, setProfilePic] = useState<string | null>(() => {
     try {
       return localStorage.getItem('pasopkan_user_profile_pic');
@@ -741,6 +743,14 @@ export default function Account() {
   const [activeTab, setActiveTab] = useState<'profile' | 'my-event' | 'payouts'>(
     (location.state as any)?.targetTab || 'profile'
   );
+
+  useEffect(() => {
+    if ((location.state as any)?.targetTab) {
+      setActiveTab((location.state as any).targetTab);
+      window.scrollTo(0, 0);
+    }
+  }, [location.state]);
+
   
   // Staff Scanner Links State
   interface StaffLink {
@@ -1171,16 +1181,45 @@ export default function Account() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setProfilePic(reader.result as string);
-        try {
-          localStorage.setItem('pasopkan_user_profile_pic', reader.result as string);
-        } catch (err) {
-          console.error(err);
-        }
-        setShowProfilePicSuccess(true);
-        setTimeout(() => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 500;
+          const MAX_HEIGHT = 500;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          const base64Pic = canvas.toDataURL('image/jpeg', 0.8);
+          
+          setProfilePic(base64Pic);
+          
+          try {
+            localStorage.setItem('pasopkan_user_profile_pic', base64Pic);
+          } catch (err) {
+            console.error('LocalStorage quota exceeded, skipping local cache', err);
+          }
+          
+          setShowProfilePicSuccess(true);
+          setTimeout(() => {
           setShowProfilePicSuccess(false);
-        }, 2000);
+        }, 5000);
+        };
+        img.src = reader.result as string;
       };
       reader.readAsDataURL(file);
     }
@@ -1223,7 +1262,7 @@ export default function Account() {
           theme === 'dark' ? 'bg-zinc-900/60' : 'bg-gray-200/50'
         } sm:bg-transparent sm:p-0 sm:border-b sm:border-gray-100 sm:rounded-none sm:gap-8`}>
           <button 
-            onClick={() => setActiveTab('profile')}
+            onClick={() => { setActiveTab('profile'); window.scrollTo(0, 0); }}
             className={`flex-1 min-w-[90px] sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
               activeTab === 'profile' 
                 ? theme === 'dark'
@@ -1235,7 +1274,7 @@ export default function Account() {
             {t.myProfile}
           </button>
           <button 
-            onClick={() => setActiveTab('my-event')}
+            onClick={() => { setActiveTab('my-event'); window.scrollTo(0, 0); }}
             className={`flex-1 min-w-[90px] sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
               activeTab === 'my-event' 
                 ? theme === 'dark'
@@ -1247,7 +1286,7 @@ export default function Account() {
             {t.manageEvent}
           </button>
           <button 
-            onClick={() => setActiveTab('payouts')}
+            onClick={() => { setActiveTab('payouts'); window.scrollTo(0, 0); }}
             className={`flex-1 min-w-[90px] sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
               activeTab === 'payouts' 
                 ? theme === 'dark'
@@ -1411,25 +1450,21 @@ export default function Account() {
                 theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
               }`}>
                 <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5">
-                   <div className={`w-full sm:w-24 shrink-0 aspect-[2/1] sm:aspect-square rounded-xl sm:rounded-2xl overflow-hidden shadow-sm relative ${theme === 'dark' ? 'bg-zinc-950' : 'bg-gray-100'}`}>
-                     {/* Blurred background to match image colors */}
-                     <div className="absolute inset-0 z-0">
-                       <img src={selectedEvent.image} alt="" className="w-full h-full object-cover blur-xl opacity-60 scale-125" aria-hidden="true" />
-                     </div>
-                     <img src={selectedEvent.image} alt={selectedEvent.title} className="w-full h-full object-contain relative z-10" />
+                   <div className={`w-full sm:w-28 shrink-0 rounded-xl sm:rounded-2xl overflow-hidden shadow-sm relative ${theme === 'dark' ? 'bg-zinc-950' : 'bg-gray-100'}`}>
+                     <img src={selectedEvent.image} alt={selectedEvent.title} className="w-full h-auto object-cover" />
                    </div>
                    <div className="flex-1 text-center sm:text-left min-w-0 pt-1">
-                      <div className="flex flex-wrap items-center gap-2.5 justify-center sm:justify-start mb-2">
-                        <h3 className="text-base sm:text-lg font-bold truncate">{selectedEvent.title}</h3>
+                      <div className="flex flex-wrap items-center gap-2.5 justify-center sm:justify-start mb-2 sm:mb-3">
+                        <h3 className="text-xl sm:text-2xl font-black text-adv-slate dark:text-white truncate">{selectedEvent.title}</h3>
                         {selectedEvent.status === 'pending' && (
                           <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[9px] sm:text-[10px] font-black uppercase tracking-widest shrink-0">
                             Pending Approval
                           </span>
                         )}
                       </div>
-                      <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-2 sm:gap-4 text-xs text-gray-500 font-medium">
-                         <span className="flex items-center gap-1.5"><CalendarIcon className="w-4 h-4 text-adv-orange shrink-0" /> {selectedEvent.date}</span>
-                         <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-adv-orange shrink-0" /> {selectedEvent.location}</span>
+                      <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-2.5 sm:gap-5 text-sm sm:text-base text-gray-500 dark:text-gray-400 font-semibold">
+                         <span className="flex items-center gap-1.5 sm:gap-2"><CalendarIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-adv-orange shrink-0" /> {selectedEvent.date}</span>
+                         <span className="flex items-center gap-1.5 sm:gap-2"><MapPin className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-adv-orange shrink-0" /> {selectedEvent.location}</span>
                       </div>
                    </div>
                 </div>
@@ -2265,14 +2300,15 @@ export default function Account() {
                     <div key={index} className={`p-3.5 sm:p-6 rounded-2xl sm:rounded-[1.5rem] shadow-2xs sm:shadow-sm border flex flex-col sm:flex-row gap-3 sm:gap-5 transition-all ${
                       theme === 'dark' ? 'bg-zinc-900/80 border-zinc-800 hover:border-adv-orange/30' : 'bg-white border-gray-100 hover:border-adv-orange/30'
                     }`}>
-                      <div className="w-full sm:w-24 h-28 sm:h-auto shrink-0 rounded-lg sm:rounded-xl overflow-hidden border border-gray-100 dark:border-zinc-800 shadow-xs relative group cursor-pointer bg-gray-50 dark:bg-zinc-950 flex items-center justify-center" onClick={() => setPayoutImagePreview(bill.receiptUrl)}>
-                        <img src={bill.receiptUrl} alt="Admin Submit Receipt" className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-300" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                          <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      <div className="flex flex-row gap-3 sm:gap-5 flex-1 min-w-0">
+                        <div className="w-20 sm:w-24 h-28 sm:h-auto shrink-0 rounded-lg sm:rounded-xl overflow-hidden border border-gray-100 dark:border-zinc-800 shadow-xs relative group cursor-pointer bg-gray-50 dark:bg-zinc-950 flex items-center justify-center" onClick={() => setPayoutImagePreview(bill.receiptUrl)}>
+                          <img src={bill.receiptUrl} alt="Admin Submit Receipt" className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-300" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-3">
                           {bill.status.toLowerCase() === 'pending' ? (
                             <>
@@ -2310,19 +2346,20 @@ export default function Account() {
                           <span className="text-[9px] sm:text-[10px] font-bold text-gray-400 ml-auto">{bill.date}</span>
                         </div>
                         <h4 className={`text-sm sm:text-base font-bold sm:font-black mb-1 line-clamp-1 ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>{bill.event}</h4>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] sm:text-xs">
-                          <p className="text-gray-500 font-medium flex items-center gap-1">
-                            <span className="text-gray-400 dark:text-zinc-500">{lang === 'lo' ? 'ຊື່ບັນຊີ:' : 'Account Name:'}</span>
+                        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-x-3 gap-y-1 text-[11px] sm:text-xs">
+                          <p className="text-gray-500 font-medium flex items-center gap-1.5">
+                            <User className="w-3.5 h-3.5 text-gray-400 dark:text-zinc-500" />
                             <span className="text-adv-slate dark:text-zinc-200 font-bold">{bill.accountName || bankAccount?.accountName || 'Sirithida Souksavat'}</span>
                           </p>
                           <span className="text-gray-300 dark:text-zinc-700 hidden sm:inline">•</span>
-                          <p className="text-gray-500 font-medium flex items-center gap-1">
-                            <span className="text-gray-400 dark:text-zinc-500">{lang === 'lo' ? 'ເລກບັນຊີ:' : 'Account Number:'}</span>
+                          <p className="text-gray-500 font-medium flex items-center gap-1.5">
+                            <CreditCard className="w-3.5 h-3.5 text-gray-400 dark:text-zinc-500" />
                             <span className="font-mono text-adv-slate dark:text-zinc-200 font-bold">{bill.account}</span>
                           </p>
                         </div>
                         
                         </div>
+                      </div>
                       
                       <div className={`sm:w-56 p-2.5 sm:p-4 rounded-xl flex flex-col justify-center border ${
                         theme === 'dark' ? 'bg-zinc-950/50 border-zinc-800/50' : 'bg-gray-50 border-gray-100'
@@ -2355,7 +2392,7 @@ export default function Account() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 lg:p-8"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 lg:p-8 overflow-y-auto"
           >
             {/* Backdrop */}
             <motion.div 
@@ -2433,7 +2470,7 @@ export default function Account() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
           >
             <motion.div 
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
@@ -2691,7 +2728,7 @@ export default function Account() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[250] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+            className="fixed inset-0 z-[250] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
             onClick={() => setShowCreateStaffModal(false)}
           >
             <motion.div
@@ -2765,7 +2802,7 @@ export default function Account() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[250] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+            className="fixed inset-0 z-[250] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
             onClick={() => setActiveStaffQrModal(null)}
           >
             <motion.div
@@ -2837,15 +2874,7 @@ export default function Account() {
               initial={{ opacity: 0, y: 20, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-              className={`p-4 sm:p-5 rounded-2xl sm:rounded-[1.5rem] shadow-2xl flex items-center gap-3.5 border relative overflow-hidden pointer-events-auto ${
-                toast.type === 'error' 
-                  ? theme === 'dark' ? 'bg-zinc-900 border-red-500/25 text-red-400' : 'bg-white border-red-100 text-red-500' 
-                  : toast.type === 'warning'
-                    ? theme === 'dark' ? 'bg-zinc-900 border-orange-500/25 text-adv-orange' : 'bg-white border-orange-100 text-adv-orange'
-                    : toast.type === 'info'
-                      ? theme === 'dark' ? 'bg-zinc-900 border-blue-500/25 text-blue-400' : 'bg-white border-blue-100 text-blue-500'
-                      : theme === 'dark' ? 'bg-zinc-900 border-emerald-500/25 text-emerald-400' : 'bg-white border-emerald-100 text-emerald-600'
-              }`}
+              className="p-4 sm:p-5 rounded-2xl sm:rounded-[1.5rem] shadow-2xl flex items-center gap-3.5 border relative overflow-hidden pointer-events-auto bg-white border-gray-200 text-black"
             >
               {/* 5-second auto-remove progress line */}
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/5 dark:bg-white/5 overflow-hidden">
@@ -2853,11 +2882,7 @@ export default function Account() {
                   initial={{ width: '100%' }}
                   animate={{ width: '0%' }}
                   transition={{ duration: 5, ease: 'linear' }}
-                  className={`h-full ${
-                    toast.type === 'error' ? 'bg-red-500' :
-                    toast.type === 'warning' ? 'bg-adv-orange' :
-                    toast.type === 'info' ? 'bg-blue-500' : 'bg-emerald-500'
-                  }`}
+                  className="h-full bg-adv-orange"
                 />
               </div>
 
@@ -2865,7 +2890,7 @@ export default function Account() {
               {toast.type === 'warning' && <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-adv-orange" />}
               {toast.type === 'info' && <Info className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-blue-500" />}
               {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-emerald-500" />}
-              <span className={`font-bold text-xs sm:text-sm flex-1 leading-snug ${theme === 'dark' ? 'text-zinc-100' : 'text-adv-slate'}`}>{toast.text}</span>
+              <span className="font-bold text-xs sm:text-sm flex-1 leading-snug text-black">{toast.text}</span>
               <button 
                 onClick={() => setToastQueue(prev => prev.filter(t => t.id !== toast.id))}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1 cursor-pointer"
@@ -2885,14 +2910,20 @@ export default function Account() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className={`fixed bottom-24 sm:bottom-12 left-1/2 -translate-x-1/2 px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-[200] border ${
-              theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-adv-slate text-white'
-            }`}
+            className="fixed bottom-24 sm:bottom-12 pointer-events-none left-1/2 -translate-x-1/2 bg-white text-black px-6 py-3 sm:py-2 sm:px-5 sm:text-sm rounded-2xl sm:rounded-xl font-bold shadow-2xl flex items-center gap-2 sm:gap-3 z-[100] border border-gray-200 relative overflow-hidden whitespace-nowrap w-[90%] sm:w-auto justify-center"
           >
-            <CheckCircle2 className="w-5 h-5 text-adv-orange" />
-            {t.profileUpdated}
+            <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+            <span>{t.profileUpdated}</span>
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 overflow-hidden">
+              <motion.div
+                initial={{ width: '100%' }}
+                animate={{ width: '0%' }}
+                transition={{ duration: 5, ease: 'linear' }}
+                className="h-full bg-adv-orange"
+              />
+            </div>
           </motion.div>
-            )}
+        )}
       </AnimatePresence>
       {/* Payout Image Preview Modal */}
       <AnimatePresence>
@@ -2901,7 +2932,7 @@ export default function Account() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[250] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+            className="fixed inset-0 z-[250] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
             onClick={() => setPayoutImagePreview(null)}
           >
             <motion.div
@@ -2934,7 +2965,7 @@ export default function Account() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[260] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+            className="fixed inset-0 z-[260] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
             onClick={() => setShowBankOtpModal(false)}
           >
             <motion.div
@@ -3081,7 +3112,7 @@ export default function Account() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[260] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+            className="fixed inset-0 z-[260] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
             onClick={() => setShowClaimOtpModal(false)}
           >
             <motion.div
@@ -3224,7 +3255,7 @@ export default function Account() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[260] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+            className="fixed inset-0 z-[260] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
             onClick={() => setShowCoolingWarningModal(false)}
           >
             <motion.div
@@ -3292,7 +3323,7 @@ export default function Account() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[270] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
+            className="fixed inset-0 z-[270] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
             onClick={() => setSelectedAttendeeForAnswers(null)}
           >
             <motion.div
@@ -3427,7 +3458,7 @@ export default function Account() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[280] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+            className="fixed inset-0 z-[280] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
             onClick={() => setCheckinConfirmAttendee(null)}
           >
             <motion.div

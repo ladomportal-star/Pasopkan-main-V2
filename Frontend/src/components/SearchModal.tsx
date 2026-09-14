@@ -111,7 +111,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-start justify-center pt-16 sm:pt-24 px-4">
+        <div className="fixed inset-0 z-[100] flex items-start justify-center pt-16 sm:pt-24 px-4 overflow-y-auto">
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -192,6 +192,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                           <span className="flex items-center gap-1.5">
                             <Calendar className="w-3.5 h-3.5 text-adv-orange" />
                             {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            {event.time && ` • ${event.time}`}
                           </span>
                           <span className="flex items-center gap-1.5 truncate">
                             <MapPin className="w-3.5 h-3.5 text-adv-orange" />

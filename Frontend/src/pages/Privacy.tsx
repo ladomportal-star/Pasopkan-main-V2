@@ -1,42 +1,65 @@
-import React, { useEffect } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ArrowLeft, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
+import { getPrivacySettings, PrivacySettings, DEFAULT_PRIVACY_SETTINGS } from '../lib/siteSettings';
 
 export default function Privacy() {
   const navigate = useNavigate();
   const { lang } = useLanguage();
   const { theme } = useTheme();
+  const [privacySettings, setPrivacySettings] = useState<PrivacySettings>(DEFAULT_PRIVACY_SETTINGS);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    const loadSettings = async () => {
+      try {
+        const data = await getPrivacySettings();
+        if (data && data.sections) {
+          setPrivacySettings(data);
+        }
+      } catch (err) {
+        console.warn('Error loading privacy document:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadSettings();
   }, []);
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-zinc-950 text-white' : 'bg-gray-50 text-gray-900'} py-8 px-4`}>
-      <div className="max-w-3xl mx-auto bg-white dark:bg-zinc-900 rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100 dark:border-zinc-800">
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-zinc-950 text-white' : 'bg-gray-50 text-gray-900'} py-6 sm:py-10 px-4`}>
+      <div className="max-w-3xl mx-auto bg-white dark:bg-zinc-900 rounded-3xl p-6 sm:p-10 shadow-sm border border-gray-100 dark:border-zinc-800">
         <button 
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white mb-6"
+          className="flex items-center gap-2 text-xs sm:text-sm font-bold text-gray-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white mb-6 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           {lang === 'lo' ? 'ກັບຄືນ' : 'Back'}
         </button>
-        <h1 className="text-2xl font-bold mb-4">
-          {lang === 'lo' ? 'ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ' : 'Privacy Policy'}
-        </h1>
-        <div className="prose dark:prose-invert max-w-none text-sm text-gray-600 dark:text-zinc-400 space-y-4">
-          <p>
-            {lang === 'lo'
-              ? 'ຄວາມເປັນສ່ວນຕົວຂອງທ່ານເປັນສິ່ງສໍາຄັນສໍາລັບພວກເຮົາ. ມັນເປັນນະໂຍບາຍຂອງພວກເຮົາທີ່ຈະເຄົາລົບຄວາມເປັນສ່ວນຕົວຂອງທ່ານກ່ຽວກັບຂໍ້ມູນໃດໆທີ່ພວກເຮົາອາດຈະເກັບກໍາຈາກທ່ານ.'
-              : 'Your privacy is important to us. It is our policy to respect your privacy regarding any information we may collect from you across our application.'}
-          </p>
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white mt-6">1. Information We Collect</h2>
-          <p>We only ask for personal information when we truly need it to provide a service to you. We collect it by fair and lawful means, with your knowledge and consent.</p>
-          
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white mt-6">2. Use of Information</h2>
-          <p>We use the information we collect in various ways, including to provide, operate, and maintain our application.</p>
+
+        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-zinc-800">
+          <div className="w-10 h-10 rounded-2xl bg-orange-50 dark:bg-orange-950/40 flex items-center justify-center text-adv-orange">
+            <Shield className="w-5 h-5" />
+          </div>
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-adv-slate dark:text-white">
+            {lang === 'lo' ? 'ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ' : 'Privacy Policy'}
+          </h1>
+        </div>
+
+        <div className="space-y-6 text-sm text-gray-600 dark:text-zinc-300 leading-relaxed font-sans">
+          {privacySettings.sections && privacySettings.sections.map((section, idx) => (
+            <div key={idx} className="space-y-2">
+              <h2 className="font-bold text-adv-slate dark:text-white text-base sm:text-lg">
+                {lang === 'en' ? section.title_en : section.title_lo}
+              </h2>
+              <p className="whitespace-pre-wrap">
+                {lang === 'en' ? section.content_en : section.content_lo}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </div>

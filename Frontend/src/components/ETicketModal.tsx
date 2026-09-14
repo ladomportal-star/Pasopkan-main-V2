@@ -261,18 +261,16 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
 
         {/* Main Container Frame: Fits screen height perfectly from top to bottom on mobile without scrolling */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.94, y: 20 }}
+          initial={{ opacity: 0, scale: 0.98, y: 16 }}
           animate={{ 
             opacity: isClosing ? 0 : 1, 
-            scale: isClosing ? 0.92 : 1, 
-            y: isClosing ? 36 : 0 
+            scale: isClosing ? 0.98 : 1, 
+            y: isClosing ? 16 : 0 
           }}
-          exit={{ opacity: 0, scale: 0.92, y: 36 }}
+          exit={{ opacity: 0, scale: 0.98, y: 16 }}
           transition={{ 
-            type: 'spring', 
-            damping: isClosing ? 28 : 25, 
-            stiffness: isClosing ? 360 : 320,
-            mass: 0.8
+            duration: 0.4, 
+            ease: [0.22, 1, 0.36, 1]
           }}
           onClick={(e) => e.stopPropagation()}
           className="relative w-full max-w-[390px] sm:max-w-[420px] md:max-w-[440px] h-[96dvh] sm:h-auto sm:max-h-[92vh] rounded-[28px] sm:rounded-[36px] bg-gradient-to-b from-[#FF5500] via-[#F24E00] to-[#E04500] text-white p-3 sm:p-4 md:p-5 shadow-2xl flex flex-col justify-between overflow-hidden border border-orange-400/30"

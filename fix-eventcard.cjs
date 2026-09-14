@@ -1,7 +1,12 @@
-import React from 'react';
+const fs = require('fs');
+
+let content = fs.readFileSync('Frontend/src/components/EventCard.tsx', 'utf-8');
+
+// The new content will be an updated EventCard component, matching LandscapeEventCard
+let newContent = `import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Calendar, MapPin, ArrowRight, Clock } from 'lucide-react';
+import { Calendar, MapPin, ArrowRight } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { LaoEvent } from '../data/events';
 
@@ -82,8 +87,8 @@ export default function EventCard({ event, index = 0, userCoords }: EventCardPro
       return lang === 'en' ? 'Under 1 km away' : 'ຕໍ່າກວ່າ 1 ກມ';
     }
     return lang === 'en' 
-      ? `${dist.toFixed(1)} km away` 
-      : `${dist.toFixed(1)} ກມ ຫ່າງອອກໄປ`;
+      ? \`\${dist.toFixed(1)} km away\` 
+      : \`\${dist.toFixed(1)} ກມ ຫ່າງອອກໄປ\`;
   };
 
   const getPriceRange = () => {
@@ -96,75 +101,40 @@ export default function EventCard({ event, index = 0, userCoords }: EventCardPro
     const currency = lang === 'lo' ? 'ກີບ' : 'Kip';
         
     if (minPrice === 0 || !isFinite(minPrice)) return t.free;
-    return `${minPrice.toLocaleString()} ${currency}`;
+    return \`\${minPrice.toLocaleString()} \${currency}\`;
   };
 
-  const formatEventDate = (dateStr?: string) => {
-    if (!dateStr) return '';
-    try {
-      const clean = dateStr.trim();
-      let d: Date;
-      if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
-        const [year, month, day] = clean.split('-').map(Number);
-        d = new Date(year, month - 1, day);
-      } else {
-        d = new Date(clean);
-      }
-      if (isNaN(d.getTime())) return dateStr;
-      
-      const dayStr = d.getDate().toString().padStart(2, '0');
-      const monthStr = (d.getMonth() + 1).toString().padStart(2, '0');
-      const yearStr = d.getFullYear();
-      return `${dayStr}/${monthStr}/${yearStr}`;
-    } catch {
-      return dateStr || '';
-    }
-  };
-
-  const getEventDateDisplay = () => {
-    // If flexible date, do not show badge as requested
-    if (event.dateType === 'flexible') {
-      return '';
-    }
-    if (event.dateType === 'booking') {
-      return lang === 'en' ? 'Booking Available' : 'ເປີດໃຫ້ຈອງ';
-    }
-    if (!event.date) return '';
-    const start = formatEventDate(event.date);
-    if (event.endDate && event.endDate !== event.date) {
-      const end = formatEventDate(event.endDate);
-      return `${start} - ${end}`;
-    }
-    return start;
-  };
-
-  const dateBadge = getEventDateDisplay();
+  const formattedDate = event.dateType === 'flexible' && event.flexibleDateDesc 
+    ? event.flexibleDateDesc 
+    : event.dateType === 'booking'
+    ? \`\${lang === 'en' ? 'Booking Available' : 'ເປີດໃຫ້ຈອງ'}\`
+    : \`\${new Date(event.date).toLocaleDateString(lang === 'en' ? 'en-US' : 'lo-LA', { month: 'short', day: 'numeric' })}\${event.time ? \` • \${event.time}\` : ''}\`;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16, scale: 0.98 }}
-      whileInView={{ opacity: 1, y: 0, scale: 1 }}
-      viewport={{ once: true, margin: "-20px" }}
-      transition={{ duration: 0.5, delay: index * 0.04, ease: [0.22, 1, 0.36, 1] }}
-      className="group relative flex flex-col commerce-card w-full h-full overflow-hidden cursor-pointer rounded-2xl sm:rounded-[2rem]"
-      onClick={() => navigate(`/event/${event.id}`, { state: { from: location.pathname + location.search } })}
+      initial={{ opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.3, delay: index * 0.03 }}
+      className="group relative flex flex-col bg-white rounded-xl sm:rounded-2xl border border-gray-200/80 hover:border-adv-orange/50 shadow-2xs hover:shadow-lg transition-all duration-200 overflow-hidden cursor-pointer h-full"
+      onClick={() => navigate(\`/event/\${event.id}\`, { state: { from: location.pathname + location.search } })}
     >
       {/* Visual Header */}
       <div className="relative aspect-[4/5] w-full overflow-hidden bg-gray-100 shrink-0">
         <img 
-          src={event.image.includes('unsplash.com') ? event.image.replace(/w=\d+/, 'w=600') : event.image} 
+          src={event.image.includes('unsplash.com') ? event.image.replace(/w=\\d+/, 'w=600') : event.image} 
           srcSet={
             event.image.includes('unsplash.com') 
-            ? `${event.image.replace(/w=\d+/, 'w=400')} 400w, ${event.image.replace(/w=\d+/, 'w=800')} 800w`
+            ? \`\${event.image.replace(/w=\\d+/, 'w=400')} 400w, \${event.image.replace(/w=\\d+/, 'w=800')} 800w\`
             : undefined
           }
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           alt={event.title} 
-          className="w-full h-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           referrerPolicy="no-referrer"
           loading="lazy"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent pointer-events-none" />
 
         {/* Top Badges */}
         <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5 z-10">
@@ -183,43 +153,49 @@ export default function EventCard({ event, index = 0, userCoords }: EventCardPro
             </span>
           ) : null}
         </div>
+
+        {/* Bottom Overlay Info */}
+        <div className="absolute bottom-2 left-2 right-2 flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-white bg-black/40 backdrop-blur-md px-2 py-1 rounded-md border border-white/20 w-fit max-w-full">
+          <MapPin className="w-3 h-3 text-white shrink-0" />
+          <span className="truncate">{event.location}</span>
+        </div>
       </div>
       
-      <div className="p-3 sm:p-4 flex flex-col flex-1">
-        {/* Badges under image: Location on line 1, Date/Time on line 2 */}
-        <div className="flex flex-col gap-1.5 mb-2.5">
-          <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200/60 w-fit max-w-full">
-            <MapPin className="w-3 h-3 text-adv-orange shrink-0" />
-            <span className="truncate">{event.location}</span>
-          </div>
-
-          {dateBadge && (
-            <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200/60 w-fit max-w-full">
-              <Calendar className="w-3 h-3 text-adv-orange shrink-0" />
-              <span className="truncate">{dateBadge}</span>
-            </div>
-          )}
-        </div>
-
-        <h3 className="text-sm sm:text-base md:text-lg font-bold text-adv-slate leading-snug line-clamp-2 mb-2 h-10 sm:h-11 md:h-14 group-hover:text-adv-orange transition-colors">
+      {/* Content Body */}
+      <div className="p-3 flex flex-col flex-1 min-w-0">
+        {/* Event Title */}
+        <h3 className="text-xs sm:text-sm md:text-base font-bold text-adv-slate leading-snug line-clamp-2 h-8 sm:h-10 md:h-12 group-hover:text-adv-orange transition-colors">
           {event.title}
         </h3>
-
-        {/* Footer */}
-        <div className="mt-auto pt-2 sm:pt-3 border-t border-gray-100 flex items-center justify-between">
-          <div className="flex flex-col">
-            <span className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t.startingFrom}</span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-sm sm:text-base md:text-lg font-bold text-adv-orange leading-tight">{getPriceRange()}</span>
-            </div>
+        
+        {/* Date Details */}
+        <div className="text-[10px] sm:text-[11px] text-gray-500 font-medium mt-1 mb-2 flex items-center gap-1 truncate">
+          <Calendar className="w-3 h-3 text-gray-400 shrink-0" />
+          <span className="truncate">{formattedDate}</span>
+        </div>
+        
+        {/* Footer Action Bar */}
+        <div className="mt-auto pt-2 border-t border-gray-100 flex items-center justify-between gap-1.5">
+          <div className="flex flex-col min-w-0">
+            <span className="text-[8px] sm:text-[9px] font-bold uppercase text-gray-400 tracking-wider leading-none mb-0.5">{t.startingFrom}</span>
+            <span className="text-xs sm:text-sm font-black text-adv-slate truncate">{getPriceRange()}</span>
           </div>
             
-          <button className="text-[11px] sm:text-xs font-bold text-adv-orange group-hover:underline flex items-center gap-1 shrink-0">
-             {isPast ? t.viewEvent : t.buyTickets}
-             <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+          <button 
+            className={\`flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg font-black text-[10px] sm:text-[11px] uppercase tracking-wider transition-all cursor-pointer shrink-0 \${
+              isPast 
+                ? 'text-adv-slate group-hover:underline' 
+                : 'text-adv-orange group-hover:underline'
+            }\`}
+          >
+            <span>{isPast ? t.viewEvent : t.buyTickets}</span>
+            <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
           </button>
         </div>
       </div>
     </motion.div>
   );
 }
+`;
+
+fs.writeFileSync('Frontend/src/components/EventCard.tsx', newContent);

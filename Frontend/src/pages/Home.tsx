@@ -415,22 +415,34 @@ export default function Home() {
               />
             </AnimatePresence>
           </div>
-        </section>
 
-        {/* Carousel Pagination Dots */}
-        <div className="flex items-center justify-center gap-2 mt-4 sm:mt-5">
-           {heroSlides.map((_, idx) => (
-             <button 
-               key={idx}
-               onClick={() => setCurrentImageIndex(idx)}
-               className={`h-2 sm:h-2.5 rounded-full transition-all duration-300 ${idx === currentImageIndex ? 'w-8 sm:w-10 bg-adv-orange' : 'w-2 sm:w-2.5 bg-adv-orange/30 hover:bg-adv-orange/50'}`}
-               aria-label={`Go to slide ${idx + 1}`}
-             />
-           ))}
-        </div>
+          {/* Carousel Pagination Dots inside image */}
+          <div 
+            className="absolute bottom-3 sm:bottom-5 left-0 right-0 z-20 flex items-center justify-center pointer-events-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-black/25 backdrop-blur-xs">
+              {heroSlides.map((_, idx) => (
+                <button 
+                  key={idx}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentImageIndex(idx);
+                  }}
+                  className={`h-2 sm:h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+                    idx === currentImageIndex 
+                      ? 'w-7 sm:w-9 bg-adv-orange' 
+                      : 'w-2 sm:w-2.5 bg-white/70 hover:bg-white'
+                  }`}
+                  aria-label={`Go to slide ${idx + 1}`}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
       </div>
 
-      <section className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 mt-6 sm:mt-8 mb-8 sm:mb-16">
+      <section className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 mt-8 sm:mt-12 md:mt-14 mb-8 sm:mb-16">
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}

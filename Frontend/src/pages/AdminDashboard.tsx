@@ -2735,7 +2735,7 @@ export default function AdminDashboard() {
       {/* Event Details Modal */}
       <AnimatePresence>
         {selectedEvent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -3223,7 +3223,7 @@ export default function AdminDashboard() {
       {/* Edit Event Modal */}
       <AnimatePresence>
         {editingEvent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -3554,7 +3554,7 @@ export default function AdminDashboard() {
       {/* Edit User Modal */}
       <AnimatePresence>
         {editingUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -3662,7 +3662,7 @@ export default function AdminDashboard() {
       <AnimatePresence>
         {viewingIdCardUrl && (
           <div 
-            className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-gray-900/90 backdrop-blur-md"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-gray-900/90 backdrop-blur-md overflow-y-auto"
             onClick={() => setViewingIdCardUrl(null)}
           >
             <motion.div
@@ -3705,7 +3705,7 @@ export default function AdminDashboard() {
       {/* Rejection Modal */}
       <AnimatePresence>
         {showRejectionModal && selectedEvent && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -3763,7 +3763,7 @@ export default function AdminDashboard() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-4 sm:p-10"
+            className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-4 sm:p-10 overflow-y-auto"
             onClick={() => setFullscreenImage(null)}
           >
             <motion.button

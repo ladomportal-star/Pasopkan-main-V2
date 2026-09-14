@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Calendar as CalendarIcon, MapPin, ChevronRight, 
 import { motion, AnimatePresence } from 'motion/react';
 import { events } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import { saveReview, getUserReviewForEvent } from '../data/reviews';
 import SEO from '../components/SEO';
 
@@ -98,6 +99,7 @@ const quickTags: Record<'en' | 'lo', string[]> = {
 
 export default function PastEvents() {
   const navigate = useNavigate();
+  
   const location = useLocation();
   const { lang } = useLanguage();
   const t = translations[lang];
@@ -125,6 +127,8 @@ export default function PastEvents() {
       }
     });
   };
+
+
 
   const getActiveName = () => {
     try {
@@ -344,7 +348,7 @@ export default function PastEvents() {
                     <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 pl-20 sm:pl-0">
                       <button
                         onClick={() => navigate(`/event/${event.id}`, { state: { from: location.pathname + location.search } })}
-                        className="h-9 px-3.5 sm:px-4 rounded-xl text-xs font-black bg-slate-800 text-white hover:bg-slate-900 transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-95 shrink-0"
+                        className="h-9 px-3.5 sm:px-4 rounded-xl text-xs font-black bg-slate-800 text-black hover:bg-slate-900 transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-95 shrink-0"
                       >
                         <span>{t.viewEvent}</span>
                         <ArrowRight className="w-3.5 h-3.5" />
@@ -362,7 +366,7 @@ export default function PastEvents() {
                       ) : (
                         <button
                           onClick={() => handleOpenReviewModal(event)}
-                          className="h-9 px-3.5 sm:px-4 rounded-xl text-xs font-black bg-adv-orange/10 hover:bg-adv-orange text-adv-orange hover:text-white border border-adv-orange/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
+                          className="h-9 px-3.5 sm:px-4 rounded-xl text-xs font-black bg-adv-orange/10 hover:bg-adv-orange text-adv-orange hover:text-black border border-adv-orange/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
                         >
                           <Star className="w-3.5 h-3.5" />
                           <span>{t.rateReview}</span>
@@ -407,7 +411,7 @@ export default function PastEvents() {
               <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
                 <Link 
                   to="/" 
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-adv-orange text-white px-7 py-3.5 rounded-full font-bold text-xs sm:text-sm shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition-all hover:scale-[1.02] cursor-pointer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-adv-orange text-black px-7 py-3.5 rounded-full font-bold text-xs sm:text-sm shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition-all hover:scale-[1.02] cursor-pointer"
                 >
                   {t.exploreUpcoming}
                 </Link>
@@ -432,10 +436,18 @@ export default function PastEvents() {
             initial={{ opacity: 0, y: 50, x: "-50%" }}
             animate={{ opacity: 1, y: 0, x: "-50%" }}
             exit={{ opacity: 0, y: 50, x: "-50%" }}
-            className="fixed bottom-24 sm:bottom-12 left-1/2 bg-adv-slate text-white px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-50 border border-white/10 text-sm"
+            className="fixed bottom-24 sm:bottom-12 left-1/2 -translate-x-1/2 bg-white text-black px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-[100] border border-gray-200 text-sm relative overflow-hidden"
           >
             <Sparkles className="w-4 h-4 text-adv-orange fill-adv-orange" />
             {toastMessage}
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 overflow-hidden">
+              <motion.div
+                initial={{ width: '100%' }}
+                animate={{ width: '0%' }}
+                transition={{ duration: 3, ease: 'linear' }}
+                className="h-full bg-adv-orange"
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -443,7 +455,7 @@ export default function PastEvents() {
       {/* Rate & Review Modal */}
       <AnimatePresence>
         {activeReviewEvent && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -585,7 +597,7 @@ export default function PastEvents() {
                 </button>
                 <button
                   onClick={handleSaveReview}
-                  className="flex-1 py-3 bg-adv-orange text-white hover:bg-orange-600 rounded-full font-bold text-xs sm:text-sm shadow-lg shadow-orange-500/20 transition-all hover:scale-[1.01] cursor-pointer text-center"
+                  className="flex-1 py-3 bg-adv-orange text-black hover:bg-orange-600 rounded-full font-bold text-xs sm:text-sm shadow-lg shadow-orange-500/20 transition-all hover:scale-[1.01] cursor-pointer text-center"
                 >
                   {t.submitReview}
                 </button>

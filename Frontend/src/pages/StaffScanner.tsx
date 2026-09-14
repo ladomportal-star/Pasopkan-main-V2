@@ -50,10 +50,10 @@ const LazyScanner = React.lazy(() =>
       return {
         default: () => (
           <div className="absolute inset-0 bg-zinc-900 flex flex-col items-center justify-center p-6 text-center z-20">
-             <div className="w-16 h-16 rounded-3xl bg-red-500/10 text-red-500 flex items-center justify-center mb-4 border border-red-500/20">
+             <div className="w-16 h-16 rounded-3xl bg-red-500/10 text-red-500 shrink-0 flex items-center justify-center mb-4 border border-red-500/20">
                 <AlertCircle className="w-8 h-8" />
              </div>
-             <h4 className="text-lg font-black text-white uppercase tracking-tight mb-2">Scanner Camera Unavailable</h4>
+             <h4 className="text-lg font-black text-black uppercase tracking-tight mb-2">Scanner Camera Unavailable</h4>
              <p className="text-zinc-400 mb-6 font-bold text-xs leading-relaxed max-w-xs">Camera scanner requires HTTPS or camera permissions in browser.</p>
           </div>
         )
@@ -303,7 +303,7 @@ export default function StaffScanner() {
     setToastMessage({ text, type });
     setTimeout(() => {
       setToastMessage(null);
-    }, 3500);
+    }, 5000);
   };
 
   // Ticket Lookup helper
@@ -490,7 +490,7 @@ export default function StaffScanner() {
 
   return (
     <div className={`min-h-screen transition-colors ${
-      theme === 'dark' ? 'bg-zinc-950 text-white' : 'bg-gray-50 text-adv-slate'
+      theme === 'dark' ? 'bg-zinc-950 text-black' : 'bg-gray-50 text-adv-slate'
     }`}>
       <SEO
         title={t.scanner || (lang === 'lo' ? 'ສະແກນກວດປີ້' : 'Staff Ticket Scanner')}
@@ -504,16 +504,21 @@ export default function StaffScanner() {
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -50 }}
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-2xl font-black text-sm flex items-center gap-3 backdrop-blur-md border border-white/20"
-            style={{
-              backgroundColor: toastMessage.type === 'success' ? '#10b981' : toastMessage.type === 'warning' ? '#f59e0b' : '#ef4444',
-              color: '#ffffff'
-            }}
+            className="fixed bottom-24 sm:bottom-12 pointer-events-none left-1/2 -translate-x-1/2 bg-white text-black px-6 py-3 sm:py-2 sm:px-5 sm:text-sm rounded-2xl sm:rounded-xl font-bold shadow-2xl flex items-center gap-2 sm:gap-3 z-[300] border border-gray-200 relative overflow-hidden whitespace-nowrap w-[90%] sm:w-auto justify-center"
+            style={{ backgroundColor: '#ffffff', color: '#000000', borderColor: '#e5e7eb' }}
           >
-            {toastMessage.type === 'success' && <CheckCircle2 className="w-5 h-5 shrink-0" />}
-            {toastMessage.type === 'warning' && <AlertCircle className="w-5 h-5 shrink-0" />}
-            {toastMessage.type === 'error' && <XCircle className="w-5 h-5 shrink-0" />}
+            {toastMessage.type === 'success' && <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-500" />}
+            {toastMessage.type === 'warning' && <AlertCircle className="w-5 h-5 shrink-0 text-adv-orange" />}
+            {toastMessage.type === 'error' && <XCircle className="w-5 h-5 shrink-0 text-red-500" />}
             <span>{toastMessage.text}</span>
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 overflow-hidden">
+              <motion.div
+                initial={{ width: '100%' }}
+                animate={{ width: '0%' }}
+                transition={{ duration: 5, ease: 'linear' }}
+                className="h-full bg-adv-orange"
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -538,7 +543,7 @@ export default function StaffScanner() {
           {/* Language Switcher */}
           <button
             onClick={toggleLanguage}
-            className="hover:text-adv-orange p-2 transition-colors text-sm font-bold animate-fade-in shrink-0 cursor-pointer"
+            className="hover:text-adv-orange shrink-0 p-2 transition-colors text-sm font-bold animate-fade-in shrink-0 cursor-pointer"
           >
             {lang === 'lo' ? 'LA' : lang.toUpperCase()}
           </button>
@@ -561,8 +566,8 @@ export default function StaffScanner() {
             <div className="min-w-0 flex-1">
               <h2 className="text-sm sm:text-base font-black truncate">{selectedEvent.title}</h2>
               <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 mt-0.5 text-[11px] sm:text-xs text-gray-500 dark:text-zinc-400 font-medium">
-                <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-adv-orange shrink-0" /> {selectedEvent.date}</span>
-                <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-adv-orange shrink-0" /> {selectedEvent.location}</span>
+                <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-adv-orange shrink-0 shrink-0" /> {selectedEvent.date}</span>
+                <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-adv-orange shrink-0 shrink-0" /> {selectedEvent.location}</span>
               </div>
             </div>
           </div>
@@ -570,21 +575,21 @@ export default function StaffScanner() {
           <div className="w-full md:w-auto flex flex-wrap items-center justify-between md:justify-end gap-2.5 pt-2.5 md:pt-0 border-t md:border-t-0 border-gray-100 dark:border-zinc-800">
             {/* Quick Stats Pills */}
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-500 text-xs font-bold border border-emerald-500/20">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-500 shrink-0 text-xs font-bold border border-emerald-500/20">
                 <Users className="w-3.5 h-3.5" />
                 <span className="font-mono">{checkins.length}</span>
                 <span className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 font-semibold">{t.checkedIn}</span>
               </div>
 
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-adv-orange/10 text-adv-orange text-xs font-bold border border-adv-orange/20">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-adv-orange/10 text-adv-orange shrink-0 text-xs font-bold border border-adv-orange/20">
                 <Building2 className="w-3.5 h-3.5" />
                 <span className="font-mono">{totalCapacity.toLocaleString()}</span>
-                <span className="text-[10px] text-adv-orange/70 font-semibold">{t.capacity}</span>
+                <span className="text-[10px] text-adv-orange shrink-0/70 font-semibold">{t.capacity}</span>
               </div>
             </div>
 
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 text-xs font-bold border border-gray-200 dark:border-zinc-700">
-              <ShieldCheck className="w-3.5 h-3.5 text-adv-orange" />
+              <ShieldCheck className="w-3.5 h-3.5 text-adv-orange shrink-0" />
               <span className="truncate max-w-[130px]">{staffLabel}</span>
             </div>
           </div>
@@ -600,7 +605,7 @@ export default function StaffScanner() {
               theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'
             }`}>
               {isCameraActive ? (
-                <div className="relative aspect-square max-w-[240px] sm:max-w-[260px] mx-auto w-full rounded-xl overflow-hidden bg-zinc-950 border border-zinc-800 flex items-center justify-center">
+                <div className="relative aspect-[4/3] sm:aspect-square w-full rounded-2xl overflow-hidden bg-zinc-950 border border-zinc-800 flex items-center justify-center mx-auto shadow-inner">
                   <React.Suspense fallback={
                     <div className="flex flex-col items-center gap-2 text-zinc-500">
                       <QrCode className="w-8 h-8 animate-pulse" />
@@ -622,7 +627,7 @@ export default function StaffScanner() {
                   {/* Overlay Close Camera Button */}
                   <button
                     onClick={() => setIsCameraActive(false)}
-                    className="absolute top-2.5 right-2.5 z-20 px-2.5 py-1 bg-zinc-900/85 hover:bg-zinc-900 text-white font-extrabold text-[11px] rounded-lg backdrop-blur-md border border-white/20 transition-all cursor-pointer flex items-center gap-1 shadow-lg active:scale-95"
+                    className="absolute top-2.5 right-2.5 z-20 px-2.5 py-1 bg-zinc-900/85 hover:bg-zinc-900 text-black font-extrabold text-[11px] rounded-lg backdrop-blur-md border border-white/20 transition-all cursor-pointer flex items-center gap-1 shadow-lg active:scale-95"
                   >
                     <X className="w-3.5 h-3.5 text-red-400" />
                     <span>{t.closeCamera}</span>
@@ -636,10 +641,17 @@ export default function StaffScanner() {
               ) : (
                 <button
                   onClick={() => setIsCameraActive(true)}
-                  className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl bg-adv-slate dark:bg-white text-white dark:text-adv-slate font-bold hover:opacity-95 transition-all shadow-sm active:scale-[0.98] cursor-pointer"
+                  className="w-full aspect-[4/3] sm:aspect-square mx-auto flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 border-dashed border-gray-300 dark:border-zinc-700 hover:border-adv-orange hover:bg-adv-orange/5 dark:hover:bg-adv-orange/10 transition-all cursor-pointer group active:scale-[0.98]"
                 >
-                  <Camera className="w-4 h-4 text-adv-orange shrink-0" />
-                  <span className="text-xs sm:text-sm font-black">{t.openCamera}</span>
+                  <div className="w-16 h-16 rounded-full bg-adv-orange/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Camera className="w-8 h-8 text-adv-orange shrink-0" />
+                  </div>
+                  <div className="text-center space-y-1">
+                    <span className="block text-sm sm:text-base font-black text-gray-700 dark:text-gray-200">{t.openCamera}</span>
+                    <span className="block text-[10px] sm:text-xs text-gray-500 dark:text-zinc-500 font-semibold max-w-[200px] mx-auto leading-relaxed">
+                      {t.cameraInactiveDesc}
+                    </span>
+                  </div>
                 </button>
               )}
             </div>
@@ -662,12 +674,12 @@ export default function StaffScanner() {
                   onKeyDown={(e) => e.key === 'Enter' && lookupTicket(manualCode)}
                   placeholder={t.enterCodePlaceholder}
                   className={`flex-1 min-w-0 px-2.5 py-1.5 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-all ${
-                    theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white placeholder-zinc-600' : 'bg-gray-50 border-gray-200 text-adv-slate'
+                    theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-black placeholder-zinc-600' : 'bg-gray-50 border-gray-200 text-adv-slate'
                   }`}
                 />
                 <button 
                   onClick={() => lookupTicket(manualCode)}
-                  className="px-3 py-1.5 bg-adv-orange hover:bg-orange-600 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer shrink-0 whitespace-nowrap"
+                  className="px-3 py-1.5 bg-adv-orange hover:bg-orange-600 text-black font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer shrink-0 whitespace-nowrap"
                 >
                   {t.verifyBtn}
                 </button>
@@ -681,7 +693,7 @@ export default function StaffScanner() {
                   </span>
                   <button 
                     onClick={() => lookupTicket('tk_981245')}
-                    className="px-1.5 py-0.5 rounded-md bg-orange-500/10 hover:bg-orange-500/20 text-adv-orange font-mono font-bold text-[9px] border border-adv-orange/20 transition-all cursor-pointer"
+                    className="px-1.5 py-0.5 rounded-md bg-orange-500/10 hover:bg-orange-500/20 text-adv-orange shrink-0 font-mono font-bold text-[9px] border border-adv-orange/20 transition-all cursor-pointer"
                   >
                     VIP
                   </button>
@@ -693,7 +705,7 @@ export default function StaffScanner() {
                   </button>
                   <button 
                     onClick={() => lookupTicket('tk_452819')}
-                    className="px-1.5 py-0.5 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 font-mono font-bold text-[9px] border border-emerald-500/20 transition-all cursor-pointer"
+                    className="px-1.5 py-0.5 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 shrink-0 font-mono font-bold text-[9px] border border-emerald-500/20 transition-all cursor-pointer"
                   >
                     General
                   </button>
@@ -737,10 +749,10 @@ export default function StaffScanner() {
                   <div className="flex items-center gap-2.5">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                       !scannedTicket.isValid
-                        ? 'bg-red-500 text-white shadow-md shadow-red-500/30'
+                        ? 'bg-red-500 text-black shadow-md shadow-red-500/30'
                         : scannedTicket.alreadyCheckedIn
-                        ? 'bg-amber-500 text-white'
-                        : 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
+                        ? 'bg-amber-500 text-black'
+                        : 'bg-emerald-500 text-black shadow-md shadow-emerald-500/30'
                     }`}>
                       {!scannedTicket.isValid ? (
                         <XCircle className="w-5 h-5 stroke-[2.5]" />
@@ -799,15 +811,15 @@ export default function StaffScanner() {
                     }`}>
                       <div className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-0.5">{t.attendeeDetails}</div>
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-adv-orange/10 text-adv-orange flex items-center justify-center font-bold text-sm shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-adv-orange/10 text-adv-orange shrink-0 flex items-center justify-center font-bold text-sm shrink-0">
                           {(scannedTicket.attendeeName || 'A').charAt(0)}
                         </div>
                         <div className="min-w-0">
                           <div className="text-sm font-black truncate">{scannedTicket.attendeeName}</div>
                           <div className="text-[11px] text-gray-400 font-medium flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                            <span className="flex items-center gap-1"><Mail className="w-3 h-3 text-adv-orange shrink-0" /> {scannedTicket.email}</span>
+                            <span className="flex items-center gap-1"><Mail className="w-3 h-3 text-adv-orange shrink-0 shrink-0" /> {scannedTicket.email}</span>
                             <span>•</span>
-                            <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-emerald-500 shrink-0" /> {scannedTicket.phone}</span>
+                            <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-emerald-500 shrink-0 shrink-0" /> {scannedTicket.phone}</span>
                           </div>
                         </div>
                       </div>
@@ -818,7 +830,7 @@ export default function StaffScanner() {
                         theme === 'dark' ? 'bg-zinc-900/80 border-zinc-800' : 'bg-white border-gray-200'
                       }`}>
                         <div className="text-[9px] font-bold uppercase tracking-wider text-gray-400">{t.ticketTier}</div>
-                        <div className="text-xs font-black text-adv-orange mt-0.5">{scannedTicket.ticketType}</div>
+                        <div className="text-xs font-black text-adv-orange shrink-0 mt-0.5">{scannedTicket.ticketType}</div>
                       </div>
 
                       <div className={`p-2.5 rounded-xl border transition-colors ${
@@ -853,7 +865,7 @@ export default function StaffScanner() {
                     {!scannedTicket.alreadyCheckedIn ? (
                       <button
                         onClick={confirmCheckIn}
-                        className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer"
+                        className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-black text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer"
                       >
                         <CheckCircle2 className="w-5 h-5" />
                         <span>{t.confirmCheckIn}</span>
@@ -872,12 +884,12 @@ export default function StaffScanner() {
 
             {/* Staff Check-Ins Live List (Organizer View Style) */}
             <div className={`rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-sm border transition-all ${
-              theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
+              theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-black' : 'bg-white border-gray-100 text-adv-slate'
             }`}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3 pb-2.5 border-b border-gray-100/50 dark:border-zinc-800/50">
                 <div className="flex items-center gap-2">
-                  <h4 className="text-xs sm:text-sm font-bold text-gray-950 dark:text-white">{t.recentCheckins}</h4>
-                  <span className="px-2 py-0.5 rounded-full bg-adv-orange/10 text-adv-orange text-[10px] font-black">
+                  <h4 className="text-xs sm:text-sm font-bold text-gray-950 dark:text-black">{t.recentCheckins}</h4>
+                  <span className="px-2 py-0.5 rounded-full bg-adv-orange/10 text-adv-orange shrink-0 text-[10px] font-black">
                     {filteredCheckins.length}
                   </span>
                 </div>
@@ -894,7 +906,7 @@ export default function StaffScanner() {
                       }}
                       placeholder={t.searchAttendee}
                       className={`w-full sm:w-56 pl-8 pr-2.5 py-2 sm:py-1.5 rounded-xl border text-[11px] font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-all ${
-                        theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white placeholder-zinc-500' : 'bg-gray-50 border-gray-200 text-adv-slate placeholder-gray-400'
+                        theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-black placeholder-zinc-500' : 'bg-gray-50 border-gray-200 text-adv-slate placeholder-gray-400'
                       }`}
                     />
                   </div>
@@ -943,15 +955,15 @@ export default function StaffScanner() {
                                 <div className="min-w-0 flex-1">
                                   {/* Top Row: Name + Ticket Type + Status */}
                                   <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1.5">
-                                    <span className="text-sm sm:text-base font-black text-gray-900 dark:text-white break-words">
+                                    <span className="text-sm sm:text-base font-black text-gray-900 dark:text-black break-words">
                                       {checkin.attendeeName || 'Attendee'}
                                     </span>
-                                    <span className="px-2 py-0.5 bg-adv-slate dark:bg-zinc-800 text-white rounded-lg text-[9px] font-black uppercase tracking-widest shrink-0">
+                                    <span className="px-2 py-0.5 bg-adv-slate dark:bg-zinc-800 text-black rounded-lg text-[9px] font-black uppercase tracking-widest shrink-0">
                                       {checkin.ticketType || 'Standard'}
                                     </span>
                                     {/* Checked In status badge */}
                                     <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider border border-emerald-500/20 flex items-center gap-1 shrink-0">
-                                      <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
                                       <span>{lang === 'lo' ? 'ເຊັກອິນແລ້ວ' : 'Checked In'}</span>
                                     </span>
                                   </div>
@@ -960,30 +972,30 @@ export default function StaffScanner() {
                                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-gray-500 dark:text-zinc-400 mb-2">
                                     {checkin.email && (
                                       <span className="flex items-center gap-1 max-w-full truncate">
-                                        <Mail className="w-3.5 h-3.5 text-adv-orange shrink-0" />
+                                        <Mail className="w-3.5 h-3.5 text-adv-orange shrink-0 shrink-0" />
                                         <span className="truncate">{checkin.email}</span>
                                       </span>
                                     )}
                                     {checkin.phone && (
                                       <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold shrink-0">
-                                        <Phone className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                        <Phone className="w-3.5 h-3.5 text-emerald-500 shrink-0 shrink-0" />
                                         <span>{checkin.phone}</span>
                                       </span>
                                     )}
                                     <span className="text-[11px] font-mono text-gray-400 dark:text-zinc-500 shrink-0">
-                                      Ticket ID: <strong className="font-bold text-adv-slate dark:text-white">{checkin.ticketId || checkin.id}</strong>
+                                      Ticket ID: <strong className="font-bold text-adv-slate dark:text-black">{checkin.ticketId || checkin.id}</strong>
                                     </span>
                                   </div>
 
                                   {/* Detail: Price & Time strictly as hh:mm (Removed detail zone, row, seat) */}
                                   <div className="flex items-center gap-x-2.5 text-[10px] sm:text-[11px] font-bold text-gray-400 dark:text-zinc-400 uppercase tracking-wider">
                                     {checkin.price && (
-                                      <span className="text-adv-orange font-mono font-black">{checkin.price}</span>
+                                      <span className="text-adv-orange shrink-0 font-mono font-black">{checkin.price}</span>
                                     )}
                                     {checkin.time && (
                                       <>
                                         {checkin.price && <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />}
-                                        <span className="flex items-center gap-1 font-mono font-bold lowercase text-emerald-500">
+                                        <span className="flex items-center gap-1 font-mono font-bold lowercase text-emerald-500 shrink-0">
                                           <Clock className="w-3 h-3 shrink-0" />
                                           <span>{formatTimeToHHMM(checkin.time, checkin.timestamp)}</span>
                                         </span>
@@ -1009,7 +1021,7 @@ export default function StaffScanner() {
                                           timestamp: checkin.timestamp,
                                           customAnswers: combinedAnswers
                                         })}
-                                        className="w-full sm:w-[138px] h-9 px-3 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-adv-orange border border-orange-500/20 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap active:scale-95 shadow-2xs"
+                                        className="w-full sm:w-[138px] h-9 px-3 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-adv-orange shrink-0 border border-orange-500/20 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap active:scale-95 shadow-2xs"
                                       >
                                         <Eye className="w-3.5 h-3.5 shrink-0" />
                                         <span>{t.viewAnswers}</span>
@@ -1067,7 +1079,7 @@ export default function StaffScanner() {
                                         onClick={() => setScannerPage(pageNum)}
                                         className={`min-w-9 h-9 px-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                                           safePage === pageNum
-                                            ? 'bg-adv-orange text-white shadow-xs'
+                                            ? 'bg-adv-orange text-black shadow-xs'
                                             : 'border border-gray-200 dark:border-zinc-800 text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800'
                                         }`}
                                       >
@@ -1117,7 +1129,7 @@ export default function StaffScanner() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4"
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
             onClick={() => setSelectedAttendeeForAnswers(null)}
           >
             <motion.div
@@ -1125,7 +1137,7 @@ export default function StaffScanner() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className={`max-w-2xl w-full max-h-[90vh] flex flex-col rounded-3xl sm:rounded-[2.5rem] shadow-2xl border overflow-hidden ${
-                theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-200 text-gray-900'
+                theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-black' : 'bg-white border-gray-200 text-gray-900'
               }`}
               onClick={e => e.stopPropagation()}
             >
@@ -1134,10 +1146,10 @@ export default function StaffScanner() {
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-base sm:text-lg font-black truncate text-gray-900 dark:text-white">
+                      <h3 className="text-base sm:text-lg font-black truncate text-gray-900 dark:text-black">
                         {selectedAttendeeForAnswers.attendeeName}
                       </h3>
-                      <span className="px-2 py-0.5 rounded-md bg-adv-slate dark:bg-zinc-800 text-white text-[9px] font-black uppercase tracking-widest">
+                      <span className="px-2 py-0.5 rounded-md bg-adv-slate dark:bg-zinc-800 text-black text-[9px] font-black uppercase tracking-widest">
                         {selectedAttendeeForAnswers.ticketType || 'Standard'}
                       </span>
                     </div>
@@ -1150,7 +1162,7 @@ export default function StaffScanner() {
                 <button
                   type="button"
                   onClick={() => setSelectedAttendeeForAnswers(null)}
-                  className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                  className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-black hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1160,7 +1172,7 @@ export default function StaffScanner() {
               <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
                 {/* Attendee Details Card */}
                 <div className={`p-4 rounded-2xl border grid grid-cols-2 sm:grid-cols-6 gap-3 text-xs ${
-                  theme === 'dark' ? 'bg-zinc-950/60 border-zinc-800 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                  theme === 'dark' ? 'bg-zinc-950/60 border-zinc-800 text-black' : 'bg-gray-50 border-gray-200 text-gray-900'
                 }`}>
                   <div>
                     <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{lang === 'lo' ? 'ໂຊນ' : 'Zone'}</span>
@@ -1184,7 +1196,7 @@ export default function StaffScanner() {
                   </div>
                   <div>
                     <span className="text-gray-500 dark:text-zinc-400 block text-[10px] uppercase font-bold">{t.checkedIn}</span>
-                    <span className="font-bold flex items-center gap-1 text-emerald-500">
+                    <span className="font-bold flex items-center gap-1 text-emerald-500 shrink-0">
                       <CheckCircle2 className="w-3 h-3" />
                       Verified
                     </span>
@@ -1194,7 +1206,7 @@ export default function StaffScanner() {
                 {/* Questionnaire QA pairs */}
                 <div className="space-y-3 pt-2">
                   <h4 className="text-xs font-black uppercase tracking-wider text-gray-900 dark:text-zinc-100 flex items-center gap-1.5">
-                    <CheckSquare className="w-3.5 h-3.5 text-adv-orange" />
+                    <CheckSquare className="w-3.5 h-3.5 text-adv-orange shrink-0" />
                     <span>{t.questionnaireAnswers} ({Object.keys(selectedAttendeeForAnswers.customAnswers || {}).length})</span>
                   </h4>
 
@@ -1218,10 +1230,10 @@ export default function StaffScanner() {
                         >
                           <div className="flex items-center justify-between gap-2 mb-2">
                             <span className="text-xs font-black text-gray-900 dark:text-zinc-100 flex items-center gap-1.5">
-                              <span className="w-5 h-5 rounded-full bg-orange-500/10 text-adv-orange text-[10px] font-black flex items-center justify-center shrink-0">
+                              <span className="w-5 h-5 rounded-full bg-orange-500/10 text-adv-orange shrink-0 text-[10px] font-black flex items-center justify-center shrink-0">
                                 {idx + 1}
                               </span>
-                              <span className="text-gray-900 dark:text-white font-black">{qTitle}</span>
+                              <span className="text-gray-900 dark:text-black font-black">{qTitle}</span>
                             </span>
                             <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase ${
                               theme === 'dark' ? 'bg-zinc-800 text-zinc-300' : 'bg-gray-100 text-gray-700'
@@ -1247,7 +1259,7 @@ export default function StaffScanner() {
                 <button
                   type="button"
                   onClick={() => setSelectedAttendeeForAnswers(null)}
-                  className="px-5 py-2 rounded-xl bg-adv-orange text-white font-bold text-xs shadow-xs hover:opacity-90 transition-opacity cursor-pointer"
+                  className="px-5 py-2 rounded-xl bg-adv-orange text-black font-bold text-xs shadow-xs hover:opacity-90 transition-opacity cursor-pointer"
                 >
                   {t.close}
                 </button>

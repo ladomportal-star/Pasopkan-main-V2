@@ -3002,7 +3002,7 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
       {/* FULL ICON PICKER MODAL */}
       <AnimatePresence>
         {pickingIconIndex !== null && organizerTermsForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}

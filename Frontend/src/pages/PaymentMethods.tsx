@@ -239,7 +239,7 @@ export default function PaymentMethods() {
   const triggerSuccess = (msg: string) => {
     setToastMessage(msg);
     setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+    setTimeout(() => setShowSuccess(false), 5000);
   };
 
   const handleExportCsv = () => {
@@ -742,7 +742,7 @@ export default function PaymentMethods() {
       {/* 24-Hour Security Hold Warning Modal */}
       <AnimatePresence>
         {showWarningModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -805,10 +805,18 @@ export default function PaymentMethods() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-24 sm:bottom-12 left-1/2 -translate-x-1/2 bg-adv-slate text-white px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-50 border border-white/10"
+            className="fixed bottom-24 sm:bottom-12 pointer-events-none left-1/2 -translate-x-1/2 bg-white text-black px-6 py-3 sm:py-2 sm:px-5 sm:text-sm rounded-2xl sm:rounded-xl font-bold shadow-2xl flex items-center gap-2 sm:gap-3 z-[100] border border-gray-200 relative overflow-hidden whitespace-nowrap w-[90%] sm:w-auto justify-center"
           >
-            <CheckCircle2 className="w-5 h-5 text-adv-orange" />
-            {toastMessage || t.changesSaved}
+            <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+            <span>{toastMessage || t.changesSaved}</span>
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 overflow-hidden">
+              <motion.div
+                initial={{ width: '100%' }}
+                animate={{ width: '0%' }}
+                transition={{ duration: 5, ease: 'linear' }}
+                className="h-full bg-adv-orange"
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

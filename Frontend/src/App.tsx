@@ -39,10 +39,10 @@ import StaffScanner from './pages/StaffScanner';
 // A wrapper to animate individual standalone pages
 const PageTransition = ({ children }: { children: React.ReactNode }) => (
   <motion.div
-    initial={{ opacity: 0, y: 15 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -15 }}
-    transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+    initial={{ opacity: 0, y: 10, scale: 0.995, filter: 'blur(2px)' }}
+    animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', transitionEnd: { transform: 'none', filter: 'none' } }}
+    exit={{ opacity: 0, y: -8, scale: 0.995, filter: 'blur(2px)' }}
+    transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
     className="flex-1 flex flex-col w-full h-full min-h-screen"
   >
     {children}

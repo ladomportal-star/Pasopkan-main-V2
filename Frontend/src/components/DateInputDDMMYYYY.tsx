@@ -387,7 +387,7 @@ export function DateInputDDMMYYYY({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   onClick={() => setIsOpen(false)}
-                  className="fixed inset-0 bg-black/50 z-[99998] backdrop-blur-xs flex items-center justify-center p-4 sm:hidden"
+                  className="fixed inset-0 bg-black/50 z-[99998] backdrop-blur-xs flex items-center justify-center p-4 sm:hidden overflow-y-auto"
                 />
               ) : null}
 

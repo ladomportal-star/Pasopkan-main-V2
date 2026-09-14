@@ -35,7 +35,7 @@ export default function LanguageSettings() {
     setShowSuccessToast(true);
     setTimeout(() => {
       setShowSuccessToast(false);
-    }, 2500);
+    }, 5000);
   };
 
   return (
@@ -83,7 +83,7 @@ export default function LanguageSettings() {
               }`}
             >
               <span className="font-bold">{t.english}</span>
-              {lang === 'en' && <CheckCircle2 className="w-5 h-5" />}
+              {lang === 'en' && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
             </button>
             <button
               onClick={() => {
@@ -99,7 +99,7 @@ export default function LanguageSettings() {
               }`}
             >
               <span className="font-bold">{t.lao} (Lao)</span>
-              {lang === 'lo' && <CheckCircle2 className="w-5 h-5" />}
+              {lang === 'lo' && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
             </button>
           </div>
         </motion.div>
@@ -109,13 +109,21 @@ export default function LanguageSettings() {
       <AnimatePresence>
         {showSuccessToast && (
           <motion.div
-            initial={{ opacity: 0, y: 50, x: "-50%" }}
-            animate={{ opacity: 1, y: 0, x: "-50%" }}
-            exit={{ opacity: 0, y: 50, x: "-50%" }}
-            className="fixed bottom-24 sm:bottom-12 left-1/2 bg-adv-slate text-white px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-50 border border-white/10 text-sm"
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-24 sm:bottom-12 pointer-events-none left-1/2 -translate-x-1/2 bg-white text-black px-6 py-3 sm:py-2 sm:px-5 sm:text-sm rounded-2xl sm:rounded-xl font-bold shadow-2xl flex items-center gap-2 sm:gap-3 z-[100] border border-gray-200 relative overflow-hidden whitespace-nowrap w-[90%] sm:w-auto justify-center"
           >
-            <CheckCircle2 className="w-4 h-4 text-adv-orange" />
-            {toastMessage}
+            <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+            <span>{toastMessage}</span>
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 overflow-hidden">
+              <motion.div
+                initial={{ width: '100%' }}
+                animate={{ width: '0%' }}
+                transition={{ duration: 5, ease: 'linear' }}
+                className="h-full bg-adv-orange"
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

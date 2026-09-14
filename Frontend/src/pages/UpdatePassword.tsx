@@ -89,7 +89,7 @@ export default function UpdatePassword() {
       setIs2FAEnabled(true);
       safeStorage.setItem('user_2fa_enabled', 'true');
       setToastMessage(t.successMessage);
-      setTimeout(() => setToastMessage(null), 3000);
+      setTimeout(() => setToastMessage(null), 5000);
     }, 1000);
   };
 
@@ -101,7 +101,7 @@ export default function UpdatePassword() {
       setCode('');
       safeStorage.setItem('user_2fa_enabled', 'false');
       setToastMessage(t.disabledMessage);
-      setTimeout(() => setToastMessage(null), 3000);
+      setTimeout(() => setToastMessage(null), 5000);
     }, 800);
   };
 
@@ -135,7 +135,7 @@ export default function UpdatePassword() {
           {is2FAEnabled ? (
             <div className="space-y-6">
               <div className="p-6 bg-emerald-50 border border-emerald-100 rounded-3xl flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-md">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-black flex items-center justify-center shrink-0 shadow-md">
                   <ShieldCheck className="w-6 h-6" />
                 </div>
                 <div>
@@ -192,7 +192,7 @@ export default function UpdatePassword() {
                       <button
                         type="button"
                         onClick={handleCopyKey}
-                        className="px-4 py-3 rounded-2xl bg-adv-slate hover:bg-black text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                        className="px-4 py-3 rounded-2xl bg-adv-slate hover:bg-black text-black text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
                       >
                         {copiedKey ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-adv-orange" />}
                         <span>{copiedKey ? t.copiedSecret : t.copySecret}</span>
@@ -224,7 +224,7 @@ export default function UpdatePassword() {
                   <button
                     type="submit"
                     disabled={isSubmitting || code.length < 6}
-                    className="w-full sm:w-auto px-10 py-4 rounded-2xl bg-adv-slate text-white font-bold hover:bg-black transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-gray-100 cursor-pointer disabled:cursor-not-allowed"
+                    className="w-full sm:w-auto px-10 py-4 rounded-2xl bg-adv-slate text-black font-bold hover:bg-black transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-gray-100 cursor-pointer disabled:cursor-not-allowed"
                   >
                     {isSubmitting ? (
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -247,10 +247,18 @@ export default function UpdatePassword() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-24 sm:bottom-12 left-1/2 -translate-x-1/2 bg-adv-slate text-white px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-50 border border-white/10"
+            className="fixed bottom-24 sm:bottom-12 pointer-events-none left-1/2 -translate-x-1/2 bg-white text-black px-6 py-3 sm:py-2 sm:px-5 sm:text-sm rounded-2xl sm:rounded-xl font-bold shadow-2xl flex items-center gap-2 sm:gap-3 z-[100] border border-gray-200 relative overflow-hidden whitespace-nowrap w-[90%] sm:w-auto justify-center"
           >
-            <CheckCircle2 className="w-5 h-5 text-adv-orange" />
-            {toastMessage}
+            <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+            <span>{toastMessage}</span>
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 overflow-hidden">
+              <motion.div
+                initial={{ width: '100%' }}
+                animate={{ width: '0%' }}
+                transition={{ duration: 5, ease: 'linear' }}
+                className="h-full bg-adv-orange"
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
