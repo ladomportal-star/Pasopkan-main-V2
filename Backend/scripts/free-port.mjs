@@ -1,11 +1,3 @@
-#!/usr/bin/env node
-/**
- * Frees the dev server's port before `tsx watch` binds to it, so a leftover
- * process from a previous run (crashed reload, an old terminal left open,
- * running `npm run dev` twice) never blocks startup with EADDRINUSE.
- * Runs automatically as the `predev` script — no manual `taskkill`/`kill`
- * needed anymore.
- */
 import { execSync } from "node:child_process";
 
 const port = process.env.PORT || 3000;
@@ -29,7 +21,7 @@ function killOnWindows(port) {
 }
 
 function killOnUnix(port) {
-  let pids = "";
+  let pids;
   try {
     pids = execSync(`lsof -ti tcp:${port}`, { encoding: "utf8" }).trim();
   } catch {
