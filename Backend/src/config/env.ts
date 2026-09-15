@@ -87,13 +87,11 @@ if (env.isProd && env.authDevBypass) {
 
 /** Warn (don't crash) about config a production deployment really wants. */
 export function checkEnv(warn: (msg: string) => void) {
-  if (!env.databaseUrl && !env.sql.host) {
-    warn("No DATABASE_URL / SQL_* set — ticket & review APIs use in-memory fallback.");
-  }
+  // Missing/unreachable DB is reported by the startup banner's Database line
+  // (utils/startupBanner.ts) — no separate warning needed here.
   if (!env.firebaseProjectId) {
-    warn("FIREBASE_PROJECT_ID not set — authenticated endpoints will return 503.");
+    warn("FIREBASE_PROJECT_ID not set - authenticated endpoints will return 503.");
   }
-  if (env.authDevBypass) {
-    warn("AUTH_DEV_BYPASS is ON — ID tokens are NOT verified. Never use this outside dev/tests.");
-  }
+  // AUTH_DEV_BYPASS is surfaced in the startup banner (utils/startupBanner.ts)
+  // instead of here, so it's shown once instead of twice.
 }

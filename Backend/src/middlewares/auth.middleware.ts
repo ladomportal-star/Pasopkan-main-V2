@@ -37,7 +37,7 @@ function initFirebaseAdmin() {
 
   try {
     initializeApp({ projectId });
-    logger.info("[auth] Firebase Admin initialized for project:", projectId);
+    logger.debug("[auth] Firebase Admin initialized for project:", projectId);
   } catch (e: any) {
     logger.warn("[auth] Firebase Admin initialization note:", e?.message);
   }

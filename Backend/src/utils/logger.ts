@@ -5,13 +5,28 @@ import { env } from "../config/env.ts";
  * Application logger. JSON in production; pretty & colourised in dev; silent
  * in tests (override with LOG_LEVEL).
  *
+ * Quiet by default ("info" — request/lifecycle noise stays out of the way);
+ * set LOG_LEVEL=debug to see per-request detail and wiring diagnostics.
+ *
  * `logger` accepts both styles:
  *   logger.info("plain", value)            // console-style, args are joined
  *   logger.error({ err }, "message")       // pino-native (structured)
  * Use `logger.raw` for the underlying pino instance (e.g. pino-http).
  */
+const prettyInDev = !env.isProd && !env.isTest;
+
 export const raw: Logger = pino({
-  level: process.env.LOG_LEVEL ?? (env.isTest ? "silent" : env.isProd ? "info" : "debug"),
+  level: process.env.LOG_LEVEL ?? (env.isTest ? "silent" : "info"),
+  transport: prettyInDev
+    ? {
+        target: "pino-pretty",
+        options: {
+          colorize: true,
+          translateTime: "HH:MM:ss",
+          ignore: "pid,hostname",
+        },
+      }
+    : undefined,
 });
 
 type Level = "debug" | "info" | "warn" | "error";

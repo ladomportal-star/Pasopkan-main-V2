@@ -38,7 +38,7 @@ export async function upsertUserProfile(uid: string, profile: ProfileInput) {
 
     return row;
   } catch (error: any) {
-    logger.warn("[user.service] DB unavailable — in-memory fallback:", error?.message);
+    logger.warn("[user.service] DB unavailable - in-memory fallback:", error?.message);
     const existing = inMemoryUsers.get(uid) ?? {
       id: `mem-${inMemoryUsers.size + 1}`,
       firebaseUid: uid,
