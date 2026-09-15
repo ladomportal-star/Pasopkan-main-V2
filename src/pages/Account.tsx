@@ -573,6 +573,7 @@ export default function Account() {
 
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { lang, toggleLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const t = translations[lang] as unknown as Record<string, string>;
@@ -1301,7 +1302,11 @@ export default function Account() {
 
         <div className={activeTab === 'profile' ? 'block' : 'hidden'}>
           {/* Profile Card */}
-          <div className={`rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-8 mb-6 sm:mb-8 flex flex-col sm:flex-row items-center gap-5 sm:gap-8 shadow-sm border transition-all ${
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className={`rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-8 mb-6 sm:mb-8 flex flex-col sm:flex-row items-center gap-5 sm:gap-8 shadow-sm border transition-all ${
             theme === 'dark' 
               ? 'bg-zinc-900 border-zinc-800/80 text-white' 
               : 'bg-white border-gray-100 text-adv-slate'
@@ -1329,10 +1334,14 @@ export default function Account() {
               <h2 className="text-xl sm:text-2xl font-bold truncate">{profile.firstName} {profile.lastName}</h2>
               <p className="text-gray-400 font-medium mb-1 text-xs sm:text-sm truncate">{profile.email}</p>
             </div>
-          </div>
+          </motion.div>
 
           {/* Account Menu */}
-          <div className={`rounded-3xl sm:rounded-[2.5rem] overflow-hidden mb-6 sm:mb-8 shadow-sm border transition-all ${
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className={`rounded-3xl sm:rounded-[2.5rem] overflow-hidden mb-6 sm:mb-8 shadow-sm border transition-all ${
             theme === 'dark' 
               ? 'bg-zinc-900 border-zinc-800/80 divide-y divide-zinc-800/50' 
               : 'bg-white border-gray-100 divide-y divide-gray-50'
@@ -1365,11 +1374,16 @@ export default function Account() {
                 </div>
               </Link>
             ))}
-          </div>
+          </motion.div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="flex flex-col sm:flex-row gap-3"
+          >
             <button 
-              onClick={() => logout()}
+              onClick={() => setShowLogoutConfirm(true)}
               className={`flex-1 flex items-center justify-center gap-3 p-4 rounded-2xl border transition-all font-bold text-sm sm:text-base ${
                 theme === 'dark' 
                   ? 'bg-zinc-900 border-red-500/20 text-red-400 hover:bg-red-500/5' 
@@ -1379,10 +1393,15 @@ export default function Account() {
               <LogOut className="w-5 h-5" />
               {t.signOut}
             </button>
-          </div>
+          </motion.div>
 
           {/* Mobile Legal Actions */}
-          <div className="flex flex-col gap-3 mt-4 sm:hidden">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            className="flex flex-col gap-3 mt-4 sm:hidden"
+          >
             <div className="flex items-center gap-3">
               <Link 
                 to="/terms"
@@ -1407,7 +1426,7 @@ export default function Account() {
                 {lang === 'lo' ? 'ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ' : 'Privacy Policy'}
               </Link>
             </div>
-          </div>
+          </motion.div>
         </div>
 
         <div className={activeTab === 'my-event' ? 'block' : 'hidden'}>
@@ -3510,6 +3529,68 @@ export default function Account() {
                   className="flex-1 py-3 rounded-xl font-bold text-sm transition-colors bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg"
                 >
                   {lang === 'en' ? 'Confirm' : 'ຢືນຢັນ'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showLogoutConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className={`w-full max-w-sm rounded-3xl p-6 shadow-2xl overflow-hidden ${
+                theme === 'dark' ? 'bg-zinc-900 border border-zinc-800' : 'bg-white border border-gray-100'
+              }`}
+            >
+              <div className="flex justify-center mb-4">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                  theme === 'dark' ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-500'
+                }`}>
+                  <LogOut className="w-8 h-8" />
+                </div>
+              </div>
+              
+              <h3 className={`text-xl font-bold text-center mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {lang === 'en' ? 'Sign Out' : 'ອອກຈາກລະບົບ'}
+              </h3>
+              
+              <p className={`text-center mb-6 text-sm ${theme === 'dark' ? 'text-zinc-400' : 'text-gray-500'}`}>
+                {lang === 'en' 
+                  ? 'Are you sure you want to sign out? You will need to log back in to access your account.' 
+                  : 'ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການອອກຈາກລະບົບ? ທ່ານຈະຕ້ອງເຂົ້າສູ່ລະບົບໃໝ່ເພື່ອເຂົ້າເຖິງບັນຊີຂອງທ່ານ.'}
+              </p>
+              
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className={`flex-1 py-3 rounded-xl font-bold text-sm transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-zinc-800 text-white hover:bg-zinc-700'
+                      : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                  }`}
+                >
+                  {lang === 'en' ? 'Cancel' : 'ຍົກເລີກ'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLogoutConfirm(false);
+                    logout();
+                  }}
+                  className="flex-1 py-3 rounded-xl font-bold text-sm transition-colors bg-red-600 hover:bg-red-700 text-white shadow-lg"
+                >
+                  {lang === 'en' ? 'Sign Out' : 'ອອກຈາກລະບົບ'}
                 </button>
               </div>
             </motion.div>

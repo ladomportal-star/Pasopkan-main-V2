@@ -219,6 +219,28 @@ export default function StaffScanner() {
   const [scannerError, setScannerError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [scannerPage, setScannerPage] = useState(1);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallPrompt(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+      setShowInstallPrompt(false);
+    }
+  };
   const [selectedAttendeeForAnswers, setSelectedAttendeeForAnswers] = useState<{
     attendeeName: string;
     ticketType?: string;
@@ -541,12 +563,23 @@ export default function StaffScanner() {
           </div>
 
           {/* Language Switcher */}
-          <button
-            onClick={toggleLanguage}
-            className="hover:text-adv-orange shrink-0 p-2 transition-colors text-sm font-bold animate-fade-in shrink-0 cursor-pointer"
-          >
-            {lang === 'lo' ? 'LA' : lang.toUpperCase()}
-          </button>
+          <div className="flex items-center gap-2">
+            {showInstallPrompt && (
+              <button
+                onClick={handleInstallClick}
+                className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3 sm:py-1.5 rounded-full bg-adv-orange text-white text-[11px] sm:text-xs font-bold hover:bg-orange-600 transition-colors shadow-sm cursor-pointer"
+              >
+                <img src="/icon.png" alt="Install App" className="w-4 h-4 sm:w-4 sm:h-4 rounded-md object-contain bg-white" />
+                <span>{lang === 'en' ? 'Install App' : 'ຕິດຕັ້ງແອັບ'}</span>
+              </button>
+            )}
+            <button
+              onClick={toggleLanguage}
+              className="hover:text-adv-orange shrink-0 p-2 transition-colors text-sm font-bold animate-fade-in shrink-0 cursor-pointer"
+            >
+              {lang === 'lo' ? 'LA' : lang.toUpperCase()}
+            </button>
+          </div>
         </div>
       </header>
 

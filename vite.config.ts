@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
   return {
-    root: path.resolve(__dirname, 'Frontend'),
+    
     plugins: [
       react(),
       tailwindcss(),
@@ -16,12 +16,10 @@ export default defineConfig(({ mode }) => {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
     },
     resolve: {
-      alias: {
-        '@': path.resolve(__dirname, 'Frontend/src'),
-      },
+      alias: { '@': path.resolve(__dirname, 'src') },
     },
     build: {
-      outDir: path.resolve(__dirname, 'dist'),
+      outDir: 'dist',
       emptyOutDir: true,
       rollupOptions: {
         output: {
