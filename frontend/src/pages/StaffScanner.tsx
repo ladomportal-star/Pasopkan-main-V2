@@ -265,7 +265,7 @@ export default function StaffScanner() {
         ticketId: `tk_${tkNum}`,
         eventId: selectedEvent.id,
         attendeeName: name,
-        email: `${name.toLowerCase().replace(/[^a-z]/g, '')}@example.com`,
+        email: `${(name || '').toLowerCase().replace(/[^a-z]/g, '')}@example.com`,
         phone: `+856 20 ${Math.floor(20000000 + Math.random() * 70000000)}`,
         ticketType: cfg.ticketType,
         zone: cfg.zone,
@@ -375,7 +375,7 @@ export default function StaffScanner() {
     const index = Math.abs(cleanCode.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % firstNames.length;
     
     let mockName = `${firstNames[index]} ${lastNames[index]}`;
-    let mockEmail = `${mockName.toLowerCase().replace(' ', '.')}@example.com`;
+    let mockEmail = `${(mockName || '').toLowerCase().replace(' ', '.')}@example.com`;
     let mockPhone = `+856 20 ${5000 + (index * 123)} ${1000 + (index * 456)}`;
     let tierName = selectedEvent.ticketTiers?.[0]?.name || 'Standard Pass';
     let tierPrice = selectedEvent.ticketTiers?.[0]?.price;
@@ -537,26 +537,16 @@ export default function StaffScanner() {
       {/* Toast Notification Bar */}
       <AnimatePresence>
         {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            className="fixed bottom-24 sm:bottom-12 pointer-events-none left-1/2 -translate-x-1/2 bg-white text-black px-6 py-3 sm:py-2 sm:px-5 sm:text-sm rounded-2xl sm:rounded-xl font-bold shadow-2xl flex items-center gap-2 sm:gap-3 z-[300] border border-gray-200 relative overflow-hidden whitespace-nowrap w-[90%] sm:w-auto justify-center"
-            style={{ backgroundColor: '#ffffff', color: '#000000', borderColor: '#e5e7eb' }}
-          >
-            {toastMessage.type === 'success' && <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-500" />}
-            {toastMessage.type === 'warning' && <AlertCircle className="w-5 h-5 shrink-0 text-adv-orange" />}
-            {toastMessage.type === 'error' && <XCircle className="w-5 h-5 shrink-0 text-red-500" />}
-            <span>{toastMessage.text}</span>
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 overflow-hidden">
-              <motion.div
-                initial={{ width: '100%' }}
-                animate={{ width: '0%' }}
-                transition={{ duration: 5, ease: 'linear' }}
-                className="h-full bg-adv-orange"
-              />
-            </div>
-          </motion.div>
+          <div className="fixed bottom-24 sm:bottom-12 right-1/2 translate-x-1/2 z-[300] flex flex-col gap-3 w-full max-w-sm px-6 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+              className="p-4 sm:p-5 rounded-2xl sm:rounded-[1.5rem] shadow-2xl flex items-center gap-3.5 border relative overflow-hidden pointer-events-auto bg-white border-gray-200 text-black"
+            >
+              <span className="font-bold text-xs sm:text-sm flex-1 leading-snug">{toastMessage.text}</span>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

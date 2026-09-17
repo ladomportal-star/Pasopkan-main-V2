@@ -190,7 +190,7 @@ const LandscapeEventCard: React.FC<LandscapeEventCardProps> = ({ event, index, u
         </div>
       </div>
 
-      <div className="p-3 sm:p-4 flex flex-col flex-1">
+      <div className="p-3 sm:p-4 flex flex-col flex-1 min-w-0">
         {/* Badges under image: Location on line 1, Date/Time on line 2 */}
         <div className="flex flex-col gap-1.5 mb-2.5">
           <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200/60 w-fit max-w-full">
@@ -206,20 +206,20 @@ const LandscapeEventCard: React.FC<LandscapeEventCardProps> = ({ event, index, u
           )}
         </div>
 
-        <h3 className="text-sm sm:text-base md:text-lg font-bold text-adv-slate leading-snug line-clamp-2 mb-2 h-10 sm:h-11 md:h-14">
+        <h3 className="text-sm sm:text-base md:text-lg font-bold text-adv-slate leading-snug line-clamp-2 break-words mb-2 ">
           {event.title}
         </h3>
 
         {/* Footer */}
         <div className="mt-auto pt-2 sm:pt-3 border-t border-gray-100 flex items-center justify-between">
-          <div className="flex flex-col">
-            <span className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t.starting}</span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-sm sm:text-base md:text-lg font-bold text-adv-orange leading-tight">{getPriceRange()}</span>
+          <div className="flex flex-col min-w-0 mr-2">
+            <span className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate">{t.starting}</span>
+            <div className="flex items-baseline gap-1 min-w-0">
+              <span className="text-sm sm:text-base md:text-lg font-bold text-adv-orange leading-tight truncate">{getPriceRange()}</span>
             </div>
           </div>
           
-          <button className="text-[11px] sm:text-xs font-bold text-adv-orange group-hover:underline flex items-center gap-1">
+          <button className="shrink-0 text-[11px] sm:text-xs font-bold text-adv-orange group-hover:underline flex items-center gap-1">
              {t.book}
              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
           </button>

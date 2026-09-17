@@ -298,7 +298,7 @@ export function addBlog(blogData: Partial<BlogPost> & { title: string; content: 
     id: `blog-${Date.now()}`,
     title: blogData.title,
     titleLao: blogData.titleLao,
-    slug: blogData.slug || blogData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    slug: blogData.slug || (blogData.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
     excerpt: blogData.excerpt || blogData.content.slice(0, 160) + '...',
     excerptLao: blogData.excerptLao,
     content: blogData.content,

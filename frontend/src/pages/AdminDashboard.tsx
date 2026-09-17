@@ -30,7 +30,7 @@ const exportToCSV = (filename: string, rows: any[]) => {
     rows.map(row => {
       return keys.map(k => {
         let cell = row[k] === null || row[k] === undefined ? '' : row[k];
-        cell = cell instanceof Date ? cell.toLocaleString() : cell.toString().replace(/"/g, '""');
+        cell = cell instanceof Date ? cell.toLocaleString() : (cell?.toString() || '').replace(/"/g, '""');
         if (cell.search(/("|,|\n)/g) >= 0) {
           cell = `"${cell}"`;
         }
@@ -745,7 +745,7 @@ export default function AdminDashboard() {
       const ticketsSold = realTickets.filter(t => t.event?.id === event.id).reduce((sum, t) => sum + (Number(t.quantity) || 1), 0);
       const revenue = realTickets.filter(t => t.event?.id === event.id).reduce((sum, t) => sum + ((Number(t.quantity) || 1) * (Number(t.tier?.price) || 0)), 0);
       eventsRows.push([
-        `"${event.title.replace(/"/g, '""')}"`,
+        `"${(event.title || '').replace(/"/g, '""')}"`,
         `"${(event.category || '').replace(/"/g, '""')}"`,
         event.date,
         event.status,
@@ -763,8 +763,8 @@ export default function AdminDashboard() {
     
     usersList.forEach(user => {
       usersRows.push([
-        `"${user.name.replace(/"/g, '""')}"`,
-        `"${user.email.replace(/"/g, '""')}"`,
+        `"${(user.name || '').replace(/"/g, '""')}"`,
+        `"${(user.email || '').replace(/"/g, '""')}"`,
         user.role,
         user.status,
         new Date(user.joined).toISOString().split('T')[0]
@@ -818,6 +818,7 @@ export default function AdminDashboard() {
   const [payoutFilter, setPayoutFilter] = useState<'all' | 'pending' | 'paid'>('all');
   const [payoutDateFilter, setPayoutDateFilter] = useState<'all' | 'day' | 'week' | 'month' | 'year'>('all');
   const [uploadingBill, setUploadingBill] = useState<Record<string, string>>({});
+  const [uploadingRef, setUploadingRef] = useState<Record<string, string>>({});
   const [editingFeeId, setEditingFeeId] = useState<string | null>(null);
   const [tempFeePercent, setTempFeePercent] = useState<number>(0);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
@@ -932,16 +933,16 @@ export default function AdminDashboard() {
             eventTitle: txns[0].event?.title || 'Live Ticket Sales',
             organizer: 'Live Platform User',
             revenue: txns.reduce((sum: number, tx: any) => {
-              const amount = parseInt(tx.amount.replace(/[^0-9]/g, '')) || 0;
+              const amount = parseInt(String(tx.amount || '').replace(/[^0-9]/g, '')) || 0;
               return sum + amount;
             }, 0),
             platformFeePercent: 10,
             platformFeeAmount: txns.reduce((sum: number, tx: any) => {
-              const amount = parseInt(tx.amount.replace(/[^0-9]/g, '')) || 0;
+              const amount = parseInt(String(tx.amount || '').replace(/[^0-9]/g, '')) || 0;
               return sum + amount;
             }, 0) * 0.1,
             payoutAmount: txns.reduce((sum: number, tx: any) => {
-              const amount = parseInt(tx.amount.replace(/[^0-9]/g, '')) || 0;
+              const amount = parseInt(String(tx.amount || '').replace(/[^0-9]/g, '')) || 0;
               return sum + amount;
             }, 0) * 0.9,
             status: 'pending',
@@ -1788,7 +1789,7 @@ export default function AdminDashboard() {
         return [
           item.date,
           item.fullDate,
-          `"${eventName.replace(/"/g, '""')}"`,
+          `"${(eventName || '').replace(/"/g, '""')}"`,
           item.tickets.toString(),
           item.revenue.toString(),
           avgPrice.toString()
@@ -1798,7 +1799,7 @@ export default function AdminDashboard() {
       [
         lang === 'lo' ? 'ລວມທັງໝົດ' : 'TOTAL',
         `${lang === 'lo' ? 'ຍ້ອນຫຼັງ' : 'Last'} ${revenueTimeRange} ${lang === 'lo' ? 'ວັນ' : 'Days'}`,
-        `"${eventName.replace(/"/g, '""')}"`,
+        `"${(eventName || '').replace(/"/g, '""')}"`,
         revenueStats.currentTickets.toString(),
         revenueStats.currentRevenue.toString(),
         (revenueStats.currentTickets > 0 ? Math.round(revenueStats.currentRevenue / revenueStats.currentTickets) : 0).toString()
@@ -1813,7 +1814,7 @@ export default function AdminDashboard() {
 
     const safeSlug = revenueEventFilter === 'all' 
       ? 'all_events' 
-      : (selectedEventObj?.title ? selectedEventObj.title.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 25) : 'event');
+      : (selectedEventObj?.title ? (selectedEventObj.title || '').toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 25) : 'event');
     const filename = `ticket_sales_revenue_${revenueTimeRange}d_${safeSlug}_${new Date().toISOString().split('T')[0]}.csv`;
     link.setAttribute('download', filename);
 
@@ -5312,12 +5313,27 @@ export default function AdminDashboard() {
                                   </div>
                                 )}
                               </div>
+                              {uploadingBill[payout.id] && (
+                                <div className="space-y-1.5 mt-3">
+                                  <label className="block text-[11px] font-bold text-gray-500 uppercase">
+                                    Reference Number / Txn ID
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={uploadingRef[payout.id] || ''}
+                                    onChange={(e) => setUploadingRef(prev => ({...prev, [payout.id]: e.target.value}))}
+                                    placeholder="e.g. TR-202609..."
+                                    className="w-full text-sm py-2 px-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-adv-orange/20 focus:border-adv-orange transition-all outline-none"
+                                  />
+                                </div>
+                              )}
                               
                               {uploadingBill[payout.id] && (
                                 <button 
                                   onClick={() => {
                                     const img = uploadingBill[payout.id];
-                                    setPayoutsList(prev => prev.map(p => p.id === payout.id ? { ...p, status: 'paid', billImage: img, completedDate: new Date().toISOString() } : p));
+                                    const ref = uploadingRef[payout.id] || payout.id;
+                                    setPayoutsList(prev => prev.map(p => p.id === payout.id ? { ...p, status: 'paid', billImage: img, reference: ref, completedDate: new Date().toISOString() } : p));
                                     
                                     // Add/update to organizer's local storage for them to see the bill
                                     const savedBills = safeStorage.getItem('organizer_payout_bills') || '[]';
@@ -5325,16 +5341,17 @@ export default function AdminDashboard() {
                                     
                                     const existingIdx = parsedBills.findIndex((b: any) => b.id === payout.id);
                                     if (existingIdx >= 0) {
-                                      parsedBills[existingIdx] = { ...payout, status: 'paid', billImage: img, paidAt: new Date().toISOString() };
+                                      parsedBills[existingIdx] = { ...payout, status: 'paid', billImage: img, reference: ref, paidAt: new Date().toISOString() };
                                     } else {
-                                      parsedBills.push({ ...payout, status: 'paid', billImage: img, paidAt: new Date().toISOString() });
+                                      parsedBills.push({ ...payout, status: 'paid', billImage: img, reference: ref, paidAt: new Date().toISOString() });
                                     }
                                     
                                     safeStorage.setItem('organizer_payout_bills', JSON.stringify(parsedBills));
                                     
                                     setUploadingBill(prev => { const next = {...prev}; delete next[payout.id]; return next; });
+                                    setUploadingRef(prev => { const next = {...prev}; delete next[payout.id]; return next; });
                                   }}
-                                  className="w-full bg-adv-orange hover:bg-orange-600 text-white font-bold text-sm px-4 py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+                                  className="w-full mt-3 bg-adv-orange hover:bg-orange-600 text-white font-bold text-sm px-4 py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
                                 >
                                   <CheckCircle2 className="w-4 h-4" />
                                   {payout.status === 'paid' ? 'Resubmit Bill' : 'Submit Bill to Organizer'}

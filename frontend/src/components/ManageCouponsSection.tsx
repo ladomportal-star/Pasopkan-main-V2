@@ -232,11 +232,11 @@ export const ManageCouponsSection: React.FC<ManageCouponsSectionProps> = ({
     const rows = eventRedemptions.map(r => [
       r.couponCode,
       r.orderId,
-      `"${r.userName.replace(/"/g, '""')}"`,
+      `"${(r.userName || '').replace(/"/g, '""')}"`,
       r.userEmail,
       r.userPhone || '',
       r.userId,
-      `"${r.tierName.replace(/"/g, '""')}"`,
+      `"${(r.tierName || '').replace(/"/g, '""')}"`,
       r.discountSaved,
       r.totalPaid,
       new Date(r.usedAt).toLocaleString()

@@ -169,7 +169,7 @@ export default function AdminBlogsTab() {
     const payload: Partial<BlogPost> = {
       title: formData.title,
       titleLao: formData.title,
-      slug: formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || `post-${Date.now()}`,
+      slug: (formData.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || `post-${Date.now()}`,
       excerpt: formData.excerpt || formData.content.slice(0, 160) + '...',
       excerptLao: formData.excerpt || formData.content.slice(0, 160) + '...',
       content: formData.content,
@@ -231,15 +231,16 @@ export default function AdminBlogsTab() {
       {/* Toast Notification */}
       <AnimatePresence>
         {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed top-6 right-6 z-[150] bg-adv-slate text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-bold border border-white/10"
-          >
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>{toastMessage}</span>
-          </motion.div>
+          <div className="fixed bottom-24 sm:bottom-12 right-1/2 translate-x-1/2 z-[300] flex flex-col gap-3 w-full max-w-sm px-6 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+              className="p-4 sm:p-5 rounded-2xl sm:rounded-[1.5rem] shadow-2xl flex items-center gap-3.5 border relative overflow-hidden pointer-events-auto bg-white border-gray-200 text-black"
+            >
+              <span className="font-bold text-xs sm:text-sm flex-1 leading-snug">{toastMessage}</span>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

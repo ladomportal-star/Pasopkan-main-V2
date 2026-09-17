@@ -420,12 +420,11 @@ export default function HomeBlogSection() {
               </div>
 
               {/* Footer */}
-              <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-                <ShareArticleButton blog={readingBlog} dropUp={true} />
+              <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end">
                 <button
                   type="button"
                   onClick={handleCloseBlog}
-                  className="px-6 py-2.5 rounded-xl bg-adv-slate text-white text-xs font-black uppercase tracking-wider hover:bg-black transition-colors cursor-pointer"
+                  className="px-6 py-2.5 w-full sm:w-auto rounded-xl bg-adv-slate text-white text-xs font-black uppercase tracking-wider hover:bg-black transition-colors cursor-pointer"
                 >
                   {isLao ? 'ປິດໜ້າຕ່າງ' : 'Close'}
                 </button>

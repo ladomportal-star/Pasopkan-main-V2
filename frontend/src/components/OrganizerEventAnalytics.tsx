@@ -117,24 +117,19 @@ export const OrganizerEventAnalytics: React.FC<OrganizerEventAnalyticsProps> = (
   const [selectedEventId, setSelectedEventId] = useState<string>('all');
   const [activeMetricTab, setActiveMetricTab] = useState<'revenue' | 'tickets'>('revenue');
   const [activeChartType, setActiveChartType] = useState<'timeline' | 'tiers' | 'checkin'>('timeline');
-  const [isLiveUpdateEnabled, setIsLiveUpdateEnabled] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
   const [showRefreshToast, setShowRefreshToast] = useState(false);
 
   // Handle the live update interval
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isLiveUpdateEnabled) {
-      interval = setInterval(() => {
-        setRefreshTick(prev => prev + 1);
-        setShowRefreshToast(true);
-        setTimeout(() => setShowRefreshToast(false), 3000); // Hide after 3 seconds
-      }, 60000); // 60 seconds
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isLiveUpdateEnabled]);
+    const interval = setInterval(() => {
+      setRefreshTick(prev => prev + 1);
+      setShowRefreshToast(true);
+      setTimeout(() => setShowRefreshToast(false), 3000); // Hide after 3 seconds
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Compute stats for each event
   const eventsStatsMap = useMemo(() => {
@@ -290,10 +285,10 @@ export const OrganizerEventAnalytics: React.FC<OrganizerEventAnalyticsProps> = (
       const stats = eventsStatsMap.get(e.id) || getEventStats(e);
       return {
         Event_ID: e.id,
-        Event_Title: `"${e.title.replace(/"/g, '""')}"`,
+        Event_Title: `"${(e.title || '').replace(/"/g, '""')}"`,
         Date: e.date,
         Category: e.category,
-        Venue: `"${e.venue.replace(/"/g, '""')}"`,
+        Venue: `"${(e.venue || '').replace(/"/g, '""')}"`,
         Tickets_Sold: stats.ticketsSold,
         Total_Capacity: stats.totalCapacity,
         Gross_Revenue_LAK: stats.grossRevenue,
@@ -368,30 +363,6 @@ export const OrganizerEventAnalytics: React.FC<OrganizerEventAnalyticsProps> = (
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Live Update Toggle */}
-          <div className="flex items-center gap-2 px-3.5 py-2 bg-white border border-gray-200 rounded-xl shadow-2xs">
-            <RefreshCw 
-              className={`w-3.5 h-3.5 ${isLiveUpdateEnabled ? 'text-emerald-500 animate-spin' : 'text-gray-400'}`} 
-              style={{ animationDuration: '3s' }}
-            />
-            <span className="text-xs font-bold text-gray-700 hidden sm:inline">
-              {lang === 'lo' ? 'ອັບເດດສົດ' : 'Live Update'}
-            </span>
-            <button
-              onClick={() => setIsLiveUpdateEnabled(!isLiveUpdateEnabled)}
-              className={`w-8 h-4.5 rounded-full p-0.5 transition-colors cursor-pointer flex items-center ${
-                isLiveUpdateEnabled ? 'bg-emerald-500' : 'bg-gray-300'
-              }`}
-            >
-              <motion.div
-                layout
-                className="w-3.5 h-3.5 bg-white rounded-full shadow-sm"
-                animate={{ x: isLiveUpdateEnabled ? 14 : 0 }}
-                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              />
-            </button>
-          </div>
-
           {/* Event Selector Dropdown */}
           <div className="relative min-w-[220px] flex-1 sm:flex-initial">
             <select

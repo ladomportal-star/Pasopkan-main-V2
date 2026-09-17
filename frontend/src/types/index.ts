@@ -17,6 +17,7 @@ export interface PayoutBill {
   bankInfo?: BankAccountInfo;
   billImage?: string;
   completedDate?: string;
+  reference?: string;
   // Alternate display shape used by the payout-history table
   date?: string;
   event?: string;

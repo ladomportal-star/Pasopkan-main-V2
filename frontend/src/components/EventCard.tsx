@@ -197,7 +197,7 @@ export default function EventCard({ event, index = 0, userCoords }: EventCardPro
           )}
         </div>
 
-        <h3 className="text-sm sm:text-base md:text-lg font-bold text-adv-slate leading-snug line-clamp-2 mb-2 h-10 sm:h-11 md:h-14 group-hover:text-adv-orange transition-colors">
+        <h3 className="text-sm sm:text-base md:text-lg font-bold text-adv-slate leading-snug line-clamp-2 break-words mb-2  group-hover:text-adv-orange transition-colors">
           {event.title}
         </h3>
 

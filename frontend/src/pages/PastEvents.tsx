@@ -432,23 +432,16 @@ export default function PastEvents() {
       {/* Success Toast */}
       <AnimatePresence>
         {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, x: "-50%" }}
-            animate={{ opacity: 1, y: 0, x: "-50%" }}
-            exit={{ opacity: 0, y: 50, x: "-50%" }}
-            className="fixed bottom-24 sm:bottom-12 left-1/2 -translate-x-1/2 bg-white text-black px-8 py-4 rounded-2xl font-bold shadow-2xl flex items-center gap-3 z-[100] border border-gray-200 text-sm relative overflow-hidden"
-          >
-            <Sparkles className="w-4 h-4 text-adv-orange fill-adv-orange" />
-            {toastMessage}
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 overflow-hidden">
-              <motion.div
-                initial={{ width: '100%' }}
-                animate={{ width: '0%' }}
-                transition={{ duration: 3, ease: 'linear' }}
-                className="h-full bg-adv-orange"
-              />
-            </div>
-          </motion.div>
+          <div className="fixed bottom-24 sm:bottom-12 right-1/2 translate-x-1/2 z-[300] flex flex-col gap-3 w-full max-w-sm px-6 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+              className="p-4 sm:p-5 rounded-2xl sm:rounded-[1.5rem] shadow-2xl flex items-center gap-3.5 border relative overflow-hidden pointer-events-auto bg-white border-gray-200 text-black"
+            >
+              <span className="font-bold text-xs sm:text-sm flex-1 leading-snug">{toastMessage}</span>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

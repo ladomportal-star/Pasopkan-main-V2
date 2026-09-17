@@ -14,7 +14,6 @@ import { useTheme } from '../context/ThemeContext';
 import { CheckinRecord, EventAttendee, useAttendees, useCheckins } from '../lib/checkinsStore';
 import SEO from '../components/SEO';
 import OtpInput from '../components/OtpInput';
-import TwoFactorAuthModal from '../components/TwoFactorAuthModal';
 import ManageCouponsSection from '../components/ManageCouponsSection';
 
 const LazyScanner = React.lazy(() =>
@@ -311,7 +310,18 @@ export default function Account() {
   const [bankFormData, setBankFormData] = useState(bankAccount || { bankName: '', accountName: '', accountNumber: '' });
   
   // Payout revenue state
-  const [unclaimedRevenue, setUnclaimedRevenue] = useState(3500000);
+  interface UnclaimedEvent {
+    id: string;
+    title: string;
+    amount: number;
+    date: string;
+  }
+  const [unclaimedEvents, setUnclaimedEvents] = useState<UnclaimedEvent[]>([
+    { id: 'ev1', title: 'Vientiane Music Festival 2026', amount: 2000000, date: '2026-10-15' },
+    { id: 'ev2', title: 'Tech Startup Conference', amount: 1500000, date: '2026-09-20' }
+  ]);
+  const [eventToClaim, setEventToClaim] = useState<UnclaimedEvent | null>(null);
+  const unclaimedRevenue = unclaimedEvents.reduce((acc, ev) => acc + ev.amount, 0);
   const [isClaiming, setIsClaiming] = useState(false);
 
   // Bank Update OTP State
@@ -326,9 +336,9 @@ export default function Account() {
   const [showClaimOtpModal, setShowClaimOtpModal] = useState(false);
   const [claimOtpCode, setClaimOtpCode] = useState('');
   const [expectedClaimOtp, setExpectedClaimOtp] = useState('123456');
-  const [showClaimTwoFaModal, setShowClaimTwoFaModal] = useState(false);
   const [claimOtpCountdown, setClaimOtpCountdown] = useState(60);
   const [claimOtpError, setClaimOtpError] = useState('');
+  const [claimTwoFaCode, setClaimTwoFaCode] = useState('');
   const [showCoolingWarningModal, setShowCoolingWarningModal] = useState(false);
 
   // State for Check-in Confirmation Modal
@@ -476,18 +486,14 @@ export default function Account() {
   };
 
   // Open Claim Event Money Modal with 30-Day Check
-  const handleOpenClaimModal = () => {
-    if (unclaimedRevenue <= 0) {
-      addToast(lang === 'lo' ? 'ບໍ່ມີຍອດເງິນທີ່ສາມາດເບີກໄດ້ໃນຕອນນີ້' : 'No claimable event revenue at this time', 'warning', 5000);
-      return;
-    }
-
+  const handleOpenClaimModal = (event: UnclaimedEvent) => {
     // Strictly enforce 30-day bank modification cooling-off condition
     if (isBankInCoolingPeriod) {
       setShowCoolingWarningModal(true);
       return;
     }
 
+    setEventToClaim(event);
     const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
     setExpectedClaimOtp(randomOtp);
     setClaimOtpCode('');
@@ -499,6 +505,7 @@ export default function Account() {
   // Confirm and authorize event revenue claim with OTP
   const handleConfirmClaimPayout = () => {
     let hasError = false;
+
     if (claimOtpCode.length < 6) {
       setClaimOtpError(lang === 'lo' ? 'ກະລຸນາປ້ອນລະຫັດ OTP 6 ຫຼັກໃຫ້ຄົບຖ້ວນ' : 'Please enter the full 6-digit OTP code');
       hasError = true;
@@ -507,23 +514,33 @@ export default function Account() {
       hasError = true;
     }
     
+    if (claimTwoFaCode.length < 6) {
+      setClaimOtpError(lang === 'lo' ? 'ກະລຸນາປ້ອນລະຫັດ 2FA 6 ຫຼັກໃຫ້ຄົບຖ້ວນ' : 'Please enter the full 6-digit 2FA code');
+      hasError = true;
+    } else if (claimTwoFaCode !== '123456') {
+      setClaimOtpError(lang === 'lo' ? 'ລະຫັດ 2FA ບໍ່ຖືກຕ້ອງ ກະລຸນາກວດສອບຄືນ' : 'Invalid 2FA code. Please verify and try again.');
+      hasError = true;
+    }
 
-    
     if (hasError) return;
 
     setIsClaiming(true);
     setTimeout(() => {
       setIsClaiming(false);
       setShowClaimOtpModal(false);
-      const claimedAmt = unclaimedRevenue;
-      setUnclaimedRevenue(0);
+      
+      if (!eventToClaim) return;
+
+      const claimedAmt = eventToClaim.amount;
+      setUnclaimedEvents(prev => prev.filter(e => e.id !== eventToClaim.id));
       setClaimOtpCode('');
+      setClaimTwoFaCode('');
       setClaimOtpError('');
 
       const newPayout: PayoutBill = {
         id: `PAY-${Date.now().toString().slice(-6)}`,
         date: new Date().toISOString().split('T')[0],
-        event: 'Vientiane Music Festival 2026',
+        event: eventToClaim.title,
         grossAmount: claimedAmt,
         platformFee: claimedAmt * 0.05,
         amount: claimedAmt * 0.95,
@@ -554,46 +571,12 @@ export default function Account() {
 
       addToast(
         lang === 'lo'
-          ? `ຢືນຢັນ OTP ສຳເລັດ! ຂໍເບີກຈ່າຍເງິນ ${new Intl.NumberFormat('lo-LA').format(claimedAmt * 0.95)} ₭ ຮຽບຮ້ອຍແລ້ວ`
-          : `OTP verified! Payout claim of ${new Intl.NumberFormat('lo-LA').format(claimedAmt * 0.95)} ₭ transferred successfully!`,
+          ? `ຢືນຢັນສຳເລັດ! ຂໍເບີກຈ່າຍເງິນ ${new Intl.NumberFormat('lo-LA').format(claimedAmt * 0.95)} ₭ ຮຽບຮ້ອຍແລ້ວ`
+          : `Verified! Payout claim of ${new Intl.NumberFormat('lo-LA').format(claimedAmt * 0.95)} ₭ transferred successfully!`,
         'success',
         5000
       );
     }, 800);
-  };
-
-  // Quick simulator tool to test 30-day lock vs claimable state
-
-  const handleTwoFaSuccess = (code: string) => {
-    setShowClaimTwoFaModal(false);
-    
-    const claimedAmt = unclaimedRevenue;
-    setUnclaimedRevenue(0);
-    setClaimOtpCode('');
-    setClaimOtpError('');
-
-    const newPayout: PayoutBill = {
-      id: `PAY-${Date.now().toString().slice(-6)}`,
-      date: new Date().toISOString().split('T')[0],
-      event: 'Vientiane Music Festival 2026',
-      grossAmount: claimedAmt,
-      platformFee: claimedAmt * 0.05,
-      amount: claimedAmt * 0.95,
-      status: 'Pending',
-      account: bankAccount ? `${bankAccount.bankName} *${bankAccount.accountNumber.slice(-4)}` : 'BCEL Bank *8899',
-      accountName: bankAccount?.accountName || 'Sirithida Souksavat',
-      receiptUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=800'
-    };
-
-    setMyPayouts(prev => [newPayout, ...prev]);
-
-    addToast(
-      lang === 'lo'
-        ? `ຢືນຢັນ 2FA ສຳເລັດ! ຂໍເບີກຈ່າຍເງິນ ${new Intl.NumberFormat('lo-LA').format(claimedAmt * 0.95)} ₭ ຮຽບຮ້ອຍແລ້ວ`
-        : `2FA verified! Payout claim of ${new Intl.NumberFormat('lo-LA').format(claimedAmt * 0.95)} ₭ transferred successfully!`,
-      'success',
-      5000
-    );
   };
 
   const handleSimulateBankDate = (daysAgo: number) => {
@@ -1864,15 +1847,15 @@ export default function Account() {
                                       {att.price && (
                                         <span className="text-adv-orange font-mono font-black">{att.price}</span>
             )}
-                                      {((att.checkedInTime && att.isCheckedIn) || att.purchaseDate) && (
+                                      {(att.checkedInTime && att.isCheckedIn) && (
                                         <>
                                           {att.price && <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />}
-                                          <span className={`flex items-center gap-1 font-mono font-bold lowercase ${att.isCheckedIn ? 'text-emerald-500' : 'text-gray-400 dark:text-zinc-400'}`}>
+                                          <span className="flex items-center gap-1 font-mono font-bold lowercase text-emerald-500">
                                             <Clock className="w-3.5 h-3.5 sm:w-3 sm:h-3 shrink-0" />
-                                            <span>{formatTimeToHHMM(att.checkedInTime || att.purchaseDate, att.checkedInTimestamp)}</span>
+                                            <span>{formatTimeToHHMM(att.checkedInTime, att.checkedInTimestamp)}</span>
                                           </span>
                                         </>
-            )}
+                                      )}
                                     </div>
                                    </div>
 
@@ -2035,28 +2018,53 @@ export default function Account() {
                   </div>
                 </div>
 
-                <button
-                  onClick={handleOpenClaimModal}
-                  disabled={unclaimedRevenue <= 0}
-                  className={`w-full sm:w-auto px-4 py-2.5 sm:px-6 sm:py-3.5 rounded-xl sm:rounded-2xl font-extrabold text-xs sm:text-sm shadow-sm transition-all cursor-pointer active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 sm:gap-2 ${
-                    isBankInCoolingPeriod
-                      ? 'bg-amber-600 hover:bg-amber-700 text-white'
-                      : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                  }`}
-                >
-                  {isBankInCoolingPeriod ? (
-                    <>
-                      <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-200" />
-                      <span>{lang === 'lo' ? `ຖືກລັອກ (ເຫຼືອ ${coolingDaysRemaining} ວັນ)` : `Locked (${coolingDaysRemaining}d left)`}</span>
-                    </>
-                  ) : (
-                    <>
-                      <KeyRound className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-200" />
-                      <span>{lang === 'lo' ? 'ຂໍເບີກຈ່າຍເງິນ (OTP)' : 'Claim Event Money (OTP)'}</span>
-                    </>
-            )}
-                </button>
               </div>
+              
+              {/* Event-by-Event Claim List */}
+              {unclaimedEvents.length > 0 && (
+                <div className="space-y-3 mt-6">
+                  <h3 className={`font-bold text-sm sm:text-base ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>
+                    {lang === 'lo' ? 'ກິດຈະກຳທີ່ສາມາດເບີກຈ່າຍໄດ້' : 'Claimable Events'}
+                  </h3>
+                  {unclaimedEvents.map(ev => (
+                    <div key={ev.id} className={`p-4 rounded-xl sm:rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border shadow-sm transition-all ${
+                      theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-100'
+                    }`}>
+                      <div>
+                        <h4 className="font-bold text-sm sm:text-base">{ev.title}</h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-gray-500 text-xs">{ev.date}</span>
+                          <span className="text-gray-300 dark:text-zinc-600">•</span>
+                          <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">
+                            {new Intl.NumberFormat('lo-LA').format(ev.amount)} ₭
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleOpenClaimModal(ev)}
+                        disabled={isBankInCoolingPeriod}
+                        className={`w-full sm:w-auto px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 ${
+                          isBankInCoolingPeriod
+                            ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        }`}
+                      >
+                        {isBankInCoolingPeriod ? (
+                          <>
+                            <Lock className="w-3.5 h-3.5" />
+                            {lang === 'lo' ? 'ລັອກ' : 'Locked'}
+                          </>
+                        ) : (
+                          <>
+                            <KeyRound className="w-3.5 h-3.5" />
+                            {lang === 'lo' ? 'ຂໍເບີກຈ່າຍ (OTP)' : 'Claim (OTP)'}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* 30-Day Cooling Alert Banner if bank details recently modified */}
               {isBankInCoolingPeriod && (
@@ -2372,7 +2380,7 @@ export default function Account() {
                             <div className={`absolute -left-6 sm:left-1/2 sm:-translate-x-1/2 bottom-full mb-2.5 transition-all duration-200 w-56 p-3 bg-gray-900 dark:bg-zinc-800 text-white text-xs rounded-xl shadow-xl z-50 pointer-events-none before:content-[''] before:absolute before:top-full before:left-[30px] sm:before:left-1/2 before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-gray-900 dark:before:border-t-zinc-800 ${activeTxTooltip === bill.id ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
                               <p className="font-bold mb-1">{lang === 'lo' ? 'ລາຍລະອຽດທຸລະກຳ' : 'Transaction Details'}</p>
                               <div className="space-y-1 mt-2 text-[11px]">
-                                <p className="text-gray-300 flex justify-between"><span className="text-gray-400">Ref:</span> <span className="font-mono text-gray-100">{bill.id}</span></p>
+                                {bill.status.toLowerCase() !== 'pending' && (<p className="text-gray-300 flex justify-between"><span className="text-gray-400">Ref:</span> <span className="font-mono text-gray-100">{bill.reference || bill.id}</span></p>)}
                                 <p className="text-gray-300 flex justify-between"><span className="text-gray-400">Status:</span> <span className={bill.status.toLowerCase() === 'pending' ? "text-amber-400" : "text-emerald-400"}>{bill.status}</span></p>
                                 <p className="text-gray-300 flex justify-between gap-2"><span className="text-gray-400 shrink-0">{lang === 'lo' ? 'ຊື່ບັນຊີ:' : 'Account Name:'}</span> <span className="font-bold text-gray-100 truncate text-right">{bill.accountName || bankAccount?.accountName || 'Sirithida Souksavat'}</span></p>
                                 <p className="text-gray-300 flex justify-between gap-2"><span className="text-gray-400 shrink-0">{lang === 'lo' ? 'ເລກບັນຊີ:' : 'Account No:'}</span> <span className="font-mono text-gray-100 truncate text-right">{bill.account}</span></p>
@@ -2913,20 +2921,12 @@ export default function Account() {
               exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
               className="p-4 sm:p-5 rounded-2xl sm:rounded-[1.5rem] shadow-2xl flex items-center gap-3.5 border relative overflow-hidden pointer-events-auto bg-white border-gray-200 text-black"
             >
-              {/* 5-second auto-remove progress line */}
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/5 dark:bg-white/5 overflow-hidden">
-                <motion.div
-                  initial={{ width: '100%' }}
-                  animate={{ width: '0%' }}
-                  transition={{ duration: 5, ease: 'linear' }}
-                  className="h-full bg-adv-orange"
-                />
-              </div>
+              
 
-              {toast.type === 'error' && <XCircle className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-red-500" />}
-              {toast.type === 'warning' && <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-adv-orange" />}
-              {toast.type === 'info' && <Info className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-blue-500" />}
-              {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-emerald-500" />}
+              
+              
+              
+              
               <span className="font-bold text-xs sm:text-sm flex-1 leading-snug text-black">{toast.text}</span>
               <button 
                 onClick={() => setToastQueue(prev => prev.filter(t => t.id !== toast.id))}
@@ -2943,23 +2943,16 @@ export default function Account() {
       {/* Success Toast (Old simple one, keeping it for profile pic but updated style) */}
       <AnimatePresence>
         {showProfilePicSuccess && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-24 sm:bottom-12 pointer-events-none left-1/2 -translate-x-1/2 bg-white text-black px-6 py-3 sm:py-2 sm:px-5 sm:text-sm rounded-2xl sm:rounded-xl font-bold shadow-2xl flex items-center gap-2 sm:gap-3 z-[100] border border-gray-200 relative overflow-hidden whitespace-nowrap w-[90%] sm:w-auto justify-center"
-          >
-            <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-            <span>{t.profileUpdated}</span>
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 overflow-hidden">
-              <motion.div
-                initial={{ width: '100%' }}
-                animate={{ width: '0%' }}
-                transition={{ duration: 5, ease: 'linear' }}
-                className="h-full bg-adv-orange"
-              />
-            </div>
-          </motion.div>
+          <div className="fixed bottom-24 sm:bottom-12 right-1/2 translate-x-1/2 z-[300] flex flex-col gap-3 w-full max-w-sm px-6 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+              className="p-4 sm:p-5 rounded-2xl sm:rounded-[1.5rem] shadow-2xl flex items-center gap-3.5 border relative overflow-hidden pointer-events-auto bg-white border-gray-200 text-black"
+            >
+              <span className="font-bold text-xs sm:text-sm flex-1 leading-snug text-black">{t.profileUpdated}</span>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
       {/* Payout Image Preview Modal */}
@@ -3055,68 +3048,109 @@ export default function Account() {
                 </span>
               </div>
 
-              {/* OTP Input Component */}
-              <div className="mb-4">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block text-center mb-2">
-                  {lang === 'lo' ? 'ລະຫັດຢືນຢັນ OTP 6 ຫຼັກ' : '6-Digit OTP Code'}
-                </label>
-                <OtpInput
-                  length={6}
-                  autoFocus={false}
-                  value={bankOtpCode}
-                  onChange={(val) => {
-                    setBankOtpCode(val);
-                    setBankOtpError('');
-                  }}
-                  error={!!bankOtpError}
-                />
-                {bankOtpError && (
-                  <p className="text-red-500 text-[11px] font-bold text-center mt-2 flex items-center justify-center gap-1">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    <span>{bankOtpError}</span>
-                  </p>
-            )}
-              </div>
+              {/* Validation Errors */}
+              {claimOtpError && (
+                <div className="mb-4 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                  <span className="text-red-500 text-[11px] font-bold">{claimOtpError}</span>
+                </div>
+              )}
 
-              {/* Resend & Demo Helper */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mb-5 text-[11px] px-1">
-                <div className="text-gray-400 font-medium">
-                  {bankOtpCountdown > 0 ? (
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-gray-400" />
-                      {lang === 'lo' ? `ສົ່ງໃໝ່ໃນ ${bankOtpCountdown} ວິນາທີ` : `Resend in ${bankOtpCountdown}s`}
-                    </span>
-                  ) : (
+              {/* Input Section - Both OTP and 2FA */}
+              <div className="mb-5 space-y-4">
+                
+                {/* OTP Input */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">
+                      {lang === 'lo' ? '1. ລະຫັດ OTP (SMS)' : '1. SMS OTP Code'}
+                    </label>
+                    {/* Demo Helper Pill */}
                     <button
                       type="button"
-                      onClick={handleResendBankOtp}
-                      className="text-adv-orange hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                      onClick={() => {
+                        setClaimOtpCode(expectedClaimOtp);
+                        setClaimOtpError('');
+                      }}
+                      className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-bold text-[9px] hover:bg-emerald-500/20 transition-colors cursor-pointer"
                     >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      {lang === 'lo' ? 'ສົ່ງລະຫັດໃໝ່' : 'Resend OTP Code'}
+                      Fill: {expectedClaimOtp}
                     </button>
-            )}
+                  </div>
+                  <OtpInput
+                    length={6}
+                    autoFocus={false}
+                    value={claimOtpCode}
+                    onChange={(val) => {
+                      setClaimOtpCode(val);
+                      setClaimOtpError('');
+                    }}
+                    error={!!claimOtpError && claimOtpCode.length < 6}
+                  />
+                  <div className="flex justify-between items-center mt-1.5 px-1">
+                    <div className="text-[10px] text-gray-400 font-medium">
+                      {claimOtpCountdown > 0 ? (
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-gray-400" />
+                          {lang === 'lo' ? `ສົ່ງໃໝ່ໃນ ${claimOtpCountdown}s` : `Resend in ${claimOtpCountdown}s`}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleResendClaimOtp}
+                          className="text-emerald-600 hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          {lang === 'lo' ? 'ສົ່ງລະຫັດໃໝ່' : 'Resend'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                {/* Demo OTP Helper Pill */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBankOtpCode(expectedBankOtp);
-                    setBankOtpError('');
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 font-mono font-bold text-[10px] hover:bg-blue-500/20 transition-colors cursor-pointer"
-                  title="Click to auto-fill demo OTP code"
-                >
-                  Demo OTP: {expectedBankOtp} ({lang === 'lo' ? 'ກົດໃສ່' : 'Auto-fill'})
-                </button>
+                <hr className={`border-t border-dashed ${theme === 'dark' ? 'border-zinc-800' : 'border-gray-200'}`} />
+
+                {/* 2FA Input */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block flex items-center gap-1.5">
+                      <Lock className="w-3 h-3" />
+                      {lang === 'lo' ? '2. ລະຫັດ 2FA Authenticator' : '2. 2FA App Code'}
+                    </label>
+                    {/* Demo Helper Pill */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setClaimTwoFaCode('123456');
+                        setClaimOtpError('');
+                      }}
+                      className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-bold text-[9px] hover:bg-emerald-500/20 transition-colors cursor-pointer"
+                    >
+                      Fill: 123456
+                    </button>
+                  </div>
+                  <OtpInput
+                    length={6}
+                    autoFocus={false}
+                    value={claimTwoFaCode}
+                    onChange={(val) => {
+                      setClaimTwoFaCode(val);
+                      setClaimOtpError('');
+                    }}
+                    error={!!claimOtpError && claimTwoFaCode.length < 6}
+                  />
+                  <p className="text-[10px] text-gray-400 font-medium text-center mt-1.5">
+                    {lang === 'lo' ? 'ເປີດແອັບ Google Authenticator ຂອງທ່ານ' : 'Open your Google Authenticator app'}
+                  </p>
+                </div>
+
               </div>
 
               {/* Action Buttons */}
               <div className="flex items-center gap-2 sm:gap-3">
                 <button
                   type="button"
-                  onClick={() => setShowBankOtpModal(false)}
+                  onClick={() => setShowClaimOtpModal(false)}
                   className={`flex-1 py-3 rounded-xl font-bold text-xs border transition-colors cursor-pointer ${
                     theme === 'dark' ? 'border-zinc-800 hover:bg-zinc-800 text-gray-300' : 'border-gray-200 hover:bg-gray-100 text-gray-600'
                   }`}
@@ -3125,16 +3159,16 @@ export default function Account() {
                 </button>
                 <button
                   type="button"
-                  disabled={bankOtpCode.length < 6 || isVerifyingBankOtp}
-                  onClick={handleVerifyAndSaveBank}
-                  className="flex-1 py-3 rounded-xl bg-adv-orange hover:bg-orange-600 text-white font-black text-xs shadow-md transition-all cursor-pointer active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                  disabled={claimOtpCode.length < 6 || claimTwoFaCode.length < 6 || isClaiming}
+                  onClick={handleConfirmClaimPayout}
+                  className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition-all cursor-pointer active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                 >
-                  {isVerifyingBankOtp ? (
+                  {isClaiming ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <ShieldCheck className="w-4 h-4" />
+                    <DollarSign className="w-4 h-4" />
             )}
-                  <span>{lang === 'lo' ? 'ຢືນຢັນ ແລະ ບັນທຶກ' : 'Verify & Save Bank'}</span>
+                  <span>{lang === 'lo' ? 'ຢືນຢັນເບີກຈ່າຍເງິນ' : 'Confirm & Claim'}</span>
                 </button>
               </div>
             </motion.div>
@@ -3179,17 +3213,21 @@ export default function Account() {
                 theme === 'dark' ? 'bg-zinc-950/60 border-zinc-800' : 'bg-gray-50 border-gray-150'
               }`}>
                 <div className="flex justify-between items-center">
+                  <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ລາຍການກິດຈະກຳ:' : 'Event Title:'}</span>
+                  <span className="font-black text-xs text-right truncate w-48" title={eventToClaim?.title}>{eventToClaim?.title}</span>
+                </div>
+                <div className="flex justify-between items-center">
                   <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ຍອດລາຍຮັບກິດຈະກຳ:' : 'Event Revenue:'}</span>
-                  <span className="font-black text-sm">{new Intl.NumberFormat('lo-LA').format(unclaimedRevenue)} ₭</span>
+                  <span className="font-black text-sm">{new Intl.NumberFormat('lo-LA').format(eventToClaim?.amount || 0)} ₭</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400 font-bold">{lang === 'lo' ? 'ຄ່າທຳນຽມລະບົບ (5%):' : 'Platform Fee (5%):'}</span>
-                  <span className="font-bold text-red-500">-{new Intl.NumberFormat('lo-LA').format(unclaimedRevenue * 0.05)} ₭</span>
+                  <span className="font-bold text-red-500">-{new Intl.NumberFormat('lo-LA').format((eventToClaim?.amount || 0) * 0.05)} ₭</span>
                 </div>
                 <div className="pt-2 border-t border-gray-200 dark:border-zinc-800 flex justify-between items-center">
                   <span className="text-adv-slate dark:text-white font-black">{lang === 'lo' ? 'ຍອດເງິນທີ່ໄດ້ຮັບຕົວຈິງ:' : 'Net Transfer Amount:'}</span>
                   <span className="font-black text-base text-emerald-600 dark:text-emerald-400">
-                    {new Intl.NumberFormat('lo-LA').format(unclaimedRevenue * 0.95)} ₭
+                    {new Intl.NumberFormat('lo-LA').format((eventToClaim?.amount || 0) * 0.95)} ₭
                   </span>
                 </div>
                 <div className="pt-2 border-t border-gray-150 dark:border-zinc-800/80 flex flex-col sm:flex-row justify-between sm:items-center text-[11px] gap-1 sm:gap-2">
@@ -3198,64 +3236,102 @@ export default function Account() {
                 </div>
               </div>
 
-              {/* OTP Input Component */}
-              <div className="mb-4">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block text-center mb-2">
-                  {lang === 'lo' ? 'ລະຫັດຢືນຢັນ OTP 6 ຫຼັກ' : '6-Digit SMS OTP Code'}
-                </label>
-                <OtpInput
-                  length={6}
-                  autoFocus={false}
-                  value={claimOtpCode}
-                  onChange={(val) => {
-                    setClaimOtpCode(val);
-                    setClaimOtpError('');
-                  }}
-                  error={!!claimOtpError}
-                />
-                {claimOtpError && (
-                  <p className="text-red-500 text-[11px] font-bold text-center mt-2 flex items-center justify-center gap-1">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    <span>{claimOtpError}</span>
-                  </p>
-                )}
-              </div>
+              {/* Validation Errors */}
+              {claimOtpError && (
+                <div className="mb-4 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                  <span className="text-red-500 text-[11px] font-bold">{claimOtpError}</span>
+                </div>
+              )}
 
-              {/* Resend & Demo Helper */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mb-5 text-[11px] px-1">
-                <div className="text-gray-400 font-medium">
-                  {claimOtpCountdown > 0 ? (
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-gray-400" />
-                      {lang === 'lo' ? `ສົ່ງໃໝ່ໃນ ${claimOtpCountdown} ວິນາທີ` : `Resend in ${claimOtpCountdown}s`}
-                    </span>
-                  ) : (
+              {/* Input Section - Both OTP and 2FA */}
+              <div className="mb-5 space-y-4">
+                
+                {/* OTP Input */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">
+                      {lang === 'lo' ? '1. ລະຫັດ OTP (SMS)' : '1. SMS OTP Code'}
+                    </label>
+                    {/* Demo Helper Pill */}
                     <button
                       type="button"
-                      onClick={handleResendClaimOtp}
-                      className="text-emerald-600 hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                      onClick={() => {
+                        setClaimOtpCode(expectedClaimOtp);
+                        setClaimOtpError('');
+                      }}
+                      className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-bold text-[9px] hover:bg-emerald-500/20 transition-colors cursor-pointer"
                     >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      {lang === 'lo' ? 'ສົ່ງລະຫັດໃໝ່' : 'Resend OTP Code'}
+                      Fill: {expectedClaimOtp}
                     </button>
-            )}
-                </div>
-
-                {/* Demo Helper Pill */}
-                <div className="flex justify-center gap-2 flex-wrap mt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setClaimOtpCode(expectedClaimOtp);
+                  </div>
+                  <OtpInput
+                    length={6}
+                    autoFocus={false}
+                    value={claimOtpCode}
+                    onChange={(val) => {
+                      setClaimOtpCode(val);
                       setClaimOtpError('');
                     }}
-                    className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-bold text-[10px] hover:bg-emerald-500/20 transition-colors cursor-pointer"
-                    title="Click to auto-fill demo OTP code"
-                  >
-                    Demo OTP: {expectedClaimOtp}
-                  </button>
-
+                    error={!!claimOtpError && claimOtpCode.length < 6}
+                  />
+                  <div className="flex justify-between items-center mt-1.5 px-1">
+                    <div className="text-[10px] text-gray-400 font-medium">
+                      {claimOtpCountdown > 0 ? (
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-gray-400" />
+                          {lang === 'lo' ? `ສົ່ງໃໝ່ໃນ ${claimOtpCountdown}s` : `Resend in ${claimOtpCountdown}s`}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleResendClaimOtp}
+                          className="text-emerald-600 hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          {lang === 'lo' ? 'ສົ່ງລະຫັດໃໝ່' : 'Resend'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
+
+                <hr className={`border-t border-dashed ${theme === 'dark' ? 'border-zinc-800' : 'border-gray-200'}`} />
+
+                {/* 2FA Input */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block flex items-center gap-1.5">
+                      <Lock className="w-3 h-3" />
+                      {lang === 'lo' ? '2. ລະຫັດ 2FA Authenticator' : '2. 2FA App Code'}
+                    </label>
+                    {/* Demo Helper Pill */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setClaimTwoFaCode('123456');
+                        setClaimOtpError('');
+                      }}
+                      className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-bold text-[9px] hover:bg-emerald-500/20 transition-colors cursor-pointer"
+                    >
+                      Fill: 123456
+                    </button>
+                  </div>
+                  <OtpInput
+                    length={6}
+                    autoFocus={false}
+                    value={claimTwoFaCode}
+                    onChange={(val) => {
+                      setClaimTwoFaCode(val);
+                      setClaimOtpError('');
+                    }}
+                    error={!!claimOtpError && claimTwoFaCode.length < 6}
+                  />
+                  <p className="text-[10px] text-gray-400 font-medium text-center mt-1.5">
+                    {lang === 'lo' ? 'ເປີດແອັບ Google Authenticator ຂອງທ່ານ' : 'Open your Google Authenticator app'}
+                  </p>
+                </div>
+
               </div>
 
               {/* Action Buttons */}
@@ -3556,15 +3632,6 @@ export default function Account() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Dedicated 2FA Modal */}
-      <TwoFactorAuthModal 
-        isOpen={showClaimTwoFaModal}
-        onClose={() => setShowClaimTwoFaModal(false)}
-        onSuccess={handleTwoFaSuccess}
-        lang={lang}
-        theme={theme}
-      />
 
     </div>
   );

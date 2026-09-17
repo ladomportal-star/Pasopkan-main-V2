@@ -476,15 +476,15 @@ export default function RefundsManagementTab({ lang, t, addActivityLog }: Refund
       r.id,
       r.ticketId,
       r.orderId || '',
-      `"${r.eventTitle.replace(/"/g, '""')}"`,
-      `"${r.customerName.replace(/"/g, '""')}"`,
+      `"${(r.eventTitle || '').replace(/"/g, '""')}"`,
+      `"${(r.customerName || '').replace(/"/g, '""')}"`,
       r.customerEmail,
       r.customerPhone || '',
       r.quantity,
       r.amount,
       r.status,
       r.requestDate,
-      `"${r.reason.replace(/"/g, '""')}"`
+      `"${(r.reason || '').replace(/"/g, '""')}"`
     ]);
 
     const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');

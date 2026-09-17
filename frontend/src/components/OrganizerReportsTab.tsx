@@ -308,10 +308,10 @@ export const OrganizerReportsTab: React.FC<OrganizerReportsTabProps> = ({
 
       return {
         Event_ID: event.id,
-        Event_Title: `"${event.title.replace(/"/g, '""')}"`,
+        Event_Title: `"${(event.title || '').replace(/"/g, '""')}"`,
         Date: event.date,
         Category: event.category || 'General',
-        Venue: `"${event.venue.replace(/"/g, '""')}"`,
+        Venue: `"${(event.venue || '').replace(/"/g, '""')}"`,
         Tickets_Sold: ticketsSold,
         Total_Capacity: totalCapacity,
         Gross_Revenue: grossRevenue,

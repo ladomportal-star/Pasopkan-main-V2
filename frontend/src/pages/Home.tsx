@@ -297,8 +297,7 @@ const CategoryRow: React.FC<{ category: string, events: LaoEvent[], title: strin
 const PopularEventsRow: React.FC<{
   popularEvents: { event: LaoEvent; ticketsSold: number }[];
   title: string;
-  subtitle: string;
-}> = ({ popularEvents, title, subtitle }) => {
+}> = ({ popularEvents, title }) => {
   const { lang } = useLanguage();
   const scrollRef = useRef<HTMLDivElement>(null);
   
@@ -352,9 +351,6 @@ const PopularEventsRow: React.FC<{
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black bg-orange-100 text-adv-orange border border-orange-200/80 uppercase tracking-wider">
               <Flame className="w-3.5 h-3.5 fill-adv-orange text-adv-orange" />
               {lang === 'lo' ? '5 ອັນດັບສູງສຸດ' : 'Top 5'}
-            </span>
-            <span className="text-[11px] sm:text-xs text-gray-500 font-medium">
-              {subtitle}
             </span>
           </div>
           <h3 className="text-lg sm:text-2xl md:text-3xl font-display font-bold text-adv-slate flex items-center gap-2">
@@ -677,7 +673,6 @@ export default function Home() {
                 <PopularEventsRow 
                   popularEvents={popularEvents}
                   title={lang === 'lo' ? 'ກິດຈະກຳຍອດນິຍົມ' : 'Popular Events'}
-                  subtitle={lang === 'lo' ? '5 ອັນດັບທີ່ຂາຍປີ້ໄດ້ຫຼາຍທີ່ສຸດ' : 'Top 5 best-selling events'}
                 />
               )
             )}
