@@ -1,4 +1,5 @@
 import { pino, type Logger } from "pino";
+import pretty from "pino-pretty";
 import { env } from "../config/env.ts";
 
 /**
@@ -8,6 +9,13 @@ import { env } from "../config/env.ts";
  * Quiet by default ("info" — request/lifecycle noise stays out of the way);
  * set LOG_LEVEL=debug to see per-request detail and wiring diagnostics.
  *
+ * pino-pretty is wired in as a plain writable stream (not pino's
+ * worker-thread `transport` option) — the transport option resolves
+ * "pino-pretty" via a worker thread's own module lookup, which fails
+ * with "unable to determine transport target" once this file is loaded
+ * through a bundler's module graph (e.g. Vite's dev-server middleware).
+ * A stream has no such lookup, so it works the same way under tsx and Vite.
+ *
  * `logger` accepts both styles:
  *   logger.info("plain", value)            // console-style, args are joined
  *   logger.error({ err }, "message")       // pino-native (structured)
@@ -15,19 +23,11 @@ import { env } from "../config/env.ts";
  */
 const prettyInDev = !env.isProd && !env.isTest;
 
-export const raw: Logger = pino({
-  level: process.env.LOG_LEVEL ?? (env.isTest ? "silent" : "info"),
-  transport: prettyInDev
-    ? {
-        target: "pino-pretty",
-        options: {
-          colorize: true,
-          translateTime: "HH:MM:ss",
-          ignore: "pid,hostname",
-        },
-      }
-    : undefined,
-});
+const options = { level: process.env.LOG_LEVEL ?? (env.isTest ? "silent" : "info") };
+
+export const raw: Logger = prettyInDev
+  ? pino(options, pretty({ colorize: true, translateTime: "HH:MM:ss", ignore: "pid,hostname" }))
+  : pino(options);
 
 type Level = "debug" | "info" | "warn" | "error";
 

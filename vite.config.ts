@@ -7,10 +7,25 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
   return {
-    
+
     plugins: [
       react(),
       tailwindcss(),
+      {
+        // Mounts the Backend Express app inside Vite's own dev server, so
+        // `fetch('/api/...')` (see src/lib/api.ts) reaches the real API
+        // instead of falling through to the SPA's index.html.
+        name: 'api-server-middleware',
+        async configureServer(server) {
+          try {
+            const { createApp } = await import('./Backend/src/app.ts');
+            const app = createApp();
+            server.middlewares.use(app);
+          } catch (e) {
+            console.error('Failed to mount Backend API in Vite dev server:', e);
+          }
+        },
+      },
     ],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
