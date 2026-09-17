@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    
+    <!-- PWA & Icons -->
+    <link rel="icon" type="image/png" href="/icon.png" />
+    <link rel="apple-touch-icon" href="/icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#ffffff" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://images.unsplash.com">
+    <title>Pasopkan</title>
+    <meta name="description" content="Platform selling experience." />
+    <meta property="og:title" content="Pasopkan" />
+    <meta property="og:description" content="Platform selling experience." />
+    <script>
+      window.addEventListener('error', function(e) {
+        // Ignore cross-origin script errors (typically from browser extensions, translation services, or iframe host wrappers)
+        if (e.message === 'Script error.' || !e.filename) {
+          console.warn("Ignored cross-origin or environment script error:", e);
+          return;
+        }
+        console.error("GLOBAL RAW EXCEPTION:", e.error || e.message);
+        var overlay = document.getElementById('critical-error-overlay');
+        if (!overlay) {
+          overlay = document.createElement('div');
+          overlay.id = 'critical-error-overlay';
+          overlay.style.position = 'fixed';
+          overlay.style.inset = '0';
+          overlay.style.background = '#ffffff';
+          overlay.style.color = '#ef4444';
+          overlay.style.padding = '32px';
+          overlay.style.fontFamily = 'monospace';
+          overlay.style.zIndex = '999999';
+          overlay.style.overflow = 'auto';
+          document.documentElement.appendChild(overlay);
+        }
+        overlay.innerHTML = '<h1 style="font-size:24px;margin-bottom:16px;">App Load Failure</h1>' +
+          '<p><strong>Error Message:</strong> ' + encodeURIComponent(e.message) + '</p>' +
+          '<p><strong>Source File:</strong> ' + encodeURIComponent(e.filename) + ' (line ' + e.lineno + ', col ' + e.colno + ')</p>' +
+          (e.error && e.error.stack ? '<h2 style="font-size:16px;margin:16px 0 8px;color:#1e293b;">Stack Trace:</h2><pre style="background:#f8fafc;padding:16px;border-radius:8px;color:#334155;border:1px solid #e2e8f0;white-space:pre-wrap;">' + e.error.stack + '</pre>' : '') +
+          '<p style="margin-top:24px;color:#64748b;font-size:12px;">This detailed overlay has been generated automatically to diagnose sandboxed environment problems.</p>';
+      });
+      window.addEventListener('unhandledrejection', function(e) {
+        console.warn("GLOBAL UNHANDLED REJECTION (Caught safely):", e.reason);
+        e.preventDefault();
+      });
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

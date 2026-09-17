@@ -1,0 +1,8 @@
+#!/bin/sh
+# Repo-wide pre-commit hook (core.hooksPath -> backend/.husky).
+# Formats & lints staged backend files via lint-staged; a commit with no
+# backend changes passes straight through.
+
+if git diff --cached --name-only | grep -q '^backend/'; then
+  cd backend && npx lint-staged
+fi
