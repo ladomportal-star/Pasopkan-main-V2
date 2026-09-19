@@ -276,7 +276,7 @@ export const OrganizerReportsTab: React.FC<OrganizerReportsTabProps> = ({
 
   // Simplified translations/labels
   const labels = {
-    revenue: lang === 'lo' ? 'ລາຍຮັບທັງໝົດ' : 'Total Revenue',
+    revenue: lang === 'lo' ? 'ລາຍຮັບກ່ອນຫັກຄ່າທຳນຽມ' : 'Revenue Before Fee',
     ticketsSold: lang === 'lo' ? 'ປີ້ທີ່ຂາຍໄດ້' : 'Tickets Sold',
     avgPrice: lang === 'lo' ? 'ລາຄາສະເລ່ຍ/ປີ້' : 'Avg. Ticket Value',
     all: lang === 'lo' ? 'ທັງໝົດ' : 'All Categories',
@@ -291,7 +291,7 @@ export const OrganizerReportsTab: React.FC<OrganizerReportsTabProps> = ({
     viewAll: lang === 'lo' ? 'ເບິ່ງທັງໝົດ' : 'View All',
     exportReport: lang === 'lo' ? 'ດາວໂຫຼດ Excel' : 'Export Report',
     eventTitleCol: lang === 'lo' ? 'event' : 'Event Name',
-    revenueCol: lang === 'lo' ? 'ລາຍຮັບ' : 'Revenue',
+    revenueCol: lang === 'lo' ? 'ລາຍຮັບກ່ອນຫັກຄ່າທຳນຽມ' : 'Revenue Before Fee',
     soldCol: lang === 'lo' ? 'ຈຳນວນປີ້' : 'Sold'
   };
 
@@ -314,7 +314,7 @@ export const OrganizerReportsTab: React.FC<OrganizerReportsTabProps> = ({
         Venue: `"${(event.venue || '').replace(/"/g, '""')}"`,
         Tickets_Sold: ticketsSold,
         Total_Capacity: totalCapacity,
-        Gross_Revenue: grossRevenue,
+        Revenue_Before_Fee: grossRevenue,
         Male_Attendees_Percent: '58%',
         Female_Attendees_Percent: '42%',
         Age_18_24_Percent: '30%',
@@ -816,37 +816,37 @@ export const OrganizerReportsTab: React.FC<OrganizerReportsTabProps> = ({
       </motion.div>
 
       {/* Floating Real-time Toast Notifications */}
-      <div className="fixed bottom-6 right-6 z-[9999] max-w-sm w-full pointer-events-none space-y-3">
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] max-w-sm w-full pointer-events-none space-y-3 px-4">
         <AnimatePresence>
           {toasts.map((toast) => (
             <motion.div
               key={toast.id}
-              initial={{ opacity: 0, y: 50, scale: 0.95 }}
+              initial={{ opacity: 0, y: -30, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-adv-slate/95 dark:bg-zinc-900/95 text-white p-4 rounded-2xl shadow-2xl border border-white/10 dark:border-zinc-800 pointer-events-auto flex items-start gap-3 backdrop-blur-sm relative overflow-hidden"
+              exit={{ opacity: 0, scale: 0.95, y: -20 }}
+              className="bg-white text-black p-4 rounded-2xl shadow-2xl border border-gray-200 pointer-events-auto flex items-start gap-3 backdrop-blur-sm relative overflow-hidden"
             >
               {/* Animated indicator vertical strip */}
               <div className={`absolute top-0 bottom-0 left-0 w-1 ${toast.type === 'sale' ? 'bg-adv-orange' : 'bg-blue-500'}`} />
               
-              <div className={`p-2 rounded-xl shrink-0 ${toast.type === 'sale' ? 'bg-orange-500/15 text-adv-orange animate-pulse' : 'bg-blue-500/15 text-blue-400 animate-pulse'}`}>
+              <div className={`p-2 rounded-xl shrink-0 ${toast.type === 'sale' ? 'bg-orange-50 text-adv-orange animate-pulse' : 'bg-blue-50 text-blue-500 animate-pulse'}`}>
                 {toast.type === 'sale' ? <Ticket className="w-5 h-5" /> : <DollarSign className="w-5 h-5" />}
               </div>
               
               <div className="flex-1 min-w-0 pr-4">
                 <div className="flex items-center justify-between gap-1">
-                  <span className={`font-black text-[10px] uppercase tracking-wider ${toast.type === 'sale' ? 'text-adv-orange' : 'text-blue-400'}`}>
+                  <span className={`font-black text-[10px] uppercase tracking-wider ${toast.type === 'sale' ? 'text-adv-orange' : 'text-blue-600'}`}>
                     {toast.title}
                   </span>
-                  <span className="text-[9px] font-semibold text-gray-400">{lang === 'lo' ? 'ຕອນນີ້' : 'Just now'}</span>
+                  <span className="text-[9px] font-semibold text-gray-500">{lang === 'lo' ? 'ຕອນນີ້' : 'Just now'}</span>
                 </div>
-                <p className="text-xs font-bold text-gray-150 mt-1 leading-normal">
+                <p className="text-xs font-bold text-gray-900 mt-1 leading-normal">
                   {toast.message}
                 </p>
                 {toast.amount && (
-                  <div className="mt-1.5 text-xs font-black font-mono flex items-center gap-1">
-                    <span>{lang === 'lo' ? 'ຍອດເງິນ:' : 'Amount:'}</span>
-                    <span className={toast.type === 'sale' ? 'text-adv-orange' : 'text-blue-400'}>
+                  <div className="mt-1.5 text-xs font-black font-mono flex items-center gap-1 text-black">
+                    <span className="text-gray-600">{lang === 'lo' ? 'ຍອດເງິນ:' : 'Amount:'}</span>
+                    <span className={toast.type === 'sale' ? 'text-adv-orange' : 'text-blue-600'}>
                       {toast.amount}
                     </span>
                   </div>
@@ -855,7 +855,7 @@ export const OrganizerReportsTab: React.FC<OrganizerReportsTabProps> = ({
               
               <button 
                 onClick={() => dismissToast(toast.id)}
-                className="text-gray-400 hover:text-white transition-colors shrink-0 p-0.5 rounded-lg hover:bg-white/5 cursor-pointer"
+                className="text-gray-400 hover:text-black transition-colors shrink-0 p-1 rounded-lg hover:bg-gray-100 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>

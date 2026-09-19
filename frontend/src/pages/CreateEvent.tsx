@@ -1270,7 +1270,15 @@ export default function CreateEvent() {
       horizontalImage: horizontalImage || verticalImage || 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&q=80&w=1000',
       exampleImages: galleryImages.length > 0 ? galleryImages : [],
       description: editorContent || (lang === 'lo' ? 'ຍັງບໍ່ມີລາຍລະອຽດກິດຈະກຳ...' : 'No event description provided yet...'),
-      ticketTiers: ticketTiers.filter(t => t.name || t.price),
+      ticketTiers: ticketTiers.filter(t => t.name || t.price).map(tier => ({
+        ...tier,
+        id: String(tier.id || Math.random()),
+        name: tier.name || 'General Admission',
+        price: Number(String(tier.price).replace(/,/g, '')) || 0,
+        available: Number(String(tier.quantity).replace(/,/g, '')) || 100,
+        quantity: Number(String(tier.quantity).replace(/,/g, '')) || 100,
+        description: tier.name ? `${tier.name} Access` : 'General Admission Access',
+      })),
       coupons: enableCoupons ? coupons : [],
       hasSeating: hasSeating,
       zoneImage: zoneImage,
@@ -1354,6 +1362,8 @@ export default function CreateEvent() {
       event.ticketTiers && event.ticketTiers.length > 0
         ? event.ticketTiers.map((t: any) => ({
             ...t,
+            price: t.price !== undefined ? String(t.price) : '',
+            quantity: t.quantity !== undefined ? String(t.quantity) : (t.available !== undefined ? String(t.available) : ''),
             saleStartDate: t.saleStartDate || todayStr,
             saleEndDate: t.saleEndDate || evEnd || '',
           }))
@@ -4512,11 +4522,11 @@ export default function CreateEvent() {
                     <p className="text-xs text-gray-500 mb-4">
                       {lang === 'lo' ? 'ຂໍ້ມູນເຫຼົ່ານີ້ຈະຖືກເກັບກຳຈາກຜູ້ຊື້ປີ້ທຸກຄົນໂດຍອັດຕະໂນມັດ ທ່ານບໍ່ຈຳເປັນຕ້ອງເພີ່ມຄຳຖາມເຫຼົ່ານີ້ອີກ:' : 'This information will be collected automatically from all ticket buyers. You do not need to add these questions:'}
                     </p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {['First Name', 'Last Name', 'Phone Number', 'Email'].map((field, i) => (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {['First Name', 'Last Name', 'Phone Number', 'Email', 'Gender', 'Date of Birth'].map((field, i) => (
                         <div key={i} className="px-3 py-2 bg-white rounded-lg border border-gray-100 text-sm font-medium text-gray-600 flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-adv-orange/70" />
-                          {lang === 'lo' ? ['ຊື່', 'ນາມສະກຸນ', 'ເບີໂທລະສັບ', 'ອີເມວ'][i] : field}
+                          <CheckCircle2 className="w-4 h-4 text-adv-orange/70 shrink-0" />
+                          <span className="truncate">{lang === 'lo' ? ['ຊື່', 'ນາມສະກຸນ', 'ເບີໂທລະສັບ', 'ອີເມວ', 'ເພດ', 'ວັນເດືອນປີເກີດ'][i] : field}</span>
                         </div>
                       ))}
                     </div>
@@ -5432,7 +5442,7 @@ export default function CreateEvent() {
                                   title={lang === 'lo' ? 'ລຶບປະເພດປີ້' : 'Delete Tier'}
                                 >
                                   <Trash2 className="w-4 h-4" />
-                                </button>
+                                 </button>
                               </div>
                             )}
                           </div>
@@ -5726,8 +5736,11 @@ export default function CreateEvent() {
                         <p className="text-sm text-gray-500">{t.showRemainingTicketsDesc}</p>
                       </div>
                       <button 
+                        type="button"
+                        id="step4-toggle-show-remaining-tickets"
                         onClick={() => setShowRemainingTickets(!showRemainingTickets)}
-                        className={`w-11 h-6 rounded-full transition-colors relative ${showRemainingTickets ? 'bg-adv-orange' : 'bg-gray-300'}`}
+                        className={`w-11 h-6 rounded-full transition-colors relative shrink-0 cursor-pointer ${showRemainingTickets ? 'bg-adv-orange' : 'bg-gray-300'}`}
+                        title={t.showRemainingTickets}
                       >
                         <div className={`w-5 h-5 rounded-full bg-white absolute top-[2px] transition-transform ${showRemainingTickets ? 'translate-x-5 left-[2px]' : 'translate-x-0 left-[2px]'}`} />
                       </button>
@@ -6028,8 +6041,8 @@ export default function CreateEvent() {
                     </h2>
                     <p className="text-gray-500 font-medium text-xs sm:text-sm mt-1">
                       {lang === 'lo' 
-                        ? 'ສູນກາງຕິດຕາມຍອດຂາຍປີ້, ລາຍຮັບລວມ, ແລະ ຄວາມຄືບໜ້າຂອງທຸກກິດຈະກຳ' 
-                        : 'Monitor real-time ticket sales performance, gross revenue curves, and attendance rates.'}
+                        ? 'ສູນກາງຕິດຕາມຍອດຂາຍປີ້, ລາຍຮັບກ່ອນຫັກຄ່າທຳນຽມ, ແລະ ຄວາມຄືບໜ້າຂອງທຸກກິດຈະກຳ' 
+                        : 'Monitor real-time ticket sales performance, revenue before fee curves, and attendance rates.'}
                     </p>
                   </div>
                 </div>

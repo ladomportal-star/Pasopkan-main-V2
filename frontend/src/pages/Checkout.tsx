@@ -1,4 +1,5 @@
 import OtpInput from '../components/OtpInput';
+import { DateInputDDMMYYYY } from '../components/DateInputDDMMYYYY';
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
@@ -70,6 +71,8 @@ const translations = {
     guest: "Guest",
     fullName: "Full Name",
     firstName: "First Name",
+    gender: "Gender",
+    dob: "Date of Birth",
     lastName: "Surname",
     phoneNumber: "Phone Number",
     email: "Email Address",
@@ -108,6 +111,8 @@ const translations = {
     guest: "ຜູ້ເຂົ້າຮ່ວມ",
     fullName: "ຊື່ ແລະ ນາມສະກຸນ",
     firstName: "ຊື່",
+    gender: "ເພດ",
+    dob: "ວັນເດືອນປີເກີດ",
     lastName: "ນາມສະກຸນ",
     phoneNumber: "ເບີໂທລະສັບ",
     email: "ອີເມວ",
@@ -372,13 +377,15 @@ export default function Checkout() {
       lastName: "",
       phone: "",
       email: "",
+      gender: "",
+      dob: "",
       customAnswers: {} as Record<string, string | string[]>,
     })),
   );
 
   const handleTicketOwnerChange = (
     index: number,
-    field: "firstName" | "lastName" | "phone" | "email",
+    field: "firstName" | "lastName" | "phone" | "email" | "gender" | "dob",
     value: string,
   ) => {
     const newOwners = [...ticketOwners];
@@ -419,6 +426,8 @@ export default function Checkout() {
       owner.phone.trim() !== "" &&
       owner.email.trim() !== "" &&
       owner.email.includes("@") &&
+      owner.gender !== "" &&
+      owner.dob !== "" &&
       (event?.attendeeQuestions?.every((q) => {
         if (!q.required) return true;
         const answer = owner.customAnswers[q.id];
@@ -819,6 +828,8 @@ export default function Checkout() {
                 owner.phone.trim() ||
                 (user as any)?.phone ||
                 "+856 20 5555 1234",
+              gender: owner.gender,
+              dob: owner.dob,
               ticketType: tierInfo?.name || "Standard Pass",
               tierId: tierInfo?.id,
               zone:
@@ -1218,6 +1229,51 @@ export default function Checkout() {
                               placeholder={lang === "en" ? "Doe" : "ນາມສະກຸນ"}
                               className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
                             />
+                          </div>                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-0.5">
+                              {t.gender}
+                            </label>
+                            <select
+                              value={owner.gender || ""}
+                              onChange={(e) =>
+                                handleTicketOwnerChange(
+                                  idx,
+                                  "gender",
+                                  e.target.value,
+                                )
+                              }
+                              className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
+                            >
+                              <option value="" disabled>{lang === 'lo' ? 'ເລືອກເພດ' : 'Select Gender'}</option>
+                              <option value="Man">{lang === 'lo' ? 'ຊາຍ (Man)' : 'Man'}</option>
+                              <option value="Women">{lang === 'lo' ? 'ຍິງ (Women)' : 'Women'}</option>
+                              <option value="Other">{lang === 'lo' ? 'ອື່ນໆ (Other)' : 'Other'}</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-0.5">
+                              {t.dob}
+                            </label>
+                            <div className="relative w-full" onClick={(e) => e.stopPropagation()}>
+                              <DateInputDDMMYYYY
+                                key={`dob-input-${idx}`}
+                                value={owner.dob || ""}
+                                onChange={(val) =>
+                                  handleTicketOwnerChange(
+                                    idx,
+                                    "dob",
+                                    val,
+                                  )
+                                }
+                                placeholder="DD/MM/YYYY"
+                                lang={lang}
+                                maxDate={new Date()}
+                                className="w-full [&_input]:h-[34px] [&_input]:py-0 [&_input]:px-2.5 [&_input]:border-gray-200"
+                              />
+                            </div>
                           </div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">

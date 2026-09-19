@@ -600,6 +600,9 @@ export async function getHomeHeroSettings(): Promise<HomeHeroSettings> {
 }
 export async function saveHomeHeroSettings(settings: HomeHeroSettings): Promise<void> {
   await saveSettings<HomeHeroSettings>('home_hero', settings);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('pasopkan_home_hero_updated', { detail: settings }));
+  }
 }
 
 // Ticket Sponsors Settings

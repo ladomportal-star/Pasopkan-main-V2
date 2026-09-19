@@ -448,15 +448,15 @@ export default function StaffScanner() {
       
       const track = stream.getVideoTracks()[0];
       if (track) {
-        // Fallback for types
-        const capabilities = (track.getCapabilities && track.getCapabilities()) || {};
+        // Safe access for experimental camera torch capability
+        const capabilities = (track.getCapabilities && (track.getCapabilities() as Record<string, unknown>)) || {};
         if (capabilities.torch) {
-          const currentSettings = track.getSettings();
+          const currentSettings = track.getSettings() as Record<string, unknown>;
           const newTorchState = !currentSettings.torch;
           await track.applyConstraints({
-            advanced: [{ torch: newTorchState }]
+            advanced: [{ torch: newTorchState } as unknown as MediaTrackConstraintSet]
           });
-          setIsTorchOn(newTorchState);
+          setIsTorchOn(Boolean(newTorchState));
         } else {
           showToast(lang === 'lo' ? 'ອຸປະກອນນີ້ບໍ່ຮອງຮັບໄຟສາຍ' : 'Flashlight not supported on this device', 'error');
         }

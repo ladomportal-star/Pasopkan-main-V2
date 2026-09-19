@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   AreaChart, 
@@ -26,8 +26,7 @@ import {
   Download,
   Filter,
   CheckCircle2,
-  ChevronDown,
-  RefreshCw
+  ChevronDown
 } from 'lucide-react';
 import { LaoEvent } from '../data/events';
 
@@ -116,20 +115,32 @@ export const OrganizerEventAnalytics: React.FC<OrganizerEventAnalyticsProps> = (
 }) => {
   const [selectedEventId, setSelectedEventId] = useState<string>('all');
   const [activeMetricTab, setActiveMetricTab] = useState<'revenue' | 'tickets'>('revenue');
-  const [activeChartType, setActiveChartType] = useState<'timeline' | 'tiers' | 'checkin'>('timeline');
+  const [activeChartType, setActiveChartType] = useState<'timeline' | 'tiers' | 'checkin' | 'buyTime'>('timeline');
   const [refreshTick, setRefreshTick] = useState(0);
   const [showRefreshToast, setShowRefreshToast] = useState(false);
 
-  // Handle the live update interval
+  const triggerRealtimeUpdate = useCallback(() => {
+    setRefreshTick(prev => prev + 1);
+    setShowRefreshToast(true);
+  }, []);
+
+  // Auto update every 60 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      setRefreshTick(prev => prev + 1);
-      setShowRefreshToast(true);
-      setTimeout(() => setShowRefreshToast(false), 3000); // Hide after 3 seconds
-    }, 60000); // 60 seconds
+      triggerRealtimeUpdate();
+    }, 60000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [triggerRealtimeUpdate]);
+
+  useEffect(() => {
+    if (showRefreshToast) {
+      const timer = setTimeout(() => {
+        setShowRefreshToast(false);
+      }, 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [showRefreshToast, refreshTick]);
 
   // Compute stats for each event
   const eventsStatsMap = useMemo(() => {
@@ -271,11 +282,21 @@ export const OrganizerEventAnalytics: React.FC<OrganizerEventAnalyticsProps> = (
     const totalAttendees = currentMetrics.checkInCount || 100;
     const hours = ['15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'];
     const distribution = [0.05, 0.12, 0.28, 0.26, 0.15, 0.08, 0.04, 0.02];
-
     return hours.map((hour, idx) => ({
       hour,
       checkedIn: Math.round(totalAttendees * distribution[idx]),
       peakTarget: Math.round(totalAttendees * 0.25)
+    }));
+  }, [currentMetrics]);
+
+  // Hourly Ticket Purchase Time
+  const buyTimeHourlyData = useMemo(() => {
+    const totalSold = currentMetrics.totalSold || 100;
+    const hours = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'];
+    const distribution = [0.05, 0.08, 0.15, 0.18, 0.12, 0.22, 0.15, 0.05];
+    return hours.map((hour, idx) => ({
+      hour,
+      ticketsBought: Math.round(totalSold * distribution[idx])
     }));
   }, [currentMetrics]);
 
@@ -291,7 +312,7 @@ export const OrganizerEventAnalytics: React.FC<OrganizerEventAnalyticsProps> = (
         Venue: `"${(e.venue || '').replace(/"/g, '""')}"`,
         Tickets_Sold: stats.ticketsSold,
         Total_Capacity: stats.totalCapacity,
-        Gross_Revenue_LAK: stats.grossRevenue,
+        Revenue_Before_Fee_LAK: stats.grossRevenue,
         Check_Ins: stats.checkInCount,
         Fill_Rate_Percent: `${((stats.ticketsSold / stats.totalCapacity) * 100).toFixed(1)}%`
       };
@@ -331,17 +352,30 @@ export const OrganizerEventAnalytics: React.FC<OrganizerEventAnalyticsProps> = (
 
   return (
     <div className="space-y-6 relative">
-      {/* Floating Refresh Toast */}
+      {/* Floating Real-Time Update Toast at top of page */}
       <AnimatePresence>
         {showRefreshToast && (
           <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.9 }}
+            initial={{ opacity: 0, y: -30, scale: 0.92 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.9 }}
-            className="absolute top-4 right-1/2 translate-x-1/2 z-50 bg-emerald-500 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2"
+            exit={{ opacity: 0, y: -25, scale: 0.92 }}
+            transition={{ type: 'spring', stiffness: 450, damping: 28 }}
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none"
           >
-            <CheckCircle2 className="w-4 h-4" />
-            <span className="text-xs font-bold">{lang === 'lo' ? 'ອັບເດດຂໍ້ມູນແລ້ວ' : 'Data Refreshed'}</span>
+            <div className="bg-white text-black px-5 py-2.5 rounded-full shadow-2xl border border-gray-200 backdrop-blur-md flex items-center gap-3 pointer-events-auto">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-600"></span>
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black tracking-wide text-black">
+                  {lang === 'lo' ? 'ອັບເດດ Real-Time' : 'Update Real-Time'}
+                </span>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  {lang === 'lo' ? 'ສົດ' : 'Live'}
+                </span>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -357,8 +391,8 @@ export const OrganizerEventAnalytics: React.FC<OrganizerEventAnalyticsProps> = (
           </div>
           <p className="text-xs text-gray-500 font-medium">
             {lang === 'lo' 
-              ? 'ຕິດຕາມຍອດຂາຍປີ້, ລາຍຮັບລວມ, ແລະ ອັດຕາການເຂົ້າຮ່ວມງານແບບລະອຽດ' 
-              : 'Real-time sales velocity, gross revenue trajectory, and check-in flow'}
+              ? 'ຕິດຕາມຍອດຂາຍປີ້, ລາຍຮັບກ່ອນຫັກຄ່າທຳນຽມ, ແລະ ອັດຕາການເຂົ້າຮ່ວມງານແບບລະອຽດ' 
+              : 'Real-time sales velocity, revenue before fee trajectory, and check-in flow'}
           </p>
         </div>
 
@@ -403,7 +437,7 @@ export const OrganizerEventAnalytics: React.FC<OrganizerEventAnalyticsProps> = (
         transition={{ duration: 0.4, delay: 0.1 }}
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
       >
-        {/* Gross Revenue Card */}
+        {/* Revenue Before Fee Card */}
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
@@ -412,7 +446,7 @@ export const OrganizerEventAnalytics: React.FC<OrganizerEventAnalyticsProps> = (
         >
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
-              {lang === 'lo' ? 'ລາຍຮັບລວມ' : 'Gross Ticket Revenue'}
+              {lang === 'lo' ? 'ລາຍຮັບກ່ອນຫັກຄ່າທຳນຽມ' : 'Revenue Before Fee'}
             </span>
             <div className="w-8 h-8 rounded-xl bg-orange-50 text-adv-orange flex items-center justify-center font-black text-sm">
               {currency}
@@ -508,12 +542,12 @@ export const OrganizerEventAnalytics: React.FC<OrganizerEventAnalyticsProps> = (
                 {activeChartType === 'timeline' && (lang === 'lo' ? 'ທ່າອ່ຽງຍອດຂາຍປະຈຳວັນ (Sales Trajectory)' : 'Daily Sales Trajectory & Volume')}
                 {activeChartType === 'tiers' && (lang === 'lo' ? 'ການແບ່ງສັດສ່ວນຕາມປະເພດປີ້ (Tier Breakdown)' : 'Sales Breakdown by Ticket Tier')}
                 {activeChartType === 'checkin' && (lang === 'lo' ? 'ຄວາມໜາແໜ້ນການເຊັກອິນຕໍ່ຊົ່ວໂມງ (Gate Flow)' : 'Hourly Gate Check-In Velocity')}
+                {activeChartType === 'buyTime' && (lang === 'lo' ? 'ເວລາຊື້ປີ້ (Purchase Time)' : 'Hourly Ticket Purchase Time')}
               </h4>
               <p className="text-[11px] text-gray-400 font-medium mt-0.5">
                 {selectedEvent ? selectedEvent.title : (lang === 'lo' ? 'ສະແດງຂໍ້ມູນລວມທຸກກິດຈະກຳ' : 'Aggregated performance across all events')}
               </p>
             </div>
-
             {/* View Mode Switcher Pills */}
             <div className="flex items-center gap-1.5 p-1 bg-gray-50 border border-gray-200/80 rounded-xl shrink-0">
               <button
@@ -546,9 +580,18 @@ export const OrganizerEventAnalytics: React.FC<OrganizerEventAnalyticsProps> = (
               >
                 {lang === 'lo' ? 'ຄວາມໜາແໜ້ນ' : 'Check-In'}
               </button>
+              <button
+                onClick={() => setActiveChartType('buyTime')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeChartType === 'buyTime'
+                    ? 'bg-white text-adv-orange shadow-2xs'
+                    : 'text-gray-500 hover:text-adv-slate'
+                }`}
+              >
+                {lang === 'lo' ? 'ເວລາຊື້ປີ້' : 'Buy Time'}
+              </button>
             </div>
           </div>
-
           {/* Sub-metric toggle for Timeline (Revenue vs Ticket count) */}
           {activeChartType === 'timeline' && (
             <div className="flex items-center justify-end gap-2 mb-2">
@@ -602,17 +645,10 @@ export const OrganizerEventAnalytics: React.FC<OrganizerEventAnalyticsProps> = (
                   />
                   <YAxis 
                     stroke="#94A3B8" 
-                    fontSize={10} 
+                    fontSize={11} 
                     tickLine={false} 
                     axisLine={false}
-                    tickFormatter={(val) => {
-                      if (activeMetricTab === 'revenue') {
-                        if (val >= 1000000) return `${(val / 1000000).toFixed(0)}M`;
-                        if (val >= 1000) return `${(val / 1000).toFixed(0)}k`;
-                        return `${val}`;
-                      }
-                      return `${val}`;
-                    }}
+                    tickFormatter={(value) => value > 1000 ? `${(value/1000).toFixed(0)}k` : value}
                   />
                   <Tooltip 
                     contentStyle={{ 
@@ -623,10 +659,7 @@ export const OrganizerEventAnalytics: React.FC<OrganizerEventAnalyticsProps> = (
                       fontSize: '12px',
                       boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)'
                     }}
-                    formatter={(val: number) => [
-                      activeMetricTab === 'revenue' ? `${val.toLocaleString()} ${currency}` : `${val.toLocaleString()} tickets`,
-                      activeMetricTab === 'revenue' ? 'Daily Revenue' : 'Tickets Sold'
-                    ]}
+                    itemStyle={{ fontWeight: 'bold' }}
                   />
                   <Area 
                     type="monotone" 
@@ -635,6 +668,53 @@ export const OrganizerEventAnalytics: React.FC<OrganizerEventAnalyticsProps> = (
                     strokeWidth={2.5}
                     fillOpacity={1} 
                     fill={`url(#${activeMetricTab === 'revenue' ? 'colorRevenue' : 'colorTickets'})`} 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+
+            {activeChartType === 'buyTime' && (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={buyTimeHourlyData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorBuyTime" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                  <XAxis 
+                    dataKey="hour" 
+                    stroke="#94A3B8" 
+                    fontSize={10} 
+                    tickLine={false} 
+                    axisLine={false}
+                    dy={5}
+                  />
+                  <YAxis 
+                    stroke="#94A3B8" 
+                    fontSize={10} 
+                    tickLine={false} 
+                    axisLine={false}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#1E293B', 
+                      borderRadius: '12px', 
+                      border: 'none', 
+                      color: '#F8FAFC',
+                      fontSize: '12px',
+                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)'
+                    }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="ticketsBought" 
+                    name={lang === 'lo' ? 'ປີ້ທີ່ຂາຍ' : 'Tickets Bought'} 
+                    stroke="#10B981" 
+                    strokeWidth={2.5}
+                    fillOpacity={1} 
+                    fill="url(#colorBuyTime)" 
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -704,14 +784,17 @@ export const OrganizerEventAnalytics: React.FC<OrganizerEventAnalyticsProps> = (
                       borderRadius: '12px', 
                       border: 'none', 
                       color: '#F8FAFC',
-                      fontSize: '12px'
+                      fontSize: '12px',
+                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)'
                     }}
-                    formatter={(val: number) => [`${val.toLocaleString()} attendees`, 'Scanned at Door']}
+                    cursor={{ fill: '#F8FAFC' }}
                   />
-                  <Bar dataKey="checkedIn" fill="#10B981" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="checkedIn" name={lang === 'lo' ? 'ເຊັກອິນ' : 'Checked In'} fill="#FF6600" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
+            
+
           </div>
         </motion.div>
 

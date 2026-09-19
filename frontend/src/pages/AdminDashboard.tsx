@@ -816,7 +816,6 @@ export default function AdminDashboard() {
   const [filterMonth, setFilterMonth] = useState('all');
   const [filterYear, setFilterYear] = useState('all');
   const [payoutFilter, setPayoutFilter] = useState<'all' | 'pending' | 'paid'>('all');
-  const [payoutDateFilter, setPayoutDateFilter] = useState<'all' | 'day' | 'week' | 'month' | 'year'>('all');
   const [uploadingBill, setUploadingBill] = useState<Record<string, string>>({});
   const [uploadingRef, setUploadingRef] = useState<Record<string, string>>({});
   const [editingFeeId, setEditingFeeId] = useState<string | null>(null);
@@ -827,10 +826,6 @@ export default function AdminDashboard() {
   const [comment, setComment] = useState('');
   
   // Pending Approvals Tab State
-  const [approvalSearchQuery, setApprovalSearchQuery] = useState('');
-  const [approvalCategoryFilter, setApprovalCategoryFilter] = useState<'all' | 'Festival' | 'Workshop' | 'Sports' | 'Music' | 'Voucher'>('all');
-  const [approvalSortBy, setApprovalSortBy] = useState<'newest' | 'oldest' | 'date' | 'capacity'>('newest');
-  const [approvalViewMode, setApprovalViewMode] = useState<'cards' | 'table' | 'split'>('cards');
   const [selectedPendingIds, setSelectedPendingIds] = useState<string[]>([]);
   const [inspectedPendingEvent, setInspectedPendingEvent] = useState<any | null>(null);
   const [checklistMap, setChecklistMap] = useState<Record<string, { cover: boolean; venue: boolean; bank: boolean; pricing: boolean }>>({
@@ -855,7 +850,9 @@ export default function AdminDashboard() {
               email: savedUser.email || 'user@example.com',
               role: savedUser.role || 'user',
               status: 'active',
-              joined: new Date().toISOString().split('T')[0]
+              joined: new Date().toISOString().split('T')[0],
+              phone: savedUser.phone || '+856 20 5555 0000',
+              ticketsBought: 0
             });
           }
         }
@@ -2507,7 +2504,7 @@ export default function AdminDashboard() {
                   )}
                 </div>
                 <div className="flex items-center gap-3">
-                  {(activeTab === 'overview' || activeTab === 'events' || activeTab === 'past-events' || activeTab === 'approvals') && (
+                  {(activeTab === 'overview' || activeTab === 'events' || activeTab === 'past-events') && (
                     <>
                       <select
                         value={filterMonth}
@@ -2572,16 +2569,18 @@ export default function AdminDashboard() {
                         <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
                         {lang === 'lo' ? 'ຣີເຟຣຊ' : 'Sync'}
                       </button>
-                      <button 
-                        onClick={handleExportData}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-green-700 transition-all shadow-lg shadow-green-600/20 print:hidden"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        {lang === 'lo' ? 'ສົ່ງອອກ CSV' : 'Export CSV'}
-                      </button>
+                      {activeTab !== 'approvals' && (
+                        <button 
+                          onClick={handleExportData}
+                          className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-green-700 transition-all shadow-lg shadow-green-600/20 print:hidden"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          {lang === 'lo' ? 'ສົ່ງອອກ CSV' : 'Export CSV'}
+                        </button>
+                      )}
                     </div>
                   )}
-                  {activeTab !== 'site-settings' && activeTab !== 'blogs' && (
+                  {activeTab !== 'site-settings' && activeTab !== 'blogs' && activeTab !== 'approvals' && (
                     <div className="relative print:hidden">
                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-adv-orange" />
                       <input 
@@ -3152,34 +3151,8 @@ export default function AdminDashboard() {
               )}
 
               {activeTab === 'approvals' && (() => {
-                const filteredPending = pendingEventsList.filter(e => {
-                  const q = approvalSearchQuery.toLowerCase().trim();
-                  const matchesSearch = !q || 
-                    (e.title || '').toLowerCase().includes(q) ||
-                    (e.organizer || '').toLowerCase().includes(q) ||
-                    (e.location || '').toLowerCase().includes(q) ||
-                    (e.venue || '').toLowerCase().includes(q) ||
-                    (e.paymentInfo?.bankName || '').toLowerCase().includes(q) ||
-                    (e.paymentInfo?.accountName || '').toLowerCase().includes(q);
-
-                  const matchesCategory = approvalCategoryFilter === 'all' || e.category === approvalCategoryFilter;
-                  return matchesSearch && matchesCategory;
-                }).sort((a, b) => {
-                  if (approvalSortBy === 'newest') {
-                    return (b.submittedAt || '').localeCompare(a.submittedAt || '');
-                  }
-                  if (approvalSortBy === 'oldest') {
-                    return (a.submittedAt || '').localeCompare(b.submittedAt || '');
-                  }
-                  if (approvalSortBy === 'date') {
-                    return (a.date || '').localeCompare(b.date || '');
-                  }
-                  if (approvalSortBy === 'capacity') {
-                    const capA = a.ticketTiers ? a.ticketTiers.reduce((s: number, t: any) => s + (Number(t.available) || 0), 0) : 0;
-                    const capB = b.ticketTiers ? b.ticketTiers.reduce((s: number, t: any) => s + (Number(t.available) || 0), 0) : 0;
-                    return capB - capA;
-                  }
-                  return 0;
+                const filteredPending = [...pendingEventsList].sort((a, b) => {
+                  return (b.submittedAt || '').localeCompare(a.submittedAt || '');
                 });
 
                 const urgentPendingCount = pendingEventsList.filter(e => {
@@ -3187,27 +3160,6 @@ export default function AdminDashboard() {
                   const diffDays = Math.ceil((new Date(e.date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
                   return diffDays >= 0 && diffDays <= 14;
                 }).length;
-
-                const payoutConfiguredCount = pendingEventsList.filter(e => Boolean(e.paymentInfo?.accountNumber)).length;
-
-                const isAllSelected = filteredPending.length > 0 && filteredPending.every(e => selectedPendingIds.includes(e.id));
-
-                const toggleSelectAll = () => {
-                  if (isAllSelected) {
-                    setSelectedPendingIds(prev => prev.filter(id => !filteredPending.some(e => e.id === id)));
-                  } else {
-                    const allIds = Array.from(new Set([...selectedPendingIds, ...filteredPending.map(e => e.id)]));
-                    setSelectedPendingIds(allIds);
-                  }
-                };
-
-                const toggleSelectEvent = (id: string) => {
-                  setSelectedPendingIds(prev => 
-                    prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-                  );
-                };
-
-                const activeInspect = inspectedPendingEvent || (filteredPending.length > 0 ? filteredPending[0] : null);
 
                 return (
                   <div className="space-y-6">
@@ -3218,28 +3170,15 @@ export default function AdminDashboard() {
                           <h2 className="text-2xl font-black text-adv-slate tracking-tight">
                             {t.pendingApprovalsTitle}
                           </h2>
-                          <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-50 text-amber-700 border border-amber-200/60 shadow-xs">
-                            {pendingEventsList.length} {lang === 'lo' ? 'ລາຍການ' : 'submissions'}
-                          </span>
                         </div>
                         <p className="text-sm text-gray-500 font-medium mt-1">
                           {t.pendingApprovalsDesc}
                         </p>
                       </div>
-
-                      <div className="flex items-center gap-2.5">
-                        <button
-                          onClick={handleExportPendingCSV}
-                          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white border border-gray-200 text-adv-slate hover:bg-gray-50 text-xs font-black uppercase tracking-wider shadow-xs transition-colors"
-                        >
-                          <Download className="w-4 h-4 text-gray-400" />
-                          {t.exportPendingList}
-                        </button>
-                      </div>
                     </div>
 
                     {/* Pending Approvals Metric Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="bg-amber-50/40 p-5 rounded-2xl border border-amber-100 flex items-center gap-4 group shadow-xs transition-all hover:bg-amber-50/70">
                         <div className="w-13 h-13 rounded-2xl bg-white flex items-center justify-center text-amber-600 shrink-0 shadow-xs border border-amber-100 group-hover:scale-105 transition-transform">
                           <Clock className="w-6 h-6" />
@@ -3273,185 +3212,7 @@ export default function AdminDashboard() {
                           </div>
                         </div>
                       </div>
-
-                      <div className="bg-emerald-50/40 p-5 rounded-2xl border border-emerald-100 flex items-center gap-4 group shadow-xs transition-all hover:bg-emerald-50/70">
-                        <div className="w-13 h-13 rounded-2xl bg-white flex items-center justify-center text-emerald-600 shrink-0 shadow-xs border border-emerald-100 group-hover:scale-105 transition-transform">
-                          <CreditCard className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <div className="text-2xl font-black text-adv-slate leading-none mb-1">
-                            {payoutConfiguredCount} / {pendingEventsList.length}
-                          </div>
-                          <div className="text-[10px] text-emerald-800 uppercase tracking-widest font-black">
-                            {lang === 'lo' ? 'ມີບັນຊີຮັບເງິນ' : 'Payout Linked'}
-                          </div>
-                          <div className="text-[11px] text-gray-500 font-medium mt-0.5">
-                            {lang === 'lo' ? 'BCEL / JDB ບັນຊີ' : 'Bank accounts verified'}
-                          </div>
-                        </div>
-                      </div>
                     </div>
-
-                    {/* Filter, Search & View Controls Bar */}
-                    <div className="bg-white p-4 rounded-2xl border border-gray-200/80 shadow-xs space-y-4">
-                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                        {/* Search Bar */}
-                        <div className="relative flex-1 min-w-[280px]">
-                          <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                          <input
-                            type="text"
-                            value={approvalSearchQuery}
-                            onChange={(e) => setApprovalSearchQuery(e.target.value)}
-                            placeholder={t.searchPendingPlaceholder}
-                            className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-gray-50/80 border border-gray-200 text-xs font-semibold text-adv-slate placeholder:text-gray-400 focus:outline-none focus:border-adv-orange focus:bg-white transition-all"
-                          />
-                          {approvalSearchQuery && (
-                            <button
-                              onClick={() => setApprovalSearchQuery('')}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Sort and View Mode Switcher */}
-                        <div className="flex flex-wrap items-center gap-2.5">
-                          <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl">
-                            <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400" />
-                            <select
-                              value={approvalSortBy}
-                              onChange={(e) => setApprovalSortBy(e.target.value as any)}
-                              className="bg-transparent border-none text-xs font-bold text-adv-slate focus:outline-none cursor-pointer pr-1"
-                            >
-                              <option value="newest">{t.sortNewest}</option>
-                              <option value="oldest">{t.sortOldest}</option>
-                              <option value="date">{t.sortEventDate}</option>
-                              <option value="capacity">{t.sortCapacity}</option>
-                            </select>
-                          </div>
-
-                          {/* View Mode Buttons */}
-                          <div className="flex items-center p-1 bg-gray-100 rounded-xl border border-gray-200/80">
-                            <button
-                              onClick={() => setApprovalViewMode('cards')}
-                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                                approvalViewMode === 'cards'
-                                  ? 'bg-white text-adv-slate shadow-xs'
-                                  : 'text-gray-500 hover:text-adv-slate'
-                              }`}
-                              title={t.viewCards}
-                            >
-                              <Grid className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline">{t.viewCards}</span>
-                            </button>
-                            <button
-                              onClick={() => setApprovalViewMode('table')}
-                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                                approvalViewMode === 'table'
-                                  ? 'bg-white text-adv-slate shadow-xs'
-                                  : 'text-gray-500 hover:text-adv-slate'
-                              }`}
-                              title={t.viewTable}
-                            >
-                              <Table className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline">{t.viewTable}</span>
-                            </button>
-                            <button
-                              onClick={() => setApprovalViewMode('split')}
-                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                                approvalViewMode === 'split'
-                                  ? 'bg-white text-adv-slate shadow-xs'
-                                  : 'text-gray-500 hover:text-adv-slate'
-                              }`}
-                              title={t.viewSplit}
-                            >
-                              <Layers className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline">{t.viewSplit}</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Category Filter Pills */}
-                      <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-gray-100">
-                        <span className="text-[11px] font-black uppercase tracking-wider text-gray-400 mr-1.5">
-                          {t.notificationCategory}:
-                        </span>
-                        {(['all', 'Festival', 'Workshop', 'Sports', 'Music', 'Voucher'] as const).map(cat => {
-                          const count = cat === 'all'
-                            ? pendingEventsList.length
-                            : pendingEventsList.filter(e => e.category === cat).length;
-                          const isSelected = approvalCategoryFilter === cat;
-
-                          return (
-                            <button
-                              key={cat}
-                              onClick={() => setApprovalCategoryFilter(cat)}
-                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
-                                isSelected
-                                  ? 'bg-adv-slate text-white shadow-xs'
-                                  : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100'
-                              }`}
-                            >
-                              <span>{cat === 'all' ? t.allCategories : cat}</span>
-                              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                                isSelected ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
-                              }`}>
-                                {count}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Batch Actions Toolbar (Visible when items are selectable) */}
-                    {filteredPending.length > 0 && (
-                      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-gray-50 rounded-2xl border border-gray-200/80">
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={toggleSelectAll}
-                            className="flex items-center gap-2 text-xs font-bold text-adv-slate hover:text-adv-orange transition-colors"
-                          >
-                            {isAllSelected ? (
-                              <CheckSquare className="w-4 h-4 text-adv-orange" />
-                            ) : (
-                              <Square className="w-4 h-4 text-gray-400" />
-                            )}
-                            <span>{isAllSelected ? t.deselectAll : t.selectAll} ({filteredPending.length})</span>
-                          </button>
-
-                          {selectedPendingIds.length > 0 && (
-                            <span className="px-2.5 py-0.5 rounded-full bg-adv-orange/10 text-adv-orange text-xs font-black">
-                              {selectedPendingIds.length} {lang === 'lo' ? 'ລາຍການຖືກເລືອກ' : 'selected'}
-                            </span>
-                          )}
-                        </div>
-
-                        {selectedPendingIds.length > 0 && (
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={handleBatchApprove}
-                              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-black uppercase tracking-wider hover:bg-emerald-700 transition-colors shadow-xs"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              {t.batchApprove} ({selectedPendingIds.length})
-                            </button>
-                            <button
-                              onClick={() => {
-                                setSelectedEvent(null);
-                                setShowRejectionModal(true);
-                              }}
-                              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-red-200 text-red-600 text-xs font-black uppercase tracking-wider hover:bg-red-50 transition-colors shadow-xs"
-                            >
-                              <XCircle className="w-3.5 h-3.5" />
-                              {t.batchReject} ({selectedPendingIds.length})
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
 
                     {/* EMPTY STATE */}
                     {filteredPending.length === 0 ? (
@@ -3460,32 +3221,17 @@ export default function AdminDashboard() {
                           <CheckCircle2 className="w-8 h-8" />
                         </div>
                         <h3 className="text-lg font-black text-adv-slate mb-1">
-                          {pendingEventsList.length === 0 ? t.noPendingEvents : (lang === 'lo' ? 'ບໍ່ພົບກິດຈະກຳຕາມເງື່ອນໄຂ' : 'No matching pending events')}
+                          {t.noPendingEvents}
                         </h3>
                         <p className="text-sm text-gray-400 max-w-md mx-auto">
-                          {pendingEventsList.length === 0
-                            ? t.everythingUpToDate
-                            : (lang === 'lo' ? 'ລອງປັບປ່ຽນຄຳຄົ້ນຫາ ຫຼື ໝວດໝູ່ເພື່ອເບິ່ງລາຍການອື່ນໆ' : 'Try adjusting your search keywords or category filters to find pending events.')}
+                          {t.everythingUpToDate}
                         </p>
-                        {approvalSearchQuery && (
-                          <button
-                            onClick={() => { setApprovalSearchQuery(''); setApprovalCategoryFilter('all'); }}
-                            className="mt-4 px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-adv-slate text-xs font-bold transition-colors"
-                          >
-                            {lang === 'lo' ? 'ລ້າງຕົວກັ່ນຕອງ' : 'Reset Filters'}
-                          </button>
-                        )}
                       </div>
                     ) : (
                       <>
-                        {/* VIEW MODE 1: CARDS VIEW */}
-                        {approvalViewMode === 'cards' && (
-                          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                            {filteredPending.map(event => {
-                              const isSelected = selectedPendingIds.includes(event.id);
-                              const checks = checklistMap[event.id] || { cover: false, venue: false, bank: false, pricing: false };
-                              const allChecksPassed = checks.cover && checks.venue && checks.bank && checks.pricing;
-                              
+                        {/* CARDS VIEW */}
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                          {filteredPending.map(event => {
                               const eventDate = event.date ? new Date(event.date) : null;
                               const isDateValid = eventDate && !isNaN(eventDate.getTime());
                               const diffDays = isDateValid ? Math.ceil((eventDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null;
@@ -3498,28 +3244,11 @@ export default function AdminDashboard() {
                               return (
                                 <div
                                   key={event.id}
-                                  className={`rounded-3xl bg-white border transition-all shadow-xs hover:shadow-md flex flex-col justify-between overflow-hidden group ${
-                                    isSelected
-                                      ? 'border-adv-orange ring-2 ring-adv-orange/20'
-                                      : 'border-gray-200/90 hover:border-gray-300'
-                                  }`}
+                                  className="rounded-3xl bg-white border border-gray-200/90 hover:border-gray-300 transition-all shadow-xs hover:shadow-md flex flex-col justify-between overflow-hidden group"
                                 >
                                   {/* Top Header with Visual Cover & Key Badges */}
                                   <div className="p-5 pb-0">
                                     <div className="flex items-start gap-4">
-                                      {/* Checkbox */}
-                                      <button
-                                        type="button"
-                                        onClick={() => toggleSelectEvent(event.id)}
-                                        className="mt-1 text-gray-300 hover:text-adv-orange shrink-0 transition-colors"
-                                      >
-                                        {isSelected ? (
-                                          <CheckSquare className="w-5 h-5 text-adv-orange" />
-                                        ) : (
-                                          <Square className="w-5 h-5 text-gray-300 hover:text-gray-400" />
-                                        )}
-                                      </button>
-
                                       {/* Thumbnail */}
                                       <div 
                                         onClick={() => setFullscreenImage(event.image || 'https://images.unsplash.com/photo-1540611025311-01df3cef54b5?q=80&w=1000&auto=format&fit=crop')}
@@ -3618,16 +3347,8 @@ export default function AdminDashboard() {
                                           </div>
                                         </div>
 
-                                        <div className="mt-2 pt-2 border-t border-gray-200/60 flex items-center justify-between text-[11px] text-gray-600 font-mono">
+                                        <div className="mt-2 pt-2 border-t border-gray-200/60 text-[11px] text-gray-600 font-mono">
                                           <span>{event.paymentInfo?.accountNumber || '—'}</span>
-                                          {event.paymentInfo?.qrCodeUrl && (
-                                            <button
-                                              onClick={() => setViewingIdCardUrl(event.paymentInfo.qrCodeUrl)}
-                                              className="text-[10px] font-black text-adv-orange hover:underline uppercase"
-                                            >
-                                              QR
-                                            </button>
-                                          )}
                                         </div>
                                       </div>
                                     </div>
@@ -3657,75 +3378,6 @@ export default function AdminDashboard() {
                                         </div>
                                       </div>
                                     </div>
-
-                                    {/* Admin Quality Verification Checklist */}
-                                    <div className="p-3 rounded-2xl bg-gray-50 border border-gray-100">
-                                      <div className="flex items-center justify-between mb-2">
-                                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 flex items-center gap-1">
-                                          <Sparkles className="w-3 h-3 text-adv-orange" />
-                                          {t.verificationChecks}
-                                        </span>
-                                        {allChecksPassed && (
-                                          <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                            <Check className="w-3 h-3" /> Ready
-                                          </span>
-                                        )}
-                                      </div>
-
-                                      <div className="grid grid-cols-4 gap-1.5">
-                                        <button
-                                          type="button"
-                                          onClick={() => toggleChecklistItem(event.id, 'cover')}
-                                          className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-colors flex items-center justify-center gap-1 ${
-                                            checks.cover
-                                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                                              : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
-                                          }`}
-                                        >
-                                          <Check className={`w-3 h-3 ${checks.cover ? 'text-emerald-600' : 'text-gray-300'}`} />
-                                          {t.checkCover}
-                                        </button>
-
-                                        <button
-                                          type="button"
-                                          onClick={() => toggleChecklistItem(event.id, 'venue')}
-                                          className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-colors flex items-center justify-center gap-1 ${
-                                            checks.venue
-                                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                                              : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
-                                          }`}
-                                        >
-                                          <Check className={`w-3 h-3 ${checks.venue ? 'text-emerald-600' : 'text-gray-300'}`} />
-                                          {t.checkVenue}
-                                        </button>
-
-                                        <button
-                                          type="button"
-                                          onClick={() => toggleChecklistItem(event.id, 'bank')}
-                                          className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-colors flex items-center justify-center gap-1 ${
-                                            checks.bank
-                                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                                              : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
-                                          }`}
-                                        >
-                                          <Check className={`w-3 h-3 ${checks.bank ? 'text-emerald-600' : 'text-gray-300'}`} />
-                                          {t.checkBank}
-                                        </button>
-
-                                        <button
-                                          type="button"
-                                          onClick={() => toggleChecklistItem(event.id, 'pricing')}
-                                          className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-colors flex items-center justify-center gap-1 ${
-                                            checks.pricing
-                                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                                              : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
-                                          }`}
-                                        >
-                                          <Check className={`w-3 h-3 ${checks.pricing ? 'text-emerald-600' : 'text-gray-300'}`} />
-                                          {t.checkPricing}
-                                        </button>
-                                      </div>
-                                    </div>
                                   </div>
 
                                   {/* Bottom Action Controls */}
@@ -3737,15 +3389,6 @@ export default function AdminDashboard() {
                                         title={t.viewDetails}
                                       >
                                         <ExternalLink className="w-4 h-4" />
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          setInspectedPendingEvent(event);
-                                          setApprovalViewMode('split');
-                                        }}
-                                        className="px-3 py-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:text-adv-slate text-xs font-bold transition-all shadow-xs"
-                                      >
-                                        {t.quickInspect}
                                       </button>
                                     </div>
 
@@ -3774,302 +3417,8 @@ export default function AdminDashboard() {
                               );
                             })}
                           </div>
-                        )}
-
-                        {/* VIEW MODE 2: TABLE VIEW */}
-                        {approvalViewMode === 'table' && (
-                          <div className="bg-white rounded-3xl border border-gray-200/80 shadow-xs overflow-hidden">
-                            <div className="overflow-x-auto">
-                              <table className="w-full text-left border-collapse">
-                                <thead>
-                                  <tr className="border-b border-gray-100 bg-gray-50/70 text-[10px] font-black uppercase tracking-widest text-gray-400">
-                                    <th className="py-2.5 px-4 w-10">
-                                      <button onClick={toggleSelectAll} className="flex items-center">
-                                        {isAllSelected ? (
-                                          <CheckSquare className="w-4 h-4 text-adv-orange" />
-                                        ) : (
-                                          <Square className="w-4 h-4 text-gray-400" />
-                                        )}
-                                      </button>
-                                    </th>
-                                    <th className="py-2.5 px-4">{t.eventUpcoming}</th>
-                                    <th className="py-2.5 px-4">{t.organizer}</th>
-                                    <th className="py-2.5 px-4">{t.eventLocation}</th>
-                                    <th className="py-2.5 px-4">{t.submittedOn}</th>
-                                    <th className="py-2.5 px-4">{t.payoutInfo}</th>
-                                    <th className="py-2.5 px-4 text-right">{t.manage}</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100 text-xs">
-                                  {filteredPending.map(event => {
-                                    const isSelected = selectedPendingIds.includes(event.id);
-                                    const eventDate = event.date ? new Date(event.date) : null;
-                                    const isDateValid = eventDate && !isNaN(eventDate.getTime());
-                                    const diffDays = isDateValid ? Math.ceil((eventDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null;
-                                    const isUrgent = diffDays !== null && diffDays >= 0 && diffDays <= 14;
-
-                                    return (
-                                      <tr key={event.id} className={`even:bg-gray-50/30 hover:bg-orange-50/30 transition-colors ${isSelected ? 'bg-orange-50/20' : ''}`}>
-                                        <td className="py-2.5 px-4">
-                                          <button onClick={() => toggleSelectEvent(event.id)}>
-                                            {isSelected ? (
-                                              <CheckSquare className="w-4 h-4 text-adv-orange" />
-                                            ) : (
-                                              <Square className="w-4 h-4 text-gray-300" />
-                                            )}
-                                          </button>
-                                        </td>
-                                        <td className="py-2.5 px-4">
-                                          <div className="flex items-center gap-3">
-                                            <img
-                                              src={event.image || 'https://images.unsplash.com/photo-1540611025311-01df3cef54b5?q=80&w=1000&auto=format&fit=crop'}
-                                              alt={event.title}
-                                              className="w-12 h-12 rounded-xl object-cover shrink-0 border border-gray-100"
-                                            />
-                                            <div className="min-w-0">
-                                              <div className="flex items-center gap-1.5">
-                                                <span className="font-bold text-adv-slate hover:text-adv-orange cursor-pointer line-clamp-1" onClick={() => setSelectedEvent(event)}>
-                                                  {event.title}
-                                                </span>
-                                                {isUrgent && (
-                                                  <span className="px-1.5 py-0.2 rounded bg-red-100 text-red-700 text-[9px] font-black uppercase">
-                                                    {diffDays}d
-                                                  </span>
-                                                )}
-                                              </div>
-                                              <div className="text-[11px] text-gray-400 mt-0.5">
-                                                {event.category || 'General'} • {isDateValid ? eventDate.toLocaleDateString() : event.date}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </td>
-                                        <td className="py-2.5 px-4">
-                                          <div className="font-bold text-adv-slate">{event.organizer}</div>
-                                          {event.organizerInfo?.contact && (
-                                            <div className="text-[11px] text-gray-400 truncate max-w-[140px]">
-                                              {event.organizerInfo.contact}
-                                            </div>
-                                          )}
-                                        </td>
-                                        <td className="py-2.5 px-4">
-                                          <div className="text-gray-700 font-medium truncate max-w-[150px]">{event.venue || event.location}</div>
-                                          <div className="text-[10px] text-gray-400">{event.location}</div>
-                                        </td>
-                                        <td className="py-2.5 px-4 text-gray-500 font-medium whitespace-nowrap">
-                                          {event.submittedAt || '—'}
-                                        </td>
-                                        <td className="py-2.5 px-4">
-                                          <div className="font-mono text-gray-800 font-medium">
-                                            {event.paymentInfo?.bankName || '—'}
-                                          </div>
-                                          <div className="text-[10px] text-gray-400 font-mono truncate max-w-[120px]">
-                                            {event.paymentInfo?.accountNumber || '—'}
-                                          </div>
-                                        </td>
-                                        <td className="py-2.5 px-4 text-right whitespace-nowrap">
-                                          <div className="flex items-center justify-end gap-1.5">
-                                            <button
-                                              onClick={() => setSelectedEvent(event)}
-                                              className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600"
-                                              title={t.viewDetails}
-                                            >
-                                              <ExternalLink className="w-3.5 h-3.5" />
-                                            </button>
-                                            <button
-                                              onClick={() => handleApprove(event.id)}
-                                              className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-black text-[10px] uppercase hover:bg-emerald-700"
-                                            >
-                                              {t.approve}
-                                            </button>
-                                            <button
-                                              onClick={() => {
-                                                setSelectedEvent(event);
-                                                setShowRejectionModal(true);
-                                              }}
-                                              className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 font-black text-[10px] uppercase hover:bg-red-100"
-                                            >
-                                              {t.reject}
-                                            </button>
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* VIEW MODE 3: SPLIT REVIEW MODE */}
-                        {approvalViewMode === 'split' && (
-                          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                            {/* Left List Pane (5 cols) */}
-                            <div className="lg:col-span-5 space-y-3">
-                              <div className="text-xs font-black uppercase tracking-wider text-gray-400 px-1">
-                                {lang === 'lo' ? 'ຄິວລໍຖ້າອະນຸມັດ' : 'Approval Queue'} ({filteredPending.length})
-                              </div>
-                              {filteredPending.map(event => {
-                                const isInspected = activeInspect?.id === event.id;
-                                const isSelected = selectedPendingIds.includes(event.id);
-                                return (
-                                  <div
-                                    key={event.id}
-                                    onClick={() => setInspectedPendingEvent(event)}
-                                    className={`p-4 rounded-2xl bg-white border cursor-pointer transition-all ${
-                                      isInspected
-                                        ? 'border-adv-orange ring-2 ring-adv-orange/15 shadow-sm'
-                                        : 'border-gray-200 hover:border-gray-300'
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <img
-                                        src={event.image || 'https://images.unsplash.com/photo-1540611025311-01df3cef54b5?q=80&w=1000&auto=format&fit=crop'}
-                                        alt={event.title}
-                                        className="w-14 h-14 rounded-xl object-cover shrink-0 border border-gray-100"
-                                      />
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between gap-1 mb-0.5">
-                                          <span className="text-[10px] font-black uppercase text-adv-orange">
-                                            {event.category || 'Event'}
-                                          </span>
-                                          <span className="text-[10px] text-gray-400 font-medium">
-                                            {event.date || 'Flexible'}
-                                          </span>
-                                        </div>
-                                        <h4 className="font-bold text-xs text-adv-slate truncate">
-                                          {event.title}
-                                        </h4>
-                                        <div className="text-[11px] text-gray-500 truncate mt-0.5">
-                                          {event.organizer}
-                                        </div>
-                                      </div>
-                                      <ChevronRight className={`w-4 h-4 shrink-0 transition-transform ${isInspected ? 'text-adv-orange translate-x-1' : 'text-gray-300'}`} />
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-
-                            {/* Right Inspector Dossier Pane (7 cols) */}
-                            {activeInspect && (
-                              <div className="lg:col-span-7 bg-white rounded-3xl border border-gray-200/90 shadow-sm p-6 sticky top-24 space-y-6">
-                                {/* Header Image & Title */}
-                                <div className="space-y-4">
-                                  <div className="relative w-full h-52 rounded-2xl overflow-hidden shadow-xs border border-gray-100">
-                                    <img
-                                      src={activeInspect.image || 'https://images.unsplash.com/photo-1540611025311-01df3cef54b5?q=80&w=1000&auto=format&fit=crop'}
-                                      alt={activeInspect.title}
-                                      className="w-full h-full object-cover"
-                                    />
-                                    <div className="absolute top-3 left-3 flex gap-2">
-                                      <span className="px-3 py-1 rounded-xl bg-black/60 backdrop-blur-md text-white text-xs font-black uppercase tracking-wider">
-                                        {activeInspect.category || 'Event'}
-                                      </span>
-                                    </div>
-                                    <button
-                                      onClick={() => setFullscreenImage(activeInspect.image)}
-                                      className="absolute bottom-3 right-3 px-3 py-1.5 rounded-xl bg-black/60 backdrop-blur-md text-white text-xs font-bold flex items-center gap-1.5 hover:bg-black/80 transition-colors"
-                                    >
-                                      <Eye className="w-3.5 h-3.5" /> Full Cover
-                                    </button>
-                                  </div>
-
-                                  <div>
-                                    <h3 className="text-xl font-black text-adv-slate">
-                                      {activeInspect.title}
-                                    </h3>
-                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-gray-500 font-medium">
-                                      <span className="flex items-center gap-1">
-                                        <Calendar className="w-3.5 h-3.5 text-adv-orange" />
-                                        {activeInspect.date} {activeInspect.time && `• ${activeInspect.time}`}
-                                      </span>
-                                      <span className="flex items-center gap-1">
-                                        <MapPin className="w-3.5 h-3.5 text-gray-400" />
-                                        {activeInspect.venue ? `${activeInspect.venue}, ${activeInspect.location}` : activeInspect.location}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Description */}
-                                <div className="space-y-1.5">
-                                  <div className="text-[10px] font-black uppercase tracking-wider text-gray-400">
-                                    {t.description}
-                                  </div>
-                                  <p className="text-xs text-gray-600 leading-relaxed bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
-                                    {activeInspect.description || 'No detailed description provided by organizer.'}
-                                  </p>
-                                </div>
-
-                                {/* Organizer & Payout Double Cards */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                  <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-100">
-                                    <div className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
-                                      {t.organizerKyc}
-                                    </div>
-                                    <div className="font-bold text-xs text-adv-slate">{activeInspect.organizer}</div>
-                                    <div className="text-[11px] text-gray-500">{activeInspect.organizerInfo?.contact || '—'}</div>
-                                  </div>
-
-                                  <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-100">
-                                    <div className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
-                                      {t.payoutInfo}
-                                    </div>
-                                    <div className="font-bold text-xs text-adv-slate">{activeInspect.paymentInfo?.bankName || 'Direct Transfer'}</div>
-                                    <div className="text-[11px] text-gray-500">{activeInspect.paymentInfo?.accountName || '—'}</div>
-                                    <div className="text-[11px] font-mono text-gray-700 mt-1">{activeInspect.paymentInfo?.accountNumber || '—'}</div>
-                                  </div>
-                                </div>
-
-                                {/* Ticket Tiers List */}
-                                {activeInspect.ticketTiers && activeInspect.ticketTiers.length > 0 && (
-                                  <div className="space-y-2">
-                                    <div className="text-[10px] font-black uppercase tracking-wider text-gray-400">
-                                      {lang === 'lo' ? 'ລາຍການປະເພດປີ້' : 'Configured Ticket Tiers'}
-                                    </div>
-                                    <div className="space-y-1.5">
-                                      {activeInspect.ticketTiers.map((tier: any) => (
-                                        <div key={tier.id} className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between text-xs">
-                                          <div>
-                                            <span className="font-bold text-adv-slate">{tier.name}</span>
-                                            <span className="text-[11px] text-gray-400 ml-2">({tier.available} {lang === 'lo' ? 'ປີ້' : 'tickets'})</span>
-                                          </div>
-                                          <span className="font-black text-emerald-600">
-                                            {Number(tier.price) === 0 ? 'Free' : `${Number(tier.price).toLocaleString()} ₭`}
-                                          </span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Sticky Review Decision Actions */}
-                                <div className="pt-4 border-t border-gray-100 flex items-center gap-3">
-                                  <button
-                                    onClick={() => handleApprove(activeInspect.id)}
-                                    className="flex-1 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm transition-all"
-                                  >
-                                    <CheckCircle2 className="w-4 h-4" />
-                                    {t.approveEvent}
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setSelectedEvent(activeInspect);
-                                      setShowRejectionModal(true);
-                                    }}
-                                    className="px-6 py-3.5 rounded-2xl bg-white border border-red-200 text-red-600 hover:bg-red-50 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all"
-                                  >
-                                    <XCircle className="w-4 h-4" />
-                                    {t.rejectEvent}
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </>
-                    )}
+                        </>
+                      )}
 
                     {/* RECENT DECISIONS AUDIT HISTORY (If any decision made in session) */}
                     {approvalDecisionHistory.length > 0 && (
@@ -5127,39 +4476,6 @@ export default function AdminDashboard() {
                         Paid
                       </button>
                     </div>
-
-                    <div className="flex bg-gray-50 p-1 sm:p-1.5 rounded-xl sm:rounded-2xl border border-gray-100 flex-wrap gap-0.5">
-                      <button 
-                        onClick={() => setPayoutDateFilter('all')}
-                        className={`px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest rounded-lg sm:rounded-xl transition-all ${payoutDateFilter === 'all' ? 'bg-white text-adv-orange shadow-xs border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
-                      >
-                        All Time
-                      </button>
-                      <button 
-                        onClick={() => setPayoutDateFilter('day')}
-                        className={`px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest rounded-lg sm:rounded-xl transition-all ${payoutDateFilter === 'day' ? 'bg-white text-adv-orange shadow-xs border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
-                      >
-                        Day
-                      </button>
-                      <button 
-                        onClick={() => setPayoutDateFilter('week')}
-                        className={`px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest rounded-lg sm:rounded-xl transition-all ${payoutDateFilter === 'week' ? 'bg-white text-adv-orange shadow-xs border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
-                      >
-                        Week
-                      </button>
-                      <button 
-                        onClick={() => setPayoutDateFilter('month')}
-                        className={`px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest rounded-lg sm:rounded-xl transition-all ${payoutDateFilter === 'month' ? 'bg-white text-adv-orange shadow-xs border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
-                      >
-                        Month
-                      </button>
-                      <button 
-                        onClick={() => setPayoutDateFilter('year')}
-                        className={`px-2 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest rounded-lg sm:rounded-xl transition-all ${payoutDateFilter === 'year' ? 'bg-white text-adv-orange shadow-xs border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}
-                      >
-                        Year
-                      </button>
-                    </div>
                   </div>
 
                   {payoutsList.length === 0 ? (
@@ -5171,19 +4487,6 @@ export default function AdminDashboard() {
                     <div className="space-y-3 sm:space-y-4">
                       {payoutsList
                         .filter(p => payoutFilter === 'all' || p.status === payoutFilter)
-                        .filter(p => {
-                          if (payoutDateFilter === 'all') return true;
-                          if (!p.completedDate) return true;
-                          const pDate = new Date(p.completedDate);
-                          const now = new Date();
-                          const diffTime = Math.abs(now.getTime() - pDate.getTime());
-                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                          if (payoutDateFilter === 'day') return diffDays <= 1;
-                          if (payoutDateFilter === 'week') return diffDays <= 7;
-                          if (payoutDateFilter === 'month') return diffDays <= 30;
-                          if (payoutDateFilter === 'year') return diffDays <= 365;
-                          return true;
-                        })
                         .map(payout => (
                         <div key={payout.id} className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-white border border-gray-100 hover:border-adv-orange/30 transition-all shadow-2xs sm:shadow-sm">
                           <div className="flex flex-col lg:flex-row justify-between gap-3.5 sm:gap-6">

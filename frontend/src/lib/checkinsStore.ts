@@ -27,6 +27,8 @@ export interface EventAttendee {
   attendeeName: string;
   email: string;
   phone?: string;
+  gender?: string;
+  dob?: string;
   ticketType: string;
   tierId?: string;
   zone: string;

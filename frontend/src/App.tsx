@@ -10,6 +10,7 @@ import Layout from './components/Layout';
 import BottomNav from './components/BottomNav';
 import ScrollToTop from './components/ScrollToTop';
 import { ThemeProvider } from './context/ThemeContext';
+import { OfflineIndicator } from './components/OfflineIndicator';
 
 // Import pages statically to guarantee zero dynamic chunk fetching errors
 import Home from './pages/Home';
@@ -118,6 +119,7 @@ export default function App() {
           <div className="pb-16 md:pb-0 min-h-screen flex flex-col bg-white text-adv-slate transition-colors duration-300">
             <AnimatedRoutes />
             <BottomNav />
+            <OfflineIndicator />
           </div>
         </AuthProvider>
       </BrowserRouter>

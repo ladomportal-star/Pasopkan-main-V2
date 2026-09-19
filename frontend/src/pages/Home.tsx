@@ -20,7 +20,8 @@ import {
   Flame,
   Eye,
   TrendingUp,
-  Sparkles
+  Sparkles,
+  Bell
 } from 'lucide-react';
 import { events, LaoEvent, getEventStatus } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
@@ -44,7 +45,8 @@ const translations = {
     festivals: 'Festivals',
     vouchers: 'Voucher and Booking',
     popularEvents: 'Popular Events',
-    popularEventsSub: 'Top 5 best-selling events'
+    popularEventsSub: 'Top 5 best-selling events',
+    notifications: 'Notifications'
   },
   lo: {
     heroSub: 'ຄົ້ນພົບປະສົບການທີ່ດີເລີດ',
@@ -59,7 +61,8 @@ const translations = {
     festivals: 'ເທດສະການ',
     vouchers: 'Voucher ແລະ ການຈອງ',
     popularEvents: 'ກິດຈະກຳຍອດນິຍົມ',
-    popularEventsSub: '5 ອັນດັບທີ່ຂາຍປີ້ໄດ້ຫຼາຍທີ່ສຸດ'
+    popularEventsSub: '5 ອັນດັບທີ່ຂາຍປີ້ໄດ້ຫຼາຍທີ່ສຸດ',
+    notifications: 'ການແຈ້ງເຕືອນ'
   }
 };
 
@@ -237,7 +240,7 @@ const CategoryRow: React.FC<{ category: string, events: LaoEvent[], title: strin
   };
 
   return (
-    <div className="flex flex-col mb-0 group relative">
+    <div className="flex flex-col mb-0 relative">
       <div className="flex items-end justify-between mb-2.5 sm:mb-6">
         <h3 className="text-lg sm:text-2xl md:text-3xl font-display font-bold text-adv-slate">
           {title}
@@ -344,7 +347,7 @@ const PopularEventsRow: React.FC<{
   };
 
   return (
-    <div className="flex flex-col mb-0 group relative">
+    <div className="flex flex-col mb-0 relative">
       <div className="flex items-end justify-between mb-4 sm:mb-6">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -468,8 +471,19 @@ export default function Home() {
       .catch((err) => {
         console.error('Failed to load dynamic hero settings:', err);
       });
+
+    const handleUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<HomeHeroSettings>;
+      if (customEvent.detail?.slides?.length) {
+        setHeroSettings(customEvent.detail);
+      }
+    };
+
+    window.addEventListener('pasopkan_home_hero_updated', handleUpdate);
+
     return () => {
       isMounted = false;
+      window.removeEventListener('pasopkan_home_hero_updated', handleUpdate);
     };
   }, []);
 
@@ -595,6 +609,17 @@ export default function Home() {
               />
             </AnimatePresence>
           </div>
+
+          {/* Notification Button on Home Hero */}
+          <Link
+            to="/notifications"
+            className="absolute top-3 sm:top-5 right-3 sm:right-5 z-20 flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/35 hover:bg-black/55 text-white backdrop-blur-md border border-white/20 transition-all duration-300 shadow-md group cursor-pointer active:scale-95"
+            title={t.notifications}
+            aria-label={t.notifications}
+          >
+            <Bell className="w-5 h-5 text-white group-hover:text-adv-orange transition-colors" />
+            <span className="sr-only">{t.notifications}</span>
+          </Link>
 
           {/* Carousel Pagination Dots inside image */}
           <div 

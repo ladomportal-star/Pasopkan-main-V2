@@ -45,6 +45,7 @@ import {
   Image as ImageIcon,
   Copy,
   Ticket,
+  AlertCircle,
   ExternalLink,
   Video
 } from 'lucide-react';
@@ -1085,6 +1086,14 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
     return quantity;
   }, [event, tierQuantities, quantity]);
 
+  const totalAvailableTickets = useMemo(() => {
+    if (!event) return 0;
+    if (event.ticketTiers && event.ticketTiers.length > 0) {
+      return event.ticketTiers.reduce((sum, t) => sum + (t.available !== undefined ? Math.max(0, t.available) : 0), 0);
+    }
+    return event.availableTickets || 100;
+  }, [event]);
+
   const subtotalPrice = useMemo(() => {
     if (!event) return 0;
     if (event.ticketTiers && event.ticketTiers.length > 0) {
@@ -1428,6 +1437,16 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
 
                        {/* Round White Action Buttons: Share */}
                        <div className="absolute top-4 right-4 flex items-center gap-2.5 z-20 pointer-events-auto">
+                         {event.showRemainingTickets && (
+                           <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-2 rounded-full border border-white/20 text-emerald-300 text-xs font-black shadow-lg shadow-black/30">
+                             <Ticket className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                             <span>
+                               {lang === 'en' 
+                                 ? `${totalAvailableTickets} Available` 
+                                 : `ເຫຼືອ ${totalAvailableTickets} ໃບ`}
+                             </span>
+                           </div>
+                         )}
                          <button 
                            onClick={(e) => { e.stopPropagation(); handleShare(); }} 
                            className="w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center text-adv-slate hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
@@ -1571,10 +1590,20 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
 
                        {/* Overlay Title on Image */}
                        <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 text-white flex flex-col justify-end h-full z-20 pointer-events-none">
-                         <div className="mb-2.5">
+                         <div className="mb-2.5 flex items-center gap-2 flex-wrap">
                            <span className="inline-flex items-center gap-1 bg-adv-orange/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/10 border border-white/10">
                              {event.category || 'Event'}
                            </span>
+                           {event.showRemainingTickets && (
+                             <span className="inline-flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-black text-emerald-300 border border-white/20 shadow-lg shadow-black/30">
+                               <Ticket className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                               <span>
+                                 {lang === 'en' 
+                                   ? `${totalAvailableTickets} Available` 
+                                   : `ເຫຼືອ ${totalAvailableTickets} ໃບ`}
+                               </span>
+                             </span>
+                           )}
                          </div>
                          
                          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight mb-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] font-sans text-white">
@@ -1648,6 +1677,16 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
                           <Languages className="w-3.5 h-3.5 text-adv-orange shrink-0" />
                           <span>{(event.languages || ['Lao', 'English']).join(', ')}</span>
                         </div>
+                        {event.showRemainingTickets && (
+                          <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-lg border border-emerald-200 shadow-xs font-bold">
+                            <Ticket className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span>
+                              {lang === 'en' 
+                                ? `${totalAvailableTickets} Available` 
+                                : `ເຫຼືອ ${totalAvailableTickets} ໃບ`}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {event.dateType !== 'flexible' && (
@@ -1864,17 +1903,8 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
 
                {/* Calendar Selector */}
                <div className="space-y-2">
-                 <label className="text-xs font-black uppercase tracking-wider text-adv-slate block flex items-center justify-between">
-                   <span>{event.dateType === 'booking' ? (lang === 'en' ? 'Select Booking Date' : 'ເລືອກວັນທີຈອງ') : (lang === 'en' ? 'Select Event Date' : 'ເລືອກວັນທີຈັດງານ')}</span>
-                   {event.dateType === 'booking' ? (
-                     <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
-                       {lang === 'en' ? 'Slot Booking' : 'ເປີດໃຫ້ຈອງ'}
-                     </span>
-                   ) : (
-                     <span className="text-[10px] font-bold text-adv-orange bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200/60">
-                       {lang === 'en' ? 'Event Date' : 'ວັນທີຈັດງານ'}
-                     </span>
-                   )}
+                 <label className="text-xs font-black uppercase tracking-wider text-adv-slate block">
+                   {event.dateType === 'booking' ? (lang === 'en' ? 'Select Booking Date' : 'ເລືອກວັນທີຈອງ') : (lang === 'en' ? 'Select Event Date' : 'ເລືອກວັນທີຈັດງານ')}
                  </label>
                  <InlineCalendar
                    selectedDate={selectedVisitDate}
@@ -2000,9 +2030,17 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
                {event.ticketTiers && event.ticketTiers.length > 0 ? (
                  <div className="space-y-2.5">
                    <div className="flex items-center justify-between">
-                     <label className="text-xs font-black uppercase tracking-wider text-adv-slate block">
-                       {t.selectTickets}
-                     </label>
+                     <div className="flex items-center gap-2">
+                       <label className="text-xs font-black uppercase tracking-wider text-adv-slate block">
+                         {t.selectTickets}
+                       </label>
+                       {event.showRemainingTickets && (
+                         <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full flex items-center gap-1">
+                           <Ticket className="w-2.5 h-2.5 text-emerald-600" />
+                           {lang === 'en' ? `${totalAvailableTickets} Available` : `ເຫຼືອ ${totalAvailableTickets} ໃບ`}
+                         </span>
+                       )}
+                     </div>
                      <span className="text-[10px] text-gray-400 font-semibold">
                        {lang === 'en' ? `Max ${effectiveMaxTickets} total tickets` : `ສູງສຸດ ${effectiveMaxTickets} ໃບທັງໝົດ`}
                      </span>
@@ -2026,18 +2064,36 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
                            }`}
                          >
                            <div className="flex-1 min-w-0 pr-3">
-                             <div className="flex items-center gap-2">
+                             <div className="flex items-center gap-2 flex-wrap">
                                <p className="font-bold text-xs text-adv-slate group-hover:text-black transition-colors truncate">
                                  {tier.name}
                                </p>
-                             </div>
-                             <div className="flex items-center gap-2 mt-0.5">
-                               <span className="font-mono font-black text-xs text-adv-orange">
-                                 {tier.price.toLocaleString()} {currency}
-                               </span>
                                {event.showRemainingTickets && (
-                                 <span className="text-[10px] font-semibold text-gray-400">
-                                   • {isSoldOut ? (lang === 'en' ? 'Sold Out' : 'ໝົດແລ້ວ') : `${tierAvailable} ${lang === 'en' ? 'remaining' : 'ເຫຼືອ'}`}
+                                 isSoldOut ? (
+                                   <span className="inline-flex items-center gap-1 text-[10px] font-black text-red-600 bg-red-50 border border-red-200/80 px-2 py-0.5 rounded-full">
+                                     <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                                     {lang === 'en' ? 'Sold Out' : 'ໝົດແລ້ວ'}
+                                   </span>
+                                 ) : tierAvailable <= 10 ? (
+                                   <span className="inline-flex items-center gap-1 text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                     {lang === 'en' ? `Only ${tierAvailable} left!` : `ເຫຼືອພຽງ ${tierAvailable} ໃບ!`}
+                                   </span>
+                                 ) : (
+                                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
+                                     <Ticket className="w-2.5 h-2.5 text-emerald-600" />
+                                     {lang === 'en' ? `${tierAvailable} remaining` : `ເຫຼືອ ${tierAvailable} ໃບ`}
+                                   </span>
+                                 )
+                               )}
+                             </div>
+                             <div className="flex items-center gap-2 mt-1">
+                               <span className="font-mono font-black text-xs text-adv-orange">
+                                 {tier.price === 0 ? (lang === 'en' ? 'Free' : 'ຟຣີ') : `${tier.price.toLocaleString()} ${currency}`}
+                               </span>
+                               {tier.description && (
+                                 <span className="text-[10px] text-gray-400 font-medium truncate max-w-[180px]">
+                                   • {tier.description}
                                  </span>
                                )}
                              </div>
@@ -2079,9 +2135,12 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
                        {lang === 'en' ? `Max ${effectiveMaxTickets} per transaction` : `ສູງສຸດ ${effectiveMaxTickets} ໃບ/ຄັ້ງ`}
                      </span>
                      {event.showRemainingTickets && (
-                       <span className="text-[10px] font-semibold text-adv-orange block mt-0.5">
-                         {lang === 'en' ? `${event.availableTickets || 100} remaining` : `ເຫຼືອ ${event.availableTickets || 100} ໃບ`}
-                       </span>
+                       <div className="mt-1">
+                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
+                           <Ticket className="w-2.5 h-2.5 text-emerald-600" />
+                           {lang === 'en' ? `${event.availableTickets || 100} available tickets` : `ປີ້ທີ່ຍັງເຫຼືອ ${event.availableTickets || 100} ໃບ`}
+                         </span>
+                       </div>
                      )}
                    </div>
                    <div className="flex items-center gap-3 bg-gray-50/80 px-2 py-1.5 rounded-xl border border-gray-200/80 shadow-xs">

@@ -19,7 +19,23 @@ export function CalendarPicker({ value, onChange, lang, theme = 'light', minDate
     left: 0,
     placement: 'bottom',
   });
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 640;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (typeof window !== 'undefined') {
+        setIsMobile(window.innerWidth < 640);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const minDateObj = useMemo(() => {
     if (!minDate) return null;
@@ -201,49 +217,191 @@ export function CalendarPicker({ value, onChange, lang, theme = 'light', minDate
       {typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
           {isOpen && (
-            <>
-              {isMobile ? (
+            isMobile ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+                onClick={() => setIsOpen(false)}
+              >
                 <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setIsOpen(false)}
-                  className="fixed inset-0 bg-black/50 z-[99998] backdrop-blur-xs flex items-center justify-center p-4 sm:hidden overflow-y-auto"
-                />
-              ) : null}
+                  ref={popupRef}
+                  onClick={(e) => e.stopPropagation()}
+                  initial={{ opacity: 0, scale: 0.94, y: 15 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.94, y: 15 }}
+                  transition={{ duration: 0.18, ease: 'easeOut' }}
+                  className={`
+                    w-full max-w-[340px] max-h-[90vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden drop-shadow-2xl pointer-events-auto
+                    ${theme === 'dark' ? 'bg-[#2B303A] border border-zinc-700 text-white' : 'bg-white border border-gray-150 text-adv-slate'}
+                  `}
+                >
+                  {/* Header Overview Banner */}
+                  <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-adv-orange text-white px-4 py-3.5 shadow-sm shrink-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <CalendarIcon className="w-4 h-4 text-white/90" />
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-white/80">
+                          {lang === 'lo' ? 'ເລືອກວັນທີ' : 'Select Date'}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsOpen(false)}
+                        className="p-1 text-white/80 hover:text-white rounded-lg hover:bg-white/15 transition-colors cursor-pointer"
+                        title={lang === 'lo' ? 'ປິດ' : 'Close'}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="mt-1.5">
+                      {selectedFormatted ? (
+                        <p className="text-sm font-black text-white capitalize truncate tracking-wide">
+                          {selectedFormatted}
+                        </p>
+                      ) : (
+                        <p className="text-xs font-medium text-white/80">
+                          {lang === 'lo' ? 'ກະລຸນາເລືອກວັນທີ' : 'Please select a date'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
 
+                  <div className="p-4 overflow-y-auto max-h-[calc(90vh-120px)] sm:max-h-none">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={prevYear}
+                          className={`p-1 rounded-lg cursor-pointer ${theme === 'dark' ? 'hover:bg-white/10 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
+                          title={lang === 'lo' ? 'ປີກ່ອນ' : 'Previous Year'}
+                        >
+                          <ChevronsLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={prevMonth}
+                          disabled={isPrevDisabled}
+                          className={`p-1 rounded-lg cursor-pointer ${
+                            isPrevDisabled 
+                              ? 'opacity-20 cursor-not-allowed text-gray-400' 
+                              : (theme === 'dark' ? 'hover:bg-white/10 text-gray-300' : 'hover:bg-gray-100 text-gray-600')
+                          }`}
+                          title={lang === 'lo' ? 'ເດືອນກ່ອນ' : 'Previous Month'}
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <h4 className={`text-xs font-black ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                        {currentMonth.toLocaleDateString(lang === 'en' ? 'en-US' : 'lo-LA', { month: 'long', year: 'numeric' })}
+                      </h4>
+
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={nextMonth}
+                          className={`p-1 rounded-lg cursor-pointer ${theme === 'dark' ? 'hover:bg-white/10 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
+                          title={lang === 'lo' ? 'ເດືອນຖັດໄປ' : 'Next Month'}
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={nextYear}
+                          className={`p-1 rounded-lg cursor-pointer ${theme === 'dark' ? 'hover:bg-white/10 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
+                          title={lang === 'lo' ? 'ປີຖັດໄປ' : 'Next Year'}
+                        >
+                          <ChevronsRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-1 mb-2">
+                      {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d, i) => (
+                        <div key={d} className={`text-center text-[10px] font-extrabold ${i === 0 || i === 6 ? 'text-orange-400' : (theme === 'dark' ? 'text-gray-500' : 'text-gray-400')}`}>
+                          {d}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-1">
+                      {days.map((day, idx) => {
+                        if (day === null) return <div key={`empty-${idx}`} className="h-8" />;
+
+                        const dayDate = new Date(year, month, day, 0, 0, 0, 0);
+                        const isDisabled = !!minDateObj && dayDate.getTime() < minDateObj.getTime();
+                        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        const isSelected = value === dateStr;
+
+                        return (
+                          <button
+                            key={day}
+                            type="button"
+                            disabled={isDisabled}
+                            onClick={() => handleDateClick(day)}
+                            className={`
+                              relative h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-all cursor-pointer
+                              ${isDisabled
+                                ? 'opacity-25 cursor-not-allowed bg-transparent text-gray-400 line-through'
+                                : isSelected
+                                  ? 'bg-adv-orange text-white shadow-md shadow-orange-500/30 font-bold scale-105'
+                                  : (theme === 'dark' ? 'text-gray-300 hover:bg-white/5' : 'text-gray-600 hover:bg-orange-50 hover:text-adv-orange')}
+                            `}
+                          >
+                            {String(day).padStart(2, '0')}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-gray-50 dark:bg-zinc-800 border-t border-gray-100 dark:border-zinc-700 flex items-center justify-between shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onChange('');
+                      }}
+                      className="text-gray-500 hover:text-red-500 font-bold transition-colors cursor-pointer px-2.5 py-1.5 rounded-lg hover:bg-red-50 text-xs"
+                    >
+                      {lang === 'lo' ? 'ລຶບອອກ' : 'Clear'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsOpen(false)}
+                      className="bg-adv-orange hover:bg-orange-600 text-white px-4 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1 shadow-sm active:scale-95 text-xs cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      <span>{lang === 'lo' ? 'ຕົກລົງ' : 'Done'}</span>
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            ) : (
               <motion.div
                 ref={popupRef}
-                initial={{ opacity: 0, y: isMobile ? 20 : (coords.placement === 'top' ? -8 : 8), scale: 0.97 }}
+                initial={{ opacity: 0, y: coords.placement === 'top' ? -8 : 8, scale: 0.97 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: isMobile ? 20 : (coords.placement === 'top' ? -8 : 8), scale: 0.97 }}
+                exit={{ opacity: 0, y: coords.placement === 'top' ? -8 : 8, scale: 0.97 }}
                 transition={{ duration: 0.16, ease: 'easeOut' }}
-                style={
-                  isMobile
-                    ? {
-                        position: 'fixed',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        width: 'calc(100vw - 32px)',
-                        maxWidth: '340px',
-                        zIndex: 99999,
-                      }
-                    : {
-                        position: 'fixed',
-                        top: `${coords.top}px`,
-                        left: `${coords.left}px`,
-                        width: '320px',
-                        zIndex: 99999,
-                      }
-                }
+                style={{
+                  position: 'fixed',
+                  top: `${coords.top}px`,
+                  left: `${coords.left}px`,
+                  width: '320px',
+                  zIndex: 99999,
+                }}
                 className={`
-                  rounded-2xl shadow-2xl overflow-hidden drop-shadow-2xl
+                  rounded-2xl shadow-2xl overflow-hidden drop-shadow-2xl flex flex-col pointer-events-auto
                   ${theme === 'dark' ? 'bg-[#2B303A] border border-zinc-700 text-white' : 'bg-white border border-gray-150 text-adv-slate'}
                 `}
               >
                 {/* Header Overview Banner */}
-                <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-adv-orange text-white px-4 py-3.5 shadow-sm">
+                <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-adv-orange text-white px-4 py-3.5 shadow-sm shrink-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <CalendarIcon className="w-4 h-4 text-white/90" />
@@ -362,7 +520,7 @@ export function CalendarPicker({ value, onChange, lang, theme = 'light', minDate
                   </div>
                 </div>
 
-                <div className="p-3 bg-gray-50 dark:bg-zinc-800 border-t border-gray-100 dark:border-zinc-700 flex items-center justify-between">
+                <div className="p-3 bg-gray-50 dark:bg-zinc-800 border-t border-gray-100 dark:border-zinc-700 flex items-center justify-between shrink-0">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -384,7 +542,7 @@ export function CalendarPicker({ value, onChange, lang, theme = 'light', minDate
                   </button>
                 </div>
               </motion.div>
-            </>
+            )
           )}
         </AnimatePresence>,
         document.body

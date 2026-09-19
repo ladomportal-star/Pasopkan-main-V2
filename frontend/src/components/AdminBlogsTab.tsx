@@ -166,7 +166,7 @@ export default function AdminBlogsTab() {
       return;
     }
 
-    const payload: Partial<BlogPost> = {
+    const payload: Partial<BlogPost> & { title: string; content: string } = {
       title: formData.title,
       titleLao: formData.title,
       slug: (formData.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || `post-${Date.now()}`,

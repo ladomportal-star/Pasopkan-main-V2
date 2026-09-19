@@ -9,6 +9,8 @@ export async function compressImage(
   quality = 0.75
 ): Promise<string> {
   return new Promise((resolve) => {
+    let originalDataUrl = typeof fileOrUrl === 'string' ? fileOrUrl : '';
+
     try {
       if (typeof fileOrUrl === 'string') {
         if (!fileOrUrl.startsWith('data:image')) {
@@ -18,7 +20,10 @@ export async function compressImage(
       }
 
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      // Only set crossOrigin if loading external http(s) images, not data URLs
+      if (typeof fileOrUrl === 'string' && !fileOrUrl.startsWith('data:')) {
+        img.crossOrigin = 'anonymous';
+      }
 
       const handleImageLoaded = () => {
         try {
@@ -36,21 +41,21 @@ export async function compressImage(
           canvas.height = height;
           const ctx = canvas.getContext('2d');
           if (!ctx) {
-            return resolve(typeof fileOrUrl === 'string' ? fileOrUrl : '');
+            return resolve(originalDataUrl);
           }
 
           ctx.drawImage(img, 0, 0, width, height);
           const compressed = canvas.toDataURL('image/jpeg', quality);
-          resolve(compressed);
+          resolve(compressed || originalDataUrl);
         } catch (err) {
-          console.warn('Image compression fallback:', err);
-          resolve(typeof fileOrUrl === 'string' ? fileOrUrl : '');
+          console.warn('Image compression fallback to original:', err);
+          resolve(originalDataUrl);
         }
       };
 
       img.onload = handleImageLoaded;
       img.onerror = () => {
-        resolve(typeof fileOrUrl === 'string' ? fileOrUrl : '');
+        resolve(originalDataUrl);
       };
 
       if (typeof fileOrUrl === 'string') {
@@ -58,8 +63,10 @@ export async function compressImage(
       } else {
         const reader = new FileReader();
         reader.onload = (e) => {
-          if (e.target?.result) {
-            img.src = e.target.result as string;
+          const res = (e.target?.result as string) || '';
+          originalDataUrl = res;
+          if (res) {
+            img.src = res;
           } else {
             resolve('');
           }
@@ -69,7 +76,7 @@ export async function compressImage(
       }
     } catch (e) {
       console.warn('compressImage exception:', e);
-      resolve(typeof fileOrUrl === 'string' ? fileOrUrl : '');
+      resolve(originalDataUrl);
     }
   });
 }

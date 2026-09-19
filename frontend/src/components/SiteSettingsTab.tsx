@@ -83,6 +83,7 @@ import {
   renderTermIcon,
   TermIconOption
 } from '../lib/termIcons';
+import { compressImage } from '../lib/imageCompression';
 
 interface SiteSettingsTabProps {
   lang: 'en' | 'lo';
@@ -245,16 +246,54 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
     });
   };
 
-  const handleHeroSlideFileUpload = (index: number, file: File) => {
+  const handleHeroSlideFileUpload = async (index: number, file: File) => {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      if (result) {
-        updateHeroSlide(index, 'imageUrl', result);
+
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage(lang === 'en' ? 'Please upload a valid image file (JPG, PNG, WebP, SVG).' : 'ກະລຸນາເລືອກໄຟລ໌ຮູບພາບ (JPG, PNG, WebP, SVG).');
+      return;
+    }
+
+    // Limit raw upload to 15MB to prevent memory crash before compression
+    if (file.size > 15 * 1024 * 1024) {
+      setErrorMessage(lang === 'en' ? 'Image file is too large (maximum 15MB).' : 'ໄຟລ໌ຮູບໃຫຍ່ເກີນໄປ (ສູງສຸດ 15MB).');
+      return;
+    }
+
+    try {
+      setErrorMessage(null);
+      // Compress to high definition hero landscape (1920x1080 resolution, quality 0.82)
+      // This reduces 5-10MB phone camera / wallpaper photos down to ~150-300KB
+      const compressed = await compressImage(file, 1920, 1080, 0.82);
+      if (compressed) {
+        updateHeroSlide(index, 'imageUrl', compressed);
+        setPreviewSlideIdx(index);
+        triggerSuccess(lang === 'en' ? `Slide #${index + 1} image uploaded successfully!` : `ອັບໂຫຼດຮູບສະໄລດ໌ #${index + 1} ສຳເລັດແລ້ວ!`);
+      } else {
+        // Fallback to FileReader if compression returns empty
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const result = e.target?.result as string;
+          if (result) {
+            updateHeroSlide(index, 'imageUrl', result);
+            setPreviewSlideIdx(index);
+          }
+        };
+        reader.readAsDataURL(file);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Failed to compress slide image:', err);
+      // Fallback to basic FileReader
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        if (result) {
+          updateHeroSlide(index, 'imageUrl', result);
+          setPreviewSlideIdx(index);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const resetHeroSlidesToDefault = () => {
@@ -1837,11 +1876,11 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
 
                         {/* Direct QR Code Section */}
                         <div className="py-1 flex-1 flex flex-col items-center justify-center min-h-0">
-                          <div className="p-3 sm:p-4 bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-md flex items-center justify-center shrink-0">
+                          <div className="p-2 sm:p-4 bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-md flex items-center justify-center shrink-0">
                             <QRCodeSVG
                               value="PREVIEW-TICKET-EBP948201AC"
-                              size={300}
-                              className="w-52 h-52 sm:w-60 sm:h-60 md:w-64 md:h-64"
+                              size={360}
+                              className="w-64 h-64 min-[390px]:w-[272px] min-[390px]:h-[272px] sm:w-60 sm:h-60 md:w-64 md:h-64"
                               level="H"
                               includeMargin={false}
                             />

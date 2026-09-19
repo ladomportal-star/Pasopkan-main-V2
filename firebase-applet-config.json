@@ -7,5 +7,6 @@
   "storageBucket": "turnkey-envelope-jtn3v.firebasestorage.app",
   "messagingSenderId": "954489172466",
   "measurementId": "",
-  "oAuthClientId": "954489172466-9ige3gmdgttf7sslepg2jl5r5fhpehd8.apps.googleusercontent.com"
+  "oAuthClientId": "954489172466-9ige3gmdgttf7sslepg2jl5r5fhpehd8.apps.googleusercontent.com",
+  "recaptchaSiteKey": ""
 }

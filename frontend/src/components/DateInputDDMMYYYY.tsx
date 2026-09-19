@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X, Check } from 'lucide-react';
 
 export interface DateInputDDMMYYYYProps {
+  id?: string;
   value: string; // "DD/MM/YYYY" or "YYYY-MM-DD"
   onChange: (val: string) => void;
   placeholder?: string;
@@ -75,6 +76,7 @@ const EN_MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
 const EN_MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export function DateInputDDMMYYYY({
+  id,
   value,
   onChange,
   placeholder = 'DD/MM/YYYY',
@@ -102,7 +104,23 @@ export function DateInputDDMMYYYY({
     left: 0,
     placement: 'bottom',
   });
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 640;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (typeof window !== 'undefined') {
+        setIsMobile(window.innerWidth < 640);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     setDisplayVal(formatToDDMMYYYY(value));
@@ -170,16 +188,55 @@ export function DateInputDDMMYYYY({
     }
   }, [align]);
 
+  const currentYearLimit = new Date().getFullYear();
+  const minYearLimit = minDateObj ? minDateObj.getFullYear() : 1920;
+  const maxYearLimit = maxDateObj ? maxDateObj.getFullYear() : currentYearLimit + 5;
+
+  const availableYears = useMemo(() => {
+    const list: number[] = [];
+    for (let y = maxYearLimit; y >= minYearLimit; y--) {
+      list.push(y);
+    }
+    return list;
+  }, [minYearLimit, maxYearLimit]);
+
+  const mobileSelectedYearRef = useRef<HTMLButtonElement | null>(null);
+  const desktopSelectedYearRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (viewMode === 'years') {
+      const timer = setTimeout(() => {
+        if (mobileSelectedYearRef.current) {
+          mobileSelectedYearRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+        if (desktopSelectedYearRef.current) {
+          desktopSelectedYearRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [viewMode]);
+
   const openCalendar = () => {
     if (disabled) return;
+    const smallScreen = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
+    setIsMobile(smallScreen);
     updatePosition();
     setViewMode('days');
     if (parsedDate) {
       setCurrentMonth(parsedDate);
+    } else if (maxDateObj && maxDateObj < new Date()) {
+      const approxAdultYear = Math.min(new Date().getFullYear() - 20, maxDateObj.getFullYear());
+      setCurrentMonth(new Date(approxAdultYear, 0, 1));
     } else if (minDateObj) {
       setCurrentMonth(minDateObj);
+    } else {
+      setCurrentMonth(new Date());
     }
     setIsOpen(true);
+    if (smallScreen && inputRef.current) {
+      inputRef.current.blur();
+    }
   };
 
   const toggleOpen = () => {
@@ -272,13 +329,15 @@ export function DateInputDDMMYYYY({
   const prevYear = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setCurrentMonth(new Date(currentMonth.getFullYear() - 1, currentMonth.getMonth(), 1));
+    const jump = viewMode === 'years' ? 10 : 1;
+    setCurrentMonth(new Date(currentMonth.getFullYear() - jump, currentMonth.getMonth(), 1));
   };
 
   const nextYear = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setCurrentMonth(new Date(currentMonth.getFullYear() + 1, currentMonth.getMonth(), 1));
+    const jump = viewMode === 'years' ? 10 : 1;
+    setCurrentMonth(new Date(currentMonth.getFullYear() + jump, currentMonth.getMonth(), 1));
   };
 
   const year = currentMonth.getFullYear();
@@ -332,11 +391,12 @@ export function DateInputDDMMYYYY({
   }, [parsedDate, lang]);
 
   return (
-    <div className={`relative ${className}`} ref={containerRef}>
+    <div className={`relative w-full z-10 ${className || ''}`} ref={containerRef}>
       {label && <label className="block text-xs font-bold text-gray-500 mb-1.5">{label}</label>}
       <div className="relative flex items-center group">
         <input
           ref={inputRef}
+          id={id}
           type="text"
           value={displayVal}
           onChange={handleTextChange}
@@ -379,48 +439,280 @@ export function DateInputDDMMYYYY({
       {typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
           {isOpen && (
-            <>
-              {/* Mobile Backdrop Overlay */}
-              {isMobile ? (
+            isMobile ? (
+              /* Mobile View: Perfectly centered dialog modal with backdrop */
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+                onClick={() => setIsOpen(false)}
+              >
                 <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setIsOpen(false)}
-                  className="fixed inset-0 bg-black/50 z-[99998] backdrop-blur-xs flex items-center justify-center p-4 sm:hidden overflow-y-auto"
-                />
-              ) : null}
+                  ref={popoverRef}
+                  onClick={(e) => e.stopPropagation()}
+                  initial={{ opacity: 0, scale: 0.94, y: 15 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.94, y: 15 }}
+                  transition={{ duration: 0.18, ease: 'easeOut' }}
+                  className="w-full max-w-[340px] max-h-[90vh] bg-white border border-gray-150 rounded-2xl shadow-2xl overflow-hidden drop-shadow-2xl flex flex-col pointer-events-auto"
+                >
+                  {/* Header Overview Banner */}
+                  <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-adv-orange text-white px-4 py-3.5 shadow-sm shrink-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <CalendarIcon className="w-4 h-4 text-white/90" />
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-white/80">
+                          {lang === 'lo' ? 'ເລືອກວັນທີ' : 'Select Date'}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsOpen(false)}
+                        className="p-1 text-white/80 hover:text-white rounded-lg hover:bg-white/15 transition-colors cursor-pointer"
+                        title={lang === 'lo' ? 'ປິດ' : 'Close'}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {/* Real-time date overview */}
+                    <div className="mt-1.5">
+                      {formattedPreview ? (
+                        <p className="text-sm font-black text-white capitalize truncate tracking-wide">
+                          {formattedPreview}
+                        </p>
+                      ) : (
+                        <p className="text-xs font-medium text-white/80">
+                          {lang === 'lo' ? 'ກະລຸນາເລືອກວັນທີ' : 'Please select a date'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
 
-              {/* Portal Floating Card */}
+                  {/* Calendar Body */}
+                  <div className="p-4 overflow-y-auto max-h-[calc(90vh-120px)] sm:max-h-none">
+                    {/* Month / Year Navigator */}
+                    <div className="flex items-center justify-between mb-3.5">
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={prevYear}
+                          className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-adv-orange transition-colors cursor-pointer"
+                          title={lang === 'lo' ? 'ປີກ່ອນ' : 'Previous Year'}
+                        >
+                          <ChevronsLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={prevMonth}
+                          className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-adv-orange transition-colors cursor-pointer"
+                          title={lang === 'lo' ? 'ເດືອນກ່ອນ' : 'Previous Month'}
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Toggle month/year view mode */}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setViewMode(viewMode === 'months' ? 'days' : 'months')}
+                          className={`text-xs font-black px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
+                            viewMode === 'months' ? 'bg-adv-orange text-white shadow-xs' : 'text-adv-slate hover:bg-gray-100'
+                          }`}
+                        >
+                          {lang === 'lo' ? LAO_MONTHS_FULL[month] : EN_MONTHS_FULL[month]}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setViewMode(viewMode === 'years' ? 'days' : 'years')}
+                          className={`text-xs font-black px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
+                            viewMode === 'years' ? 'bg-adv-orange text-white shadow-xs' : 'text-adv-slate hover:bg-gray-100'
+                          }`}
+                        >
+                          {year}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={nextMonth}
+                          className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-adv-orange transition-colors cursor-pointer"
+                          title={lang === 'lo' ? 'ເດືອນຖັດໄປ' : 'Next Month'}
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={nextYear}
+                          className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-adv-orange transition-colors cursor-pointer"
+                          title={lang === 'lo' ? 'ປີຖັດໄປ' : 'Next Year'}
+                        >
+                          <ChevronsRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Day Grid View */}
+                    {viewMode === 'days' && (
+                      <>
+                        {/* Days of Week Header */}
+                        <div className="grid grid-cols-7 gap-1 mb-2 text-center text-[10px] font-extrabold text-gray-400 uppercase">
+                          {lang === 'lo' 
+                            ? ['ອາ', 'ຈ', 'ອ', 'ພ', 'ພຫ', 'ສຸກ', 'ເສົາ'].map((d, i) => (
+                                <div key={d} className={i === 0 || i === 6 ? 'text-orange-400' : ''}>{d}</div>
+                              ))
+                            : ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d, i) => (
+                                <div key={d} className={i === 0 || i === 6 ? 'text-orange-400' : ''}>{d}</div>
+                              ))
+                          }
+                        </div>
+
+                        {/* Date Numbers */}
+                        <div className="grid grid-cols-7 gap-1">
+                          {days.map((day, idx) => {
+                            if (day === null) return <div key={`empty-${idx}`} className="h-8" />;
+                            
+                            const dayDate = new Date(year, month, day, 0, 0, 0, 0);
+                            const isDayToday = dayDate.getTime() === today.getTime();
+                            const isPastMin = minDateObj ? dayDate < minDateObj : false;
+                            const isPastMax = maxDateObj ? dayDate > maxDateObj : false;
+                            const isDisabled = isPastMin || isPastMax;
+
+                            const dayStr = String(day).padStart(2, '0');
+                            const monthStr = String(month + 1).padStart(2, '0');
+                            const thisFormatted = `${dayStr}/${monthStr}/${year}`;
+                            const isSelected = displayVal === thisFormatted;
+
+                            return (
+                              <button
+                                key={day}
+                                type="button"
+                                disabled={isDisabled}
+                                onClick={() => handleDateClick(day)}
+                                className={`
+                                  relative h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-all cursor-pointer
+                                  ${isDisabled
+                                    ? 'opacity-25 cursor-not-allowed text-gray-400 line-through'
+                                    : isSelected
+                                      ? 'bg-adv-orange text-white shadow-md shadow-orange-500/30 scale-105 z-10 font-black'
+                                      : isDayToday
+                                        ? 'border-2 border-adv-orange text-adv-orange hover:bg-orange-50'
+                                        : 'text-gray-700 hover:bg-orange-50 hover:text-adv-orange active:scale-95'
+                                  }
+                                `}
+                              >
+                                <span>{day}</span>
+                                {isDayToday && !isSelected && (
+                                  <span className="absolute bottom-1 w-1 h-1 rounded-full bg-adv-orange" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Quick Month Grid View */}
+                    {viewMode === 'months' && (
+                      <div className="grid grid-cols-3 gap-2 py-2">
+                        {(lang === 'lo' ? LAO_MONTHS_SHORT : EN_MONTHS_SHORT).map((mName, mIdx) => {
+                          const isCurrentM = month === mIdx;
+                          return (
+                            <button
+                              key={mName}
+                              type="button"
+                              onClick={() => {
+                                setCurrentMonth(new Date(year, mIdx, 1));
+                                setViewMode('days');
+                              }}
+                              className={`py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                isCurrentM
+                                  ? 'bg-adv-orange text-white shadow-xs font-black'
+                                  : 'bg-gray-50 text-gray-700 hover:bg-orange-50 hover:text-adv-orange'
+                              }`}
+                            >
+                              {mName}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Quick Year Grid View */}
+                    {viewMode === 'years' && (
+                      <div className="grid grid-cols-3 gap-2 py-2 max-h-56 overflow-y-auto pr-1">
+                        {availableYears.map((yNum) => {
+                          const isCurrentY = year === yNum;
+                          return (
+                            <button
+                              key={yNum}
+                              ref={isCurrentY ? mobileSelectedYearRef : undefined}
+                              type="button"
+                              onClick={() => {
+                                setCurrentMonth(new Date(yNum, month, 1));
+                                setViewMode('months');
+                              }}
+                              className={`py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                isCurrentY
+                                  ? 'bg-adv-orange text-white shadow-xs font-black'
+                                  : 'bg-gray-50 text-gray-700 hover:bg-orange-50 hover:text-adv-orange'
+                              }`}
+                            >
+                              {yNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer Controls */}
+                  <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDisplayVal('');
+                        onChange('');
+                      }}
+                      className="text-gray-500 hover:text-red-500 font-bold transition-colors cursor-pointer px-2.5 py-1.5 rounded-lg hover:bg-red-50"
+                    >
+                      {lang === 'lo' ? 'ລຶບອອກ' : 'Clear'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsOpen(false)}
+                      className="bg-adv-orange hover:bg-orange-600 text-white px-4 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1 shadow-sm active:scale-95 cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      <span>{lang === 'lo' ? 'ຕົກລົງ' : 'Done'}</span>
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            ) : (
+              /* Desktop View: Anchored popover */
               <motion.div
                 ref={popoverRef}
-                initial={{ opacity: 0, y: isMobile ? 20 : (coords.placement === 'top' ? -8 : 8), scale: 0.97 }}
+                initial={{ opacity: 0, y: coords.placement === 'top' ? -8 : 8, scale: 0.97 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: isMobile ? 20 : (coords.placement === 'top' ? -8 : 8), scale: 0.97 }}
+                exit={{ opacity: 0, y: coords.placement === 'top' ? -8 : 8, scale: 0.97 }}
                 transition={{ duration: 0.16, ease: 'easeOut' }}
-                style={
-                  isMobile
-                    ? {
-                        position: 'fixed',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        width: 'calc(100vw - 32px)',
-                        maxWidth: '340px',
-                        zIndex: 99999,
-                      }
-                    : {
-                        position: 'fixed',
-                        top: `${coords.top}px`,
-                        left: `${coords.left}px`,
-                        width: '320px',
-                        zIndex: 99999,
-                      }
-                }
-                className="bg-white border border-gray-150 rounded-2xl shadow-2xl overflow-hidden drop-shadow-2xl"
+                style={{
+                  position: 'fixed',
+                  top: `${coords.top}px`,
+                  left: `${coords.left}px`,
+                  width: '320px',
+                  zIndex: 99999,
+                }}
+                className="bg-white border border-gray-150 rounded-2xl shadow-2xl overflow-hidden drop-shadow-2xl flex flex-col pointer-events-auto"
               >
                 {/* Header Overview Banner */}
-                <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-adv-orange text-white px-4 py-3.5 shadow-sm">
+                <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-adv-orange text-white px-4 py-3.5 shadow-sm shrink-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <CalendarIcon className="w-4 h-4 text-white/90" />
@@ -604,16 +896,17 @@ export function DateInputDDMMYYYY({
 
                   {/* Quick Year Grid View */}
                   {viewMode === 'years' && (
-                    <div className="grid grid-cols-3 gap-2 py-2 max-h-52 overflow-y-auto pr-1">
-                      {Array.from({ length: 12 }, (_, i) => year - 4 + i).map((yNum) => {
+                    <div className="grid grid-cols-3 gap-2 py-2 max-h-56 overflow-y-auto pr-1">
+                      {availableYears.map((yNum) => {
                         const isCurrentY = year === yNum;
                         return (
                           <button
                             key={yNum}
+                            ref={isCurrentY ? desktopSelectedYearRef : undefined}
                             type="button"
                             onClick={() => {
                               setCurrentMonth(new Date(yNum, month, 1));
-                              setViewMode('days');
+                              setViewMode('months');
                             }}
                             className={`py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                               isCurrentY
@@ -630,7 +923,7 @@ export function DateInputDDMMYYYY({
                 </div>
 
                 {/* Footer Controls */}
-                <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs">
+                <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs shrink-0">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -653,7 +946,7 @@ export function DateInputDDMMYYYY({
                   </button>
                 </div>
               </motion.div>
-            </>
+            )
           )}
         </AnimatePresence>,
         document.body

@@ -4,6 +4,7 @@ import { Camera, ArrowLeft, Save, User, CheckCircle2, ChevronDown } from 'lucide
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { DateInputDDMMYYYY } from '../components/DateInputDDMMYYYY';
 import SEO from '../components/SEO';
 
 const translations = {
@@ -65,26 +66,29 @@ export default function EditProfile() {
     try {
       const saved = localStorage.getItem('pasopkan_user_profile');
       if (saved) {
+        const parsed = JSON.parse(saved);
         return {
           firstName: 'Sirithida',
           lastName: 'Souksavat',
           email: 'sirithida.ssv@gmail.com',
           phone: '',
           gender: '' as 'male' | 'female' | 'other' | '',
-          dateOfBirth: '',
-          ...JSON.parse(saved)
+          dateOfBirth: parsed.dateOfBirth || parsed.dob || '',
+          dob: parsed.dob || parsed.dateOfBirth || '',
+          ...parsed
         };
       }
     } catch (e) {
       console.error(e);
     }
     return {
-          firstName: 'Sirithida',
+      firstName: 'Sirithida',
       lastName: 'Souksavat',
       email: 'sirithida.ssv@gmail.com',
       phone: '',
       gender: '' as 'male' | 'female' | 'other' | '',
       dateOfBirth: '',
+      dob: '',
     };
   });
 
@@ -175,8 +179,13 @@ export default function EditProfile() {
     setIsSaving(true);
 
     try {
-      localStorage.setItem('pasopkan_user_profile', JSON.stringify(formData));
-      await syncProfileToFirestore(formData);
+      const payload = {
+        ...formData,
+        dateOfBirth: formData.dateOfBirth || formData.dob || '',
+        dob: formData.dateOfBirth || formData.dob || '',
+      };
+      localStorage.setItem('pasopkan_user_profile', JSON.stringify(payload));
+      await syncProfileToFirestore(payload);
     } catch (err) {
       console.error(err);
     }
@@ -320,14 +329,17 @@ export default function EditProfile() {
 
             <div className="space-y-1.5">
               <label htmlFor="dateOfBirth" className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.dateOfBirth}</label>
-              <input
-                type="date"
-                id="dateOfBirth"
-                name="dateOfBirth"
-                value={formData.dateOfBirth || ""}
-                onChange={handleChange}
-                className="w-full bg-[#F9FAFB] border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-adv-slate font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
-              />
+              <div className="relative w-full" onClick={(e) => e.stopPropagation()}>
+                <DateInputDDMMYYYY
+                  id="dateOfBirth"
+                  value={formData.dateOfBirth || formData.dob || ""}
+                  onChange={(val) => setFormData(prev => ({ ...prev, dateOfBirth: val, dob: val }))}
+                  placeholder="DD/MM/YYYY"
+                  lang={lang}
+                  maxDate={new Date()}
+                  className="w-full [&_input]:bg-[#F9FAFB] [&_input]:border-gray-100 [&_input]:rounded-xl [&_input]:h-[42px] [&_input]:px-4 [&_input]:text-sm [&_input]:text-adv-slate [&_input]:font-bold focus-within:[&_input]:ring-2 focus-within:[&_input]:ring-adv-orange focus-within:[&_input]:border-adv-orange"
+                />
+              </div>
             </div>
           </div>
 

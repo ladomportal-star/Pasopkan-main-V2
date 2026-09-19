@@ -8,6 +8,7 @@ import OtpInput from './OtpInput';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { PWAInstallButton } from './PWAInstallButton';
 
 const translations = {
   en: {
@@ -188,7 +189,9 @@ export default function Navbar() {
             </button>
 
 
-            <div className="flex items-center gap-1 lg:gap-3">
+            <div className="flex items-center gap-1.5 lg:gap-3">
+              <PWAInstallButton variant="nav" />
+
               <Link 
                 to={isAuthenticated ? "/dashboard" : "/login"} 
                 className="hidden md:block p-2 text-adv-slate hover:text-adv-orange transition-all"
@@ -196,6 +199,100 @@ export default function Navbar() {
               >
                 <Ticket className="w-5 h-5" />
               </Link>
+
+              {/* Notification Bell with Dropdown */}
+              <div className="relative" ref={notificationRef}>
+                <button
+                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                  className="p-2 text-adv-slate hover:text-adv-orange transition-all relative rounded-full hover:bg-gray-50 cursor-pointer"
+                  title={t.notifications}
+                  aria-label={t.notifications}
+                >
+                  <Bell className="w-5 h-5" />
+                  {hasUnread && (
+                    <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-adv-orange rounded-full ring-2 ring-white animate-pulse" />
+                  )}
+                </button>
+
+                {/* Notifications Dropdown */}
+                <AnimatePresence>
+                  {isNotificationsOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-gray-100 py-3 z-50 overflow-hidden"
+                    >
+                      <div className="flex items-center justify-between px-4 pb-2 border-b border-gray-100">
+                        <div className="flex items-center gap-2">
+                          <Bell className="w-4 h-4 text-adv-orange" />
+                          <h3 className="font-bold text-sm text-adv-slate">{t.notifications}</h3>
+                        </div>
+                        {hasUnread && (
+                          <button
+                            onClick={markAllAsRead}
+                            className="text-[11px] font-bold text-adv-orange hover:text-orange-600 transition-colors"
+                          >
+                            {t.markAsRead}
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
+                        {notifications.length === 0 ? (
+                          <div className="py-8 text-center text-xs text-gray-400 font-medium">
+                            {t.noNotifications}
+                          </div>
+                        ) : (
+                          notifications.map((notif) => {
+                            const NotifIcon = notif.icon || Bell;
+                            return (
+                              <div
+                                key={notif.id}
+                                onClick={() => handleNotifClick(notif)}
+                                className={`p-3.5 hover:bg-gray-50 cursor-pointer transition-colors flex items-start gap-3 ${
+                                  notif.isUnread ? 'bg-orange-50/30' : ''
+                                }`}
+                              >
+                                <div className="w-8 h-8 rounded-xl bg-orange-100/60 text-adv-orange flex items-center justify-center shrink-0 mt-0.5">
+                                  <NotifIcon className="w-4 h-4" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-1">
+                                    <p className="text-xs font-bold text-adv-slate truncate">
+                                      {notif.title}
+                                    </p>
+                                    {notif.isUnread && (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-adv-orange shrink-0" />
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-gray-500 line-clamp-2 mt-0.5 leading-relaxed">
+                                    {notif.message}
+                                  </p>
+                                  <span className="text-[10px] text-gray-400 font-medium mt-1 block">
+                                    {notif.time}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      <div className="pt-2 px-3 border-t border-gray-100 mt-1">
+                        <Link
+                          to="/notifications"
+                          onClick={() => setIsNotificationsOpen(false)}
+                          className="block text-center py-2 text-xs font-bold text-adv-slate hover:text-adv-orange transition-colors"
+                        >
+                          {lang === 'lo' ? 'ຈັດການການແຈ້ງເຕືອນ' : 'Manage Preferences'}
+                        </Link>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
               <Link 
                 to={isAuthenticated ? "/account" : "/login"} 
