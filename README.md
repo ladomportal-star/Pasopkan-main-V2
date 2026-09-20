@@ -7,12 +7,12 @@ deployed separately:
 
 | Path         | Project             | Stack                                                        |
 | ------------ | ------------------- | ----------------------------------------------------------- |
-| [`Backend/`](Backend/)  | `pasopkan-backend`  | Express, Drizzle ORM (PostgreSQL), Firebase Admin           |
-| [`Frontend/`](Frontend/) | `pasopkan-frontend` | React 19, Vite, Tailwind CSS v4, Firebase (client SDK)      |
+| [`backend/`](backend/)  | `pasopkan-backend`  | Express, Drizzle ORM (PostgreSQL), Firebase Admin           |
+| [`frontend/`](frontend/) | `pasopkan-frontend` | React 19, Vite, Tailwind CSS v4, Firebase (client SDK)      |
 
 Each folder has its own `package.json`, `node_modules`, `tsconfig.json`,
 `.env`, and lockfile. There is **no root `package.json`** — run `npm`
-commands inside `Backend/` or `Frontend/`.
+commands inside `backend/` or `frontend/`.
 
 ---
 
@@ -28,19 +28,19 @@ commands inside `Backend/` or `Frontend/`.
 
 Open **two terminals**.
 
-### 1. Backend (API — http://localhost:3000)
+### 1. backend (API — http://localhost:3000)
 
 ```bash
-cd Backend
+cd backend
 npm install
 cp .env.example .env      # optional: fill in SQL_* / Firebase values
 npm run dev
 ```
 
-### 2. Frontend (web app — http://localhost:5173)
+### 2. frontend (web app — http://localhost:5173)
 
 ```bash
-cd Frontend
+cd frontend
 npm install
 npm run dev
 ```
@@ -49,32 +49,32 @@ The frontend needs **no `.env` file** — it runs on built-in defaults.
 The Vite dev server proxies `/api/*` to the backend
 (`VITE_API_PROXY_TARGET`, default `http://localhost:3000`), so the app
 works from a single origin during development. To override any default,
-create `Frontend/.env` (see the header of `Frontend/vite.config.ts`).
+create `frontend/.env` (see the header of `frontend/vite.config.ts`).
 
 > Prefer one command? From the repo root:
-> `npx concurrently -n api,web "npm --prefix Backend run dev" "npm --prefix Frontend run dev"`
+> `npx concurrently -n api,web "npm --prefix backend run dev" "npm --prefix frontend run dev"`
 
 ---
 
 ## Scripts
 
-### Backend (`cd Backend`)
+### backend (`cd backend`)
 
 | Command             | Description                                              |
 | ------------------- | ------------------------------------------------------- |
 | `npm run dev`       | Start the API with auto-reload (`tsx watch`)            |
-| `npm run build`     | Bundle to `Backend/dist/server.cjs` (esbuild)           |
+| `npm run build`     | Bundle to `backend/dist/server.cjs` (esbuild)           |
 | `npm run start`     | Run the built server (`NODE_ENV=production`)            |
 | `npm run lint`      | Type-check (`tsc --noEmit`)                             |
 | `npm run db:push`   | Push the Drizzle schema to PostgreSQL                   |
 | `npm run db:studio` | Open Drizzle Studio                                     |
 
-### Frontend (`cd Frontend`)
+### frontend (`cd frontend`)
 
 | Command           | Description                                  |
 | ----------------- | ------------------------------------------- |
 | `npm run dev`     | Vite dev server on port 5173                 |
-| `npm run build`   | Production build to `Frontend/dist`          |
+| `npm run build`   | Production build to `frontend/dist`          |
 | `npm run preview` | Preview the production build                 |
 | `npm run lint`    | Type-check (`tsc --noEmit`)                  |
 
@@ -82,7 +82,7 @@ create `Frontend/.env` (see the header of `Frontend/vite.config.ts`).
 
 ## Environment variables
 
-**Backend** — see `Backend/.env.example` for the full, commented list.
+**backend** — see `backend/.env.example` for the full, commented list.
 
 - `PORT` – API port (default `3000`)
 - `CORS_ORIGIN` – comma-separated allowed browser origins (empty = any)
@@ -92,11 +92,11 @@ create `Frontend/.env` (see the header of `Frontend/vite.config.ts`).
 - `GOOGLE_APPLICATION_CREDENTIALS` – path to a service-account key JSON.
   **Required for real token verification**; without it the API trusts the
   client-supplied UID (development only).
-- `FRONTEND_DIST` – optional path to `Frontend/dist` to serve the SPA from
+- `FRONTEND_DIST` – optional path to `frontend/dist` to serve the SPA from
   the API process (single-process deploy).
 
-**Frontend** — no `.env` required; all optional. Create `Frontend/.env`
-only to override a default (documented in `Frontend/vite.config.ts`).
+**frontend** — no `.env` required; all optional. Create `frontend/.env`
+only to override a default (documented in `frontend/vite.config.ts`).
 
 - `VITE_API_PROXY_TARGET` – backend origin for the dev proxy (default `http://localhost:3000`)
 - `GEMINI_API_KEY` – optional, inlined at build time
@@ -110,23 +110,23 @@ Drizzle ORM + PostgreSQL. Without a database the ticket / review endpoints
 run on in-memory fallback stores.
 
 ```bash
-cd Backend
+cd backend
 # 1. put your connection string in .env
 #    DATABASE_URL=postgresql://…pooler.supabase.com:5432/postgres?sslmode=require
 #    (or the discrete SQL_* vars for a local Postgres)
 # 2. apply the schema
-npm run db:migrate      # versioned migrations in Backend/drizzle/
+npm run db:migrate      # versioned migrations in backend/drizzle/
 # or: npm run db:push    # push schema directly (prototyping)
 ```
 
 Full guide, connection-string choices and the schema (ERD + table
-reference): **[`Backend/DATABASE.md`](Backend/DATABASE.md)**.
+reference): **[`backend/DATABASE.md`](backend/DATABASE.md)**.
 
 ---
 
 ## Firebase
 
-- `Frontend/src/config/firebase-applet-config.json` holds the **client**
+- `frontend/src/config/firebase-applet-config.json` holds the **client**
   Firebase config (public web keys — safe to commit).
 - The backend only needs `FIREBASE_PROJECT_ID` (+ a service account for
   production).
@@ -139,14 +139,14 @@ reference): **[`Backend/DATABASE.md`](Backend/DATABASE.md)**.
 
 **Separate (recommended):**
 
-1. `cd Frontend && npm run build` → deploy `Frontend/dist` to any static
+1. `cd frontend && npm run build` → deploy `frontend/dist` to any static
    host / CDN.
-2. `cd Backend && npm run build && npm run start` → deploy the API. Set
+2. `cd backend && npm run build && npm run start` → deploy the API. Set
    `CORS_ORIGIN` to the frontend's URL.
 
 **Single process:**
 
-1. `cd Frontend && npm run build`
-2. `cd Backend && npm run build`
-3. `cd Backend && FRONTEND_DIST=../Frontend/dist npm run start` — the API
+1. `cd frontend && npm run build`
+2. `cd backend && npm run build`
+3. `cd backend && FRONTEND_DIST=../frontend/dist npm run start` — the API
    serves the SPA and its own `/api` routes on one port.
