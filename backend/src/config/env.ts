@@ -38,10 +38,15 @@ const schema = z.object({
   SQL_USER: z.string().optional().default(""),
   SQL_PASSWORD: z.string().optional().default(""),
 
-  FIREBASE_PROJECT_ID: z.string().optional().default(""),
-  // Skips Firebase ID-token (JWT) verification and trusts the bearer string
-  // as the uid. Local development and tests ONLY — refused in production.
-  AUTH_DEV_BYPASS: z.string().optional().default("false"),
+  // Identity provider: the Supabase project the frontend signs users in with.
+  // Access tokens are verified against its public JWKS (no shared secret).
+  SUPABASE_URL: z.string().trim().optional().default(""),
+
+  // OTP (api.otp.dev) — credentials live in the environment, never in source.
+  OTP_API_KEY: z.string().trim().optional().default(""),
+  OTP_SENDER_ID: z.string().trim().optional().default(""),
+  OTP_TEMPLATE_ID: z.string().trim().optional().default(""),
+
   FRONTEND_DIST: z.string().optional().default(""),
 
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
@@ -80,29 +85,29 @@ export const env = {
     password: e.SQL_PASSWORD,
   },
 
-  firebaseProjectId: e.FIREBASE_PROJECT_ID,
-  authDevBypass: e.AUTH_DEV_BYPASS === "true" || e.AUTH_DEV_BYPASS === "1",
+  supabaseUrl: e.SUPABASE_URL.replace(/\/+$/, ""),
+  otp: { apiKey: e.OTP_API_KEY, senderId: e.OTP_SENDER_ID, templateId: e.OTP_TEMPLATE_ID },
   frontendDist: e.FRONTEND_DIST,
 
   rateLimit: { windowMs: e.RATE_LIMIT_WINDOW_MS, max: e.RATE_LIMIT_MAX },
 } as const;
 
-// Refuse to boot with authentication disabled in production.
-if (env.isProd && env.authDevBypass) {
+// The API is database-backed end to end: there is no in-memory fallback, so
+// booting without a database would only produce a server that fails every call.
+// (Tests bring their own database — see tests/helpers/testDb.ts.)
+if (!env.isTest && !env.databaseUrl && !env.sql.host) {
   console.error(
-    "FATAL: AUTH_DEV_BYPASS is enabled while NODE_ENV=production. " +
-      "This would let any caller act as any user. Unset it and restart.",
+    "FATAL: no database configured. Set DATABASE_URL (or SQL_HOST/SQL_* ) in backend/.env.",
   );
   process.exit(1);
 }
 
-/** Warn (don't crash) about config a production deployment really wants. */
+/** Warn (don't crash) about config the API needs for a specific feature. */
 export function checkEnv(warn: (msg: string) => void) {
-  // Missing/unreachable DB is reported by the startup banner's Database line
-  // (utils/startupBanner.ts) — no separate warning needed here.
-  if (!env.firebaseProjectId) {
-    warn("FIREBASE_PROJECT_ID not set - authenticated endpoints will return 503.");
+  if (!env.supabaseUrl) {
+    warn("SUPABASE_URL not set - every authenticated endpoint will return 503.");
   }
-  // AUTH_DEV_BYPASS is surfaced in the startup banner (utils/startupBanner.ts)
-  // instead of here, so it's shown once instead of twice.
+  if (!env.otp.apiKey || !env.otp.senderId || !env.otp.templateId) {
+    warn("OTP_API_KEY / OTP_SENDER_ID / OTP_TEMPLATE_ID not set - /api/otp/* will return 503.");
+  }
 }

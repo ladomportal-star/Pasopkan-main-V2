@@ -1,141 +1,86 @@
-import fs from "node:fs";
-import path from "node:path";
 import type { Request, Response, NextFunction } from "express";
-import { getAuth } from "firebase-admin/auth";
-import { initializeApp, getApps } from "firebase-admin/app";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import { env } from "../config/env.ts";
 import { logger } from "../utils/logger.ts";
 
 /**
- * Authentication = Firebase ID token verification with safe dev/mock fallbacks.
+ * Authentication = verification of the Supabase Auth access token the
+ * frontend signs users in with. Tokens are checked against the project's
+ * public JWKS (signature, issuer, audience, expiry) — there is no shared
+ * secret, no mock token, and no "trust the bearer string" escape hatch.
  */
-function initFirebaseAdmin() {
-  if (getApps().length > 0) return;
-  let projectId = env.firebaseProjectId;
-  if (!projectId) {
-    try {
-      const candidates = [
-        path.resolve(process.cwd(), "firebase-applet-config.json"),
-        path.resolve(process.cwd(), "frontend", "src", "config", "firebase-applet-config.json"),
-      ];
-      for (const cp of candidates) {
-        if (fs.existsSync(cp)) {
-          const cfg = JSON.parse(fs.readFileSync(cp, "utf-8"));
-          if (cfg.projectId) {
-            projectId = cfg.projectId;
-            break;
-          }
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
-  if (!projectId) {
-    projectId = "turnkey-envelope-jtn3v";
-  }
+type AuthUser = NonNullable<Request["user"]>;
 
-  try {
-    initializeApp({ projectId });
-    logger.debug("[auth] Firebase Admin initialized for project:", projectId);
-  } catch (e: any) {
-    logger.warn("[auth] Firebase Admin initialization note:", e?.message);
-  }
-}
+const issuer = env.supabaseUrl ? `${env.supabaseUrl}/auth/v1` : "";
+const jwks = issuer ? createRemoteJWKSet(new URL(`${issuer}/.well-known/jwks.json`)) : null;
 
-initFirebaseAdmin();
+/** Failures that mean "this token is no good" (401), not "we couldn't check" (503). */
+const isBadToken = (err: unknown) => {
+  const code = (err as { code?: string })?.code ?? "";
+  return /^ERR_(JWT|JWS|JWK|JOSE)/.test(code) && code !== "ERR_JWKS_TIMEOUT";
+};
 
-const unauthorized = (res: Response, message: string) => res.status(401).json({ error: message });
-
-function parseMockToken(token: string): { uid: string; email?: string } | null {
-  if (!token) return null;
-
-  if (token.startsWith("mock_token.")) {
-    try {
-      const b64 = token.slice("mock_token.".length);
-      const jsonStr = Buffer.from(b64, "base64").toString("utf-8");
-      const data = JSON.parse(jsonStr);
-      if (data && (data.uid || data.sub)) {
-        return { uid: data.uid || data.sub, email: data.email };
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  if (
-    token.startsWith("mock_") ||
-    token.startsWith("dev_") ||
-    token.startsWith("pasopkan_mock_") ||
-    token === "mock_token_12345"
-  ) {
-    const parts = token.split("_");
-    const uid = parts.length > 2 ? parts.slice(2).join("_") : token;
-    return { uid };
-  }
-
-  return null;
-}
-
-/** Verify Firebase ID token or handle development/mock authentication cleanly. */
-export async function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const header = req.headers.authorization;
-  if (!header?.startsWith("Bearer ")) {
-    return unauthorized(res, "Missing or invalid authorization header");
-  }
-
-  const token = header.slice("Bearer ".length).trim();
-  if (!token) return unauthorized(res, "Empty token provided");
-
-  // 1. Explicit mock or development tokens
-  const mockInfo = parseMockToken(token);
-  if (mockInfo) {
-    const uid = (req.headers["x-user-uid"] as string) || mockInfo.uid;
-    const email = (req.headers["x-user-email"] as string) || mockInfo.email || "user@example.com";
-    req.user = { uid, email, isMock: true };
-    return next();
-  }
-
-  // 2. Explicit non-production escape hatch for local dev and tests
-  if (env.authDevBypass) {
-    req.user = {
-      uid: (req.headers["x-user-uid"] as string) || token,
-      email: (req.headers["x-user-email"] as string) || "dev@example.com",
-    };
-    return next();
-  }
-
-  // 3. JWT verification with Firebase Admin if available
-  const parts = token.split(".");
-  if (parts.length === 3 && getApps().length > 0) {
-    try {
-      req.user = await getAuth().verifyIdToken(token);
-      return next();
-    } catch (err: any) {
-      // Safe payload decode for preview / local token verification fallback
-      try {
-        const payloadStr = Buffer.from(parts[1], "base64").toString("utf-8");
-        const payload = JSON.parse(payloadStr);
-        if (payload && (payload.sub || payload.uid || payload.user_id)) {
-          req.user = {
-            uid: payload.uid || payload.sub || payload.user_id,
-            email: payload.email || (req.headers["x-user-email"] as string) || "user@example.com",
-            ...payload,
-          };
-          return next();
-        }
-      } catch {
-        // payload decode failed
-      }
-      logger.warn(`[auth] ID token rejected: ${err?.code ?? err?.message}`);
-      return unauthorized(res, "Invalid or expired ID token");
-    }
-  }
-
-  // 4. Default fallback when non-JWT or unconfigured admin
-  req.user = {
-    uid: (req.headers["x-user-uid"] as string) || token,
-    email: (req.headers["x-user-email"] as string) || "user@example.com",
+async function verify(token: string): Promise<AuthUser> {
+  const { payload } = await jwtVerify(token, jwks!, { issuer, audience: "authenticated" });
+  if (!payload.sub) throw Object.assign(new Error("Token has no subject"), { code: "ERR_JWT_INVALID" });
+  return {
+    uid: payload.sub,
+    email: typeof payload.email === "string" && payload.email ? payload.email : undefined,
+    isAnonymous: payload.is_anonymous === true,
   };
-  return next();
+}
+
+const bearer = (req: Request) => {
+  const header = req.headers.authorization;
+  return header?.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : null;
+};
+
+/** Resolve the caller from the request, or answer the request and return null. */
+async function authenticate(req: Request, res: Response, token: string): Promise<AuthUser | null> {
+  if (!jwks) {
+    res.status(503).json({ error: "Authentication is not configured on the server" });
+    return null;
+  }
+  try {
+    return await verify(token);
+  } catch (err) {
+    if (isBadToken(err)) {
+      res.status(401).json({ error: "Invalid or expired token" });
+    } else {
+      logger.error("[auth] could not verify token:", err instanceof Error ? err.message : err);
+      res.status(503).json({ error: "Authentication service unavailable" });
+    }
+    return null;
+  }
+}
+
+/** Require a valid access token; attaches `req.user`. */
+export async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const token = bearer(req);
+  if (!token) {
+    return res.status(401).json({ error: "Missing or invalid authorization header" });
+  }
+  const user = await authenticate(req, res, token);
+  if (!user) return;
+  req.user = user;
+  next();
+}
+
+/** Attach `req.user` when a valid token is sent; anonymous callers pass through.
+ *  A token that is present but invalid is still rejected. */
+export async function optionalAuth(req: Request, res: Response, next: NextFunction) {
+  const token = bearer(req);
+  if (!token) return next();
+  const user = await authenticate(req, res, token);
+  if (!user) return;
+  req.user = user;
+  next();
+}
+
+/** Guest (anonymous sign-in) sessions may browse, but not act as an account holder. */
+export function requireRegisteredUser(req: Request, res: Response, next: NextFunction) {
+  if (!req.user || req.user.isAnonymous) {
+    return res.status(403).json({ error: "Sign in with an account to do this" });
+  }
+  next();
 }

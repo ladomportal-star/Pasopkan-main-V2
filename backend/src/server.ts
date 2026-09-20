@@ -2,6 +2,7 @@ import { env, checkEnv } from "./config/env.ts";
 import { createApp } from "./app.ts";
 import { logger } from "./utils/logger.ts";
 import { pool } from "./config/database.ts";
+import { releaseExpiredOrders } from "./services/ticket.service.ts";
 import { printStartupBanner } from "./utils/startupBanner.ts";
 
 checkEnv((msg) => logger.warn("[env]", msg));
@@ -31,8 +32,21 @@ const server = app.listen(env.port, env.host, async () => {
     mode: env.nodeEnv,
     readyMs: Date.now() - startedAt,
     database,
+    auth: env.supabaseUrl
+      ? { ok: true, detail: new URL(env.supabaseUrl).hostname }
+      : { ok: false, detail: "SUPABASE_URL not set - authenticated endpoints return 503" },
   });
 });
+
+// Reservations that never got paid must not hold stock forever.
+const sweep = setInterval(
+  () =>
+    releaseExpiredOrders().catch((err) =>
+      logger.error("[tickets] expiring stale orders failed:", err.message),
+    ),
+  5 * 60 * 1000,
+);
+sweep.unref();
 
 // Listen-time errors (e.g. port already taken) - clear message, clean exit
 server.on("error", (err: NodeJS.ErrnoException) => {

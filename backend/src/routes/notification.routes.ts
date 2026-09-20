@@ -1,8 +1,26 @@
 import { Router } from "express";
-import { getNotifications } from "../controllers/notification.controller.ts";
+import { requireAuth } from "../middlewares/auth.middleware.ts";
+import { validate } from "../middlewares/validate.middleware.ts";
+import {
+  listNotificationsQuery,
+  notificationIdParam,
+} from "../validators/notification.validator.ts";
+import {
+  getNotifications,
+  readAllNotifications,
+  readNotification,
+  removeAllNotifications,
+  removeNotification,
+} from "../controllers/notification.controller.ts";
 
 const router = Router();
 
-router.get("/notifications", getNotifications);
+router.use("/notifications", requireAuth);
+
+router.get("/notifications", validate({ query: listNotificationsQuery }), getNotifications);
+router.post("/notifications/read-all", readAllNotifications);
+router.patch("/notifications/:id/read", validate({ params: notificationIdParam }), readNotification);
+router.delete("/notifications/:id", validate({ params: notificationIdParam }), removeNotification);
+router.delete("/notifications", removeAllNotifications);
 
 export default router;

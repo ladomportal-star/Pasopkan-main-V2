@@ -1,114 +1,95 @@
-import { logger } from "../utils/logger.ts";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { db } from "../config/database.ts";
+import { notifications } from "../models/schema.ts";
 
-export interface ServerNotification {
-  id: string | number;
+/** `db` or a transaction handle, so a notification can commit atomically with the change that caused it. */
+type Executor = Pick<typeof db, "insert" | "select" | "update" | "delete">;
+
+export type NotificationType = (typeof notifications.$inferInsert)["type"];
+
+export interface NewNotification {
+  type?: NotificationType;
   title: string;
   titleLo?: string;
   message: string;
   messageLo?: string;
-  time: string;
-  timeLo?: string;
-  type: "upcomingEvent" | "ticket" | "promo" | "verified" | "system" | "noted";
-  isUnread: boolean;
-  createdAt: string;
+  /** Deep-link context, e.g. { eventId, orderId } */
+  data?: Record<string, string>;
 }
 
-const SERVER_NOTIFICATIONS: ServerNotification[] = [
-  {
-    id: "notif-1",
-    title: "Upcoming Adventure in Vang Vieng!",
-    titleLo: "ການຜະຈົນໄພໃກ້ເຂົ້າມາແລ້ວທີ່ວັງວຽງ!",
-    message:
-      "Your Nam Ha Trekking starts in 48 hours. Equipment pickup is available at the central hub.",
-    messageLo:
-      "ການຍ່າງປ່າ ນ້ຳຮາ ຈະເລີ່ມຂຶ້ນໃນອີກ 48 ຊົ່ວໂມງ. ທ່ານສາມາດຮັບອຸປະກອນໄດ້ທີ່ຈຸດບໍລິການສູນກາງ.",
-    time: "Just now",
-    timeLo: "ດຽວນີ້",
-    type: "upcomingEvent",
-    isUnread: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "notif-2",
-    title: "Flash Sale: Mekong Sunset Cruise",
-    titleLo: "ໂປຣໂມຊັ່ນດ່ວນ: ລ່ອງເຮືອຊົມຕາເວັນຕົກດິນແມ່ນ້ຳຂອງ",
-    message: "Limited 25% discount vouchers released for this weekend evening departures.",
-    messageLo: "ບັດສ່ວນຫຼຸດ 25% ຈຳນວນຈຳກັດ ສຳລັບຮອບລ່ອງເຮືອຕອນແລງທ້າຍອາທິດນີ້.",
-    time: "20 minutes ago",
-    timeLo: "20 ນາທີກ່ອນ",
-    type: "promo",
-    isUnread: true,
-    createdAt: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "notif-3",
-    title: "Ticket Confirmed",
-    titleLo: "ຢືນຢັນປີ້ສຳເລັດແລ້ວ",
-    message: "Booking #PK-8921 for Vang Vieng Music Festival has been confirmed.",
-    messageLo: "ການຈອງ #PK-8921 ສຳລັບ ບຸນດົນຕີ ວັງວຽງ ໄດ້ຮັບການຢືນຢັນແລ້ວ.",
-    time: "2 hours ago",
-    timeLo: "2 ຊົ່ວໂມງກ່ອນ",
-    type: "ticket",
-    isUnread: true,
-    createdAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: "notif-4",
-    title: "New Event Guidelines & Safety",
-    titleLo: "ຄູ່ມື ແລະ ມາດຕະຖານຄວາມປອດໄພໃໝ່",
-    message:
-      "We have updated guidelines for eco-tours and outdoor workshops. Please review them before your trip.",
-    messageLo:
-      "ພວກເຮົາໄດ້ອັບເດດຄູ່ມືສຳລັບການທ່ອງທ່ຽວແບບອະນຸລັກ ແລະ ເວີກຊັອບກາງແຈ້ງ. ກະລຸນາກວດສອບກ່ອນການເດີນທາງ.",
-    time: "5 hours ago",
-    timeLo: "5 ຊົ່ວໂມງກ່ອນ",
-    type: "noted",
-    isUnread: false,
-    createdAt: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: "notif-5",
-    title: "Organizer Verification Approved",
-    titleLo: "ການຢືນຢັນຕົວຕົນຜູ້ຈັດງານສຳເລັດແລ້ວ",
-    message: "Your official Pasopkan verified organizer badge has been activated.",
-    messageLo: "ກາໝາຍຜູ້ຈັດງານທີ່ຜ່ານການຢືນຢັນຂອງ Pasopkan ຖືກເປີດໃຊ້ງານແລ້ວ.",
-    time: "1 day ago",
-    timeLo: "1 ມື້ກ່ອນ",
-    type: "verified",
-    isUnread: false,
-    createdAt: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: "notif-6",
-    title: "System & Network Status",
-    titleLo: "ສະຖານະລະບົບ ແລະ ເຄືອຂ່າຍ",
-    message:
-      "All payment gateways (Phajay, BCEL One, LaoViet Bank) are operating smoothly at 100% uptime.",
-    messageLo: "ທຸກຊ່ອງທາງການຊຳລະເງິນ (Phajay, BCEL One, LaoViet Bank) ເຮັດວຽກປົກກະຕິ 100%.",
-    time: "2 days ago",
-    timeLo: "2 ມື້ກ່ອນ",
-    type: "system",
-    isUnread: false,
-    createdAt: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
-  },
-];
+/** Shape the frontend consumes: `isUnread` derived from `read_at`. */
+const toApi = (row: typeof notifications.$inferSelect) => ({
+  id: row.id,
+  type: row.type,
+  title: row.title,
+  titleLo: row.titleLo ?? undefined,
+  message: row.message,
+  messageLo: row.messageLo ?? undefined,
+  data: row.data ?? undefined,
+  isUnread: row.readAt === null,
+  createdAt: row.createdAt.toISOString(),
+});
 
-export async function getLatestNotifications(): Promise<{
-  notifications: ServerNotification[];
-  lastFetchedAt: string;
-}> {
-  try {
-    // Return the latest notification list with current ISO timestamp
-    const now = new Date().toISOString();
-    return {
-      notifications: [...SERVER_NOTIFICATIONS],
-      lastFetchedAt: now,
-    };
-  } catch (error: unknown) {
-    logger.warn("[notification.service] Error getting notifications:", error);
-    return {
-      notifications: [...SERVER_NOTIFICATIONS],
-      lastFetchedAt: new Date().toISOString(),
-    };
-  }
+/** Create a notification for one user. Pass a transaction to commit it with the triggering change. */
+export async function createNotification(
+  userUid: string,
+  input: NewNotification,
+  exec: Executor = db,
+) {
+  const [row] = await exec
+    .insert(notifications)
+    .values({ ...input, userUid, type: input.type ?? "system" })
+    .returning();
+  return toApi(row);
+}
+
+export async function listNotifications(userUid: string, opts: { unreadOnly?: boolean; limit: number }) {
+  const where = opts.unreadOnly
+    ? and(eq(notifications.userUid, userUid), isNull(notifications.readAt))
+    : eq(notifications.userUid, userUid);
+
+  const [rows, [{ unread }]] = await Promise.all([
+    db.select().from(notifications).where(where).orderBy(desc(notifications.createdAt)).limit(opts.limit),
+    db
+      .select({ unread: sql<number>`count(*)::int` })
+      .from(notifications)
+      .where(and(eq(notifications.userUid, userUid), isNull(notifications.readAt))),
+  ]);
+
+  return { notifications: rows.map(toApi), unreadCount: unread };
+}
+
+/** Mark one of the caller's notifications read. Returns false if it isn't theirs / doesn't exist. */
+export async function markRead(userUid: string, id: string) {
+  const rows = await db
+    .update(notifications)
+    .set({ readAt: sql`coalesce(${notifications.readAt}, now())` })
+    .where(and(eq(notifications.id, id), eq(notifications.userUid, userUid)))
+    .returning({ id: notifications.id });
+  return rows.length > 0;
+}
+
+export async function markAllRead(userUid: string) {
+  const rows = await db
+    .update(notifications)
+    .set({ readAt: new Date() })
+    .where(and(eq(notifications.userUid, userUid), isNull(notifications.readAt)))
+    .returning({ id: notifications.id });
+  return rows.length;
+}
+
+export async function deleteNotification(userUid: string, id: string) {
+  const rows = await db
+    .delete(notifications)
+    .where(and(eq(notifications.id, id), eq(notifications.userUid, userUid)))
+    .returning({ id: notifications.id });
+  return rows.length > 0;
+}
+
+export async function clearNotifications(userUid: string) {
+  const rows = await db
+    .delete(notifications)
+    .where(eq(notifications.userUid, userUid))
+    .returning({ id: notifications.id });
+  return rows.length;
 }

@@ -2,25 +2,31 @@ import { eq } from "drizzle-orm";
 import { db } from "../config/database.ts";
 import { payments } from "../models/schema.ts";
 import { logger } from "../utils/logger.ts";
+import { confirmOrderForPayment } from "./ticket.service.ts";
 
 /**
- * Pasopkan Payment Gateway Service.
- * Webhook state is persisted to the `payments` table (so it survives a
- * restart) with an in-memory cache in front for fast reads and a fallback
- * when the DB is unavailable.
+ * Payment gateway service. The `payments` table is the single source of truth.
+ *
+ * A webhook is only a *hint* that something changed: anyone can POST to it, so
+ * its own "status" field is never believed. The transaction is re-checked with
+ * the gateway's status API, and only a state the gateway itself reports moves a
+ * payment to `completed` (which in turn confirms the buyer's order).
  */
 
-const PAID_STATES = new Set(["PAYMENT_COMPLETED", "COMPLETED", "PAID", "SUCCESS", "true", "1"]);
+const GATEWAY_STATUS_URL =
+  process.env.PAYMENT_STATUS_URL ?? "https://payment-gateway.phajay.co/v1/api/payment/status";
 
-interface CachedPayment {
-  state: "pending" | "completed" | "failed";
-  rawStatus: string | null;
-  updatedAt: string;
-}
+const PAID = new Set(["PAYMENT_COMPLETED", "COMPLETED", "PAID", "SUCCESS", "TRUE", "1"]);
+const FAILED = new Set(["FAILED", "CANCELLED", "CANCELED", "EXPIRED", "REJECTED"]);
+
+type PaymentState = "pending" | "completed" | "failed";
+
+const classify = (raw: unknown): PaymentState => {
+  const s = String(raw ?? "").toUpperCase();
+  return raw === true || PAID.has(s) ? "completed" : FAILED.has(s) ? "failed" : "pending";
+};
 
 class PaymentService {
-  private cache = new Map<string, CachedPayment>();
-
   private extractTxId(payload: any): string {
     return String(
       payload.transactionId ||
@@ -32,105 +38,74 @@ class PaymentService {
     ).trim();
   }
 
-  private isPaid(rawStatus: unknown): boolean {
-    return rawStatus === true || PAID_STATES.has(String(rawStatus));
-  }
-
-  /** Record or update an incoming webhook notification. */
-  async recordWebhook(
-    payload: any,
-  ): Promise<{ txId: string | null; isPaid: boolean; status: string }> {
-    const txId = this.extractTxId(payload);
-    const rawStatus =
-      payload.status ?? payload.data?.status ?? payload.paymentStatus ?? payload.state ?? null;
-    const paid = this.isPaid(rawStatus);
-    const state: CachedPayment["state"] = paid ? "completed" : "pending";
-
-    if (txId) {
-      this.cache.set(txId, {
-        state,
-        rawStatus: rawStatus == null ? null : String(rawStatus),
-        updatedAt: new Date().toISOString(),
+  /** Ask the gateway what it says about a transaction. `null` = could not reach / no answer. */
+  private async askGateway(txId: string): Promise<{ state: PaymentState; raw: string } | null> {
+    try {
+      const res = await fetch(`${GATEWAY_STATUS_URL}/${encodeURIComponent(txId)}`, {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(5000),
       });
-      try {
-        await db
-          .insert(payments)
-          .values({
-            transactionId: txId,
-            state,
-            rawStatus: rawStatus == null ? null : String(rawStatus),
-            payload,
-            verifiedAt: paid ? new Date() : null,
-          })
-          .onConflictDoUpdate({
-            target: payments.transactionId,
-            set: {
-              state,
-              rawStatus: rawStatus == null ? null : String(rawStatus),
-              payload,
-              verifiedAt: paid ? new Date() : null,
-              updatedAt: new Date(),
-            },
-          });
-      } catch (error: any) {
-        logger.warn("[payment.service] webhook persist fallback (cache only):", error?.message);
-      }
-      logger.info(`[payment.service] webhook stored: ${txId} -> ${state}`);
+      if (!res.ok) return null;
+      const data: any = await res.json();
+      const raw = data?.status ?? data?.data?.status;
+      return raw == null ? null : { state: classify(raw), raw: String(raw) };
+    } catch (error: any) {
+      logger.warn("[payment] gateway status check failed:", error?.message);
+      return null;
     }
-
-    return { txId: txId || null, isPaid: paid, status: String(rawStatus ?? "") };
   }
 
-  /** Retrieve or verify the status of a transaction. */
+  private async save(txId: string, state: PaymentState, raw: string | null, payload?: unknown) {
+    const verifiedAt = state === "completed" ? new Date() : null;
+    await db
+      .insert(payments)
+      .values({ transactionId: txId, state, rawStatus: raw, payload: payload ?? null, verifiedAt })
+      .onConflictDoUpdate({
+        target: payments.transactionId,
+        set: {
+          state,
+          rawStatus: raw,
+          ...(payload !== undefined && { payload }),
+          verifiedAt,
+          updatedAt: new Date(),
+        },
+      });
+    if (state === "completed") await confirmOrderForPayment(txId);
+  }
+
+  /** Handle a gateway webhook: record it, then trust only the gateway's own answer. */
+  async recordWebhook(payload: any): Promise<{ txId: string | null; isPaid: boolean; status: string }> {
+    const txId = this.extractTxId(payload);
+    if (!txId) return { txId: null, isPaid: false, status: "" };
+
+    const claimed = payload.status ?? payload.data?.status ?? payload.paymentStatus ?? payload.state ?? null;
+    const verified = await this.askGateway(txId);
+    const state = verified?.state ?? "pending";
+
+    await this.save(txId, state, verified?.raw ?? (claimed == null ? null : String(claimed)), payload);
+    logger.info(`[payment] webhook ${txId} -> ${state}${verified ? "" : " (gateway unreachable)"}`);
+    return { txId, isPaid: state === "completed", status: verified?.raw ?? String(claimed ?? "") };
+  }
+
+  /** Current status of a transaction; asks the gateway again while it isn't settled. */
   async getPaymentStatus(
     transactionId: string,
   ): Promise<{ status: string; verified: boolean; updatedAt?: string }> {
     if (!transactionId) return { status: "UNKNOWN", verified: false };
 
-    const known = await this.lookup(transactionId);
+    const known = await db.query.payments.findFirst({
+      where: eq(payments.transactionId, transactionId),
+    });
     if (known?.state === "completed") {
-      return { status: "COMPLETED", verified: true, updatedAt: known.updatedAt };
+      return { status: "COMPLETED", verified: true, updatedAt: known.updatedAt.toISOString() };
     }
 
-    // Not confirmed yet — poll the upstream gateway
-    try {
-      const response = await fetch(
-        `https://payment-gateway.phajay.co/v1/api/payment/status/${encodeURIComponent(transactionId)}`,
-        { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(3500) },
-      );
-      if (response.ok) {
-        const data: any = await response.json();
-        const gwStatus = data?.status ?? data?.data?.status;
-        if (this.isPaid(gwStatus)) {
-          await this.recordWebhook({ transactionId, status: gwStatus, ...data });
-          return { status: "COMPLETED", verified: true, updatedAt: new Date().toISOString() };
-        }
-      }
-    } catch {
-      // upstream poll failed / timed out — return whatever we last knew
+    const verified = await this.askGateway(transactionId);
+    if (verified) {
+      await this.save(transactionId, verified.state, verified.raw);
+      return { status: verified.state.toUpperCase(), verified: verified.state === "completed" };
     }
-
     return { status: (known?.state ?? "pending").toUpperCase(), verified: false };
-  }
-
-  private async lookup(txId: string): Promise<CachedPayment | undefined> {
-    const cached = this.cache.get(txId);
-    if (cached) return cached;
-    try {
-      const row = await db.query.payments.findFirst({ where: eq(payments.transactionId, txId) });
-      if (row) {
-        const entry: CachedPayment = {
-          state: row.state,
-          rawStatus: row.rawStatus,
-          updatedAt: (row.updatedAt ?? new Date()).toISOString(),
-        };
-        this.cache.set(txId, entry);
-        return entry;
-      }
-    } catch (error: any) {
-      logger.warn("[payment.service] lookup DB fallback:", error?.message);
-    }
-    return undefined;
   }
 }
 

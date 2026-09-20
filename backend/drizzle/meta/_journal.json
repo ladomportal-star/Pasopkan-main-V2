@@ -15,6 +15,13 @@
       "when": 1788503297606,
       "tag": "0001_payments_and_checkin_transition",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789896211689,
+      "tag": "0002_notifications",
+      "breakpoints": true
     }
   ]
 }

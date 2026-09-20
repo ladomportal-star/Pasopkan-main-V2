@@ -1,52 +1,51 @@
+import { eq } from "drizzle-orm";
 import { db } from "../config/database.ts";
 import { users } from "../models/schema.ts";
-import { logger } from "../utils/logger.ts";
-
-const inMemoryUsers = new Map<string, any>();
 
 export interface ProfileInput {
-  email: string;
+  email?: string;
   displayName?: string;
   phone?: string;
   avatarUrl?: string;
 }
 
-/** Upsert a user by Firebase UID. Falls back to an in-memory map when the DB is down. */
-export async function getOrCreateUser(uid: string, email: string) {
+/** Ensure a `users` row exists for this identity (no profile fields touched beyond email). */
+export async function getOrCreateUser(uid: string, email?: string) {
   return upsertUserProfile(uid, { email });
 }
 
-/** Upsert the user row with whatever profile fields the client supplied.
- *  Only non-undefined fields are written, so a partial sync never wipes data. */
+/**
+ * Upsert the user row keyed by the identity provider's user id (stored in
+ * `firebase_uid` for historical reasons — it now holds the Supabase Auth `sub`).
+ * Only fields the caller actually supplied are written, so a partial sync
+ * never wipes data that is already stored.
+ */
 export async function upsertUserProfile(uid: string, profile: ProfileInput) {
   const patch = {
-    email: profile.email,
+    ...(profile.email && { email: profile.email }),
     ...(profile.displayName !== undefined && { displayName: profile.displayName }),
     ...(profile.phone !== undefined && { phone: profile.phone }),
     ...(profile.avatarUrl !== undefined && { avatarUrl: profile.avatarUrl }),
   };
 
-  try {
-    const [row] = await db
-      .insert(users)
-      .values({ firebaseUid: uid, ...patch })
-      .onConflictDoUpdate({
-        target: users.firebaseUid,
-        set: { ...patch, updatedAt: new Date() },
-      })
-      .returning();
+  const [row] = await db
+    .insert(users)
+    .values({ firebaseUid: uid, email: profile.email ?? "", ...patch })
+    .onConflictDoUpdate({
+      target: users.firebaseUid,
+      set: { ...patch, updatedAt: new Date() },
+    })
+    .returning();
 
-    return row;
-  } catch (error: any) {
-    logger.warn("[user.service] DB unavailable - in-memory fallback:", error?.message);
-    const existing = inMemoryUsers.get(uid) ?? {
-      id: `mem-${inMemoryUsers.size + 1}`,
-      firebaseUid: uid,
-      role: "user",
-      createdAt: new Date(),
-    };
-    Object.assign(existing, patch);
-    inMemoryUsers.set(uid, existing);
-    return existing;
-  }
+  return row;
+}
+
+/** The user's application role ("user" | "organizer" | "admin"); "user" if unknown. */
+export async function getUserRole(uid: string, exec: Pick<typeof db, "select"> = db) {
+  const [row] = await exec
+    .select({ role: users.role })
+    .from(users)
+    .where(eq(users.firebaseUid, uid))
+    .limit(1);
+  return row?.role ?? "user";
 }

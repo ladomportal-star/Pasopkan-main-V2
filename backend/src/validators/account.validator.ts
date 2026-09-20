@@ -1,9 +1,8 @@
 import { z } from "zod";
 
-/** Profile sync — email is required; the rest are filled in as the user
- *  completes their profile. */
+/** Profile sync — every field optional; email falls back to the verified token's. */
 export const syncAccountBody = z.object({
-  email: z.string().email(),
+  email: z.string().email().optional(),
   displayName: z.string().max(200).optional(),
   phone: z.string().max(40).optional(),
   avatarUrl: z.string().optional(),

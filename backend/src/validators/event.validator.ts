@@ -98,7 +98,10 @@ export const eventIdParam = z.object({ id: z.string().min(1) });
 
 export const listEventsQuery = z.object({
   status: z.enum(["draft", "published", "sold_out", "cancelled", "completed"]).optional(),
-  organizerUid: z.string().optional(),
+  mine: z
+    .enum(["true", "false"])
+    .transform((v) => v === "true")
+    .optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 

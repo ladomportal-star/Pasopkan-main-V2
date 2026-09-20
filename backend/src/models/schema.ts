@@ -44,6 +44,14 @@ export const orderStatus = pgEnum("order_status", [
 export const ticketStatus = pgEnum("ticket_status", ["valid", "checked_in", "void", "refunded"]);
 export const discountType = pgEnum("discount_type", ["percent", "fixed"]);
 export const paymentState = pgEnum("payment_state", ["pending", "completed", "failed"]);
+export const notificationType = pgEnum("notification_type", [
+  "upcomingEvent",
+  "ticket",
+  "promo",
+  "verified",
+  "system",
+  "noted",
+]);
 
 /* ============================================================================
  *  Identity
@@ -346,6 +354,29 @@ export const reviews = pgTable(
     index("reviews_event_idx").on(t.eventId),
     unique("reviews_event_author_uq").on(t.eventId, t.authorFirebaseUid),
   ],
+);
+
+/* ============================================================================
+ *  Notifications  (per-user inbox; `read_at` null = unread)
+ * ========================================================================== */
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // Identity-provider user id of the recipient (same value as users.firebase_uid).
+    userUid: text("user_uid").notNull(),
+    type: notificationType("type").notNull().default("system"),
+    title: text("title").notNull(),
+    titleLo: text("title_lo"),
+    message: text("message").notNull(),
+    messageLo: text("message_lo"),
+    // Optional deep-link context, e.g. { eventId, orderId }
+    data: jsonb("data").$type<Record<string, string>>(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("notifications_user_created_idx").on(t.userUid, t.createdAt)],
 );
 
 /* ============================================================================

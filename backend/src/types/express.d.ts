@@ -4,6 +4,8 @@ import "express";
 export interface AuthUser {
   uid: string;
   email?: string;
+  /** True for Supabase guest (anonymous sign-in) sessions. */
+  isAnonymous?: boolean;
   [key: string]: unknown;
 }
 

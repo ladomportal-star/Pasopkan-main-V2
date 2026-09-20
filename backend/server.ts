@@ -36,7 +36,9 @@ async function startServer() {
   }
 
   const server = app.listen(PORT, "0.0.0.0", () => {
-    logger.info(`Pasopkan server running on http://0.0.0.0:${PORT} (mode: ${process.env.NODE_ENV || "development"})`);
+    logger.info(
+      `Pasopkan server running on http://0.0.0.0:${PORT} (mode: ${process.env.NODE_ENV || "development"})`,
+    );
   });
 
   server.on("error", (err: NodeJS.ErrnoException) => {
@@ -61,4 +63,3 @@ async function startServer() {
 }
 
 startServer();
-

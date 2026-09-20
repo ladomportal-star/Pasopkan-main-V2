@@ -18,7 +18,7 @@ export async function createTicket(req: Request, res: Response) {
   const { order, items } = await createOrder({
     ...req.body,
     uid,
-    email: req.user?.email || "user@example.com",
+    email: req.user?.email,
   });
 
   return ok(res, { success: true, order, items });

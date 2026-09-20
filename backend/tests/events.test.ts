@@ -1,70 +1,81 @@
 import { describe, it, expect } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.ts";
+import { db } from "../src/config/database.ts";
+import { users } from "../src/models/schema.ts";
+import { as } from "./helpers/auth.ts";
+import { createEvent } from "./helpers/seed.ts";
 
 const app = createApp();
-const auth = { Authorization: "Bearer organizer-uid" };
 
-const sampleEvent = {
-  title: "Vientiane Marathon 2026",
-  category: "Sports",
-  dateType: "fixed",
-  startDate: "2026-12-01",
-  startTime: "05:00",
-  venueName: "That Luang Square",
-  province: "Vientiane",
-  organizer: { name: "Lao Runners Club", contactEmail: "club@example.com" },
-  tiers: [
-    { name: "10K", priceKip: 150000, quantityTotal: 500 },
-    { name: "Half", priceKip: 250000 },
-  ],
-  zones: [{ name: "Start Pen A", priceKip: 0, capacity: 200 }],
-  coupons: [{ code: "EARLYBIRD", discountType: "percent", discountValue: 10 }],
-};
-
-describe("POST /api/events", () => {
-  it("401s without auth", async () => {
-    const res = await request(app).post("/api/events").send(sampleEvent);
-    expect(res.status).toBe(401);
+describe("events", () => {
+  it("requires sign-in to create, and validates the body", async () => {
+    expect((await request(app).post("/api/events").send({ title: "x" })).status).toBe(401);
+    const bad = await request(app).post("/api/events").set(await as("org-1")).send({});
+    expect(bad.status).toBe(400);
+    expect(bad.body.details).toHaveProperty("title");
   });
 
-  it("400s when title is missing", async () => {
-    const res = await request(app).post("/api/events").set(auth).send({ category: "Sports" });
-    expect(res.status).toBe(400);
-    expect(res.body.error).toBe("Validation failed");
+  it("creates an event with tiers, owned by its creator", async () => {
+    const event = await createEvent(app, await as("org-1"), { title: "Owned" });
+    expect(event.tiers).toHaveLength(2);
+    const mine = await request(app).get("/api/events?mine=true").set(await as("org-1"));
+    expect(mine.body.events.map((e: { title: string }) => e.title)).toContain("Owned");
   });
 
-  it("creates an event with nested tiers/zones/coupons (in-memory fallback)", async () => {
-    const res = await request(app).post("/api/events").set(auth).send(sampleEvent);
-    expect(res.status).toBe(201);
-    expect(res.body.success).toBe(true);
-    expect(res.body.event.title).toBe("Vientiane Marathon 2026");
-    expect(res.body.event.tiers).toHaveLength(2);
-    expect(res.body.event.zones).toHaveLength(1);
-    expect(res.body.event.coupons[0].code).toBe("EARLYBIRD");
+  it("hides drafts from the public catalog and from other users, but not from the owner", async () => {
+    const owner = await as("org-2");
+    const draft = await createEvent(app, owner, { title: "Secret Draft", status: "draft" });
+
+    const pub = await request(app).get("/api/events");
+    expect(pub.body.events.map((e: { title: string }) => e.title)).not.toContain("Secret Draft");
+
+    expect((await request(app).get(`/api/events/${draft.id}`)).status).toBe(404);
+    expect((await request(app).get(`/api/events/${draft.id}`).set(await as("stranger"))).status).toBe(404);
+    expect((await request(app).get(`/api/events/${draft.id}`).set(owner)).status).toBe(200);
   });
-});
 
-describe("GET /api/events", () => {
-  it("lists events", async () => {
-    await request(app).post("/api/events").set(auth).send(sampleEvent);
-    const res = await request(app).get("/api/events");
-    expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.events)).toBe(true);
-    expect(res.body.events.length).toBeGreaterThan(0);
+  it("lists published events publicly and resolves them by id", async () => {
+    const event = await createEvent(app, await as("org-3"), { title: "Public Show" });
+    const list = await request(app).get("/api/events");
+    expect(list.body.events.map((e: { title: string }) => e.title)).toContain("Public Show");
+    const one = await request(app).get(`/api/events/${event.id}`);
+    expect(one.status).toBe(200);
+    expect(one.body.event.title).toBe("Public Show");
   });
-});
 
-describe("PUT /api/events/:id", () => {
-  it("only touches child arrays that were sent", async () => {
-    const created = await request(app).post("/api/events").set(auth).send(sampleEvent);
-    const id = created.body.event.id;
+  it("`mine=true` needs a sign-in", async () => {
+    expect((await request(app).get("/api/events?mine=true")).status).toBe(401);
+  });
 
-    // send just `status` — tiers/zones/coupons must be left alone
-    const res = await request(app).put(`/api/events/${id}`).set(auth).send({ status: "published" });
-    expect(res.status).toBe(200);
-    expect(res.body.event.tiers).toHaveLength(2);
-    expect(res.body.event.zones).toHaveLength(1);
-    expect(res.body.event.coupons).toHaveLength(1);
+  it("only the owner (or an admin) may update an event", async () => {
+    const owner = await as("org-4");
+    const event = await createEvent(app, owner, { title: "Before" });
+
+    const stranger = await request(app)
+      .put(`/api/events/${event.id}`)
+      .set(await as("stranger"))
+      .send({ title: "Hacked" });
+    expect(stranger.status).toBe(403);
+
+    const byOwner = await request(app).put(`/api/events/${event.id}`).set(owner).send({ title: "After" });
+    expect(byOwner.status).toBe(200);
+    expect(byOwner.body.event.title).toBe("After");
+    expect(byOwner.body.event.tiers).toHaveLength(2); // untouched when not sent
+
+    await db.insert(users).values({ firebaseUid: "admin-1", email: "a@test.local", role: "admin" });
+    const byAdmin = await request(app)
+      .put(`/api/events/${event.id}`)
+      .set(await as("admin-1"))
+      .send({ title: "Moderated" });
+    expect(byAdmin.status).toBe(200);
+  });
+
+  it("404s when updating an unknown event", async () => {
+    const res = await request(app)
+      .put("/api/events/does-not-exist")
+      .set(await as("org-5"))
+      .send({ title: "x" });
+    expect(res.status).toBe(404);
   });
 });

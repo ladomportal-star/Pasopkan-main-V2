@@ -1,4 +1,4 @@
-import { and, desc, eq, or } from "drizzle-orm";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { db } from "../config/database.ts";
 import {
   coupons,
@@ -8,10 +8,9 @@ import {
   ticketTiers,
   ticketZones,
 } from "../models/schema.ts";
-import { logger } from "../utils/logger.ts";
+import { HttpError } from "../middlewares/error.middleware.ts";
+import { getUserRole } from "./user.service.ts";
 import type { CreateEventBody, UpdateEventBody } from "../validators/event.validator.ts";
-
-const inMemoryEvents: any[] = [];
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -41,106 +40,134 @@ async function insertChildren(tx: Executor, eventId: string, body: Partial<Creat
 
 /** Create an event and all of its tiers / zones / dates / coupons atomically. */
 export async function createEvent(body: CreateEventBody, ownerUid: string) {
-  try {
-    return await db.transaction(async (tx) => {
-      let organizerId: string | undefined;
-      if (body.organizer) {
-        const [org] = await tx
-          .insert(organizers)
-          .values({ ...body.organizer, ownerFirebaseUid: ownerUid })
-          .returning();
-        organizerId = org.id;
-      }
-
-      const [event] = await tx
-        .insert(events)
-        .values({ ...eventColumns(body), organizerId })
+  return db.transaction(async (tx) => {
+    // Every event is owned by an organizer profile belonging to its creator, so
+    // ownership can be enforced on update. Reuse the creator's existing profile.
+    let [org] = await tx
+      .select()
+      .from(organizers)
+      .where(eq(organizers.ownerFirebaseUid, ownerUid))
+      .limit(1);
+    if (org && body.organizer) {
+      [org] = await tx
+        .update(organizers)
+        .set({ ...body.organizer, updatedAt: new Date() })
+        .where(eq(organizers.id, org.id))
         .returning();
+    } else if (!org) {
+      [org] = await tx
+        .insert(organizers)
+        .values({ name: body.organizer?.name ?? "Organizer", ...body.organizer, ownerFirebaseUid: ownerUid })
+        .returning();
+    }
 
-      await insertChildren(tx, event.id, body);
-      return getEventById(event.id, tx);
-    });
-  } catch (error: any) {
-    logger.warn("[event.service] createEvent DB fallback:", error?.message);
-    const event = {
-      id: `mem-${inMemoryEvents.length + 1}`,
-      ...eventColumns(body),
-      ownerFirebaseUid: ownerUid,
-      tiers: body.tiers,
-      zones: body.zones,
-      dates: body.dates,
-      coupons: body.coupons,
-      createdAt: new Date().toISOString(),
-    };
-    inMemoryEvents.unshift(event);
-    return event;
-  }
+    const [event] = await tx
+      .insert(events)
+      .values({ ...eventColumns(body), organizerId: org.id })
+      .returning();
+
+    await insertChildren(tx, event.id, body);
+    return getEventById(event.id, tx);
+  });
 }
 
 /** Update event columns; nested arrays, when provided, replace the existing set. */
-export async function updateEvent(idOrRef: string, patch: UpdateEventBody) {
-  try {
-    return await db.transaction(async (tx) => {
-      const existing = await resolveEvent(idOrRef, tx);
-      if (!existing) return null;
+export async function updateEvent(idOrRef: string, patch: UpdateEventBody, actorUid: string) {
+  return db.transaction(async (tx) => {
+    const existing = await resolveEvent(idOrRef, tx);
+    if (!existing) return null;
+    await assertCanEdit(tx, existing.id, actorUid);
 
-      await tx
-        .update(events)
-        .set({ ...eventColumns(patch), updatedAt: new Date() })
-        .where(eq(events.id, existing.id));
+    await tx
+      .update(events)
+      .set({ ...eventColumns(patch), updatedAt: new Date() })
+      .where(eq(events.id, existing.id));
 
-      for (const [key, table] of [
-        ["tiers", ticketTiers],
-        ["zones", ticketZones],
-        ["dates", eventDates],
-        ["coupons", coupons],
-      ] as const) {
-        if (patch[key] !== undefined) {
-          await tx.delete(table).where(eq(table.eventId, existing.id));
-        }
+    for (const [key, table] of [
+      ["tiers", ticketTiers],
+      ["zones", ticketZones],
+      ["dates", eventDates],
+      ["coupons", coupons],
+    ] as const) {
+      if (patch[key] !== undefined) {
+        await tx.delete(table).where(eq(table.eventId, existing.id));
       }
-      await insertChildren(tx, existing.id, patch);
+    }
+    await insertChildren(tx, existing.id, patch);
 
-      return getEventById(existing.id, tx);
-    });
-  } catch (error: any) {
-    logger.warn("[event.service] updateEvent DB fallback:", error?.message);
-    const idx = inMemoryEvents.findIndex((e) => e.id === idOrRef || e.legacyId === idOrRef);
-    if (idx < 0) return null;
-    inMemoryEvents[idx] = { ...inMemoryEvents[idx], ...patch, updatedAt: new Date().toISOString() };
-    return inMemoryEvents[idx];
-  }
+    return getEventById(existing.id, tx);
+  });
 }
 
-export async function listEvents(query: { status?: string; organizerUid?: string; limit: number }) {
-  try {
-    const filters = [];
-    if (query.status) filters.push(eq(events.status, query.status as any));
-    if (query.organizerUid) filters.push(eq(organizers.ownerFirebaseUid, query.organizerUid));
-
-    return await db.query.events.findMany({
-      where: filters.length ? and(...filters) : undefined,
-      orderBy: desc(events.createdAt),
-      limit: query.limit,
-      with: { tiers: true, zones: true, dates: true, coupons: true, organizer: true },
-    });
-  } catch (error: any) {
-    logger.warn("[event.service] listEvents DB fallback:", error?.message);
-    return inMemoryEvents.slice(0, query.limit);
+/**
+ * Public catalog listing. Callers only see published (and sold-out/completed)
+ * events unless they ask for their own events (`mine`), which includes drafts.
+ */
+export async function listEvents(query: {
+  status?: string;
+  mine?: boolean;
+  viewerUid?: string;
+  limit: number;
+}) {
+  const filters = [];
+  if (query.mine) {
+    if (!query.viewerUid) throw new HttpError(401, "Sign in to list your events");
+    filters.push(eq(organizers.ownerFirebaseUid, query.viewerUid));
+  } else {
+    filters.push(inArray(events.status, PUBLIC_STATUSES));
   }
+  if (query.status) filters.push(eq(events.status, query.status as any));
+
+  const rows = await db
+    .select({ id: events.id })
+    .from(events)
+    .leftJoin(organizers, eq(events.organizerId, organizers.id))
+    .where(and(...filters))
+    .orderBy(desc(events.createdAt))
+    .limit(query.limit);
+
+  if (rows.length === 0) return [];
+  return db.query.events.findMany({
+    where: inArray(events.id, rows.map((r) => r.id)),
+    orderBy: desc(events.createdAt),
+    with: { tiers: true, zones: true, dates: true, coupons: true, organizer: true },
+  });
 }
 
-export async function getEvent(idOrRef: string) {
-  try {
-    const row = await resolveEvent(idOrRef, db);
-    return row ? getEventById(row.id, db) : null;
-  } catch (error: any) {
-    logger.warn("[event.service] getEvent DB fallback:", error?.message);
-    return inMemoryEvents.find((e) => e.id === idOrRef || e.legacyId === idOrRef) ?? null;
+/** One event by uuid / slug / legacy id. Drafts are visible only to their owner or an admin. */
+export async function getEvent(idOrRef: string, viewerUid?: string) {
+  const row = await resolveEvent(idOrRef, db);
+  if (!row) return null;
+  const event = await getEventById(row.id, db);
+  if (!event) return null;
+  if (!PUBLIC_STATUSES.includes(event.status)) {
+    const allowed = viewerUid ? await canEdit(db, event.id, viewerUid) : false;
+    if (!allowed) return null;
   }
+  return event;
 }
 
 /* ---- internal helpers ---- */
+
+const PUBLIC_STATUSES: (typeof events.$inferSelect)["status"][] = ["published", "sold_out", "completed"];
+
+/** Owner of the event's organizer profile, or an admin. */
+async function canEdit(exec: Executor, eventId: string, uid: string) {
+  const [row] = await exec
+    .select({ owner: organizers.ownerFirebaseUid })
+    .from(events)
+    .leftJoin(organizers, eq(events.organizerId, organizers.id))
+    .where(eq(events.id, eventId))
+    .limit(1);
+  if (row?.owner && row.owner === uid) return true;
+  return (await getUserRole(uid, exec)) === "admin";
+}
+
+async function assertCanEdit(exec: Executor, eventId: string, uid: string) {
+  if (!(await canEdit(exec, eventId, uid))) {
+    throw new HttpError(403, "You do not have permission to modify this event");
+  }
+}
 
 async function resolveEvent(ref: string, exec: Executor) {
   const where = UUID_RE.test(ref)

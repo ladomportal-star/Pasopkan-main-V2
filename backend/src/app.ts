@@ -1,3 +1,4 @@
+import "express-async-errors"; // Express 4 does not catch rejected async handlers on its own
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";

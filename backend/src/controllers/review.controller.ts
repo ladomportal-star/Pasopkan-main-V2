@@ -16,7 +16,7 @@ export async function createReview(req: Request, res: Response) {
   const review = await upsertReview({
     ...req.body,
     uid,
-    email: req.user?.email || "user@example.com",
+    email: req.user?.email,
   });
 
   return ok(res, { success: true, review });

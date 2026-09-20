@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth } from "../middlewares/auth.middleware.ts";
+import { optionalAuth, requireAuth, requireRegisteredUser } from "../middlewares/auth.middleware.ts";
 import { validate } from "../middlewares/validate.middleware.ts";
 import {
   createEventBody,
@@ -11,12 +11,13 @@ import { getEventById, getEvents, postEvent, putEvent } from "../controllers/eve
 
 const router = Router();
 
-router.get("/events", validate({ query: listEventsQuery }), getEvents);
-router.get("/events/:id", validate({ params: eventIdParam }), getEventById);
-router.post("/events", requireAuth, validate({ body: createEventBody }), postEvent);
+router.get("/events", optionalAuth, validate({ query: listEventsQuery }), getEvents);
+router.get("/events/:id", optionalAuth, validate({ params: eventIdParam }), getEventById);
+router.post("/events", requireAuth, requireRegisteredUser, validate({ body: createEventBody }), postEvent);
 router.put(
   "/events/:id",
   requireAuth,
+  requireRegisteredUser,
   validate({ params: eventIdParam, body: updateEventBody }),
   putEvent,
 );
