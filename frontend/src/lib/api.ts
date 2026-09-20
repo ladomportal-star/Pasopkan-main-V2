@@ -120,4 +120,12 @@ export const api = {
       undefined,
       opts,
     ),
+
+  getNotifications: (opts?: RequestOptions) =>
+    request<{ notifications: import('../types').AppNotification[]; lastFetchedAt?: string }>(
+      'GET',
+      '/notifications',
+      undefined,
+      opts,
+    ),
 };

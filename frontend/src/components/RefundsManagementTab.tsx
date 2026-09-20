@@ -92,6 +92,29 @@ const defaultMockRefunds: RefundItem[] = [
     notes: 'Customer contacted support asking for bank transfer back.'
   },
   {
+    id: 'REF-2026-1055',
+    ticketId: 'TKT-2026-950',
+    orderId: 'ORD-88220',
+    eventId: 2,
+    eventTitle: 'Lao New Year Grand Water Music Festival',
+    eventDate: '2026-04-14',
+    eventLocation: 'Mekong Riverfront, Vientiane',
+    eventImage: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=800&auto=format&fit=crop',
+    customerName: 'Anousone Keobounphanh',
+    customerEmail: 'anousone.k@gmail.com',
+    customerPhone: '+856 20 5432 1098',
+    tierName: 'VIP Zone A',
+    quantity: 1,
+    amount: 350000,
+    requestDate: '2026-03-29 09:15',
+    reason: 'Family event rescheduled to another date.',
+    status: 'pending',
+    bankName: 'BCEL',
+    bankAccountName: 'ANOUSONE KEOBOUNPHANH',
+    bankAccountNumber: '01012000776655001',
+    notes: 'Requested refund to BCEL account directly.'
+  },
+  {
     id: 'REF-2026-1038',
     ticketId: 'TKT-2026-812',
     orderId: 'ORD-88045',
@@ -167,6 +190,13 @@ export default function RefundsManagementTab({ lang, t, addActivityLog }: Refund
   const [rejectionInput, setRejectionInput] = useState('');
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Bulk action states (Refund All & Reject All)
+  const [selectedRefundIds, setSelectedRefundIds] = useState<string[]>([]);
+  const [isBulkApproveModalOpen, setIsBulkApproveModalOpen] = useState(false);
+  const [isBulkRejectModalOpen, setIsBulkRejectModalOpen] = useState(false);
+  const [bulkRejectionInput, setBulkRejectionInput] = useState('');
+  const [bulkActionTarget, setBulkActionTarget] = useState<'all' | 'selected'>('all');
 
   // Manual refund form state
   const [manualTicketId, setManualTicketId] = useState('');
@@ -393,6 +423,167 @@ export default function RefundsManagementTab({ lang, t, addActivityLog }: Refund
     setIsRejectModalOpen(false);
     setRejectionInput('');
     setSelectedRefund(null);
+  };
+
+  // Pending refunds calculations for bulk actions
+  const targetBulkRefunds = useMemo(() => {
+    if (bulkActionTarget === 'selected') {
+      return refunds.filter(r => selectedRefundIds.includes(r.id) && r.status === 'pending');
+    }
+    return refunds.filter(r => r.status === 'pending');
+  }, [bulkActionTarget, selectedRefundIds, refunds]);
+
+  const targetBulkTotalAmount = useMemo(() => {
+    return targetBulkRefunds.reduce((sum, r) => sum + (r.amount || 0), 0);
+  }, [targetBulkRefunds]);
+
+  // Available pending refunds in the current filtered view
+  const visiblePendingRefunds = useMemo(() => {
+    return filteredRefunds.filter(r => r.status === 'pending');
+  }, [filteredRefunds]);
+
+  const isAllVisiblePendingSelected = useMemo(() => {
+    if (visiblePendingRefunds.length === 0) return false;
+    return visiblePendingRefunds.every(r => selectedRefundIds.includes(r.id));
+  }, [visiblePendingRefunds, selectedRefundIds]);
+
+  const handleToggleSelectAllPending = () => {
+    if (isAllVisiblePendingSelected) {
+      const visibleIds = new Set(visiblePendingRefunds.map(r => r.id));
+      setSelectedRefundIds(prev => prev.filter(id => !visibleIds.has(id)));
+    } else {
+      const newIds = new Set([...selectedRefundIds, ...visiblePendingRefunds.map(r => r.id)]);
+      setSelectedRefundIds(Array.from(newIds));
+    }
+  };
+
+  const handleToggleSelectRefund = (id: string) => {
+    setSelectedRefundIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  // Batch approve refunds (Refund All or Refund Selected)
+  const handleConfirmBatchApprove = () => {
+    if (targetBulkRefunds.length === 0) return;
+
+    const targetIds = new Set(targetBulkRefunds.map(r => r.id));
+    const targetTicketIds = new Set(targetBulkRefunds.map(r => r.ticketId));
+    const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
+
+    const updatedRefunds = refunds.map((r) => {
+      if (targetIds.has(r.id) && r.status === 'pending') {
+        return {
+          ...r,
+          status: 'approved' as const,
+          processedDate: nowStr,
+          processedBy: 'Admin (Bulk Approval)'
+        };
+      }
+      return r;
+    });
+
+    setRefunds(updatedRefunds);
+
+    // Sync to storage
+    try {
+      const existingRefundedRaw = safeStorage.getItem(STORAGE_KEY_REFUNDED_IDS);
+      const refundedList: string[] = existingRefundedRaw ? JSON.parse(existingRefundedRaw) : [];
+      let listUpdated = false;
+      targetTicketIds.forEach(tid => {
+        if (!refundedList.includes(tid)) {
+          refundedList.push(tid);
+          listUpdated = true;
+        }
+      });
+      if (listUpdated) {
+        safeStorage.setItem(STORAGE_KEY_REFUNDED_IDS, JSON.stringify(refundedList));
+      }
+
+      const userTicketsRaw = safeStorage.getItem(STORAGE_KEY_USER_TICKETS);
+      if (userTicketsRaw) {
+        const tickets: any[] = JSON.parse(userTicketsRaw);
+        const updatedUserTickets = tickets.map((t) => {
+          if (targetTicketIds.has(t.id)) {
+            return { ...t, status: 'refunded' };
+          }
+          return t;
+        });
+        safeStorage.setItem(STORAGE_KEY_USER_TICKETS, JSON.stringify(updatedUserTickets));
+      }
+    } catch (e) {
+      console.error('Failed to sync batch approved refunds to storage:', e);
+    }
+
+    if (addActivityLog) {
+      addActivityLog(
+        'Batch Refunds Approved',
+        `Approved ${targetBulkRefunds.length} refund requests totaling ${new Intl.NumberFormat('lo-LA').format(targetBulkTotalAmount)} ₭`
+      );
+    }
+
+    setIsBulkApproveModalOpen(false);
+    setSelectedRefundIds([]);
+  };
+
+  // Batch reject refunds (Reject All or Reject Selected)
+  const handleConfirmBatchReject = () => {
+    if (targetBulkRefunds.length === 0) return;
+
+    const targetIds = new Set(targetBulkRefunds.map(r => r.id));
+    const targetTicketIds = new Set(targetBulkRefunds.map(r => r.ticketId));
+    const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
+    const reason = bulkRejectionInput.trim() || (lang === 'lo' ? 'ບໍ່ກົງກັບນະໂຍບາຍການຄືນເງິນ' : 'Does not comply with event refund policy');
+
+    const updatedRefunds = refunds.map((r) => {
+      if (targetIds.has(r.id) && r.status === 'pending') {
+        return {
+          ...r,
+          status: 'rejected' as const,
+          rejectionReason: reason,
+          processedDate: nowStr,
+          processedBy: 'Admin (Bulk Rejection)'
+        };
+      }
+      return r;
+    });
+
+    setRefunds(updatedRefunds);
+
+    // Sync to storage
+    try {
+      const existingRefundedRaw = safeStorage.getItem(STORAGE_KEY_REFUNDED_IDS);
+      if (existingRefundedRaw) {
+        const refundedList: string[] = JSON.parse(existingRefundedRaw);
+        const filteredList = refundedList.filter(id => !targetTicketIds.has(id));
+        safeStorage.setItem(STORAGE_KEY_REFUNDED_IDS, JSON.stringify(filteredList));
+      }
+
+      const userTicketsRaw = safeStorage.getItem(STORAGE_KEY_USER_TICKETS);
+      if (userTicketsRaw) {
+        const tickets: any[] = JSON.parse(userTicketsRaw);
+        const updatedUserTickets = tickets.map((t) => {
+          if (targetTicketIds.has(t.id) && t.status === 'refunded') {
+            return { ...t, status: 'upcoming' };
+          }
+          return t;
+        });
+        safeStorage.setItem(STORAGE_KEY_USER_TICKETS, JSON.stringify(updatedUserTickets));
+      }
+    } catch (e) {
+      console.error('Failed to sync batch rejected refunds to storage:', e);
+    }
+
+    if (addActivityLog) {
+      addActivityLog(
+        'Batch Refunds Rejected',
+        `Rejected ${targetBulkRefunds.length} refund requests. Reason: ${reason}`
+      );
+    }
+
+    setIsBulkRejectModalOpen(false);
+    setBulkRejectionInput('');
+    setSelectedRefundIds([]);
   };
 
   // Handle Manual Refund creation
@@ -649,6 +840,34 @@ export default function RefundsManagementTab({ lang, t, addActivityLog }: Refund
             <span className="hidden sm:inline">CSV</span>
           </button>
 
+          {/* Refund All Button */}
+          <button
+            onClick={() => {
+              setBulkActionTarget('all');
+              setIsBulkApproveModalOpen(true);
+            }}
+            disabled={stats.pending === 0}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+            title={lang === 'lo' ? 'ອະນຸມັດຄືນເງິນທັງໝົດທີ່ລໍຖ້າ' : 'Approve all pending refund requests'}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>{lang === 'lo' ? `ຄືນເງິນທັງໝົດ (${stats.pending})` : `Refund All (${stats.pending})`}</span>
+          </button>
+
+          {/* Reject All Button */}
+          <button
+            onClick={() => {
+              setBulkActionTarget('all');
+              setIsBulkRejectModalOpen(true);
+            }}
+            disabled={stats.pending === 0}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+            title={lang === 'lo' ? 'ປະຕິເສດທຸກຄຳຮ້ອງທີ່ລໍຖ້າ' : 'Reject all pending refund requests'}
+          >
+            <XCircle className="w-3.5 h-3.5" />
+            <span>{lang === 'lo' ? `ປະຕິເສດທັງໝົດ (${stats.pending})` : `Reject All (${stats.pending})`}</span>
+          </button>
+
           <button
             onClick={() => setIsManualModalOpen(true)}
             className="flex items-center gap-1.5 px-3.5 py-2 bg-adv-orange hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
@@ -661,6 +880,53 @@ export default function RefundsManagementTab({ lang, t, addActivityLog }: Refund
 
       {/* Refunds Table / List */}
       <div className="bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-xs">
+        {/* Bulk Selection Bar when items are checked */}
+        {selectedRefundIds.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 bg-orange-50/90 border-b border-orange-100">
+            <div className="flex items-center gap-2 text-xs font-bold text-adv-slate">
+              <span className="w-6 h-6 rounded-lg bg-adv-orange text-white flex items-center justify-center text-[11px] font-mono">
+                {selectedRefundIds.length}
+              </span>
+              <span>
+                {lang === 'lo'
+                  ? `ເລືອກແລ້ວ ${selectedRefundIds.length} ລາຍການທີ່ລໍຖ້າ`
+                  : `${selectedRefundIds.length} pending request(s) selected`}
+              </span>
+              <span className="text-gray-400 font-normal">
+                • {lang === 'lo' ? 'ລວມຍອດ' : 'Total'}: {new Intl.NumberFormat('lo-LA').format(targetBulkTotalAmount)} ₭
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setBulkActionTarget('selected');
+                  setIsBulkApproveModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-2xs transition-all cursor-pointer"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>{lang === 'lo' ? `ຄືນເງິນທີ່ເລືອກ (${selectedRefundIds.length})` : `Refund Selected (${selectedRefundIds.length})`}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setBulkActionTarget('selected');
+                  setIsBulkRejectModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 text-red-600 hover:bg-red-50 rounded-xl text-xs font-bold shadow-2xs transition-all cursor-pointer"
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                <span>{lang === 'lo' ? `ປະຕິເສດທີ່ເລືອກ (${selectedRefundIds.length})` : `Reject Selected (${selectedRefundIds.length})`}</span>
+              </button>
+              <button
+                onClick={() => setSelectedRefundIds([])}
+                className="px-2.5 py-1.5 text-xs text-gray-500 hover:text-gray-700 font-semibold cursor-pointer"
+              >
+                {lang === 'lo' ? 'ຍົກເລີກການເລືອກ' : 'Clear'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {filteredRefunds.length === 0 ? (
           <div className="text-center py-16 px-4">
             <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-300">
@@ -680,6 +946,16 @@ export default function RefundsManagementTab({ lang, t, addActivityLog }: Refund
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/60 text-[10px] font-black uppercase tracking-wider text-gray-400">
+                  <th className="py-2.5 px-3 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={isAllVisiblePendingSelected}
+                      onChange={handleToggleSelectAllPending}
+                      disabled={visiblePendingRefunds.length === 0}
+                      className="w-4 h-4 rounded border-gray-300 text-adv-orange focus:ring-adv-orange cursor-pointer disabled:opacity-30 align-middle"
+                      title={lang === 'lo' ? 'ເລືອກທັງໝົດທີ່ລໍຖ້າ' : 'Select all pending in current view'}
+                    />
+                  </th>
                   <th className="py-2.5 px-5">{lang === 'lo' ? 'ລະຫັດ / ວັນທີ' : 'Refund Ref / Date'}</th>
                   <th className="py-2.5 px-5">{lang === 'lo' ? 'ຜູ້ຊື້ປີ້' : 'Customer / Contact'}</th>
                   <th className="py-2.5 px-5">{lang === 'lo' ? 'ກິດຈະກຳ & ປີ້' : 'Event & Ticket'}</th>
@@ -696,6 +972,20 @@ export default function RefundsManagementTab({ lang, t, addActivityLog }: Refund
 
                   return (
                     <tr key={refund.id} className="even:bg-gray-50/30 hover:bg-orange-50/30 transition-colors group">
+                      {/* Checkbox */}
+                      <td className="py-2.5 px-3 align-top text-center">
+                        {isPending ? (
+                          <input
+                            type="checkbox"
+                            checked={selectedRefundIds.includes(refund.id)}
+                            onChange={() => handleToggleSelectRefund(refund.id)}
+                            className="w-4 h-4 rounded border-gray-300 text-adv-orange focus:ring-adv-orange cursor-pointer mt-1"
+                          />
+                        ) : (
+                          <span className="w-4 h-4 inline-block opacity-20 text-gray-400 mt-1">•</span>
+                        )}
+                      </td>
+
                       {/* ID & Date */}
                       <td className="py-2.5 px-5 align-top">
                         <div className="flex items-center gap-1.5 font-bold text-adv-slate">
@@ -1072,6 +1362,180 @@ export default function RefundsManagementTab({ lang, t, addActivityLog }: Refund
                   className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
                 >
                   {lang === 'lo' ? 'ຢືນຢັນການປະຕິເສດ' : 'Confirm Reject'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL: Bulk Approve Confirmation (Refund All / Refund Selected) */}
+      <AnimatePresence>
+        {isBulkApproveModalOpen && targetBulkRefunds.length > 0 && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-bold text-adv-slate mb-1">
+                {bulkActionTarget === 'all'
+                  ? (lang === 'lo' ? 'ຢືນຢັນການຄືນເງິນທັງໝົດ' : 'Refund All Pending Requests')
+                  : (lang === 'lo' ? 'ຢືນຢັນການຄືນເງິນລາຍການທີ່ເລືອກ' : 'Refund Selected Requests')}
+              </h3>
+              <p className="text-xs text-gray-500 mb-4">
+                {lang === 'lo'
+                  ? `ທ່ານກຳລັງຈະອະນຸມັດ ແລະ ດຳເນີນການຄືນເງິນ ${targetBulkRefunds.length} ລາຍການ, ລວມເປັນມູນຄ່າ ${new Intl.NumberFormat('lo-LA').format(targetBulkTotalAmount)} ₭.`
+                  : `You are about to approve and process refunds for ${targetBulkRefunds.length} pending request(s), totaling ${new Intl.NumberFormat('lo-LA').format(targetBulkTotalAmount)} ₭.`}
+              </p>
+
+              {/* Items Summary Preview */}
+              <div className="bg-gray-50 border border-gray-200/80 rounded-2xl p-3.5 mb-4 max-h-48 overflow-y-auto divide-y divide-gray-100 text-xs">
+                {targetBulkRefunds.map((item) => (
+                  <div key={item.id} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-adv-slate flex items-center gap-1.5 truncate">
+                        <span>{item.customerName}</span>
+                        <span className="text-[10px] text-gray-400 font-mono font-normal">({item.id})</span>
+                      </div>
+                      <div className="text-[11px] text-gray-500 truncate">
+                        {item.eventTitle}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="font-bold text-emerald-600">
+                        {new Intl.NumberFormat('lo-LA').format(item.amount)} ₭
+                      </div>
+                      <div className="text-[10px] text-gray-400 font-mono">
+                        {item.bankName || 'Bank Transfer'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-3 text-[11px] text-emerald-800 leading-relaxed mb-5 flex items-start gap-2">
+                <Info className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" />
+                <span>
+                  {lang === 'lo'
+                    ? 'ລະບົບຈະປັບສະຖານະປີ້ທີ່ກ່ຽວຂ້ອງເປັນ "ຄືນເງິນແລ້ວ" (Refunded) ໃນຖານຂໍ້ມູນ ແລະ ໜ້າ Dashboard ຂອງລູກຄ້າທັນທີ.'
+                    : 'All associated tickets will be updated to "Refunded" and synchronized across user dashboards immediately.'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsBulkApproveModalOpen(false)}
+                  className="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-700 cursor-pointer"
+                >
+                  {lang === 'lo' ? 'ຍົກເລີກ' : 'Cancel'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmBatchApprove}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>
+                    {bulkActionTarget === 'all'
+                      ? (lang === 'lo' ? `ຢືນຢັນຄືນເງິນທັງໝົດ (${targetBulkRefunds.length})` : `Confirm Refund All (${targetBulkRefunds.length})`)
+                      : (lang === 'lo' ? `ຢືນຢັນຄືນເງິນທີ່ເລືອກ (${targetBulkRefunds.length})` : `Confirm Refund Selected (${targetBulkRefunds.length})`)}
+                  </span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL: Bulk Reject Confirmation (Reject All / Reject Selected) */}
+      <AnimatePresence>
+        {isBulkRejectModalOpen && targetBulkRefunds.length > 0 && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center mb-4">
+                <XCircle className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-bold text-adv-slate mb-1">
+                {bulkActionTarget === 'all'
+                  ? (lang === 'lo' ? 'ຢືນຢັນການປະຕິເສດທັງໝົດ' : 'Reject All Pending Requests')
+                  : (lang === 'lo' ? 'ຢືນຢັນການປະຕິເສດລາຍການທີ່ເລືອກ' : 'Reject Selected Requests')}
+              </h3>
+              <p className="text-xs text-gray-500 mb-4">
+                {lang === 'lo'
+                  ? `ທ່ານກຳລັງຈະປະຕິເສດຄຳຮ້ອງຄືນເງິນຈຳນວນ ${targetBulkRefunds.length} ລາຍການ. ປີ້ເດີມຈະຍັງຄົງມີຜົນບັງຄັບໃຊ້ ແລະ ສາມາດນຳໃຊ້ເຂົ້າງານໄດ້ຕາມປົກກະຕິ.`
+                  : `You are about to reject ${targetBulkRefunds.length} pending refund request(s). The original tickets will remain valid and active for event entry.`}
+              </p>
+
+              {/* Items Summary Preview */}
+              <div className="bg-gray-50 border border-gray-200/80 rounded-2xl p-3.5 mb-4 max-h-40 overflow-y-auto divide-y divide-gray-100 text-xs">
+                {targetBulkRefunds.map((item) => (
+                  <div key={item.id} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-adv-slate flex items-center gap-1.5 truncate">
+                        <span>{item.customerName}</span>
+                        <span className="text-[10px] text-gray-400 font-mono font-normal">({item.id})</span>
+                      </div>
+                      <div className="text-[11px] text-gray-500 truncate">
+                        {item.eventTitle}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0 font-bold text-red-500">
+                      {new Intl.NumberFormat('lo-LA').format(item.amount)} ₭
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mb-5">
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  {lang === 'lo' ? 'ເຫດຜົນໃນການປະຕິເສດ (ນຳໃຊ້ກັບທຸກລາຍການ)' : 'Rejection Reason (Applied to all items)'}
+                </label>
+                <textarea
+                  rows={2}
+                  value={bulkRejectionInput}
+                  onChange={(e) => setBulkRejectionInput(e.target.value)}
+                  placeholder={
+                    lang === 'lo'
+                      ? 'ຕົວຢ່າງ: ບໍ່ກົງກັບນະໂຍບາຍການຄືນເງິນ ຫຼື ເກີນກຳນົດເວລາ...'
+                      : 'e.g. Requests do not comply with event refund cutoff policy...'
+                  }
+                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs text-adv-slate placeholder-gray-400 focus:outline-hidden focus:border-red-400 transition-colors"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsBulkRejectModalOpen(false);
+                    setBulkRejectionInput('');
+                  }}
+                  className="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-700 cursor-pointer"
+                >
+                  {lang === 'lo' ? 'ຍົກເລີກ' : 'Cancel'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmBatchReject}
+                  className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95"
+                >
+                  <XCircle className="w-4 h-4" />
+                  <span>
+                    {bulkActionTarget === 'all'
+                      ? (lang === 'lo' ? `ຢືນຢັນປະຕິເສດທັງໝົດ (${targetBulkRefunds.length})` : `Confirm Reject All (${targetBulkRefunds.length})`)
+                      : (lang === 'lo' ? `ຢືນຢັນປະຕິເສດທີ່ເລືອກ (${targetBulkRefunds.length})` : `Confirm Reject Selected (${targetBulkRefunds.length})`)}
+                  </span>
                 </button>
               </div>
             </motion.div>

@@ -41,6 +41,8 @@ import {
   ShieldAlert,
   User,
   Mail,
+  Phone,
+  Building2,
   ShieldCheck,
   Image as ImageIcon,
   Copy,
@@ -56,7 +58,6 @@ import { AdaptiveImage } from '../components/AdaptiveImage';
 
 import DotsLoader from '../components/DotsLoader';
 import { safeStorage } from '../lib/storage';
-import { getReviewsForEvent, getAverageRatingForEvent, saveReview } from '../data/reviews';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import SEO from '../components/SEO';
@@ -124,6 +125,7 @@ const translations = {
     verifiedOrganizer: 'Verified Partner',
     contactOrganizer: 'Contact Organizer',
     aboutOrganizer: 'About the Host',
+    organizerEmail: 'Organizer Email',
     reportEvent: 'Report Event',
     reportTitle: 'Report Event Issues',
     reportReason: 'Reason for reporting',
@@ -189,6 +191,7 @@ const translations = {
     verifiedOrganizer: 'ພັນທະມິດທີ່ໄດ້ຮັບການຢືນຢັນ',
     contactOrganizer: 'ຕິດຕໍ່ຜູ້ຈັດງານ',
     aboutOrganizer: 'ກ່ຽວກັບຜູ້ຈັດງານ',
+    organizerEmail: 'ອີເມວຜູ້ຈັດງານ',
   }
 };
 
@@ -653,7 +656,13 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
     setTouchEndX(null);
   };
   const [shareSuccess, setShareSuccess] = useState(false);
-  const [showOrganizerDetails, setShowOrganizerDetails] = useState(false);
+  const [showOrganizerDetails, setShowOrganizerDetails] = useState<boolean>(() => Boolean(previewEventData));
+
+  useEffect(() => {
+    if (previewEventData) {
+      setShowOrganizerDetails(true);
+    }
+  }, [previewEventData]);
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
   const isPast = useMemo(() => {
@@ -719,217 +728,6 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
       setIsSubmittingContact(false);
     }
   };
-
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [avgRating, setAvgRating] = useState<number>(0);
-  const [hasPurchasedTicket, setHasPurchasedTicket] = useState(false);
-  const [reviewFilter, setReviewFilter] = useState<number | 'all'>('all');
-
-  const filteredReviews = useMemo(() => {
-    if (reviewFilter === 'all') return reviews;
-    return reviews.filter(r => Math.floor(r.rating) === reviewFilter);
-  }, [reviews, reviewFilter]);
-
-  const [mobileActiveTab, setMobileActiveTab] = useState<'details' | 'reviews'>(() => {
-    return searchParams.get('tab') === 'reviews' ? 'reviews' : 'details';
-  });
-
-  useEffect(() => {
-    if (searchParams.get('tab') === 'reviews') {
-      setMobileActiveTab('reviews');
-      const timer = setTimeout(() => {
-        const element = document.getElementById('reviews-section-desktop') || document.getElementById('reviews-section-mobile');
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 400);
-      return () => clearTimeout(timer);
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (!id) {
-      setHasPurchasedTicket(false);
-      return;
-    }
-
-    const checkPurchase = async () => {
-      const ids = new Set<string>();
-      
-      // Default/mock upcoming and past events that the user is considered to have bought tickets for
-      ids.add('mock_elig');
-      ids.add('mock_dis');
-      ids.add('music_fest_25');
-      ids.add('cooking_class_past');
-      
-      // Add default past events
-      events.slice(0, 3).forEach(e => ids.add(e.id));
-      
-      // Add any from pasopkan_past_events in localStorage
-      try {
-        const past = localStorage.getItem('pasopkan_past_events');
-        if (past) {
-          const parsed = JSON.parse(past);
-          if (Array.isArray(parsed)) {
-            parsed.forEach((e: any) => {
-              if (e && e.id) ids.add(e.id);
-            });
-          }
-        }
-      } catch (e) {}
-
-      // Add any explicitly purchased
-      try {
-        const purchased = localStorage.getItem('pasopkan_purchased_event_ids');
-        if (purchased) {
-          const parsed = JSON.parse(purchased);
-          if (Array.isArray(parsed)) {
-            parsed.forEach((purchId: string) => ids.add(purchId));
-          }
-        }
-      } catch (e) {}
-
-      if (ids.has(id)) {
-        setHasPurchasedTicket(true);
-        return;
-      }
-
-      // Check local purchased tickets
-      const purchasedIdsStr = localStorage.getItem('pasopkan_purchased_event_ids');
-      if (purchasedIdsStr) {
-        try {
-          const purchasedIds = JSON.parse(purchasedIdsStr);
-          if (purchasedIds.includes(id)) {
-            setHasPurchasedTicket(true);
-            return;
-          }
-        } catch (e) {}
-      }
-
-      setHasPurchasedTicket(false);
-    };
-
-    checkPurchase();
-  }, [id, isAuthenticated, user]);
-
-  // Reviews Submission Form States
-  const [userRating, setUserRating] = useState(5);
-  const [hoverRating, setHoverRating] = useState<number | null>(null);
-  const [userComment, setUserComment] = useState('');
-  const [isAnonymous, setIsAnonymous] = useState(false);
-  
-  const getAccountUserName = () => {
-    try {
-      const saved = localStorage.getItem('pasopkan_user_profile');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.firstName || parsed.lastName) {
-          return `${parsed.firstName || ''} ${parsed.lastName || ''}`.trim();
-        }
-      }
-    } catch (e) {}
-    if (user?.displayName) return user.displayName;
-    return 'Sirithida Souksavat';
-  };
-
-  const [commentStatus, setCommentStatus] = useState<{
-    type: 'idle' | 'submitting' | 'success' | 'error';
-    message: string;
-  }>({ type: 'idle', message: '' });
-
-  const handleSubmitComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!id) return;
-    
-    if (!userComment.trim()) {
-      setCommentStatus({
-        type: 'error',
-        message: translations[lang].commentError
-      });
-      return;
-    }
-
-    const activeUser = user;
-    if (!activeUser) {
-      setCommentStatus({
-        type: 'error',
-        message: lang === 'en' ? 'You must be logged in to comment.' : 'ທ່ານຕ້ອງເຂົ້າສູ່ລະບົບກ່ອນເພື່ອອອກຄວາມຄິດເຫັນ.'
-      });
-      return;
-    }
-
-    setCommentStatus({ type: 'submitting', message: '' });
-
-    const anonymousName = lang === 'en' ? 'Anonymous User' : 'ຜູ້ໃຊ້ບໍ່ປະສົງອອກຊື່';
-    const reviewData = {
-      eventId: id,
-      userId: activeUser.id,
-      rating: userRating,
-      comment: userComment.trim(),
-      userName: isAnonymous ? anonymousName : (getAccountUserName() || anonymousName),
-      userRealName: getAccountUserName(),
-      date: new Date().toISOString().slice(0, 10)
-    };
-
-    // Mock / Local fallback mode
-      const mockId = `mock_rev_${Math.random().toString(36).substring(2, 11)}`;
-      saveReview({
-        id: mockId,
-        ...reviewData
-      });
-      setUserComment('');
-      setUserRating(5);
-      setCommentStatus({
-        type: 'success',
-        message: translations[lang].commentSuccess
-      });
-      setTimeout(() => {
-        setCommentStatus(prev => prev.type === 'success' ? { type: 'idle', message: '' } : prev);
-      }, 5000);
-  };
-  useEffect(() => {
-    if (!id) return;
-
-    const fetchReviews = async () => {
-      try {
-        const { data, error } = await supabase.from('reviews').select('*').eq('event_id', id).order('created_at', { ascending: false });
-        if (data && !error) {
-          const supabaseReviews = data.map((r: any) => ({
-            id: r.id,
-            eventId: r.event_id,
-            userId: r.user_id,
-            userName: r.user_name,
-            rating: r.rating,
-            comment: r.comment,
-            createdAt: r.created_at
-          }));
-          const localReviews = getReviewsForEvent(id).filter(mock => !supabaseReviews.some(fire => fire.eventId === mock.eventId && (fire.comment === mock.comment || fire.id === mock.id)));
-          const combined = [...supabaseReviews, ...localReviews];
-          
-          const sum = combined.reduce((acc, curr) => acc + curr.rating, 0);
-          const average = combined.length > 0 ? Math.round((sum / combined.length) * 10) / 10 : 0;
-          
-          setReviews(combined);
-          setAvgRating(average);
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    
-    fetchReviews();
-    
-    const channel = supabase
-      .channel('public:reviews')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews', filter: `event_id=eq.${id}` }, payload => {
-        fetchReviews();
-      })
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [id]);
 
   const galleryImages = event ? getGalleryImages(event) : [];
 
@@ -1660,7 +1458,7 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
                  </div>
                ) : (
                  /* Title with NO background image - should be black / text-adv-slate */
-                 <div className={`p-6 border-b border-gray-150/60 bg-gray-50/50 ${event.allowReviews !== false && mobileActiveTab === 'reviews' ? 'hidden lg:block' : 'block'}`}>
+                 <div className="p-6 border-b border-gray-150/60 bg-gray-50/50 block">
                     <h1 className="text-xl sm:text-3xl font-black tracking-tight leading-tight mb-4 text-adv-slate">
                       {event.title}
                     </h1>
@@ -1829,14 +1627,16 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
                       <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
                         {t.organizerTitle}
                       </span>
-                      <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-emerald-50 text-[8px] font-extrabold text-emerald-600 border border-emerald-100/30">
-                        <ShieldCheck className="w-2.5 h-2.5 shrink-0" />
-                        {lang === 'en' ? 'VERIFIED' : 'ຢືນຢັນແລ້ວ'}
-                      </span>
                     </div>
                     <h3 className="font-bold text-adv-slate text-sm group-hover/organizer:text-adv-orange transition-colors">
                       {event.organizer || (lang === 'en' ? 'Pasopkan Partner' : 'ພັນທະມິດ Pasopkan')}
                     </h3>
+                    {(event.organizerEmail || (event.organizerContact && event.organizerContact.includes('@'))) && (
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium mt-0.5">
+                        <Mail className="w-3.5 h-3.5 text-adv-orange shrink-0" />
+                        <span className="truncate max-w-[200px]">{event.organizerEmail || event.organizerContact}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1850,17 +1650,64 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
               </div>
 
               {showOrganizerDetails && (
-                <div className="mt-4 pt-3.5 border-t border-gray-100 animate-fadeIn">
+                <div className="mt-4 pt-3.5 border-t border-gray-100 animate-fadeIn space-y-3">
                   {/* Organizer Description / Bio */}
-                  <p className="text-xs text-gray-500 leading-relaxed font-medium">
-                    {event.organizerInfo || (
-                      lang === 'en' 
-                        ? `${event.organizer || 'Pasopkan Partner'} is a verified premium organizer on Pasopkan, committed to curating highly trusted, engaging, and unforgettable cultural, outdoor, or social events across Laos.`
-                        : `${event.organizer || 'ພັນທະມິດ Pasopkan'} ແມ່ນຜູ້ຈັດງານລະດັບພຣີມ່ຽມທີ່ໄດ້ຮັບການຢືນຢັນໃນ Pasopkan, ມຸ່ງໝັ້ນທີ່ຈະສ້າງສັນ ແລະ ນຳສະເໜີກິດຈະກຳວັດທະນະທຳ, ການຜະຈົນໄພ ແລະ ງານສັງຄົມ ທີ່ປອດໄພ ແລະ ໜ້າຈົດຈຳທີ່ສຸດໃນລາວ.`
-                    )}
-                  </p>
+                  <div>
+                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-1.5 flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-adv-orange" />
+                      <span>{t.aboutOrganizer || (lang === 'en' ? 'About Organizer / Bio' : 'ກ່ຽວກັບຜູ້ຈັດງານ')}</span>
+                    </div>
+                    <p className="text-xs text-gray-600 leading-relaxed font-medium bg-gray-50/80 rounded-xl p-3.5 border border-gray-100 whitespace-pre-line">
+                      {event.organizerInfo || event.organizerBio || (
+                        lang === 'en' 
+                          ? `${event.organizer || 'Pasopkan Partner'} is a verified premium organizer on Pasopkan, committed to curating highly trusted, engaging, and unforgettable cultural, outdoor, or social events across Laos.`
+                          : `${event.organizer || 'ພັນທະມິດ Pasopkan'} ແມ່ນຜູ້ຈັດງານລະດັບພຣີມ່ຽມທີ່ໄດ້ຮັບການຢືນຢັນໃນ Pasopkan, ມຸ່ງໝັ້ນທີ່ຈະສ້າງສັນ ແລະ ນຳສະເໜີກິດຈະກຳວັດທະນະທຳ, ການຜະຈົນໄພ ແລະ ງານສັງຄົມ ທີ່ປອດໄພ ແລະ ໜ້າຈົດຈຳທີ່ສຸດໃນລາວ.`
+                      )}
+                    </p>
+                  </div>
 
-                  {/* Contact Channels & Interactive Send Message Form */}
+                  {/* Organizer Contact Info (Email & Phone) */}
+                  <div className="space-y-2 pt-2 border-t border-gray-100">
+                    {(event.organizerEmail || (event.organizerContact && event.organizerContact.includes('@'))) && (
+                      <div className="flex items-center gap-2.5 p-2.5 bg-gray-50 rounded-xl border border-gray-100 text-xs">
+                        <div className="w-7 h-7 rounded-lg bg-orange-50 text-adv-orange flex items-center justify-center shrink-0 border border-orange-100">
+                          <Mail className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                            {t.organizerEmail || (lang === 'en' ? 'Organizer Email' : 'ອີເມວຜູ້ຈັດງານ')}
+                          </span>
+                          <a 
+                            href={`mailto:${event.organizerEmail || event.organizerContact}`} 
+                            className="text-adv-slate hover:text-adv-orange font-bold truncate block transition-colors underline underline-offset-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {event.organizerEmail || event.organizerContact}
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
+                    {(event.organizerPhone || (event.organizerContact && !event.organizerContact.includes('@'))) && (
+                      <div className="flex items-center gap-2.5 p-2.5 bg-gray-50 rounded-xl border border-gray-100 text-xs">
+                        <div className="w-7 h-7 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center shrink-0 border border-gray-200">
+                          <Phone className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                            {lang === 'en' ? 'Contact Phone' : 'ເບີໂທຕິດຕໍ່'}
+                          </span>
+                          <a 
+                            href={`tel:${event.organizerPhone || event.organizerContact}`} 
+                            className="text-adv-slate hover:text-adv-orange font-bold truncate block transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {event.organizerPhone || event.organizerContact}
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -1892,8 +1739,8 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
                 </div>
                 <div className="pt-3 border-t border-gray-100 text-[11px] text-gray-400 font-semibold">
                   {lang === 'en'
-                    ? 'You can still view activity details, location map, organizer information, and ratings below.'
-                    : 'ທ່ານຍັງສາມາດເບິ່ງລາຍລະອຽດ, ແຜນທີ່, ຂໍ້ມູນຜູ້ຈັດງານ ແລະ ລີວິວໄດ້ຢູ່ລຸ່ມນີ້.'}
+                    ? 'You can still view activity details, location map, and organizer information below.'
+                    : 'ທ່ານຍັງສາມາດເບິ່ງລາຍລະອຽດ, ແຜນທີ່ ແລະ ຂໍ້ມູນຜູ້ຈັດງານໄດ້ຢູ່ລຸ່ມນີ້.'}
                 </div>
               </div>
             ) : (
@@ -2300,6 +2147,12 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
                   <h3 className="font-bold text-adv-slate text-sm">
                     {event.organizer || (lang === 'en' ? 'Pasopkan Partner' : 'ພັນທະມິດ Pasopkan')}
                   </h3>
+                  {(event.organizerEmail || (event.organizerContact && event.organizerContact.includes('@'))) && (
+                    <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium mt-0.5">
+                      <Mail className="w-3.5 h-3.5 text-adv-orange shrink-0" />
+                      <span className="truncate max-w-[180px]">{event.organizerEmail || event.organizerContact}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -2313,17 +2166,64 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
             </div>
 
             {showOrganizerDetails && (
-              <div className="mt-4 pt-3.5 border-t border-gray-100 animate-fadeIn">
+              <div className="mt-4 pt-3.5 border-t border-gray-100 animate-fadeIn space-y-3">
                 {/* Organizer Description / Bio */}
-                <p className="text-xs text-gray-500 leading-relaxed font-medium">
-                  {event.organizerInfo || (
-                    lang === 'en' 
-                      ? `${event.organizer || 'Pasopkan Partner'} is a verified premium organizer on Pasopkan, committed to curating highly trusted, engaging, and unforgettable cultural, outdoor, or social events across Laos.`
-                      : `${event.organizer || 'ພັນທະມິດ Pasopkan'} ແມ່ນຜູ້ຈັດງານລະດັບພຣີມ່ຽມທີ່ໄດ້ຮັບການຢືນຢັນໃນ Pasopkan, ມຸ່ງໝັ້ນທີ່ຈະສ້າງສັນ ແລະ ນຳສະເໜີກິດຈະກຳວັດທະນະທຳ, ການຜະຈົນໄພ ແລະ ງານສັງຄົມ ທີ່ປອດໄພ ແລະ ໜ້າຈົດຈຳທີ່ສຸດໃນລາວ.`
-                  )}
-                </p>
+                <div>
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-1.5 flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-adv-orange" />
+                    <span>{t.aboutOrganizer || (lang === 'en' ? 'About Organizer / Bio' : 'ກ່ຽວກັບຜູ້ຈັດງານ')}</span>
+                  </div>
+                  <p className="text-xs text-gray-600 leading-relaxed font-medium bg-gray-50/80 rounded-xl p-3.5 border border-gray-100 whitespace-pre-line">
+                    {event.organizerInfo || event.organizerBio || (
+                      lang === 'en' 
+                        ? `${event.organizer || 'Pasopkan Partner'} is a verified premium organizer on Pasopkan, committed to curating highly trusted, engaging, and unforgettable cultural, outdoor, or social events across Laos.`
+                        : `${event.organizer || 'ພັນທະມິດ Pasopkan'} ແມ່ນຜູ້ຈັດງານລະດັບພຣີມ່ຽມທີ່ໄດ້ຮັບການຢືນຢັນໃນ Pasopkan, ມຸ່ງໝັ້ນທີ່ຈະສ້າງສັນ ແລະ ນຳສະເໜີກິດຈະກຳວັດທະນະທຳ, ການຜະຈົນໄພ ແລະ ງານສັງຄົມ ທີ່ປອດໄພ ແລະ ໜ້າຈົດຈຳທີ່ສຸດໃນລາວ.`
+                    )}
+                  </p>
+                </div>
 
-                {/* Contact Channels & Interactive Send Message Form */}
+                {/* Organizer Contact Info (Email & Phone) */}
+                <div className="space-y-2 pt-2 border-t border-gray-100">
+                  {(event.organizerEmail || (event.organizerContact && event.organizerContact.includes('@'))) && (
+                    <div className="flex items-center gap-2.5 p-2.5 bg-gray-50 rounded-xl border border-gray-100 text-xs">
+                      <div className="w-7 h-7 rounded-lg bg-orange-50 text-adv-orange flex items-center justify-center shrink-0 border border-orange-100">
+                        <Mail className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                          {t.organizerEmail || (lang === 'en' ? 'Organizer Email' : 'ອີເມວຜູ້ຈັດງານ')}
+                        </span>
+                        <a 
+                          href={`mailto:${event.organizerEmail || event.organizerContact}`} 
+                          className="text-adv-slate hover:text-adv-orange font-bold truncate block transition-colors underline underline-offset-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {event.organizerEmail || event.organizerContact}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {(event.organizerPhone || (event.organizerContact && !event.organizerContact.includes('@'))) && (
+                    <div className="flex items-center gap-2.5 p-2.5 bg-gray-50 rounded-xl border border-gray-100 text-xs">
+                      <div className="w-7 h-7 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center shrink-0 border border-gray-200">
+                        <Phone className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                          {lang === 'en' ? 'Contact Phone' : 'ເບີໂທຕິດຕໍ່'}
+                        </span>
+                        <a 
+                          href={`tel:${event.organizerPhone || event.organizerContact}`} 
+                          className="text-adv-slate hover:text-adv-orange font-bold truncate block transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {event.organizerPhone || event.organizerContact}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

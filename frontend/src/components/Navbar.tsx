@@ -59,8 +59,11 @@ const MOCK_NOTIFICATIONS = [
   {
     id: 1,
     title: 'Upcoming Adventure!',
+    titleLo: 'ການຜະຈົນໄພໃກ້ເຂົ້າມາແລ້ວ!',
     message: 'Your Nam Ha Trekking starts in 48 hours. Don\'t forget your water bottle!',
+    messageLo: 'ການຍ່າງປ່າ ນ້ຳຮາ ຈະເລີ່ມຂຶ້ນໃນອີກ 48 ຊົ່ວໂມງ. ຢ່າລືມກະຕຸກນ້ຳຂອງທ່ານ!',
     time: '2 hours ago',
+    timeLo: '2 ຊົ່ວໂມງກ່ອນ',
     type: 'upcomingEvent',
     icon: Calendar,
     isUnread: true
@@ -68,12 +71,63 @@ const MOCK_NOTIFICATIONS = [
   {
     id: 2,
     title: 'New Policy Updated',
+    titleLo: 'ອັບເດດນະໂຍບາຍໃໝ່',
     message: 'We have updated our refund policy for all workshops. Please review it.',
+    messageLo: 'ພວກເຮົາໄດ້ອັບເດດນະໂຍບາຍການຄືນເງິນສຳລັບທຸກເວີກຊັອບ. ກະລຸນາກວດສອບ.',
     time: '5 hours ago',
+    timeLo: '5 ຊົ່ວໂມງກ່ອນ',
     type: 'noted',
     icon: Info,
     isUnread: true,
     image: 'https://images.unsplash.com/photo-1544377193-33dcf4d68fb5?q=80&w=2574&auto=format&fit=crop'
+  },
+  {
+    id: 3,
+    title: 'Ticket Confirmed',
+    titleLo: 'ຢືນຢັນປີ້ສຳເລັດແລ້ວ',
+    message: 'Booking #PK-8921 for Vang Vieng Music Festival has been confirmed.',
+    messageLo: 'ການຈອງ #PK-8921 ສຳລັບ ບຸນດົນຕີ ວັງວຽງ ໄດ້ຮັບການຢືນຢັນແລ້ວ.',
+    time: '1 day ago',
+    timeLo: '1 ມື້ກ່ອນ',
+    type: 'ticket',
+    icon: Ticket,
+    isUnread: true
+  },
+  {
+    id: 4,
+    title: 'Special Flash Sale',
+    titleLo: 'ໂປຣໂມຊັ່ນພິເສດ Flash Sale',
+    message: 'Get 20% discount on all cultural tours in Luang Prabang this weekend.',
+    messageLo: 'ຮັບສ່ວນຫຼຸດ 20% ສຳລັບການທ່ອງທ່ຽວວັດທະນະທຳທັງໝົດໃນ ຫຼວງພະບາງ ທ້າຍອາທິດນີ້.',
+    time: '2 days ago',
+    timeLo: '2 ມື້ກ່ອນ',
+    type: 'promo',
+    icon: Star,
+    isUnread: false
+  },
+  {
+    id: 5,
+    title: 'Organizer Verification',
+    titleLo: 'ການກວດສອບຜູ້ຈັດງານ',
+    message: 'Your organizer verification documents have been successfully approved.',
+    messageLo: 'ເອກະສານຢືນຢັນຕົວຕົນຜູ້ຈັດງານຂອງທ່ານໄດ້ຮັບການອະນຸມັດຮຽບຮ້ອຍແລ້ວ.',
+    time: '3 days ago',
+    timeLo: '3 ມື້ກ່ອນ',
+    type: 'verified',
+    icon: ShieldCheck,
+    isUnread: false
+  },
+  {
+    id: 6,
+    title: 'System Maintenance',
+    titleLo: 'ແຈ້ງປັບປຸງລະບົບ',
+    message: 'Scheduled platform maintenance on Sunday at 02:00 AM ICT.',
+    messageLo: 'ການບຳລຸງຮັກສາລະບົບຕາມກຳນົດເວລາໃນວັນອາທິດ ເວລາ 02:00 ໂມງເຊົ້າ.',
+    time: '5 days ago',
+    timeLo: '5 ມື້ກ່ອນ',
+    type: 'system',
+    icon: AlertCircle,
+    isUnread: false
   }
 ];
 
@@ -239,10 +293,22 @@ export default function Navbar() {
                         )}
                       </div>
 
-                      <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
+                      <div 
+                        className={`overflow-y-auto overscroll-contain divide-y divide-gray-50 [scrollbar-width:thin] [scrollbar-color:#CBD5E1_transparent] ${
+                          notifications.length > 4 ? 'max-h-[295px]' : 'max-h-none'
+                        }`}
+                      >
                         {notifications.length === 0 ? (
-                          <div className="py-8 text-center text-xs text-gray-400 font-medium">
-                            {t.noNotifications}
+                          <div className="py-8 px-4 flex flex-col items-center justify-center text-center">
+                            <div className="w-11 h-11 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center text-adv-orange mb-2.5 shadow-sm">
+                              <Bell className="w-5 h-5 text-adv-orange" />
+                            </div>
+                            <p className="text-xs font-bold text-adv-slate mb-0.5">
+                              {lang === 'lo' ? 'ຍັງບໍ່ມີການແຈ້ງເຕືອນໃໝ່' : 'No new notifications'}
+                            </p>
+                            <p className="text-[11px] text-gray-400">
+                              {t.noNotifications}
+                            </p>
                           </div>
                         ) : (
                           notifications.map((notif) => {
@@ -251,7 +317,7 @@ export default function Navbar() {
                               <div
                                 key={notif.id}
                                 onClick={() => handleNotifClick(notif)}
-                                className={`p-3.5 hover:bg-gray-50 cursor-pointer transition-colors flex items-start gap-3 ${
+                                className={`p-3 hover:bg-gray-50 cursor-pointer transition-colors flex items-start gap-3 ${
                                   notif.isUnread ? 'bg-orange-50/30' : ''
                                 }`}
                               >
@@ -261,33 +327,23 @@ export default function Navbar() {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center justify-between gap-1">
                                     <p className="text-xs font-bold text-adv-slate truncate">
-                                      {notif.title}
+                                      {lang === 'lo' && notif.titleLo ? notif.titleLo : notif.title}
                                     </p>
                                     {notif.isUnread && (
                                       <span className="w-1.5 h-1.5 rounded-full bg-adv-orange shrink-0" />
                                     )}
                                   </div>
                                   <p className="text-[11px] text-gray-500 line-clamp-2 mt-0.5 leading-relaxed">
-                                    {notif.message}
+                                    {lang === 'lo' && notif.messageLo ? notif.messageLo : notif.message}
                                   </p>
                                   <span className="text-[10px] text-gray-400 font-medium mt-1 block">
-                                    {notif.time}
+                                    {lang === 'lo' && notif.timeLo ? notif.timeLo : notif.time}
                                   </span>
                                 </div>
                               </div>
                             );
                           })
                         )}
-                      </div>
-
-                      <div className="pt-2 px-3 border-t border-gray-100 mt-1">
-                        <Link
-                          to="/notifications"
-                          onClick={() => setIsNotificationsOpen(false)}
-                          className="block text-center py-2 text-xs font-bold text-adv-slate hover:text-adv-orange transition-colors"
-                        >
-                          {lang === 'lo' ? 'ຈັດການການແຈ້ງເຕືອນ' : 'Manage Preferences'}
-                        </Link>
                       </div>
                     </motion.div>
                   )}

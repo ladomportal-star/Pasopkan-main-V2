@@ -75,6 +75,9 @@ export interface LaoEvent {
   endTime?: string;
   organizer?: string;
   organizerInfo?: string;
+  organizerBio?: string;
+  organizerEmail?: string;
+  organizerPhone?: string;
   organizerContact?: string;
   organizerLogo?: string;
   showRemainingTickets?: boolean;

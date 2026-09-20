@@ -20,8 +20,7 @@ import {
   Flame,
   Eye,
   TrendingUp,
-  Sparkles,
-  Bell
+  Sparkles
 } from 'lucide-react';
 import { events, LaoEvent, getEventStatus } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
@@ -609,17 +608,6 @@ export default function Home() {
               />
             </AnimatePresence>
           </div>
-
-          {/* Notification Button on Home Hero */}
-          <Link
-            to="/notifications"
-            className="absolute top-3 sm:top-5 right-3 sm:right-5 z-20 flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/35 hover:bg-black/55 text-white backdrop-blur-md border border-white/20 transition-all duration-300 shadow-md group cursor-pointer active:scale-95"
-            title={t.notifications}
-            aria-label={t.notifications}
-          >
-            <Bell className="w-5 h-5 text-white group-hover:text-adv-orange transition-colors" />
-            <span className="sr-only">{t.notifications}</span>
-          </Link>
 
           {/* Carousel Pagination Dots inside image */}
           <div 

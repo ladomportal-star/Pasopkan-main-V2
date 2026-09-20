@@ -65,3 +65,15 @@ export interface EventReview {
   comment: string;
   date: string;
 }
+
+export interface AppNotification {
+  id: string | number;
+  title: string;
+  titleLo?: string;
+  message: string;
+  messageLo?: string;
+  time: string;
+  timeLo?: string;
+  type?: 'upcomingEvent' | 'noted' | 'ticket' | 'promo' | 'verified' | 'system' | string;
+  isUnread: boolean;
+}

@@ -7,20 +7,16 @@ import { useLanguage } from '../context/LanguageContext';
 
 const translations = {
   en: {
-    difficulty: 'Energy Rating',
     capacity: 'People Joined',
     book: 'Book It',
     starting: 'Starting from',
-    reviewed: 'reviews',
     free: 'Free',
     pastEvent: 'Past Event',
   },
   lo: {
-    difficulty: 'ລະດັບພະລັງງານ',
     capacity: 'ຜູ້ເຂົ້າຮ່ວມແລ້ວ',
     book: 'ຈອງດຽວນີ້',
     starting: 'ລາຄາເລີ່ມຕົ້ນ',
-    reviewed: 'ລີວິວ',
     free: 'ຟຣີ',
     pastEvent: 'ຜ່ານມາ',
   }

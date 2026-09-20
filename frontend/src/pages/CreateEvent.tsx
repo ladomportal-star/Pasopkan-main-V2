@@ -85,6 +85,12 @@ const translations = {
     festival: 'Festivals',
     voucher: 'Voucher and Booking',
     eventInfo: 'Event Information',
+    sampleTitle: 'Template: Event Details',
+    sampleDesc: 'What the event is about, highlights, and reasons not to miss it',
+    sampleActivity: 'Activities: ......',
+    sampleLocationTime: 'Location & Time: ......',
+    sampleRequirements: 'What to bring: .....',
+    sampleProhibitions: 'Restrictions: .......',
     intro: 'Event Introduction:',
     introPlaceholder: '[Brief summary of the event: Main content, highlights, and reasons why attendees should not miss it]',
     details: 'Event Details:',
@@ -108,6 +114,8 @@ const translations = {
     notification1: 'Please do not display contact information of the Organizer (eg: Phone number/ Email/ Website/ Facebook/ Instagram…) on the banner and in the content.',
     notification2: 'In case the Organizer creates or updates the event not in accordance with the above provisions, Pasopkan has the right to refuse to approve the event.',
     notification3: 'Pasopkan will continuously check the information of events being displayed on the platform, if it detects that there is an error related to the image / post content, Pasopkan has the right to remove or refuse to provide the service.',
+    notification4: 'If you are organizing a special event, big-scale event, or other unique formats, please direct message our support team.',
+    directMessageSupport: 'Direct Message Support',
     ok: 'OK',
     couponsDiscounts: 'Coupons & Discounts',
     offerDiscounts: 'Offer special discounts to your attendees.',
@@ -344,6 +352,12 @@ const translations = {
     festival: 'ເທດສະການ',
     voucher: 'Voucher ແລະ ການຈອງ',
     eventInfo: 'ຂໍ້ມູນ event',
+    sampleTitle: 'ແບບຢ່າງ: ລາຍລະອຽດກຽວກັບງານ',
+    sampleDesc: 'ເນື້ອຫາກກ່ຽວກັບຍັງ, ມີຈຸດເດັ່ນຍັງ ແລະ ເຫດຜົນທີ່ບໍ່ຄວນພາດ',
+    sampleActivity: 'ກິດຈະກຳ:......',
+    sampleLocationTime: 'ສະຖານທີ່ ເວລາ:......',
+    sampleRequirements: 'ສິ່ງຈຳເປັນ:.....',
+    sampleProhibitions: 'ຂໍ້ຫ້າມ:.......',
     intro: 'ແນະນຳ event:',
     introPlaceholder: '[ສະຫຼຸບຫຍໍ້ຂອງ event: ເນື້ອໃນຫຼັກ, ຈຸດເດັ່ນ, ແລະ ເຫດຜົນທີ່ຜູ້ເຂົ້າຮ່ວມບໍ່ຄວນພາດ]',
     details: 'ລາຍລະອຽດ event:',
@@ -367,6 +381,8 @@ const translations = {
     notification1: 'ກະລຸນາ ຢ່າສະແດງຂໍ້ມູນຕິດຕໍ່ຂອງຜູ້ຈັດງານ (ເຊັ່ນ: ເບີໂທລະສັບ/ ອີເມວ/ ເວັບໄຊທ໌/ ເຟສບຸກ/ ອິນສະຕາແກຣມ...) ຢູ່ເທິງປ້າຍໂຄສະນາ ແລະ ໃນເນື້ອຫາ.',
     notification2: 'ໃນກໍລະນີທີ່ຜູ້ຈັດງານ ສ້າງ ຫຼື ອັບເດດ event ບໍ່ສອດຄ່ອງກັບຂໍ້ກຳນົດຂ້າງເທິງ, Pasopkan ມີສິດປະຕິເສດການອະນຸມັດ event.',
     notification3: 'Pasopkan ຈະກວດສອບຂໍ້ມູນຂອງ event ທີ່ສະແດງຢູ່ໃນແພລດຟອມຢ່າງຕໍ່ເນື່ອງ, ຖ້າພົບວ່າມີຂໍ້ຜິດພາດກ່ຽວກັບຮູບພາບ / ເນື້ອຫາທີ່ໂພສ, Pasopkan ມີສິດລຶບ ຫຼື ປະຕິເສດການໃຫ້ບໍລິການ.',
+    notification4: 'ຫາກເປັນກິດຈະກຳພິເສດ, ງານຂະໜາດໃຫຍ່ (Big Scale) ຫຼື ຮູບແບບອື່ນໆ ກະລຸນາສົ່ງຂໍ້ຄວາມຫາທີມງານຊ່ວຍເຫຼືອ (Support) ໂດຍກົງ.',
+    directMessageSupport: 'ສົ່ງຂໍ້ຄວາມຫາ Support',
     ok: 'ຕົກລົງ',
     couponsDiscounts: 'ຄູປອງ & ສ່ວນຫຼຸດ',
     offerDiscounts: 'ສະເໜີສ່ວນຫຼຸດພິເສດໃຫ້ກັບຜູ້ເຂົ້າຮ່ວມຂອງທ່ານ.',
@@ -744,6 +760,15 @@ export default function CreateEvent() {
     const message = title && title.trim()
       ? `Hello Admin, I am an organizer on Pasopkan. I would like to request changes/edit for my event: "${title.trim()}".`
       : `Hello Admin, I am an organizer on Pasopkan. I would like to request assistance with editing/configuring my event.`;
+    return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
+  };
+
+  const getSpecialEventSupportUrl = () => {
+    const rawNumber = supportSettings.whatsappNumber || '8562091951529';
+    const cleanNumber = rawNumber.replace(/[^0-9]/g, '');
+    const message = lang === 'lo'
+      ? `ສະບາຍດີທີມງານ Pasopkan, ຂ້າພະເຈົ້າຕ້ອງການປຶກສາກ່ຽວກັບການຈັດງານພິເສດ / ງານຂະໜາດໃຫຍ່ (Big Scale Event).`
+      : `Hello Pasopkan Support, I am an organizer planning a special event / large-scale event and would like assistance.`;
     return `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
   };
 
@@ -1245,6 +1270,7 @@ export default function CreateEvent() {
       longitude: longitude,
       organizer: organizerName || 'Organizer Name',
       organizerInfo: organizerInfo || '',
+      organizerBio: organizerInfo || '',
       organizerContact: organizerContact || '',
       organizerPhone: organizerPhone || '',
       organizerEmail: organizerEmail || '',
@@ -1269,7 +1295,9 @@ export default function CreateEvent() {
       image: verticalImage || horizontalImage || 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&q=80&w=1000',
       horizontalImage: horizontalImage || verticalImage || 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&q=80&w=1000',
       exampleImages: galleryImages.length > 0 ? galleryImages : [],
-      description: editorContent || (lang === 'lo' ? 'ຍັງບໍ່ມີລາຍລະອຽດກິດຈະກຳ...' : 'No event description provided yet...'),
+      description: (activeStep === 1 && editorRef.current) 
+        ? (editorRef.current.innerHTML || editorContent || '') 
+        : (editorContent || (lang === 'lo' ? 'ຍັງບໍ່ມີລາຍລະອຽດກິດຈະກຳ...' : 'No event description provided yet...')),
       ticketTiers: ticketTiers.filter(t => t.name || t.price).map(tier => ({
         ...tier,
         id: String(tier.id || Math.random()),
@@ -2030,6 +2058,10 @@ export default function CreateEvent() {
   const execCommand = (command: string, value: string | undefined = undefined) => {
     document.execCommand(command, false, value);
     editorRef.current?.focus();
+    if (editorRef.current) {
+      isInternalEditorUpdateRef.current = true;
+      setEditorContent(editorRef.current.innerHTML);
+    }
   };
 
   const handleEditorImageUpload = () => {
@@ -4057,9 +4089,42 @@ export default function CreateEvent() {
                     </div>
                     {/* Basic Formatting */}
                     <div className="h-8 bg-[#EAE8E2] rounded-xl p-0.5 flex items-center gap-0.5 shadow-xs border border-black/5">
-                      <button type="button" onClick={() => execCommand('bold')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-800 hover:text-black flex items-center justify-center font-bold text-xs transition-all cursor-pointer" title="Bold">B</button>
-                      <button type="button" onClick={() => execCommand('italic')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-800 hover:text-black flex items-center justify-center font-serif italic text-xs transition-all cursor-pointer" title="Italic">I</button>
-                      <button type="button" onClick={() => execCommand('underline')} className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-800 hover:text-black flex items-center justify-center font-semibold underline text-xs transition-all cursor-pointer" title="Underline">U</button>
+                      <button 
+                        type="button" 
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => execCommand('bold')} 
+                        className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-800 hover:text-black flex items-center justify-center font-bold text-xs transition-all cursor-pointer" 
+                        title={lang === 'lo' ? 'ໂຕໜາ (Bold)' : 'Bold'}
+                      >
+                        B
+                      </button>
+                      <button 
+                        type="button" 
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => execCommand('italic')} 
+                        className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-800 hover:text-black flex items-center justify-center font-serif italic text-xs transition-all cursor-pointer" 
+                        title={lang === 'lo' ? 'ໂຕອຽງ (Italic)' : 'Italic'}
+                      >
+                        I
+                      </button>
+                      <button 
+                        type="button" 
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => execCommand('underline')} 
+                        className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-800 hover:text-black flex items-center justify-center font-semibold underline text-xs transition-all cursor-pointer" 
+                        title={lang === 'lo' ? 'ຂີດກ້ອງ (Underline)' : 'Underline'}
+                      >
+                        U
+                      </button>
+                      <button 
+                        type="button" 
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => execCommand('strikeThrough')} 
+                        className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-800 hover:text-black flex items-center justify-center font-bold line-through text-xs transition-all cursor-pointer" 
+                        title={lang === 'lo' ? 'ຂີດຂ້າ (Strikethrough)' : 'Strikethrough'}
+                      >
+                        S
+                      </button>
                     </div>
 
                     {/* Lists (Bullet & Number) */}
@@ -4165,20 +4230,12 @@ export default function CreateEvent() {
                       className="min-h-[300px] text-base text-black outline-none rich-text max-w-none prose prose-sm prose-slate"
                       suppressContentEditableWarning
                     >
-                      <p className="font-bold mb-2">{t.intro}</p>
-                      <p className="mb-4 text-gray-400">{t.introPlaceholder}</p>
-                      
-                      <p className="font-bold mb-2">{t.details}</p>
-                      <ul className="list-disc pl-5 mb-4 space-y-1 text-gray-600">
-                        <li><strong>{t.mainProgram}</strong> {t.mainProgramDesc}</li>
-                        <li><strong>{t.guests}</strong> {t.guestsDesc}</li>
-                        <li><strong>{t.specialExperience}</strong> {t.specialExperienceDesc}</li>
-                      </ul>
-
-                      <p className="font-bold mb-2">{t.termsAndConditions}</p>
-                      <p className="mb-2 text-gray-600">{t.tncEvent}</p>
-                      <p className="mb-2 text-gray-600">{t.childTerms}</p>
-                      <p className="text-gray-600">{t.vatTerms}</p>
+                      <p className="font-bold mb-1">{t.sampleTitle}</p>
+                      <p className="mb-2 text-gray-700">{t.sampleDesc}</p>
+                      <p className="text-gray-700 mb-1">- {t.sampleActivity}</p>
+                      <p className="text-gray-700 mb-1">- {t.sampleLocationTime}</p>
+                      <p className="text-gray-700 mb-1">- {t.sampleRequirements}</p>
+                      <p className="text-gray-700">- {t.sampleProhibitions}</p>
                     </div>
 
                                         {/* Real-Time Drop Position Indicator */}
@@ -5937,23 +5994,43 @@ export default function CreateEvent() {
                     </h3>
                   </div>
                   
-                  <div className="space-y-4 mb-8">
-                    <div className="bg-orange-50 border border-orange-100 p-5 rounded-2xl flex gap-4">
+                  <div className="space-y-4 mb-8 max-h-[60vh] overflow-y-auto pr-1">
+                    <div className="bg-orange-50 border border-orange-100 p-4 sm:p-5 rounded-2xl flex gap-3.5 sm:gap-4">
                       <div className="shrink-0 mt-0.5">
                         <ShieldAlert className="w-5 h-5 text-adv-orange" />
                       </div>
-                      <p className="text-gray-700 text-sm leading-relaxed">
+                      <p className="text-gray-700 text-xs sm:text-sm leading-relaxed">
                         {t.notification2}
                       </p>
                     </div>
 
-                    <div className="bg-orange-50 border border-orange-100 p-5 rounded-2xl flex gap-4">
+                    <div className="bg-orange-50 border border-orange-100 p-4 sm:p-5 rounded-2xl flex gap-3.5 sm:gap-4">
                       <div className="shrink-0 mt-0.5">
                         <AlertCircle className="w-5 h-5 text-adv-orange" />
                       </div>
-                      <p className="text-gray-700 text-sm leading-relaxed">
+                      <p className="text-gray-700 text-xs sm:text-sm leading-relaxed">
                         {t.notification3}
                       </p>
+                    </div>
+
+                    <div className="bg-orange-50/90 border border-orange-200/90 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4">
+                      <div className="flex gap-3.5 sm:gap-4 items-start">
+                        <div className="shrink-0 mt-0.5">
+                          <MessageCircle className="w-5 h-5 text-adv-orange" />
+                        </div>
+                        <p className="text-gray-700 text-xs sm:text-sm leading-relaxed font-medium">
+                          {t.notification4}
+                        </p>
+                      </div>
+                      <a
+                        href={getSpecialEventSupportUrl()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-adv-slate hover:bg-black text-white text-xs font-bold shrink-0 transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap self-start sm:self-auto"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 text-adv-orange" />
+                        <span>{t.directMessageSupport}</span>
+                      </a>
                     </div>
                   </div>
                   
