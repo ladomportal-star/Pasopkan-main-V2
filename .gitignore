@@ -12,3 +12,6 @@ node_modules/
 # Firebase CLI local state
 .firebase/
 firebase-debug.log
+
+# Build output
+dist/

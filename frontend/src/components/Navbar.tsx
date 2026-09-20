@@ -8,6 +8,8 @@ import OtpInput from './OtpInput';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications, timeAgo } from '../context/NotificationsContext';
+import type { AppNotification } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
 
 const translations = {
@@ -55,92 +57,22 @@ const translations = {
   }
 };
 
-const MOCK_NOTIFICATIONS = [
-  {
-    id: 1,
-    title: 'Upcoming Adventure!',
-    titleLo: 'ການຜະຈົນໄພໃກ້ເຂົ້າມາແລ້ວ!',
-    message: 'Your Nam Ha Trekking starts in 48 hours. Don\'t forget your water bottle!',
-    messageLo: 'ການຍ່າງປ່າ ນ້ຳຮາ ຈະເລີ່ມຂຶ້ນໃນອີກ 48 ຊົ່ວໂມງ. ຢ່າລືມກະຕຸກນ້ຳຂອງທ່ານ!',
-    time: '2 hours ago',
-    timeLo: '2 ຊົ່ວໂມງກ່ອນ',
-    type: 'upcomingEvent',
-    icon: Calendar,
-    isUnread: true
-  },
-  {
-    id: 2,
-    title: 'New Policy Updated',
-    titleLo: 'ອັບເດດນະໂຍບາຍໃໝ່',
-    message: 'We have updated our refund policy for all workshops. Please review it.',
-    messageLo: 'ພວກເຮົາໄດ້ອັບເດດນະໂຍບາຍການຄືນເງິນສຳລັບທຸກເວີກຊັອບ. ກະລຸນາກວດສອບ.',
-    time: '5 hours ago',
-    timeLo: '5 ຊົ່ວໂມງກ່ອນ',
-    type: 'noted',
-    icon: Info,
-    isUnread: true,
-    image: 'https://images.unsplash.com/photo-1544377193-33dcf4d68fb5?q=80&w=2574&auto=format&fit=crop'
-  },
-  {
-    id: 3,
-    title: 'Ticket Confirmed',
-    titleLo: 'ຢືນຢັນປີ້ສຳເລັດແລ້ວ',
-    message: 'Booking #PK-8921 for Vang Vieng Music Festival has been confirmed.',
-    messageLo: 'ການຈອງ #PK-8921 ສຳລັບ ບຸນດົນຕີ ວັງວຽງ ໄດ້ຮັບການຢືນຢັນແລ້ວ.',
-    time: '1 day ago',
-    timeLo: '1 ມື້ກ່ອນ',
-    type: 'ticket',
-    icon: Ticket,
-    isUnread: true
-  },
-  {
-    id: 4,
-    title: 'Special Flash Sale',
-    titleLo: 'ໂປຣໂມຊັ່ນພິເສດ Flash Sale',
-    message: 'Get 20% discount on all cultural tours in Luang Prabang this weekend.',
-    messageLo: 'ຮັບສ່ວນຫຼຸດ 20% ສຳລັບການທ່ອງທ່ຽວວັດທະນະທຳທັງໝົດໃນ ຫຼວງພະບາງ ທ້າຍອາທິດນີ້.',
-    time: '2 days ago',
-    timeLo: '2 ມື້ກ່ອນ',
-    type: 'promo',
-    icon: Star,
-    isUnread: false
-  },
-  {
-    id: 5,
-    title: 'Organizer Verification',
-    titleLo: 'ການກວດສອບຜູ້ຈັດງານ',
-    message: 'Your organizer verification documents have been successfully approved.',
-    messageLo: 'ເອກະສານຢືນຢັນຕົວຕົນຜູ້ຈັດງານຂອງທ່ານໄດ້ຮັບການອະນຸມັດຮຽບຮ້ອຍແລ້ວ.',
-    time: '3 days ago',
-    timeLo: '3 ມື້ກ່ອນ',
-    type: 'verified',
-    icon: ShieldCheck,
-    isUnread: false
-  },
-  {
-    id: 6,
-    title: 'System Maintenance',
-    titleLo: 'ແຈ້ງປັບປຸງລະບົບ',
-    message: 'Scheduled platform maintenance on Sunday at 02:00 AM ICT.',
-    messageLo: 'ການບຳລຸງຮັກສາລະບົບຕາມກຳນົດເວລາໃນວັນອາທິດ ເວລາ 02:00 ໂມງເຊົ້າ.',
-    time: '5 days ago',
-    timeLo: '5 ມື້ກ່ອນ',
-    type: 'system',
-    icon: AlertCircle,
-    isUnread: false
-  }
-];
+/** Icon for a notification type (the server sends the type, never a component). */
+const notifIcon = (type?: string) =>
+  ({ upcomingEvent: Calendar, ticket: Ticket, promo: Star, verified: ShieldCheck, system: AlertCircle, noted: Info } as Record<string, typeof Bell>)[
+    type ?? ''
+  ] ?? Bell;
 
 export default function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [selectedNotif, setSelectedNotif] = useState<any | null>(null);
+  const [selectedNotif, setSelectedNotif] = useState<AppNotification | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
   const notificationRef = useRef<HTMLDivElement>(null);
   
-  const hasUnread = notifications.some(n => n.isUnread);
+  const hasUnread = unreadCount > 0;
   const { lang, toggleLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const { isAuthenticated } = useAuth();
@@ -184,12 +116,12 @@ export default function Navbar() {
   }, []);
 
   const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, isUnread: false })));
+    void markAllRead();
   };
 
-  const handleNotifClick = (notif: any) => {
+  const handleNotifClick = (notif: AppNotification) => {
     setSelectedNotif(notif);
-    setNotifications(notifications.map(n => n.id === notif.id ? { ...n, isUnread: false } : n));
+    if (notif.isUnread) void markRead(notif.id);
     setIsNotificationsOpen(false); // Close dropdown when opening detail
   };
 
@@ -312,7 +244,7 @@ export default function Navbar() {
                           </div>
                         ) : (
                           notifications.map((notif) => {
-                            const NotifIcon = notif.icon || Bell;
+                            const NotifIcon = notifIcon(notif.type);
                             return (
                               <div
                                 key={notif.id}
@@ -337,7 +269,7 @@ export default function Navbar() {
                                     {lang === 'lo' && notif.messageLo ? notif.messageLo : notif.message}
                                   </p>
                                   <span className="text-[10px] text-gray-400 font-medium mt-1 block">
-                                    {lang === 'lo' && notif.timeLo ? notif.timeLo : notif.time}
+                                    {timeAgo(notif.createdAt, lang)}
                                   </span>
                                 </div>
                               </div>
@@ -409,7 +341,7 @@ export default function Navbar() {
                   selectedNotif.type === 'upcomingEvent' ? 'bg-blue-50 text-blue-500' :
                   'bg-orange-50 text-adv-orange'
                 }`}>
-                  <selectedNotif.icon className="w-8 h-8" />
+                  {(() => { const SelectedIcon = notifIcon(selectedNotif.type); return <SelectedIcon className="w-8 h-8" />; })()}
                 </div>
                 
                 <div className="space-y-6">
@@ -418,36 +350,16 @@ export default function Navbar() {
                       {selectedNotif.type === 'upcomingEvent' ? t.upcomingEvent : t.noted}
                     </span>
                     <h3 className="text-2xl font-bold text-adv-slate leading-tight font-display">
-                      {selectedNotif.title}
+                      {lang === 'lo' && selectedNotif.titleLo ? selectedNotif.titleLo : selectedNotif.title}
                     </h3>
-                    <p className="text-sm text-gray-400 font-medium mt-2">{selectedNotif.time}</p>
+                    <p className="text-sm text-gray-400 font-medium mt-2">{timeAgo(selectedNotif.createdAt, lang)}</p>
                   </div>
                   
                   <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100">
                     <p className="text-adv-slate leading-relaxed font-medium">
-                      {selectedNotif.message}
+                      {lang === 'lo' && selectedNotif.messageLo ? selectedNotif.messageLo : selectedNotif.message}
                     </p>
                   </div>
-                  
-                  {selectedNotif.image && (
-                    <div 
-                      className="relative group cursor-pointer"
-                      onClick={() => setFullscreenImage(selectedNotif.image)}
-                    >
-                      <div className="w-full h-48 rounded-3xl overflow-hidden border border-gray-100 shadow-sm">
-                        <img 
-                          src={selectedNotif.image} 
-                          alt="Notification attachment" 
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        />
-                        <div className="absolute inset-0 bg-black/5 group-hover:bg-black/0 transition-colors" />
-                      </div>
-                      <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-gray-100 flex items-center gap-2 shadow-sm">
-                        <div className="w-2 h-2 rounded-full bg-red-500" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-adv-slate">PDF Policy</span>
-                      </div>
-                    </div>
-                  )}
                   
                   {selectedNotif.type === 'upcomingEvent' && (
                     <div className="bg-blue-50/50 p-6 rounded-3xl border border-blue-100 flex items-start gap-4">

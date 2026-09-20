@@ -8,7 +8,6 @@ interface NotificationsEmptyStateProps {
   filter?: 'all' | 'unread';
   hasAnyNotifications?: boolean;
   onViewAll?: () => void;
-  onAddSample?: () => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
 }
@@ -17,7 +16,6 @@ export default function NotificationsEmptyState({
   filter = 'all',
   hasAnyNotifications = false,
   onViewAll,
-  onAddSample,
   onRefresh,
   isRefreshing = false
 }: NotificationsEmptyStateProps) {
@@ -30,13 +28,12 @@ export default function NotificationsEmptyState({
       headline: isUnreadFilter ? "You're All Caught Up!" : "No New Notifications",
       subheadline: isUnreadFilter 
         ? "No unread alerts waiting for you. All your updates have been reviewed."
-        : "You don't have any notifications right now. Pull down to check for server updates, or explore upcoming events.",
+        : "You don't have any notifications right now. Pull down to check for new updates, or explore upcoming events.",
       pillReminders: "Event Reminders",
       pillTickets: "Ticket Updates",
       pillDeals: "Special Offers",
       exploreBtn: "Explore Activities",
       viewAllBtn: "View All Notifications",
-      sampleBtn: "Restore Sample Alert",
       refreshBtn: "Check Server Updates",
       allClearBadge: "All Clear",
       pullHint: "Tip: Pull down or drag to refresh list anytime"
@@ -51,7 +48,6 @@ export default function NotificationsEmptyState({
       pillDeals: "ໂປຣໂມຊັ່ນພິເສດ",
       exploreBtn: "ຄົ້ນຫາກິດຈະກຳ",
       viewAllBtn: "ເບິ່ງການແຈ້ງເຕືອນທັງໝົດ",
-      sampleBtn: "ສະແດງຕົວຢ່າງການແຈ້ງເຕືອນ",
       refreshBtn: "ກວດສອບອັບເດດຈາກເຊີບເວີ",
       allClearBadge: "ອັບເດດຄົບແລ້ວ",
       pullHint: "ຄຳແນະນຳ: ດຶງລົງເພື່ອໂຫຼດຂໍ້ມູນໃໝ່ໄດ້ທຸກເວລາ"
@@ -180,16 +176,6 @@ export default function NotificationsEmptyState({
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
             <span>{t.refreshBtn}</span>
-          </button>
-        )}
-
-        {!hasAnyNotifications && onAddSample && !onRefresh && (
-          <button
-            onClick={onAddSample}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-orange-50 hover:bg-orange-100 text-adv-orange text-xs font-bold transition-all active:scale-95 cursor-pointer border border-orange-100"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>{t.sampleBtn}</span>
           </button>
         )}
       </div>

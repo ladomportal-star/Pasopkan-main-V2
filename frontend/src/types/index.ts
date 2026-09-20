@@ -67,13 +67,15 @@ export interface EventReview {
 }
 
 export interface AppNotification {
-  id: string | number;
+  id: string;
   title: string;
   titleLo?: string;
   message: string;
   messageLo?: string;
-  time: string;
-  timeLo?: string;
   type?: 'upcomingEvent' | 'noted' | 'ticket' | 'promo' | 'verified' | 'system' | string;
+  /** Deep-link context, e.g. { eventId, orderId } */
+  data?: Record<string, string>;
   isUnread: boolean;
+  /** ISO timestamp from the server; the "x minutes ago" text is derived from it. */
+  createdAt: string;
 }

@@ -6,6 +6,7 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { AuthProvider } from './context/AuthContext';
+import { NotificationsProvider } from './context/NotificationsContext';
 import Layout from './components/Layout';
 import BottomNav from './components/BottomNav';
 import ScrollToTop from './components/ScrollToTop';
@@ -116,11 +117,13 @@ export default function App() {
       <BrowserRouter>
         <ScrollToTop />
         <AuthProvider>
+          <NotificationsProvider>
           <div className="pb-16 md:pb-0 min-h-screen flex flex-col bg-white text-adv-slate transition-colors duration-300">
             <AnimatedRoutes />
             <BottomNav />
             <OfflineIndicator />
           </div>
+          </NotificationsProvider>
         </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>

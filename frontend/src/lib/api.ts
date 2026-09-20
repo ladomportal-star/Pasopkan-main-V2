@@ -73,6 +73,9 @@ export const api = {
   post: <T>(path: string, body?: unknown, opts?: RequestOptions) =>
     request<T>('POST', path, body, opts),
   put: <T>(path: string, body?: unknown, opts?: RequestOptions) => request<T>('PUT', path, body, opts),
+  patch: <T>(path: string, body?: unknown, opts?: RequestOptions) =>
+    request<T>('PATCH', path, body, opts),
+  delete: <T>(path: string, opts?: RequestOptions) => request<T>('DELETE', path, undefined, opts),
 
   /* ---- domain helpers ---- */
 
@@ -122,10 +125,22 @@ export const api = {
     ),
 
   getNotifications: (opts?: RequestOptions) =>
-    request<{ notifications: import('../types').AppNotification[]; lastFetchedAt?: string }>(
+    request<{ notifications: import('../types').AppNotification[]; unreadCount: number }>(
       'GET',
       '/notifications',
       undefined,
       opts,
     ),
+
+  markNotificationRead: (id: string, opts?: RequestOptions) =>
+    request('PATCH', `/notifications/${encodeURIComponent(id)}/read`, undefined, opts),
+
+  markAllNotificationsRead: (opts?: RequestOptions) =>
+    request('POST', '/notifications/read-all', undefined, opts),
+
+  deleteNotification: (id: string, opts?: RequestOptions) =>
+    request('DELETE', `/notifications/${encodeURIComponent(id)}`, undefined, opts),
+
+  clearNotifications: (opts?: RequestOptions) =>
+    request('DELETE', '/notifications', undefined, opts),
 };

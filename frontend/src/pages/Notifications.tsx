@@ -21,87 +21,7 @@ import { useLanguage } from "../context/LanguageContext";
 import SEO from "../components/SEO";
 import NotificationsEmptyState from "../components/NotificationsEmptyState";
 import PullToRefresh from "../components/PullToRefresh";
-import { safeStorage } from "../lib/storage";
-import { api } from "../lib/api";
-import { AppNotification } from "../types";
-
-const INITIAL_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: 1,
-    title: "Upcoming Adventure!",
-    titleLo: "ການຜະຈົນໄພໃກ້ເຂົ້າມາແລ້ວ!",
-    message:
-      "Your Nam Ha Trekking starts in 48 hours. Don't forget your water bottle!",
-    messageLo:
-      "ການຍ່າງປ່າ ນ້ຳຮາ ຈະເລີ່ມຂຶ້ນໃນອີກ 48 ຊົ່ວໂມງ. ຢ່າລືມກະຕຸກນ້ຳຂອງທ່ານ!",
-    time: "2 hours ago",
-    timeLo: "2 ຊົ່ວໂມງກ່ອນ",
-    type: "upcomingEvent",
-    isUnread: true,
-  },
-  {
-    id: 2,
-    title: "New Policy Updated",
-    titleLo: "ອັບເດດນະໂຍບາຍໃໝ່",
-    message:
-      "We have updated our refund policy for all workshops. Please review it.",
-    messageLo:
-      "ພວກເຮົາໄດ້ອັບເດດນະໂຍບາຍການຄືນເງິນສຳລັບທຸກເວີກຊັອບ. ກະລຸນາກວດສອບ.",
-    time: "5 hours ago",
-    timeLo: "5 ຊົ່ວໂມງກ່ອນ",
-    type: "noted",
-    isUnread: true,
-  },
-  {
-    id: 3,
-    title: "Ticket Confirmed",
-    titleLo: "ຢືນຢັນປີ້ສຳເລັດແລ້ວ",
-    message:
-      "Booking #PK-8921 for Vang Vieng Music Festival has been confirmed.",
-    messageLo: "ການຈອງ #PK-8921 ສຳລັບ ບຸນດົນຕີ ວັງວຽງ ໄດ້ຮັບການຢືນຢັນແລ້ວ.",
-    time: "1 day ago",
-    timeLo: "1 ມື້ກ່ອນ",
-    type: "ticket",
-    isUnread: true,
-  },
-  {
-    id: 4,
-    title: "Special Flash Sale",
-    titleLo: "ໂປຣໂມຊັ່ນພິເສດ Flash Sale",
-    message:
-      "Get 20% discount on all cultural tours in Luang Prabang this weekend.",
-    messageLo:
-      "ຮັບສ່ວນຫຼຸດ 20% ສຳລັບການທ່ອງທ່ຽວວັດທະນະທຳທັງໝົດໃນ ຫຼວງພະບາງ ທ້າຍອາທິດນີ້.",
-    time: "2 days ago",
-    timeLo: "2 ມື້ກ່ອນ",
-    type: "promo",
-    isUnread: false,
-  },
-  {
-    id: 5,
-    title: "Organizer Verification",
-    titleLo: "ການກວດສອບຜູ້ຈັດງານ",
-    message:
-      "Your organizer verification documents have been successfully approved.",
-    messageLo:
-      "ເອກະສານຢືນຢັນຕົວຕົນຜູ້ຈັດງານຂອງທ່ານໄດ້ຮັບການອະນຸມັດຮຽບຮ້ອຍແລ້ວ.",
-    time: "3 days ago",
-    timeLo: "3 ມື້ກ່ອນ",
-    type: "verified",
-    isUnread: false,
-  },
-  {
-    id: 6,
-    title: "System Maintenance",
-    titleLo: "ແຈ້ງປັບປຸງລະບົບ",
-    message: "Scheduled platform maintenance on Sunday at 02:00 AM ICT.",
-    messageLo: "ການບຳລຸງຮັກສາລະບົບຕາມກຳນົດເວລາໃນວັນອາທິດ ເວລາ 02:00 ໂມງເຊົ້າ.",
-    time: "5 days ago",
-    timeLo: "5 ມື້ກ່ອນ",
-    type: "system",
-    isUnread: false,
-  },
-];
+import { useNotifications, timeAgo } from "../context/NotificationsContext";
 
 const translations = {
   en: {
@@ -113,7 +33,6 @@ const translations = {
     allMarkedRead: "All notifications marked as read",
     clearAll: "Clear all",
     clearedAll: "All notifications cleared",
-    sampleRestored: "Sample notifications restored",
     emailNotif: "Email Notifications",
     emailNotifDesc: "Receive updates about your upcoming events.",
     pushNotif: "Push Notifications",
@@ -126,7 +45,7 @@ const translations = {
     refreshBtn: "Refresh",
     refreshing: "Updating...",
     refreshSuccess: "Notifications updated from server",
-    refreshError: "Could not connect to server. Using cached data.",
+    refreshError: "Could not reach the server. Showing your last synced notifications.",
     lastUpdated: "Updated",
   },
   lo: {
@@ -138,7 +57,6 @@ const translations = {
     allMarkedRead: "ໝາຍວ່າອ່ານແລ້ວທັງໝົດຮຽບຮ້ອຍ",
     clearAll: "ລຶບທັງໝົດ",
     clearedAll: "ລຶບການແຈ້ງເຕືອນທັງໝົດແລ້ວ",
-    sampleRestored: "ຟື້ນຟູຕົວຢ່າງການແຈ້ງເຕືອນແລ້ວ",
     emailNotif: "ການແຈ້ງເຕືອນຜ່ານອີເມວ",
     emailNotifDesc: "ຮັບຂໍ້ມູນອັບເດດກ່ຽວກັບກິດຈະກຳທີ່ຈະມາເຖິງຂອງທ່ານ.",
     pushNotif: "ການແຈ້ງເຕືອນໃນມືຖື",
@@ -151,7 +69,7 @@ const translations = {
     refreshBtn: "ໂຫຼດໃໝ່",
     refreshing: "ກຳລັງອັບເດດ...",
     refreshSuccess: "ອັບເດດການແຈ້ງເຕືອນຈາກເຊີບເວີສຳເລັດແລ້ວ",
-    refreshError: "ບໍ່ສາມາດເຊື່ອມຕໍ່ກັບເຊີບເວີໄດ້. ກຳລັງໃຊ້ຂໍ້ມູນໃນເຄື່ອງ.",
+    refreshError: "ບໍ່ສາມາດເຊື່ອມຕໍ່ກັບເຊີບເວີໄດ້. ສະແດງການແຈ້ງເຕືອນທີ່ຊິງຄ໌ຄັ້ງຫຼ້າສຸດ.",
     lastUpdated: "ອັບເດດເມື່ອ",
   },
 };
@@ -202,38 +120,27 @@ export default function Notifications() {
   const { lang } = useLanguage();
   const t = translations[lang];
 
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
-    try {
-      const saved = safeStorage.getItem("pasopkan_user_notifications");
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (e) {
-      console.error("Failed to parse notifications from storage", e);
-    }
-    return INITIAL_NOTIFICATIONS;
-  });
+  const {
+    notifications,
+    unreadCount,
+    loading,
+    refreshing: isRefreshing,
+    lastRefreshedAt: lastRefreshedDate,
+    refresh,
+    markRead,
+    markAllRead,
+    remove,
+    clearAll,
+  } = useNotifications();
 
   const [activeTab, setActiveTab] = useState<"all" | "unread">("all");
   const [showPreferences, setShowPreferences] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(() => {
-    return safeStorage.getItem("pasopkan_notif_last_refresh") || null;
-  });
 
-  const saveNotifications = (newList: AppNotification[]) => {
-    setNotifications(newList);
-    try {
-      safeStorage.setItem(
-        "pasopkan_user_notifications",
-        JSON.stringify(newList),
-      );
-    } catch (e) {
-      console.error("Failed to persist notifications", e);
-    }
-  };
+  const lastRefreshedAt = lastRefreshedDate
+    ? lastRefreshedDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : null;
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -244,35 +151,13 @@ export default function Notifications() {
   };
 
   const fetchNotificationsFromServer = async () => {
-    if (isRefreshing) return;
-    setIsRefreshing(true);
-    try {
-      const res = await api.getNotifications();
-      if (res.ok && res.data?.notifications) {
-        saveNotifications(res.data.notifications);
-        const timeFormatted = new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        setLastRefreshedAt(timeFormatted);
-        safeStorage.setItem("pasopkan_notif_last_refresh", timeFormatted);
-        triggerToast(t.refreshSuccess);
-      } else {
-        triggerToast(t.refreshError);
-      }
-    } catch (err) {
-      console.error("Failed to fetch notifications from server:", err);
-      triggerToast(t.refreshError);
-    } finally {
-      setIsRefreshing(false);
-    }
+    const ok = await refresh();
+    triggerToast(ok ? t.refreshSuccess : t.refreshError);
   };
 
   const handleToggleSetting = () => {
     triggerToast(t.settingsUpdated);
   };
-
-  const unreadCount = notifications.filter((n) => n.isUnread).length;
 
   const filteredNotifications = notifications.filter((n) => {
     if (activeTab === "unread") return n.isUnread;
@@ -280,32 +165,22 @@ export default function Notifications() {
   });
 
   const handleMarkAllRead = () => {
-    const updated = notifications.map((n) => ({ ...n, isUnread: false }));
-    saveNotifications(updated);
+    void markAllRead();
     triggerToast(t.allMarkedRead);
   };
 
   const handleClearAll = () => {
-    saveNotifications([]);
+    void clearAll();
     triggerToast(t.clearedAll);
   };
 
-  const handleItemClick = (id: string | number) => {
-    const updated = notifications.map((n) =>
-      n.id === id ? { ...n, isUnread: false } : n,
-    );
-    saveNotifications(updated);
+  const handleItemClick = (id: string) => {
+    void markRead(id);
   };
 
-  const handleDeleteItem = (e: React.MouseEvent, id: string | number) => {
+  const handleDeleteItem = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    const updated = notifications.filter((n) => n.id !== id);
-    saveNotifications(updated);
-  };
-
-  const handleRestoreSample = () => {
-    saveNotifications(INITIAL_NOTIFICATIONS);
-    triggerToast(t.sampleRestored);
+    void remove(id);
   };
 
   return (
@@ -464,9 +339,8 @@ export default function Notifications() {
                 filter={activeTab}
                 hasAnyNotifications={notifications.length > 0}
                 onViewAll={() => setActiveTab("all")}
-                onAddSample={handleRestoreSample}
                 onRefresh={fetchNotificationsFromServer}
-                isRefreshing={isRefreshing}
+                isRefreshing={isRefreshing || loading}
               />
             ) : (
               <div className="space-y-3">
@@ -482,7 +356,7 @@ export default function Notifications() {
                       ? notif.messageLo
                       : notif.message;
                   const timeText =
-                    lang === "lo" && notif.timeLo ? notif.timeLo : notif.time;
+                    timeAgo(notif.createdAt, lang);
 
                   return (
                     <motion.div
