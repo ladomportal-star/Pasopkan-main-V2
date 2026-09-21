@@ -19,6 +19,6 @@
     },
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts", "../backend/src/types/**/*.d.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"],
   "exclude": ["dist", "node_modules"]
 }

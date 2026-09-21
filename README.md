@@ -26,33 +26,19 @@ commands inside `backend/` or `frontend/`.
 
 ## Quick start (local development)
 
-Open **two terminals**.
-
-### 1. backend (API — http://localhost:3000)
-
 ```bash
-cd backend
-npm install
-cp .env.example .env      # optional: fill in SQL_* / Firebase values
-npm run dev
+npm run install:all       # installs frontend/ and backend/ (each has its own node_modules)
+cp backend/.env.example backend/.env   # fill in DATABASE_URL, SUPABASE_URL, ...
+npm run dev               # web app + API together on http://localhost:3000
 ```
 
-### 2. frontend (web app — http://localhost:5173)
+`npm run dev` runs the Vite dev server from `frontend/` with the backend API
+mounted inside it, so the app and `/api/*` share one origin and port (no proxy,
+no CORS). `npm run dev:server` starts the API alone (`backend/`, `tsx watch`).
+Client env vars (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) go in
+`frontend/.env`; server settings go in `backend/.env`.
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-The frontend needs **no `.env` file** — it runs on built-in defaults.
-The Vite dev server proxies `/api/*` to the backend
-(`VITE_API_PROXY_TARGET`, default `http://localhost:3000`), so the app
-works from a single origin during development. To override any default,
-create `frontend/.env` (see the header of `frontend/vite.config.ts`).
-
-> Prefer one command? From the repo root:
-> `npx concurrently -n api,web "npm --prefix backend run dev" "npm --prefix frontend run dev"`
+Both projects can also be run from their own folder (`cd frontend && npm run dev`).
 
 ---
 
