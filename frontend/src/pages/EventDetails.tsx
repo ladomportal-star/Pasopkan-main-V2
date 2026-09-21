@@ -1235,16 +1235,6 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
 
                        {/* Round White Action Buttons: Share */}
                        <div className="absolute top-4 right-4 flex items-center gap-2.5 z-20 pointer-events-auto">
-                         {event.showRemainingTickets && (
-                           <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-2 rounded-full border border-white/20 text-emerald-300 text-xs font-black shadow-lg shadow-black/30">
-                             <Ticket className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                             <span>
-                               {lang === 'en' 
-                                 ? `${totalAvailableTickets} Available` 
-                                 : `ເຫຼືອ ${totalAvailableTickets} ໃບ`}
-                             </span>
-                           </div>
-                         )}
                          <button 
                            onClick={(e) => { e.stopPropagation(); handleShare(); }} 
                            className="w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center text-adv-slate hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
@@ -1392,16 +1382,6 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
                            <span className="inline-flex items-center gap-1 bg-adv-orange/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/10 border border-white/10">
                              {event.category || 'Event'}
                            </span>
-                           {event.showRemainingTickets && (
-                             <span className="inline-flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-black text-emerald-300 border border-white/20 shadow-lg shadow-black/30">
-                               <Ticket className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                               <span>
-                                 {lang === 'en' 
-                                   ? `${totalAvailableTickets} Available` 
-                                   : `ເຫຼືອ ${totalAvailableTickets} ໃບ`}
-                               </span>
-                             </span>
-                           )}
                          </div>
                          
                          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight mb-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] font-sans text-white">

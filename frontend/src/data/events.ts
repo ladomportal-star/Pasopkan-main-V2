@@ -210,15 +210,29 @@ export const events: LaoEvent[] = [
     title: 'Lao Cooking Masterclass',
     durationEn: '3.5 Hours',
     durationLo: '3.5 ຊົ່ວໂມງ',
-    date: '2026-07-20',
-    time: '10:00',
+    date: '2026-09-01',
+    endDate: '2026-12-31',
+    dateType: 'booking',
+    bookingDuration: '3.5 Hours',
+    bookingCapacity: '12',
+    bookingTimeSlots: ['08:30 - 11:30', '11:30 - 14:30', '14:30 - 17:30'],
+    bookingSlotCapacities: {
+      '08:30 - 11:30': 12,
+      '11:30 - 14:30': 12,
+      '14:30 - 17:30': 12
+    },
+    bookingAvailableDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    bookingApprovalMode: 'instant',
+    bookingStartDate: '2026-09-01',
+    bookingEndDate: '2026-12-31',
+    time: '08:30',
     location: 'Vientiane, LA',
     venue: 'Tamarind Kitchen',
     image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=2000&auto=format&fit=crop',
     category: 'Workshop',
     description: 'Learn the secrets of Lao cuisine. Visit the local market to source ingredients and then cook traditional dishes like Larb, Mok Pa, and Jeow Bong.',
     hasTimeSelection: true,
-    timeSlots: ['08:30', '11:00', '14:30', '17:00'],
+    timeSlots: ['08:30 - 11:30', '11:30 - 14:30', '14:30 - 17:30'],
     exampleImages: [
       'https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1000&auto=format&fit=crop',
       'https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=1000&auto=format&fit=crop',
@@ -227,7 +241,16 @@ export const events: LaoEvent[] = [
     ],
     ticketTiers: [
       { id: 't7', name: 'Cooking Class Seat', price: 300, available: 15, description: 'Includes recipe book and ingredients.' },
+      { id: 't8', name: 'VIP Chef Table & Wine', price: 550, available: 8, description: 'Includes private station and premium paired wine.' }
     ],
+    attendeeQuestions: [
+      { id: 'q_diet', type: 'single_choice', label: 'Dietary Preference', required: true, options: ['None / Standard', 'Vegetarian', 'Vegan', 'No Pork', 'Halal'] },
+      { id: 'q_allergies', type: 'text', label: 'Food Allergies (Peanuts, Shellfish, etc.)', required: false },
+      { id: 'q_spice', type: 'single_choice', label: 'Preferred Spice Level', required: false, options: ['Mild / ບໍ່ເຜັດ', 'Medium / ເຜັດປານກາງ', 'Authentic Lao Spicy / ເຜັດແທ້'] }
+    ],
+    coupons: [
+      { id: 'c4', code: 'COOK15', discount: 15, type: 'percentage', isActive: true }
+    ]
   },
   {
     id: '5',

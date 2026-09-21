@@ -611,10 +611,10 @@ export default function Home() {
 
           {/* Carousel Pagination Dots inside image */}
           <div 
-            className="absolute bottom-3 sm:bottom-5 left-0 right-0 z-20 flex items-center justify-center pointer-events-auto"
+            className="absolute bottom-2.5 sm:bottom-4 left-0 right-0 z-20 flex items-center justify-center pointer-events-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-black/25 backdrop-blur-xs">
+            <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-black/30 backdrop-blur-xs">
               {heroSlides.map((_, idx) => (
                 <button 
                   key={idx}
@@ -622,10 +622,10 @@ export default function Home() {
                     e.stopPropagation();
                     setCurrentImageIndex(idx);
                   }}
-                  className={`h-2 sm:h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+                  className={`h-1 sm:h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
                     idx === currentImageIndex 
-                      ? 'w-7 sm:w-9 bg-adv-orange' 
-                      : 'w-2 sm:w-2.5 bg-white/70 hover:bg-white'
+                      ? 'w-4 sm:w-5 bg-adv-orange' 
+                      : 'w-1 sm:w-1.5 bg-white/70 hover:bg-white'
                   }`}
                   aria-label={`Go to slide ${idx + 1}`}
                 />

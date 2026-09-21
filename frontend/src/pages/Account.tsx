@@ -1,7 +1,7 @@
 import { BankAccountInfo, PayoutBill, EventData } from "../types";
 import React, { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import { User, Settings, CreditCard, Bell, Shield, HelpCircle, LogOut, ChevronLeft, ChevronRight, Camera, Calendar as CalendarIcon, MapPin, Plus, CheckCircle2, XCircle, X, AlertCircle, AlertTriangle, Loader2, Image as ImageIcon, Ticket, Download, Link2, Copy, ExternalLink, QrCode, Trash2, ShieldCheck , Building, Save, Edit2, ChevronDown, DollarSign, Info, Smartphone, Lock, Search, Phone, Mail, FileText, Users, Eye, Filter, PieChart, Sparkles, UserCheck, MessageSquare, ClipboardList, CheckSquare, Clock, Globe, ListFilter, Check, UserX, BarChart3, CheckCheck, KeyRound, RefreshCw, ShieldAlert } from 'lucide-react';
+import { User, Settings, CreditCard, Bell, Shield, HelpCircle, LogOut, ChevronLeft, ChevronRight, Camera, Calendar as CalendarIcon, CalendarDays, MapPin, Plus, CheckCircle2, XCircle, X, AlertCircle, AlertTriangle, Loader2, Image as ImageIcon, Ticket, Download, Link2, Copy, ExternalLink, QrCode, Trash2, ShieldCheck , Building, Save, Edit2, ChevronDown, DollarSign, Info, Smartphone, Lock, Search, Phone, Mail, FileText, Users, Eye, Filter, PieChart, Sparkles, UserCheck, MessageSquare, ClipboardList, CheckSquare, Clock, Globe, ListFilter, Check, UserX, BarChart3, CheckCheck, KeyRound, RefreshCw, ShieldAlert } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { safeStorage } from '../lib/storage';
 import { api } from '../lib/api';
@@ -15,6 +15,7 @@ import { CheckinRecord, EventAttendee, useAttendees, useCheckins } from '../lib/
 import SEO from '../components/SEO';
 import OtpInput from '../components/OtpInput';
 import ManageCouponsSection from '../components/ManageCouponsSection';
+import BookingDayManagement from '../components/BookingDayManagement';
 
 const LazyScanner = React.lazy(() =>
   (import('@yudiel/react-qr-scanner')
@@ -631,7 +632,13 @@ export default function Account() {
         hasSeating: true,
         zoneImage: '/src/assets/images/seating_map_layout_1782798956470.jpg'
       },
-      { ...events[1], registered: 85, scanned: 80, hasSeating: false }
+      { ...events[1], registered: 85, scanned: 80, hasSeating: false },
+      { 
+        ...(events.find(e => e.id === '4') || events[3]), 
+        registered: 24, 
+        scanned: 8, 
+        hasSeating: false 
+      }
     ];
 
     try {
@@ -684,7 +691,9 @@ export default function Account() {
     checkedInCount,
     pendingCount,
     withAnswersCount,
-    setCheckinStatus
+    setCheckinStatus,
+    addAttendee,
+    rescheduleBooking
   } = useAttendees(selectedEventId);
 
   const [attendeeFilter, setAttendeeFilter] = useState<'all' | 'checked_in' | 'pending'>('all');
@@ -1476,6 +1485,12 @@ export default function Account() {
                    <div className="flex-1 text-center sm:text-left min-w-0 pt-1">
                       <div className="flex flex-wrap items-center gap-2.5 justify-center sm:justify-start mb-2 sm:mb-3">
                         <h3 className="text-xl sm:text-2xl font-black text-adv-slate dark:text-white truncate">{selectedEvent.title}</h3>
+                        {selectedEvent.dateType === 'booking' && (
+                          <span className="px-2.5 py-0.5 rounded-full bg-orange-500/10 text-adv-orange border border-orange-500/20 text-[10px] font-black uppercase tracking-wider shrink-0 flex items-center gap-1">
+                            <CalendarDays className="w-3 h-3" />
+                            {lang === 'lo' ? 'ກິດຈະກຳແບບຈອງລາຍວັນ' : 'Booking Experience'}
+                          </span>
+                        )}
                         {selectedEvent.status === 'pending' && (
                           <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[9px] sm:text-[10px] font-black uppercase tracking-widest shrink-0">
                             Pending Approval
@@ -1483,7 +1498,12 @@ export default function Account() {
                         )}
                       </div>
                       <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-2.5 sm:gap-5 text-sm sm:text-base text-gray-500 dark:text-gray-400 font-semibold">
-                         <span className="flex items-center gap-1.5 sm:gap-2"><CalendarIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-adv-orange shrink-0" /> {selectedEvent.date}</span>
+                         <span className="flex items-center gap-1.5 sm:gap-2">
+                           <CalendarIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-adv-orange shrink-0" /> 
+                           {selectedEvent.dateType === 'booking' 
+                             ? `${selectedEvent.bookingStartDate || selectedEvent.date} to ${selectedEvent.bookingEndDate || 'Ongoing'} • Daily Sessions` 
+                             : selectedEvent.date}
+                         </span>
                          <span className="flex items-center gap-1.5 sm:gap-2"><MapPin className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-adv-orange shrink-0" /> {selectedEvent.location}</span>
                       </div>
                    </div>
@@ -1608,8 +1628,21 @@ export default function Account() {
                 lang={lang}
               />
 
-              {/* Seating Map (Only visible if event has one) */}
-              {(selectedEvent.hasSeating === true || String(selectedEvent.hasSeating) === 'true') && (
+              {selectedEvent.dateType === 'booking' ? (
+                <BookingDayManagement
+                  event={selectedEvent}
+                  attendees={eventAttendees}
+                  onToggleCheckin={(ticketId, status, staffLabel) => setCheckinStatus(ticketId, status, staffLabel)}
+                  onAddAttendee={(att) => addAttendee(att)}
+                  onRescheduleAttendee={(ticketId, newDate, newSlot) => rescheduleBooking(ticketId, newDate, newSlot)}
+                  theme={theme}
+                  lang={lang}
+                  onOpenScanner={() => setShowScanner(true)}
+                />
+              ) : (
+                <>
+                  {/* Seating Map (Only visible if event has one) */}
+                  {(selectedEvent.hasSeating === true || String(selectedEvent.hasSeating) === 'true') && (
                 <div className={`rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-8 shadow-sm border transition-all ${
                   theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
                 }`}>
@@ -1965,6 +1998,8 @@ export default function Account() {
             )}
             </div>
                 </div>
+                </>
+              )}
               </div>
             )}
         </div>

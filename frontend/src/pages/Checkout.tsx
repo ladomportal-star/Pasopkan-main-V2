@@ -842,6 +842,8 @@ export default function Checkout() {
                 : `Ticket #${idx + 1}`,
               price: `${total.toLocaleString()} LAK`,
               purchaseDate: new Date().toISOString(),
+              visitDate: state.selectedDate || event?.date,
+              timeSlot: state.selectedTime || event?.time,
               isCheckedIn: false,
               customAnswers: owner.customAnswers || {},
             });
