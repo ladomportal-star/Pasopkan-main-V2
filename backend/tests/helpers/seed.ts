@@ -19,7 +19,8 @@ export async function createEvent(
       ],
       ...overrides,
     });
-  if (res.status !== 201) throw new Error(`seed event failed: ${res.status} ${JSON.stringify(res.body)}`);
+  if (res.status !== 201)
+    throw new Error(`seed event failed: ${res.status} ${JSON.stringify(res.body)}`);
   return res.body.event as {
     id: string;
     status: string;

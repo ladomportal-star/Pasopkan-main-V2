@@ -33,14 +33,20 @@ async function pendingOrder(buyer: string, txn: string) {
 }
 
 const myOrders = async (buyer: string) =>
-  (await request(app).get("/api/tickets").set(await as(buyer))).body.tickets as { id: string; status: string }[];
+  (
+    await request(app)
+      .get("/api/tickets")
+      .set(await as(buyer))
+  ).body.tickets as { id: string; status: string }[];
 
 describe("payments", () => {
   it("does not believe a webhook that merely claims the payment succeeded", async () => {
     await pendingOrder("payer-1", "TXN-FORGED");
     gatewaySays("PENDING"); // the gateway disagrees with the forged payload
 
-    const res = await request(app).post("/api/webhook/payment").send({ transactionId: "TXN-FORGED", status: "PAID" });
+    const res = await request(app)
+      .post("/api/webhook/payment")
+      .send({ transactionId: "TXN-FORGED", status: "PAID" });
     expect(res.status).toBe(200);
     expect(res.body.paid).toBe(false);
     expect((await myOrders("payer-1"))[0].status).toBe("pending");
@@ -50,19 +56,27 @@ describe("payments", () => {
     await pendingOrder("payer-2", "TXN-REAL");
     gatewaySays("PAYMENT_COMPLETED");
 
-    const res = await request(app).post("/api/webhook/payment").send({ transactionId: "TXN-REAL", status: "whatever" });
+    const res = await request(app)
+      .post("/api/webhook/payment")
+      .send({ transactionId: "TXN-REAL", status: "whatever" });
     expect(res.body.paid).toBe(true);
     expect((await myOrders("payer-2"))[0].status).toBe("confirmed");
 
-    const inbox = await request(app).get("/api/notifications").set(await as("payer-2"));
-    expect(inbox.body.notifications.map((n: { title: string }) => n.title)).toContain("Ticket confirmed");
+    const inbox = await request(app)
+      .get("/api/notifications")
+      .set(await as("payer-2"));
+    expect(inbox.body.notifications.map((n: { title: string }) => n.title)).toContain(
+      "Ticket confirmed",
+    );
   });
 
   it("stays pending (never optimistic) when the gateway cannot be reached", async () => {
     await pendingOrder("payer-3", "TXN-OFFLINE");
     gatewaySays(null);
 
-    const res = await request(app).post("/api/webhook/payment").send({ transactionId: "TXN-OFFLINE", status: "PAID" });
+    const res = await request(app)
+      .post("/api/webhook/payment")
+      .send({ transactionId: "TXN-OFFLINE", status: "PAID" });
     expect(res.body.paid).toBe(false);
     expect((await myOrders("payer-3"))[0].status).toBe("pending");
   });

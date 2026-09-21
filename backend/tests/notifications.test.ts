@@ -26,13 +26,25 @@ describe("notifications (database-backed, per user)", () => {
 
   it("returns only the caller's notifications, newest first, with unread count", async () => {
     await createNotification("alice", { title: "First", message: "1" });
-    await createNotification("alice", { type: "promo", title: "Second", titleLo: "ສອງ", message: "2" });
+    await createNotification("alice", {
+      type: "promo",
+      title: "Second",
+      titleLo: "ສອງ",
+      message: "2",
+    });
     await createNotification("bob", { title: "Not yours", message: "x" });
 
     const res = await inbox("alice");
-    expect(res.body.notifications.map((n: { title: string }) => n.title)).toEqual(["Second", "First"]);
+    expect(res.body.notifications.map((n: { title: string }) => n.title)).toEqual([
+      "Second",
+      "First",
+    ]);
     expect(res.body.unreadCount).toBe(2);
-    expect(res.body.notifications[0]).toMatchObject({ type: "promo", titleLo: "ສອງ", isUnread: true });
+    expect(res.body.notifications[0]).toMatchObject({
+      type: "promo",
+      titleLo: "ສອງ",
+      isUnread: true,
+    });
     expect(typeof res.body.notifications[0].createdAt).toBe("string");
   });
 
@@ -48,7 +60,9 @@ describe("notifications (database-backed, per user)", () => {
     expect((await inbox("carol")).body.unreadCount).toBe(1);
     expect((await inbox("carol", "?unread=true")).body.notifications).toHaveLength(1);
 
-    const all = await request(app).post("/api/notifications/read-all").set(await as("carol"));
+    const all = await request(app)
+      .post("/api/notifications/read-all")
+      .set(await as("carol"));
     expect(all.body.updated).toBe(1);
     expect((await inbox("carol")).body.unreadCount).toBe(0);
   });
@@ -79,7 +93,9 @@ describe("notifications (database-backed, per user)", () => {
     expect(del.status).toBe(200);
     expect((await inbox("erin")).body.notifications).toHaveLength(1);
 
-    const clear = await request(app).delete("/api/notifications").set(await as("erin"));
+    const clear = await request(app)
+      .delete("/api/notifications")
+      .set(await as("erin"));
     expect(clear.body.deleted).toBe(1);
     expect((await inbox("erin")).body.notifications).toHaveLength(0);
   });

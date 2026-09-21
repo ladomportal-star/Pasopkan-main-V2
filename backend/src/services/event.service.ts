@@ -57,7 +57,11 @@ export async function createEvent(body: CreateEventBody, ownerUid: string) {
     } else if (!org) {
       [org] = await tx
         .insert(organizers)
-        .values({ name: body.organizer?.name ?? "Organizer", ...body.organizer, ownerFirebaseUid: ownerUid })
+        .values({
+          name: body.organizer?.name ?? "Organizer",
+          ...body.organizer,
+          ownerFirebaseUid: ownerUid,
+        })
         .returning();
     }
 
@@ -128,7 +132,10 @@ export async function listEvents(query: {
 
   if (rows.length === 0) return [];
   return db.query.events.findMany({
-    where: inArray(events.id, rows.map((r) => r.id)),
+    where: inArray(
+      events.id,
+      rows.map((r) => r.id),
+    ),
     orderBy: desc(events.createdAt),
     with: { tiers: true, zones: true, dates: true, coupons: true, organizer: true },
   });
@@ -149,7 +156,11 @@ export async function getEvent(idOrRef: string, viewerUid?: string) {
 
 /* ---- internal helpers ---- */
 
-const PUBLIC_STATUSES: (typeof events.$inferSelect)["status"][] = ["published", "sold_out", "completed"];
+const PUBLIC_STATUSES: (typeof events.$inferSelect)["status"][] = [
+  "published",
+  "sold_out",
+  "completed",
+];
 
 /** Owner of the event's organizer profile, or an admin. */
 async function canEdit(exec: Executor, eventId: string, uid: string) {

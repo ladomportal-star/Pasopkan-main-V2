@@ -8,5 +8,9 @@ await startAuthServer();
 // Swap the pg pool for an in-process Postgres that has the real migrations.
 vi.mock("../src/config/database.ts", async () => {
   const { db, client, schema } = await createTestDb();
-  return { db, schema, pool: { query: (sql: string, params?: unknown[]) => client.query(sql, params) } };
+  return {
+    db,
+    schema,
+    pool: { query: (sql: string, params?: unknown[]) => client.query(sql, params) },
+  };
 });

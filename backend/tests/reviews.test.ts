@@ -19,7 +19,12 @@ describe("reviews", () => {
   });
 
   it("creates a review, then updates the same user's review instead of duplicating it", async () => {
-    const first = await review("r1", { eventId: "e-1", rating: 4, comment: "Great", userName: "Ana" });
+    const first = await review("r1", {
+      eventId: "e-1",
+      rating: 4,
+      comment: "Great",
+      userName: "Ana",
+    });
     expect(first.status).toBe(200);
 
     await review("r1", { eventId: "e-1", rating: 5, comment: "Even better", userName: "Ana" });

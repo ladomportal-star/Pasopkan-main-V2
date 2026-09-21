@@ -29,7 +29,9 @@ describe("tickets", () => {
 
   it("409s when the event is not on sale", async () => {
     const draft = await createEvent(app, await as("org"), { status: "draft" });
-    expect((await buy("b1", { eventId: draft.id, tierId: draft.tiers[0].id, quantity: 1 })).status).toBe(409);
+    expect(
+      (await buy("b1", { eventId: draft.id, tierId: draft.tiers[0].id, quantity: 1 })).status,
+    ).toBe(409);
   });
 
   it("takes the price from the database, never from the client", async () => {
@@ -47,7 +49,9 @@ describe("tickets", () => {
     expect(res.body.order.eventTitle).toBe("That Luang Festival");
     expect(res.body.items).toHaveLength(3);
     expect(res.body.items[0].ticketCode).toMatch(/^PSK-/);
-    expect(res.body.items.every((i: { unitPriceKip: number }) => i.unitPriceKip === 100000)).toBe(true);
+    expect(res.body.items.every((i: { unitPriceKip: number }) => i.unitPriceKip === 100000)).toBe(
+      true,
+    );
   });
 
   it("leaves a paid order pending until the gateway confirms; free orders are confirmed at once", async () => {
@@ -78,14 +82,20 @@ describe("tickets", () => {
     const event = await createEvent(app, await as("org"), {
       tiers: [{ name: "Limited", priceKip: 1000, perOrderLimit: 2 }],
     });
-    expect((await buy("b4", { eventId: event.id, tierId: event.tiers[0].id, quantity: 3 })).status).toBe(422);
+    expect(
+      (await buy("b4", { eventId: event.id, tierId: event.tiers[0].id, quantity: 3 })).status,
+    ).toBe(422);
   });
 
   it("lists only the caller's own orders", async () => {
     const event = await createEvent(app, await as("org"));
     await buy("owner-of-order", { eventId: event.id, tierId: "Free", quantity: 1 });
-    const mine = await request(app).get("/api/tickets").set(await as("owner-of-order"));
-    const other = await request(app).get("/api/tickets").set(await as("someone-else"));
+    const mine = await request(app)
+      .get("/api/tickets")
+      .set(await as("owner-of-order"));
+    const other = await request(app)
+      .get("/api/tickets")
+      .set(await as("someone-else"));
     expect(mine.body.tickets).toHaveLength(1);
     expect(mine.body.tickets[0].items).toHaveLength(1);
     expect(other.body.tickets).toHaveLength(0);

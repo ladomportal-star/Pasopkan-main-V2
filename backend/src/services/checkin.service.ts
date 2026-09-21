@@ -25,7 +25,11 @@ export async function scanTicket(body: CreateCheckinBody, staff: string): Promis
   });
 
   if (item) {
-    const [order] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, item.orderId)).limit(1);
+    const [order] = await db
+      .select({ status: orders.status })
+      .from(orders)
+      .where(eq(orders.id, item.orderId))
+      .limit(1);
     if (order?.status !== "confirmed" && order?.status !== "paid") {
       throw new HttpError(409, "This ticket has not been paid for");
     }

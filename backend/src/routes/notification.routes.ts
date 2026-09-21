@@ -19,7 +19,11 @@ router.use("/notifications", requireAuth);
 
 router.get("/notifications", validate({ query: listNotificationsQuery }), getNotifications);
 router.post("/notifications/read-all", readAllNotifications);
-router.patch("/notifications/:id/read", validate({ params: notificationIdParam }), readNotification);
+router.patch(
+  "/notifications/:id/read",
+  validate({ params: notificationIdParam }),
+  readNotification,
+);
 router.delete("/notifications/:id", validate({ params: notificationIdParam }), removeNotification);
 router.delete("/notifications", removeAllNotifications);
 

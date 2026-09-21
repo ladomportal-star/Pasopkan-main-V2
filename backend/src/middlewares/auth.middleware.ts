@@ -22,7 +22,8 @@ const isBadToken = (err: unknown) => {
 
 async function verify(token: string): Promise<AuthUser> {
   const { payload } = await jwtVerify(token, jwks!, { issuer, audience: "authenticated" });
-  if (!payload.sub) throw Object.assign(new Error("Token has no subject"), { code: "ERR_JWT_INVALID" });
+  if (!payload.sub)
+    throw Object.assign(new Error("Token has no subject"), { code: "ERR_JWT_INVALID" });
   return {
     uid: payload.sub,
     email: typeof payload.email === "string" && payload.email ? payload.email : undefined,

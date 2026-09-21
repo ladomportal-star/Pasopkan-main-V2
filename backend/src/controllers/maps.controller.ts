@@ -37,7 +37,7 @@ export async function resolveMapUrl(req: Request, res: Response) {
 
     // 2. Extract Coordinates from multiple formats
     let coords: { lat: number; lng: number } | null = null;
-    
+
     // Format A: @lat,lng
     const atMatch = finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
     if (atMatch) {

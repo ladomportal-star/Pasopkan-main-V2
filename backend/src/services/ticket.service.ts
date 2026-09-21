@@ -63,7 +63,8 @@ export async function createOrder(input: CreateOrderInput) {
       )
       .limit(1);
     if (!event) throw new HttpError(404, "Event not found");
-    if (event.status !== "published") throw new HttpError(409, "Tickets are not on sale for this event");
+    if (event.status !== "published")
+      throw new HttpError(409, "Tickets are not on sale for this event");
 
     const [tier] = await tx
       .select()
@@ -155,7 +156,9 @@ export async function createOrder(input: CreateOrderInput) {
 
     await createNotification(
       input.uid,
-      paid ? ticketConfirmed(order.orderNumber, event.title, qty, event.id, order.id) : awaitingPayment(order.orderNumber, event.title, event.id, order.id),
+      paid
+        ? ticketConfirmed(order.orderNumber, event.title, qty, event.id, order.id)
+        : awaitingPayment(order.orderNumber, event.title, event.id, order.id),
       tx,
     );
 
@@ -194,12 +197,20 @@ export async function confirmOrderForPayment(transactionId: string) {
   return db.transaction(async (tx) => {
     const [order] = await tx
       .update(orders)
-      .set({ status: "confirmed", paymentStatus: "completed", paidAt: new Date(), updatedAt: new Date() })
+      .set({
+        status: "confirmed",
+        paymentStatus: "completed",
+        paidAt: new Date(),
+        updatedAt: new Date(),
+      })
       .where(and(eq(orders.paymentTxnId, transactionId), eq(orders.status, "pending")))
       .returning();
     if (!order) return null;
 
-    await tx.update(payments).set({ orderId: order.id }).where(eq(payments.transactionId, transactionId));
+    await tx
+      .update(payments)
+      .set({ orderId: order.id })
+      .where(eq(payments.transactionId, transactionId));
 
     const [{ n }] = await tx
       .select({ n: sql<number>`count(*)::int` })
@@ -248,7 +259,13 @@ export async function releaseExpiredOrders(maxAgeMinutes = 30) {
   });
 }
 
-const ticketConfirmed = (orderNumber: string, eventTitle: string, qty: number, eventId: string, orderId: string) => ({
+const ticketConfirmed = (
+  orderNumber: string,
+  eventTitle: string,
+  qty: number,
+  eventId: string,
+  orderId: string,
+) => ({
   type: "ticket" as const,
   title: "Ticket confirmed",
   titleLo: "ຢືນຢັນປີ້ສຳເລັດແລ້ວ",
@@ -257,7 +274,12 @@ const ticketConfirmed = (orderNumber: string, eventTitle: string, qty: number, e
   data: { eventId, orderId },
 });
 
-const awaitingPayment = (orderNumber: string, eventTitle: string, eventId: string, orderId: string) => ({
+const awaitingPayment = (
+  orderNumber: string,
+  eventTitle: string,
+  eventId: string,
+  orderId: string,
+) => ({
   type: "ticket" as const,
   title: "Awaiting payment",
   titleLo: "ລໍຖ້າການຊຳລະເງິນ",

@@ -1,5 +1,9 @@
 import { Router } from "express";
-import { optionalAuth, requireAuth, requireRegisteredUser } from "../middlewares/auth.middleware.ts";
+import {
+  optionalAuth,
+  requireAuth,
+  requireRegisteredUser,
+} from "../middlewares/auth.middleware.ts";
 import { validate } from "../middlewares/validate.middleware.ts";
 import {
   createEventBody,
@@ -13,7 +17,13 @@ const router = Router();
 
 router.get("/events", optionalAuth, validate({ query: listEventsQuery }), getEvents);
 router.get("/events/:id", optionalAuth, validate({ params: eventIdParam }), getEventById);
-router.post("/events", requireAuth, requireRegisteredUser, validate({ body: createEventBody }), postEvent);
+router.post(
+  "/events",
+  requireAuth,
+  requireRegisteredUser,
+  validate({ body: createEventBody }),
+  postEvent,
+);
 router.put(
   "/events/:id",
   requireAuth,

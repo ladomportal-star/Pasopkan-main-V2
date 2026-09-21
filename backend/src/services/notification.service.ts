@@ -43,13 +43,21 @@ export async function createNotification(
   return toApi(row);
 }
 
-export async function listNotifications(userUid: string, opts: { unreadOnly?: boolean; limit: number }) {
+export async function listNotifications(
+  userUid: string,
+  opts: { unreadOnly?: boolean; limit: number },
+) {
   const where = opts.unreadOnly
     ? and(eq(notifications.userUid, userUid), isNull(notifications.readAt))
     : eq(notifications.userUid, userUid);
 
   const [rows, [{ unread }]] = await Promise.all([
-    db.select().from(notifications).where(where).orderBy(desc(notifications.createdAt)).limit(opts.limit),
+    db
+      .select()
+      .from(notifications)
+      .where(where)
+      .orderBy(desc(notifications.createdAt))
+      .limit(opts.limit),
     db
       .select({ unread: sql<number>`count(*)::int` })
       .from(notifications)

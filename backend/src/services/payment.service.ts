@@ -74,15 +74,23 @@ class PaymentService {
   }
 
   /** Handle a gateway webhook: record it, then trust only the gateway's own answer. */
-  async recordWebhook(payload: any): Promise<{ txId: string | null; isPaid: boolean; status: string }> {
+  async recordWebhook(
+    payload: any,
+  ): Promise<{ txId: string | null; isPaid: boolean; status: string }> {
     const txId = this.extractTxId(payload);
     if (!txId) return { txId: null, isPaid: false, status: "" };
 
-    const claimed = payload.status ?? payload.data?.status ?? payload.paymentStatus ?? payload.state ?? null;
+    const claimed =
+      payload.status ?? payload.data?.status ?? payload.paymentStatus ?? payload.state ?? null;
     const verified = await this.askGateway(txId);
     const state = verified?.state ?? "pending";
 
-    await this.save(txId, state, verified?.raw ?? (claimed == null ? null : String(claimed)), payload);
+    await this.save(
+      txId,
+      state,
+      verified?.raw ?? (claimed == null ? null : String(claimed)),
+      payload,
+    );
     logger.info(`[payment] webhook ${txId} -> ${state}${verified ? "" : " (gateway unreachable)"}`);
     return { txId, isPaid: state === "completed", status: verified?.raw ?? String(claimed ?? "") };
   }

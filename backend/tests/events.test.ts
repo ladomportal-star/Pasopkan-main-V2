@@ -11,7 +11,10 @@ const app = createApp();
 describe("events", () => {
   it("requires sign-in to create, and validates the body", async () => {
     expect((await request(app).post("/api/events").send({ title: "x" })).status).toBe(401);
-    const bad = await request(app).post("/api/events").set(await as("org-1")).send({});
+    const bad = await request(app)
+      .post("/api/events")
+      .set(await as("org-1"))
+      .send({});
     expect(bad.status).toBe(400);
     expect(bad.body.details).toHaveProperty("title");
   });
@@ -19,7 +22,9 @@ describe("events", () => {
   it("creates an event with tiers, owned by its creator", async () => {
     const event = await createEvent(app, await as("org-1"), { title: "Owned" });
     expect(event.tiers).toHaveLength(2);
-    const mine = await request(app).get("/api/events?mine=true").set(await as("org-1"));
+    const mine = await request(app)
+      .get("/api/events?mine=true")
+      .set(await as("org-1"));
     expect(mine.body.events.map((e: { title: string }) => e.title)).toContain("Owned");
   });
 
@@ -31,7 +36,13 @@ describe("events", () => {
     expect(pub.body.events.map((e: { title: string }) => e.title)).not.toContain("Secret Draft");
 
     expect((await request(app).get(`/api/events/${draft.id}`)).status).toBe(404);
-    expect((await request(app).get(`/api/events/${draft.id}`).set(await as("stranger"))).status).toBe(404);
+    expect(
+      (
+        await request(app)
+          .get(`/api/events/${draft.id}`)
+          .set(await as("stranger"))
+      ).status,
+    ).toBe(404);
     expect((await request(app).get(`/api/events/${draft.id}`).set(owner)).status).toBe(200);
   });
 
@@ -58,7 +69,10 @@ describe("events", () => {
       .send({ title: "Hacked" });
     expect(stranger.status).toBe(403);
 
-    const byOwner = await request(app).put(`/api/events/${event.id}`).set(owner).send({ title: "After" });
+    const byOwner = await request(app)
+      .put(`/api/events/${event.id}`)
+      .set(owner)
+      .send({ title: "After" });
     expect(byOwner.status).toBe(200);
     expect(byOwner.body.event.title).toBe("After");
     expect(byOwner.body.event.tiers).toHaveLength(2); // untouched when not sent
