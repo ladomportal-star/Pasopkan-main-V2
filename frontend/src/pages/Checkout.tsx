@@ -33,6 +33,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "../lib/supabase";
 
 import { addEventAttendee } from "../lib/checkinsStore";
+import { safeStorage } from "../lib/storage";
 import SEO from "../components/SEO";
 
 const translations = {
@@ -753,20 +754,18 @@ export default function Checkout() {
     if (step === "success" && event?.id) {
       // 1. Local storage tracking
       try {
-        const purchased = localStorage.getItem("pasopkan_purchased_event_ids");
+        const purchased = safeStorage.getItem("pasopkan_purchased_event_ids") || localStorage.getItem("pasopkan_purchased_event_ids");
         const list = purchased ? JSON.parse(purchased) : [];
         if (!list.includes(event.id)) {
           list.push(event.id);
-          localStorage.setItem(
+          safeStorage.setItem(
             "pasopkan_purchased_event_ids",
             JSON.stringify(list),
           );
         }
 
         // Also save to user tickets for the Dashboard
-        const existingTicketsRaw = localStorage.getItem(
-          "pasopkan_user_tickets",
-        );
+        const existingTicketsRaw = safeStorage.getItem("pasopkan_user_tickets") || localStorage.getItem("pasopkan_user_tickets");
         let userTickets = [];
         try {
           if (existingTicketsRaw) userTickets = JSON.parse(existingTicketsRaw);
@@ -784,7 +783,7 @@ export default function Checkout() {
           purchaseDate: new Date().toISOString(),
         };
         userTickets.push(newTicketObj);
-        localStorage.setItem(
+        safeStorage.setItem(
           "pasopkan_user_tickets",
           JSON.stringify(userTickets),
         );
@@ -892,7 +891,7 @@ export default function Checkout() {
               totalPaid: total,
               usedAt: new Date().toISOString(),
             });
-            localStorage.setItem(
+            safeStorage.setItem(
               "pasopkan_coupon_redemptions",
               JSON.stringify(redemptionsList),
             );

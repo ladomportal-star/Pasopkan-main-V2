@@ -31,6 +31,91 @@ class SafeStorage {
     return this.memoryStorage[key] !== undefined ? this.memoryStorage[key] : null;
   }
 
+  /**
+   * Attempt quota recovery by trimming disposable items and oversized caching keys
+   */
+  private recoverQuota(targetKey: string, targetValue: string): boolean {
+    if (typeof window === 'undefined' || !window.localStorage) return false;
+
+    // 1. First priority disposable / transient keys to purge
+    const disposableKeys = [
+      '__storage_test__',
+      'eventDraft',
+      'pasopkan_notif_last_refresh',
+      'pasopkan_local_inquiries'
+    ];
+
+    for (const dKey of disposableKeys) {
+      if (dKey !== targetKey) {
+        try {
+          window.localStorage.removeItem(dKey);
+        } catch (_) {}
+      }
+    }
+
+    // Try writing after clearing disposable keys
+    try {
+      window.localStorage.setItem(targetKey, targetValue);
+      return true;
+    } catch (_) {}
+
+    // 2. Clear non-essential large assets if quota is still exceeded
+    // Oversized base64 profile pictures or temporary staff caches can exceed 2-4MB
+    const largeCacheKeys = [
+      'pasopkan_user_profile_pic',
+      'pasopkan_staff_links',
+      'pasopkan_user_notifications'
+    ];
+
+    for (const lKey of largeCacheKeys) {
+      if (lKey !== targetKey) {
+        try {
+          window.localStorage.removeItem(lKey);
+        } catch (_) {}
+      }
+    }
+
+    try {
+      window.localStorage.setItem(targetKey, targetValue);
+      return true;
+    } catch (_) {}
+
+    // 3. Compact attendees or tickets if quota is still exceeded
+    // If saving another key or if pasopkan_event_attendees itself is large
+    if (targetKey !== 'pasopkan_event_attendees') {
+      try {
+        const existingAtt = window.localStorage.getItem('pasopkan_event_attendees');
+        if (existingAtt) {
+          const parsed = JSON.parse(existingAtt);
+          if (Array.isArray(parsed) && parsed.length > 50) {
+            const trimmed = parsed.slice(-50);
+            window.localStorage.setItem('pasopkan_event_attendees', JSON.stringify(trimmed));
+          }
+        }
+      } catch (_) {}
+
+      try {
+        window.localStorage.setItem(targetKey, targetValue);
+        return true;
+      } catch (_) {}
+    } else {
+      // targetKey IS pasopkan_event_attendees
+      try {
+        const parsed = JSON.parse(targetValue);
+        if (Array.isArray(parsed) && parsed.length > 40) {
+          // Keep newest 40 attendees to guarantee fit within mobile browser storage quotas
+          const trimmed = parsed.slice(-40);
+          const trimmedStr = JSON.stringify(trimmed);
+          window.localStorage.setItem(targetKey, trimmedStr);
+          this.memoryStorage[targetKey] = trimmedStr;
+          return true;
+        }
+      } catch (_) {}
+    }
+
+    return false;
+  }
+
   setItem(key: string, value: string): void {
     const strVal = String(value);
     this.memoryStorage[key] = strVal;
@@ -39,16 +124,10 @@ class SafeStorage {
       try {
         window.localStorage.setItem(key, strVal);
       } catch (e) {
-        console.warn('Storage write failed. Attempting quota cleanup...', e);
-        try {
-          // If quota exceeded, clean up temporary keys to make room for critical data like organizer_events
-          if (key !== 'eventDraft') {
-            window.localStorage.removeItem('eventDraft');
-          }
-          window.localStorage.removeItem('__storage_test__');
-          window.localStorage.setItem(key, strVal);
-        } catch (retryErr) {
-          console.warn('Quota recovery write failed. Retained in memory.', retryErr);
+        console.warn(`Storage write failed for key "${key}". Attempting quota recovery...`, e);
+        const recovered = this.recoverQuota(key, strVal);
+        if (!recovered) {
+          console.warn(`Quota recovery write could not persist "${key}" to localStorage. Retained safely in memory storage.`);
         }
       }
     }

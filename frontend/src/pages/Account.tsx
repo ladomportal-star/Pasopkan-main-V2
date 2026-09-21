@@ -604,14 +604,14 @@ export default function Account() {
 
   const [profilePic, setProfilePic] = useState<string | null>(() => {
     try {
-      return localStorage.getItem('pasopkan_user_profile_pic');
+      return safeStorage.getItem('pasopkan_user_profile_pic') || localStorage.getItem('pasopkan_user_profile_pic');
     } catch (e) {
       return null;
     }
   });
   const [profile, setProfile] = useState(() => {
     try {
-      const saved = localStorage.getItem('pasopkan_user_profile');
+      const saved = safeStorage.getItem('pasopkan_user_profile') || localStorage.getItem('pasopkan_user_profile');
       if (saved) return JSON.parse(saved);
     } catch (e) {}
     return {
@@ -634,7 +634,30 @@ export default function Account() {
       },
       { ...events[1], registered: 85, scanned: 80, hasSeating: false },
       { 
-        ...(events.find(e => e.id === '4') || events[3]), 
+        ...(events.find(e => e.id === '4') || events[3] || {
+          id: '4',
+          title: 'Lao Cooking Masterclass',
+          dateType: 'booking',
+          bookingDuration: '3.5 Hours',
+          bookingCapacity: '12',
+          bookingTimeSlots: ['08:30 - 11:30', '11:30 - 14:30', '14:30 - 17:30'],
+          bookingSlotCapacities: {
+            '08:30 - 11:30': 12,
+            '11:30 - 14:30': 12,
+            '14:30 - 17:30': 12
+          },
+          bookingAvailableDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          bookingApprovalMode: 'instant',
+          bookingStartDate: '2026-09-01',
+          bookingEndDate: '2026-12-31',
+          date: '2026-09-01',
+          endDate: '2026-12-31',
+          ticketTiers: [
+            { id: 't7', name: 'Cooking Class Seat', price: 300, available: 15, description: 'Includes recipe book and ingredients.' },
+            { id: 't8', name: 'VIP Chef Table & Wine', price: 550, available: 8, description: 'Includes private station and premium paired wine.' }
+          ]
+        }), 
+        dateType: 'booking',
         registered: 24, 
         scanned: 8, 
         hasSeating: false 
@@ -822,7 +845,7 @@ export default function Account() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('pasopkan_staff_links', JSON.stringify(staffLinks));
+      safeStorage.setItem('pasopkan_staff_links', JSON.stringify(staffLinks));
     } catch (e) {}
   }, [staffLinks]);
 
@@ -1212,8 +1235,8 @@ export default function Account() {
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 500;
-          const MAX_HEIGHT = 500;
+          const MAX_WIDTH = 256;
+          const MAX_HEIGHT = 256;
           let width = img.width;
           let height = img.height;
 
@@ -1232,12 +1255,12 @@ export default function Account() {
           canvas.height = height;
           const ctx = canvas.getContext('2d');
           ctx?.drawImage(img, 0, 0, width, height);
-          const base64Pic = canvas.toDataURL('image/jpeg', 0.8);
+          const base64Pic = canvas.toDataURL('image/jpeg', 0.7);
           
           setProfilePic(base64Pic);
           
           try {
-            localStorage.setItem('pasopkan_user_profile_pic', base64Pic);
+            safeStorage.setItem('pasopkan_user_profile_pic', base64Pic);
           } catch (err) {
             console.error('LocalStorage quota exceeded, skipping local cache', err);
           }
@@ -1632,7 +1655,10 @@ export default function Account() {
                 <BookingDayManagement
                   event={selectedEvent}
                   attendees={eventAttendees}
-                  onToggleCheckin={(ticketId, status, staffLabel) => setCheckinStatus(ticketId, status, staffLabel)}
+                  onToggleCheckin={(ticketId, status, staffLabel) => {
+                    const targetStatus = typeof status === 'boolean' ? status : true;
+                    setCheckinStatus(ticketId, targetStatus, staffLabel || 'Manage Event Desk');
+                  }}
                   onAddAttendee={(att) => addAttendee(att)}
                   onRescheduleAttendee={(ticketId, newDate, newSlot) => rescheduleBooking(ticketId, newDate, newSlot)}
                   theme={theme}
@@ -1741,6 +1767,60 @@ export default function Account() {
                         </select>
                       </div>
                     )}
+
+                    {/* Generate Example Guests for this event */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const sampleGuests = [
+                          { first: 'Anousone', last: 'Sengsouvanh', email: 'anousone.s@laotel.la', phone: '+856 20 5512 8899', ticketTier: selectedEvent.tiers?.[0]?.name || selectedEvent.ticketTiers?.[0]?.name || 'Standard Pass', price: selectedEvent.price ? `${selectedEvent.price.toLocaleString()} LAK` : '150,000 LAK' },
+                          { first: 'Phonexay', last: 'Vongxay', email: 'phonexay.v@gmail.com', phone: '+856 20 7789 2234', ticketTier: selectedEvent.tiers?.[0]?.name || selectedEvent.ticketTiers?.[0]?.name || 'Standard Pass', price: selectedEvent.price ? `${selectedEvent.price.toLocaleString()} LAK` : '150,000 LAK' },
+                          { first: 'Souphaphone', last: 'Inthavong', email: 'soupha.inthavong@outlook.com', phone: '+856 20 9923 4411', ticketTier: selectedEvent.tiers?.[1]?.name || selectedEvent.ticketTiers?.[1]?.name || selectedEvent.tiers?.[0]?.name || 'VIP Pass', price: '300,000 LAK' },
+                          { first: 'Khamkeo', last: 'Phommachan', email: 'khamkeo.p@gmail.com', phone: '+856 20 5543 1122', ticketTier: selectedEvent.tiers?.[0]?.name || selectedEvent.ticketTiers?.[0]?.name || 'Standard Pass', price: selectedEvent.price ? `${selectedEvent.price.toLocaleString()} LAK` : '150,000 LAK' },
+                          { first: 'Noy', last: 'Sayasane', email: 'noy.sayasane@hotmail.com', phone: '+856 20 2233 4455', ticketTier: selectedEvent.tiers?.[1]?.name || selectedEvent.ticketTiers?.[1]?.name || 'VIP Pass', price: '300,000 LAK' },
+                        ];
+                        sampleGuests.forEach((sample, i) => {
+                          const orderNum = Math.floor(1000 + Math.random() * 9000);
+                          const isCheck = i === 0 || i === 2;
+                          const newAtt: any = {
+                            id: `att_gen_${Date.now()}_${i}`,
+                            ticketId: `TK-${selectedEvent.id}-${orderNum}`,
+                            orderId: `ORD-${Date.now().toString().slice(-6)}-${orderNum}`,
+                            eventId: String(selectedEvent.id),
+                            firstName: sample.first,
+                            lastName: sample.last,
+                            attendeeName: `${sample.first} ${sample.last}`,
+                            email: sample.email,
+                            phone: sample.phone,
+                            ticketType: sample.ticketTier,
+                            zone: selectedEvent.hasSeating ? 'Zone A' : 'General Admission',
+                            seat: selectedEvent.hasSeating ? `A-${i + 1}` : `General #${i + 1}`,
+                            price: sample.price,
+                            purchaseDate: new Date(Date.now() - (i + 1) * 3600000 * 12).toISOString(),
+                            isCheckedIn: isCheck,
+                            checkedInTime: isCheck ? `${(9 + i).toString().padStart(2, '0')}:15` : undefined,
+                            checkedInTimestamp: isCheck ? Date.now() - i * 1800000 : undefined,
+                            staffLabel: isCheck ? 'Organizer Desk' : undefined,
+                            customAnswers: {
+                              'registered_via': 'Example Guest Generator',
+                              'dietary_preference': i % 2 === 0 ? 'Regular' : 'Vegetarian'
+                            }
+                          };
+                          addAttendee(newAtt);
+                        });
+                        addToast(
+                          lang === 'lo'
+                            ? `✨ ສ້າງລາຍຊື່ແຂກຕົວຢ່າງ 5 ຄົນສຳເລັດແລ້ວ!`
+                            : `✨ Successfully generated 5 example guests!`,
+                          'success'
+                        );
+                      }}
+                      className="px-3.5 py-2.5 rounded-xl bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 hover:scale-[1.02] active:scale-[0.98] font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 border border-purple-500/20 shadow-sm shrink-0 cursor-pointer"
+                      title="Generate sample guest entries to test check-in"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+                      <span>{lang === 'en' ? 'Generate Guests' : 'ສ້າງແຂກຕົວຢ່າງ'}</span>
+                    </button>
 
                     {/* Export to Excel Button */}
                     <button

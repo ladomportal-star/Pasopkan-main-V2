@@ -40,8 +40,6 @@ import {
   FileEdit,
   ShieldAlert,
   User,
-  Mail,
-  Phone,
   Building2,
   ShieldCheck,
   Image as ImageIcon,
@@ -1611,12 +1609,6 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
                     <h3 className="font-bold text-adv-slate text-sm group-hover/organizer:text-adv-orange transition-colors">
                       {event.organizer || (lang === 'en' ? 'Pasopkan Partner' : 'ພັນທະມິດ Pasopkan')}
                     </h3>
-                    {(event.organizerEmail || (event.organizerContact && event.organizerContact.includes('@'))) && (
-                      <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium mt-0.5">
-                        <Mail className="w-3.5 h-3.5 text-adv-orange shrink-0" />
-                        <span className="truncate max-w-[200px]">{event.organizerEmail || event.organizerContact}</span>
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -1644,49 +1636,6 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
                           : `${event.organizer || 'ພັນທະມິດ Pasopkan'} ແມ່ນຜູ້ຈັດງານລະດັບພຣີມ່ຽມທີ່ໄດ້ຮັບການຢືນຢັນໃນ Pasopkan, ມຸ່ງໝັ້ນທີ່ຈະສ້າງສັນ ແລະ ນຳສະເໜີກິດຈະກຳວັດທະນະທຳ, ການຜະຈົນໄພ ແລະ ງານສັງຄົມ ທີ່ປອດໄພ ແລະ ໜ້າຈົດຈຳທີ່ສຸດໃນລາວ.`
                       )}
                     </p>
-                  </div>
-
-                  {/* Organizer Contact Info (Email & Phone) */}
-                  <div className="space-y-2 pt-2 border-t border-gray-100">
-                    {(event.organizerEmail || (event.organizerContact && event.organizerContact.includes('@'))) && (
-                      <div className="flex items-center gap-2.5 p-2.5 bg-gray-50 rounded-xl border border-gray-100 text-xs">
-                        <div className="w-7 h-7 rounded-lg bg-orange-50 text-adv-orange flex items-center justify-center shrink-0 border border-orange-100">
-                          <Mail className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                            {t.organizerEmail || (lang === 'en' ? 'Organizer Email' : 'ອີເມວຜູ້ຈັດງານ')}
-                          </span>
-                          <a 
-                            href={`mailto:${event.organizerEmail || event.organizerContact}`} 
-                            className="text-adv-slate hover:text-adv-orange font-bold truncate block transition-colors underline underline-offset-2"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {event.organizerEmail || event.organizerContact}
-                          </a>
-                        </div>
-                      </div>
-                    )}
-
-                    {(event.organizerPhone || (event.organizerContact && !event.organizerContact.includes('@'))) && (
-                      <div className="flex items-center gap-2.5 p-2.5 bg-gray-50 rounded-xl border border-gray-100 text-xs">
-                        <div className="w-7 h-7 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center shrink-0 border border-gray-200">
-                          <Phone className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                            {lang === 'en' ? 'Contact Phone' : 'ເບີໂທຕິດຕໍ່'}
-                          </span>
-                          <a 
-                            href={`tel:${event.organizerPhone || event.organizerContact}`} 
-                            className="text-adv-slate hover:text-adv-orange font-bold truncate block transition-colors"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {event.organizerPhone || event.organizerContact}
-                          </a>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
@@ -2127,12 +2076,6 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
                   <h3 className="font-bold text-adv-slate text-sm">
                     {event.organizer || (lang === 'en' ? 'Pasopkan Partner' : 'ພັນທະມິດ Pasopkan')}
                   </h3>
-                  {(event.organizerEmail || (event.organizerContact && event.organizerContact.includes('@'))) && (
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium mt-0.5">
-                      <Mail className="w-3.5 h-3.5 text-adv-orange shrink-0" />
-                      <span className="truncate max-w-[180px]">{event.organizerEmail || event.organizerContact}</span>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -2160,49 +2103,6 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
                         : `${event.organizer || 'ພັນທະມິດ Pasopkan'} ແມ່ນຜູ້ຈັດງານລະດັບພຣີມ່ຽມທີ່ໄດ້ຮັບການຢືນຢັນໃນ Pasopkan, ມຸ່ງໝັ້ນທີ່ຈະສ້າງສັນ ແລະ ນຳສະເໜີກິດຈະກຳວັດທະນະທຳ, ການຜະຈົນໄພ ແລະ ງານສັງຄົມ ທີ່ປອດໄພ ແລະ ໜ້າຈົດຈຳທີ່ສຸດໃນລາວ.`
                     )}
                   </p>
-                </div>
-
-                {/* Organizer Contact Info (Email & Phone) */}
-                <div className="space-y-2 pt-2 border-t border-gray-100">
-                  {(event.organizerEmail || (event.organizerContact && event.organizerContact.includes('@'))) && (
-                    <div className="flex items-center gap-2.5 p-2.5 bg-gray-50 rounded-xl border border-gray-100 text-xs">
-                      <div className="w-7 h-7 rounded-lg bg-orange-50 text-adv-orange flex items-center justify-center shrink-0 border border-orange-100">
-                        <Mail className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                          {t.organizerEmail || (lang === 'en' ? 'Organizer Email' : 'ອີເມວຜູ້ຈັດງານ')}
-                        </span>
-                        <a 
-                          href={`mailto:${event.organizerEmail || event.organizerContact}`} 
-                          className="text-adv-slate hover:text-adv-orange font-bold truncate block transition-colors underline underline-offset-2"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {event.organizerEmail || event.organizerContact}
-                        </a>
-                      </div>
-                    </div>
-                  )}
-
-                  {(event.organizerPhone || (event.organizerContact && !event.organizerContact.includes('@'))) && (
-                    <div className="flex items-center gap-2.5 p-2.5 bg-gray-50 rounded-xl border border-gray-100 text-xs">
-                      <div className="w-7 h-7 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center shrink-0 border border-gray-200">
-                        <Phone className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                          {lang === 'en' ? 'Contact Phone' : 'ເບີໂທຕິດຕໍ່'}
-                        </span>
-                        <a 
-                          href={`tel:${event.organizerPhone || event.organizerContact}`} 
-                          className="text-adv-slate hover:text-adv-orange font-bold truncate block transition-colors"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {event.organizerPhone || event.organizerContact}
-                        </a>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             )}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { safeStorage } from './storage';
 
 export interface CheckinRecord {
   id: string;
@@ -683,7 +684,7 @@ function generateMockAttendeesForEvent(eventId: string): EventAttendee[] {
 export function getAllAttendees(): EventAttendee[] {
   if (typeof window === 'undefined') return INITIAL_MOCK_ATTENDEES;
   try {
-    const saved = localStorage.getItem(STORAGE_KEY_ATTENDEES);
+    const saved = safeStorage.getItem(STORAGE_KEY_ATTENDEES) || localStorage.getItem(STORAGE_KEY_ATTENDEES);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -700,7 +701,7 @@ export function getAllAttendees(): EventAttendee[] {
 
   // Save initial default mock items if none exist
   try {
-    localStorage.setItem(STORAGE_KEY_ATTENDEES, JSON.stringify(INITIAL_MOCK_ATTENDEES));
+    safeStorage.setItem(STORAGE_KEY_ATTENDEES, JSON.stringify(INITIAL_MOCK_ATTENDEES));
   } catch (e) {}
   return INITIAL_MOCK_ATTENDEES;
 }
@@ -720,9 +721,9 @@ export function getAttendeesForEvent(eventId: string): EventAttendee[] {
 export function saveAllAttendees(records: EventAttendee[]): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY_ATTENDEES, JSON.stringify(records));
+    safeStorage.setItem(STORAGE_KEY_ATTENDEES, JSON.stringify(records));
   } catch (e) {
-    console.error('Error saving attendees:', e);
+    console.warn('Error saving attendees to storage:', e);
   }
 
   // Also sync checkins list to keep checkins store in 1:1 sync
@@ -868,7 +869,7 @@ function syncCheckinsFromAttendees(attendees: EventAttendee[]): void {
     }));
 
   try {
-    localStorage.setItem(STORAGE_KEY_CHECKINS, JSON.stringify(checkedInItems));
+    safeStorage.setItem(STORAGE_KEY_CHECKINS, JSON.stringify(checkedInItems));
   } catch (e) {}
 }
 
@@ -913,7 +914,7 @@ export function getAllCheckins(): CheckinRecord[] {
   }
 
   try {
-    const saved = localStorage.getItem(STORAGE_KEY_CHECKINS);
+    const saved = safeStorage.getItem(STORAGE_KEY_CHECKINS) || localStorage.getItem(STORAGE_KEY_CHECKINS);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -936,9 +937,9 @@ export function getCheckinsForEvent(eventId: string): CheckinRecord[] {
 export function saveAllCheckins(records: CheckinRecord[]): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY_CHECKINS, JSON.stringify(records));
+    safeStorage.setItem(STORAGE_KEY_CHECKINS, JSON.stringify(records));
   } catch (e) {
-    console.error('Error saving checkins:', e);
+    console.warn('Error saving checkins:', e);
   }
   notifySubscribers();
 }

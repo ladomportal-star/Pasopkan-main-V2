@@ -6,6 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { DateInputDDMMYYYY } from '../components/DateInputDDMMYYYY';
 import SEO from '../components/SEO';
+import { safeStorage } from '../lib/storage';
 
 const translations = {
   en: {
@@ -103,8 +104,8 @@ export default function EditProfile() {
         const img = new Image();
         img.onload = async () => {
           const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 500;
-          const MAX_HEIGHT = 500;
+          const MAX_WIDTH = 256;
+          const MAX_HEIGHT = 256;
           let width = img.width;
           let height = img.height;
 
@@ -123,12 +124,12 @@ export default function EditProfile() {
           canvas.height = height;
           const ctx = canvas.getContext('2d');
           ctx?.drawImage(img, 0, 0, width, height);
-          const base64Pic = canvas.toDataURL('image/jpeg', 0.8);
+          const base64Pic = canvas.toDataURL('image/jpeg', 0.7);
           
           setProfilePic(base64Pic);
           
           try {
-            localStorage.setItem('pasopkan_user_profile_pic', base64Pic);
+            safeStorage.setItem('pasopkan_user_profile_pic', base64Pic);
           } catch (err) {
             console.error('LocalStorage quota exceeded, skipping local cache', err);
           }
@@ -147,7 +148,7 @@ export default function EditProfile() {
 
   useEffect(() => {
     try {
-      const savedPic = localStorage.getItem('pasopkan_user_profile_pic');
+      const savedPic = safeStorage.getItem('pasopkan_user_profile_pic') || localStorage.getItem('pasopkan_user_profile_pic');
       if (savedPic) setProfilePic(savedPic);
     } catch (err) {
       console.error(err);
@@ -184,7 +185,7 @@ export default function EditProfile() {
         dateOfBirth: formData.dateOfBirth || formData.dob || '',
         dob: formData.dateOfBirth || formData.dob || '',
       };
-      localStorage.setItem('pasopkan_user_profile', JSON.stringify(payload));
+      safeStorage.setItem('pasopkan_user_profile', JSON.stringify(payload));
       await syncProfileToFirestore(payload);
     } catch (err) {
       console.error(err);

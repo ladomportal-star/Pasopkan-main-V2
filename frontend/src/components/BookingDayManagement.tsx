@@ -9,6 +9,7 @@ import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'motion/react';
 import { LaoEvent } from '../data/events';
 import { EventAttendee } from '../lib/checkinsStore';
+import { safeStorage } from '../lib/storage';
 
 interface BookingDayManagementProps {
   event: LaoEvent;
@@ -108,7 +109,26 @@ const t = {
     date: 'Booking Date',
     bookingTypeNotice: 'Booking Event: Capacity is partitioned by calendar date and session slot.',
     instantConfirm: 'Instant Booking',
-    approvalMode: 'Requires Approval'
+    approvalMode: 'Requires Approval',
+    generateSampleGuests: 'Generate Guest Examples',
+    generateSampleGuestsShort: 'Generate Examples',
+    modalGenerateTitle: 'Generate Example Guest Bookings',
+    modalGenerateSubtitle: 'Populate realistic sample guests to test capacity, time slots, and check-in workflows',
+    numGuestsToGenerate: 'Number of Guests to Generate',
+    targetDateSelection: 'Target Date / Range',
+    targetThisDayOnly: 'This Selected Day Only',
+    targetSpread3Days: 'Spread across 3 upcoming days',
+    targetSpread7Days: 'Spread across 7 upcoming days',
+    slotDistribution: 'Time Slot Allocation',
+    slotDistributeEvenly: 'Distribute evenly across active time slots',
+    checkinStatusMix: 'Check-in Status Preset',
+    checkinMixRealistic: 'Realistic Mix (approx. 40% checked in, 60% pending arrival)',
+    checkinAllPending: 'All Pending (Awaiting arrival)',
+    checkinAllCheckedIn: 'All Checked-In (Already arrived)',
+    includeQuestionnaire: 'Include realistic questionnaire survey answers (Dietary, requests, etc.)',
+    generateButton: 'Generate Guests Now',
+    generateSuccessToast: 'Successfully generated sample guest bookings!',
+    quickGenerate5: '⚡ Quick 5 Guests'
   },
   lo: {
     dailyBookingTitle: 'ການຈັດການຈອງລາຍວັນ',
@@ -186,7 +206,26 @@ const t = {
     date: 'ວັນທີຈອງ',
     bookingTypeNotice: 'ກິດຈະກຳແບບຈອງ: ຄວາມຈຸຖືກແບ່ງຕາມວັນທີ ແລະ ຮອບເວລາໃນແຕ່ລະມື້.',
     instantConfirm: 'ຢືນຢັນການຈອງທັນທີ',
-    approvalMode: 'ຕ້ອງຜ່ານການອະນຸມັດ'
+    approvalMode: 'ຕ້ອງຜ່ານການອະນຸມັດ',
+    generateSampleGuests: 'ສ້າງລາຍຊື່ແຂກຕົວຢ່າງ',
+    generateSampleGuestsShort: 'ສ້າງແຂກຕົວຢ່າງ',
+    modalGenerateTitle: 'ສ້າງລາຍຊື່ແຂກຕົວຢ່າງສຳລັບການຈອງ',
+    modalGenerateSubtitle: 'ສ້າງການຈອງຕົວຢ່າງທີ່ສົມຈິງເພື່ອທົດສອບຄວາມຈຸ, ຮອບເວລາ ແລະ ລະບົບເຊັກອິນ',
+    numGuestsToGenerate: 'ຈຳນວນແຂກທີ່ຕ້ອງການສ້າງ',
+    targetDateSelection: 'ວັນທີເປົ້າໝາຍ / ຊ່ວງເວລາ',
+    targetThisDayOnly: 'ສະເພາະວັນທີເລືອກນີ້',
+    targetSpread3Days: 'ແຈກຢາຍ 3 ວັນຕໍ່ໜ້າ',
+    targetSpread7Days: 'ແຈກຢາຍ 7 ວັນຕໍ່ໜ້າ',
+    slotDistribution: 'ການຈັດສັນຮອບເວລາ',
+    slotDistributeEvenly: 'ແຈກຢາຍສະເໝີກັນທຸກຮອບເວລາທີ່ເປີດ',
+    checkinStatusMix: 'ສະຖານະການເຊັກອິນ',
+    checkinMixRealistic: 'ປະສົມແບບສົມຈິງ (ເຊັກອິນແລ້ວ ~40%, ລໍຖ້າ ~60%)',
+    checkinAllPending: 'ລໍຖ້າທັງໝົດ (ຍັງບໍ່ທັນມາຮອດ)',
+    checkinAllCheckedIn: 'ເຊັກອິນແລ້ວທັງໝົດ (ມາຮອດແລ້ວ)',
+    includeQuestionnaire: 'ໃສ່ຄຳຕອບແບບສອບຖາມຕົວຢ່າງ (ອາຫານການກິນ, ຂໍ້ຄວາມພິເສດ)',
+    generateButton: 'ສ້າງລາຍຊື່ແຂກດຽວນີ້',
+    generateSuccessToast: 'ສ້າງລາຍຊື່ແຂກຕົວຢ່າງສຳເລັດແລ້ວ!',
+    quickGenerate5: '⚡ ສ້າງໄວ 5 ຄົນ'
   }
 };
 
@@ -201,6 +240,22 @@ const LAO_DAYS = [
 
 const LAO_DAYS_SHORT = [
   'ອາທິດ', 'ຈັນ', 'ອັງຄານ', 'ພຸດ', 'ພະຫັດ', 'ສຸກ', 'ເສົາ'
+];
+
+// Realistic example guests pool for testing booking schedules, capacity, and check-ins
+const SAMPLE_GUESTS_POOL = [
+  { first: 'Sengdao', last: 'Keomany', phone: '+856 20 5512 8891', email: 'sengdao.k@gmail.com', diet: 'Halal', notes: 'First-time visitor, booked online' },
+  { first: 'Anousone', last: 'Vongsay', phone: '+856 20 9982 3410', email: 'anousone.v@laopost.la', diet: 'Standard / None', notes: 'Prefers quiet seating area' },
+  { first: 'Chanthala', last: 'Sisavath', phone: '+856 20 7761 0293', email: 'chanthala@techlao.com', diet: 'Vegetarian', notes: 'Birthday celebration session' },
+  { first: 'Bounmy', last: 'Inthavong', phone: '+856 20 5234 1190', email: 'bounmy.inth@gmail.com', diet: 'Gluten-Free', notes: 'Team workshop participant' },
+  { first: 'Vilayluck', last: 'Phommachanh', phone: '+856 20 2288 4501', email: 'vilayluck.p@outlook.com', diet: 'No spicy / Mild', notes: 'High chair requested' },
+  { first: 'Souphaphone', last: 'Luangrath', phone: '+856 20 5419 6632', email: 'soupha.l@gmail.com', diet: 'Standard / None', notes: 'Anniversary couple booking' },
+  { first: 'Michael', last: 'Chen', phone: '+856 20 5678 1234', email: 'mchen.vientiane@gmail.com', diet: 'Vegetarian', notes: 'Photographer pass requested' },
+  { first: 'Sarah', last: 'Jenkins', phone: '+856 20 7890 2345', email: 'sarah.j@expatlao.org', diet: 'Gluten-Free', notes: 'Special dietary requirements' },
+  { first: 'Khamphone', last: 'Sayavong', phone: '+856 20 5500 7891', email: 'khamphone.s@edl.com.la', diet: 'Standard / None', notes: 'VIP partner guest' },
+  { first: 'Thidarat', last: 'Rattanakorn', phone: '+856 20 9123 4567', email: 'thidarat.r@gmail.com', diet: 'No seafood', notes: 'Returning weekend guest' },
+  { first: 'Phouthasone', last: 'Douangdara', phone: '+856 20 5543 2198', email: 'phouthasone.d@bcel.la', diet: 'Standard / None', notes: 'Outdoor seating preference' },
+  { first: 'Noy', last: 'Xayavong', phone: '+856 20 7711 9922', email: 'noy.xayavong@gmail.com', diet: 'Mild spice only', notes: 'Early arrival requested' }
 ];
 
 export default function BookingDayManagement({
@@ -237,7 +292,7 @@ export default function BookingDayManagement({
   // Day Overrides (Closure, notes, paused slots, capacity adjustments)
   const [dayOverrides, setDayOverrides] = useState<Record<string, DayOverride>>(() => {
     try {
-      const saved = localStorage.getItem(`pasopkan_day_overrides_${event.id}`);
+      const saved = safeStorage.getItem(`pasopkan_day_overrides_${event.id}`) || localStorage.getItem(`pasopkan_day_overrides_${event.id}`);
       return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
@@ -262,6 +317,23 @@ export default function BookingDayManagement({
 
   const [answersModalAttendee, setAnswersModalAttendee] = useState<EventAttendee | null>(null);
 
+  // Generate Sample Guests State
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [generateCount, setGenerateCount] = useState<number>(5);
+  const [generateTarget, setGenerateTarget] = useState<'selected' | 'spread3' | 'spread7'>('selected');
+  const [generateSlot, setGenerateSlot] = useState<string>('all');
+  const [generateStatus, setGenerateStatus] = useState<'realistic' | 'pending' | 'checked_in'>('realistic');
+  const [generateIncludeAnswers, setGenerateIncludeAnswers] = useState<boolean>(true);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = setTimeout(() => {
+      setToastMessage(null);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [toastMessage]);
+
   // Time slots for this event
   const eventSlots = useMemo(() => {
     if (event.bookingTimeSlots && event.bookingTimeSlots.length > 0) {
@@ -284,11 +356,11 @@ export default function BookingDayManagement({
     }
   }, [eventSlots, event.ticketTiers, walkinForm.slot]);
 
-  // Save day overrides to localStorage
+  // Save day overrides to safeStorage
   const saveDayOverrides = (updated: Record<string, DayOverride>) => {
     setDayOverrides(updated);
     try {
-      localStorage.setItem(`pasopkan_day_overrides_${event.id}`, JSON.stringify(updated));
+      safeStorage.setItem(`pasopkan_day_overrides_${event.id}`, JSON.stringify(updated));
     } catch (e) {
       console.error('Failed to save day overrides:', e);
     }
@@ -585,8 +657,139 @@ export default function BookingDayManagement({
     XLSX.writeFile(wb, `${event.title.replace(/\s+/g, '_')}_${mode === 'day' ? selectedDate : 'All_Bookings'}.xlsx`);
   };
 
+  // Generate Sample Guests Handler
+  const handleGenerateGuests = (
+    overrideCount?: number,
+    overrideTarget?: 'selected' | 'spread3' | 'spread7'
+  ) => {
+    const count = overrideCount ?? generateCount;
+    const target = overrideTarget ?? generateTarget;
+
+    // Calculate dates list
+    const dates: string[] = [];
+    const baseDate = new Date(selectedDate);
+    if (isNaN(baseDate.getTime()) || target === 'selected') {
+      dates.push(selectedDate);
+    } else {
+      const numDays = target === 'spread3' ? 3 : 7;
+      for (let d = 0; d < numDays; d++) {
+        const nextD = new Date(baseDate);
+        nextD.setDate(baseDate.getDate() + d);
+        dates.push(nextD.toISOString().split('T')[0]);
+      }
+    }
+
+    const tiers = (event.ticketTiers && event.ticketTiers.length > 0)
+      ? event.ticketTiers
+      : [{ id: 't_demo', name: 'Standard Pass', price: 150000 }];
+
+    const slots = eventSlots.length > 0 ? eventSlots : ['09:00 - 11:30', '13:00 - 15:30', '16:00 - 18:30'];
+
+    const poolStartIndex = Math.floor(Math.random() * SAMPLE_GUESTS_POOL.length);
+
+    for (let i = 0; i < count; i++) {
+      const sample = SAMPLE_GUESTS_POOL[(poolStartIndex + i) % SAMPLE_GUESTS_POOL.length];
+      const assignedDate = dates[i % dates.length];
+      const assignedSlot = generateSlot !== 'all' ? generateSlot : slots[i % slots.length];
+      const assignedTier = tiers[i % tiers.length];
+
+      // Determine check-in state
+      let checkedIn = false;
+      if (generateStatus === 'checked_in') {
+        checkedIn = true;
+      } else if (generateStatus === 'pending') {
+        checkedIn = false;
+      } else {
+        // Realistic mix: approx 40% checked in
+        checkedIn = (i % 3 === 0);
+      }
+
+      const randomMinutes = Math.floor(Math.random() * 50);
+      const checkinHour = (9 + Math.floor(Math.random() * 6)).toString().padStart(2, '0');
+      const checkinMinute = randomMinutes.toString().padStart(2, '0');
+
+      const uniqueSuffix = `${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}_${i}`;
+      const orderSuffix = Math.floor(1000 + Math.random() * 9000);
+
+      const priceNum = typeof assignedTier.price === 'number' ? assignedTier.price : 150000;
+      const priceStr = `${priceNum.toLocaleString()} LAK`;
+
+      const answers: Record<string, string> = {
+        'booking_source': 'Online Calendar Booking',
+        'registered_by': 'Sample Guest Generator'
+      };
+
+      if (generateIncludeAnswers) {
+        answers['q_diet'] = sample.diet;
+        answers['q_notes'] = sample.notes;
+        answers['q_visit_purpose'] = 'Experience & Tasting';
+      }
+
+      const newAtt: EventAttendee = {
+        id: `att_demo_${uniqueSuffix}`,
+        ticketId: `TK-DEMO-${orderSuffix}`,
+        orderId: `ORD-${assignedDate.replace(/-/g, '')}-${orderSuffix}`,
+        eventId: String(event.id),
+        firstName: sample.first,
+        lastName: sample.last,
+        attendeeName: `${sample.first} ${sample.last}`,
+        email: sample.email,
+        phone: sample.phone,
+        ticketType: assignedTier.name,
+        tierId: assignedTier.id,
+        zone: 'General Session',
+        seat: `Slot #${(i % 10) + 1}`,
+        price: priceStr,
+        purchaseDate: new Date(Date.now() - (i + 1) * 3600000 * 6).toISOString(),
+        visitDate: assignedDate,
+        timeSlot: assignedSlot,
+        isCheckedIn: checkedIn,
+        checkedInTime: checkedIn ? `${checkinHour}:${checkinMinute}` : undefined,
+        checkedInTimestamp: checkedIn ? (Date.now() - (i * 1200000)) : undefined,
+        staffLabel: checkedIn ? 'Front Desk Scanner' : undefined,
+        customAnswers: answers
+      };
+
+      onAddAttendee(newAtt);
+    }
+
+    setShowGenerateModal(false);
+    const targetLabel = target === 'selected' ? selectedDate : `${dates[0]} ~ ${dates[dates.length - 1]}`;
+    setToastMessage(
+      lang === 'lo'
+        ? `✨ ສ້າງລາຍຊື່ແຂກຕົວຢ່າງ ${count} ຄົນສຳເລັດສຳລັບ ${targetLabel}!`
+        : `✨ Successfully generated ${count} example guest bookings for ${targetLabel}!`
+    );
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed top-24 right-5 sm:right-8 z-50 max-w-md p-4 rounded-2xl bg-zinc-900/95 text-white shadow-2xl border border-purple-500/50 backdrop-blur-md flex items-center justify-between gap-3"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+              </div>
+              <p className="text-xs sm:text-sm font-bold text-gray-100">{toastMessage}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setToastMessage(null)}
+              className="p-1 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white cursor-pointer"
+            >
+              <XCircle className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* 1. Header Banner & Mode Selector */}
       <div className={`rounded-3xl p-5 sm:p-7 shadow-sm border transition-all ${
         theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
@@ -1102,6 +1305,16 @@ export default function BookingDayManagement({
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
+                  onClick={() => setShowGenerateModal(true)}
+                  className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
+                  title="Generate realistic mock guests to test booking sessions and check-in"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>{currentLang.generateSampleGuests}</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setShowWalkinModal(true)}
                   className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
                 >
@@ -1213,14 +1426,24 @@ export default function BookingDayManagement({
                 </div>
                 <h5 className="font-bold text-base mb-1">{currentLang.noGuestsForDay}</h5>
                 <p className="text-xs text-gray-400 max-w-md mx-auto mb-4">{currentLang.noGuestsDesc}</p>
-                <button
-                  type="button"
-                  onClick={() => setShowWalkinModal(true)}
-                  className="px-4 py-2 rounded-xl bg-adv-orange text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>{currentLang.addWalkin}</span>
-                </button>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowWalkinModal(true)}
+                    className="px-4 py-2 rounded-xl bg-adv-orange text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-sm hover:opacity-95"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{currentLang.addWalkin}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowGenerateModal(true)}
+                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>{currentLang.generateSampleGuests}</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-3">
@@ -1290,7 +1513,7 @@ export default function BookingDayManagement({
                         ) : (
                           <button
                             type="button"
-                            onClick={() => onToggleCheckin(att.ticketId, false, 'Manage Event Desk')}
+                            onClick={() => onToggleCheckin(att.ticketId || att.id, true, 'Manage Event Desk')}
                             className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
                           >
                             <UserCheck className="w-3.5 h-3.5" />
@@ -1340,14 +1563,25 @@ export default function BookingDayManagement({
                 {thisEventAttendees.length} total bookings recorded across all dates
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => handleExportXLSX('all')}
-              className="px-4 py-2.5 rounded-2xl bg-adv-orange text-white text-xs font-bold flex items-center gap-2 shadow-sm cursor-pointer"
-            >
-              <Download className="w-4 h-4" />
-              <span>{currentLang.exportAllRoster}</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowGenerateModal(true)}
+                className="px-4 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>{currentLang.generateSampleGuests}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleExportXLSX('all')}
+                className="px-4 py-2.5 rounded-2xl bg-adv-orange text-white text-xs font-bold flex items-center gap-2 shadow-sm cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>{currentLang.exportAllRoster}</span>
+              </button>
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -1659,6 +1893,250 @@ export default function BookingDayManagement({
                 >
                   Close
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 9. Generate Example Guests Modal */}
+      <AnimatePresence>
+        {showGenerateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className={`w-full max-w-lg rounded-3xl p-6 border shadow-2xl overflow-hidden ${
+                theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
+              }`}
+            >
+              {/* Modal Header */}
+              <div className="flex items-start justify-between pb-4 mb-5 border-b border-gray-100 dark:border-zinc-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-5 h-5 text-purple-500" />
+                  </div>
+                  <div>
+                    <h4 className="text-base sm:text-lg font-black">{currentLang.modalGenerateTitle}</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                      {currentLang.modalGenerateSubtitle}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowGenerateModal(false)}
+                  className="p-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 cursor-pointer"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+                {/* 1. Guest Count Selector */}
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-gray-400 mb-2">
+                    {currentLang.numGuestsToGenerate}
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[3, 5, 10, 15].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setGenerateCount(num)}
+                        className={`py-2 px-3 rounded-xl text-xs font-black transition-all border cursor-pointer ${
+                          generateCount === num
+                            ? 'bg-purple-600 border-purple-600 text-white shadow-sm'
+                            : theme === 'dark'
+                            ? 'bg-zinc-950 border-zinc-800 text-gray-300 hover:border-zinc-700'
+                            : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        {num} {lang === 'lo' ? 'ຄົນ' : 'Guests'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. Target Date / Range */}
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-gray-400 mb-2">
+                    {currentLang.targetDateSelection}
+                  </label>
+                  <div className="space-y-2">
+                    <label
+                      onClick={() => setGenerateTarget('selected')}
+                      className={`flex items-center justify-between p-3 rounded-2xl border cursor-pointer transition-all ${
+                        generateTarget === 'selected'
+                          ? 'border-purple-600 bg-purple-500/5 ring-1 ring-purple-600/30'
+                          : theme === 'dark' ? 'border-zinc-800 bg-zinc-950' : 'border-gray-200 bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                          generateTarget === 'selected' ? 'border-purple-600' : 'border-gray-400'
+                        }`}>
+                          {generateTarget === 'selected' && <div className="w-2 h-2 rounded-full bg-purple-600" />}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold">{currentLang.targetThisDayOnly}</p>
+                          <p className="text-[11px] text-gray-400 font-medium">{formatDateDisplay(selectedDate)} ({selectedDate})</p>
+                        </div>
+                      </div>
+                      <span className="text-xs px-2 py-0.5 rounded-md font-bold bg-orange-500/10 text-adv-orange">
+                        {selectedDate}
+                      </span>
+                    </label>
+
+                    <label
+                      onClick={() => setGenerateTarget('spread3')}
+                      className={`flex items-center justify-between p-3 rounded-2xl border cursor-pointer transition-all ${
+                        generateTarget === 'spread3'
+                          ? 'border-purple-600 bg-purple-500/5 ring-1 ring-purple-600/30'
+                          : theme === 'dark' ? 'border-zinc-800 bg-zinc-950' : 'border-gray-200 bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                          generateTarget === 'spread3' ? 'border-purple-600' : 'border-gray-400'
+                        }`}>
+                          {generateTarget === 'spread3' && <div className="w-2 h-2 rounded-full bg-purple-600" />}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold">{currentLang.targetSpread3Days}</p>
+                          <p className="text-[11px] text-gray-400 font-medium">Next 3 days from {selectedDate}</p>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-bold text-gray-400">3 Days</span>
+                    </label>
+
+                    <label
+                      onClick={() => setGenerateTarget('spread7')}
+                      className={`flex items-center justify-between p-3 rounded-2xl border cursor-pointer transition-all ${
+                        generateTarget === 'spread7'
+                          ? 'border-purple-600 bg-purple-500/5 ring-1 ring-purple-600/30'
+                          : theme === 'dark' ? 'border-zinc-800 bg-zinc-950' : 'border-gray-200 bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                          generateTarget === 'spread7' ? 'border-purple-600' : 'border-gray-400'
+                        }`}>
+                          {generateTarget === 'spread7' && <div className="w-2 h-2 rounded-full bg-purple-600" />}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold">{currentLang.targetSpread7Days}</p>
+                          <p className="text-[11px] text-gray-400 font-medium">Next 7 days from {selectedDate}</p>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-bold text-gray-400">7 Days</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* 3. Slot Allocation */}
+                {eventSlots.length > 0 && (
+                  <div>
+                    <label className="block text-xs font-black uppercase tracking-wider text-gray-400 mb-2">
+                      {currentLang.slotDistribution}
+                    </label>
+                    <select
+                      value={generateSlot}
+                      onChange={(e) => setGenerateSlot(e.target.value)}
+                      className={`w-full p-2.5 rounded-xl text-xs border font-medium outline-none ${
+                        theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-gray-50 border-gray-200 text-adv-slate'
+                      }`}
+                    >
+                      <option value="all">{currentLang.slotDistributeEvenly}</option>
+                      {eventSlots.map((slot) => (
+                        <option key={slot} value={slot}>
+                          {slot}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* 4. Checkin Status Preset */}
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-gray-400 mb-2">
+                    {currentLang.checkinStatusMix}
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'realistic', label: currentLang.checkinMixRealistic },
+                      { id: 'pending', label: currentLang.checkinAllPending },
+                      { id: 'checked_in', label: currentLang.checkinAllCheckedIn },
+                    ].map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setGenerateStatus(opt.id as any)}
+                        className={`p-2.5 rounded-xl text-left text-[11px] font-bold border transition-all cursor-pointer ${
+                          generateStatus === opt.id
+                            ? 'bg-purple-600 border-purple-600 text-white shadow-sm'
+                            : theme === 'dark'
+                            ? 'bg-zinc-950 border-zinc-800 text-gray-300 hover:border-zinc-700'
+                            : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 5. Include Questionnaire Answers */}
+                <div className={`p-3 rounded-2xl border flex items-center justify-between gap-3 ${
+                  theme === 'dark' ? 'bg-zinc-950 border-zinc-800' : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <label htmlFor="gen-include-answers" className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      id="gen-include-answers"
+                      checked={generateIncludeAnswers}
+                      onChange={(e) => setGenerateIncludeAnswers(e.target.checked)}
+                      className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
+                    />
+                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                      {currentLang.includeQuestionnaire}
+                    </span>
+                  </label>
+                  <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-between gap-3 pt-4 mt-4 border-t border-gray-100 dark:border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setShowGenerateModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-800 text-xs font-bold cursor-pointer"
+                >
+                  {currentLang.cancel}
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateGuests(5, 'selected')}
+                    className="px-3 py-2.5 rounded-xl border border-purple-300 dark:border-purple-800 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                    title="Quickly generate 5 guests for this day"
+                  >
+                    <span>{currentLang.quickGenerate5}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateGuests()}
+                    className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black flex items-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>{currentLang.generateButton} ({generateCount})</span>
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
