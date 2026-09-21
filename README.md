@@ -7,8 +7,8 @@ deployed separately:
 
 | Path         | Project             | Stack                                                        |
 | ------------ | ------------------- | ----------------------------------------------------------- |
-| [`backend/`](backend/)  | `pasopkan-backend`  | Express, Drizzle ORM (PostgreSQL), Firebase Admin           |
-| [`frontend/`](frontend/) | `pasopkan-frontend` | React 19, Vite, Tailwind CSS v4, Firebase (client SDK)      |
+| [`backend/`](backend/)  | `pasopkan-backend`  | Express, Drizzle ORM (PostgreSQL), Supabase Auth (JWT)     |
+| [`frontend/`](frontend/) | `pasopkan-frontend` | React 19, Vite, Tailwind CSS v4, Supabase (client SDK)      |
 
 Each folder has its own `package.json`, `node_modules`, `tsconfig.json`,
 `.env`, and lockfile. There is **no root `package.json`** — run `npm`
@@ -27,18 +27,16 @@ commands inside `backend/` or `frontend/`.
 ## Quick start (local development)
 
 ```bash
-npm run install:all       # installs frontend/ and backend/ (each has its own node_modules)
-cp backend/.env.example backend/.env   # fill in DATABASE_URL, SUPABASE_URL, ...
+cd backend  && npm install && cp .env.example .env    # fill in DATABASE_URL, SUPABASE_URL, ...
+cd ../frontend && npm install
 npm run dev               # web app + API together on http://localhost:3000
 ```
 
-`npm run dev` runs the Vite dev server from `frontend/` with the backend API
+`npm run dev` in `frontend/` runs the Vite dev server with the backend API
 mounted inside it, so the app and `/api/*` share one origin and port (no proxy,
-no CORS). `npm run dev:server` starts the API alone (`backend/`, `tsx watch`).
+no CORS). To run the API alone: `cd backend && npm run dev` (`tsx watch`).
 Client env vars (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) go in
-`frontend/.env`; server settings go in `backend/.env`.
-
-Both projects can also be run from their own folder (`cd frontend && npm run dev`).
+`frontend/.env` (copy `frontend/.env.example`); server settings go in `backend/.env`.
 
 ---
 
@@ -59,7 +57,7 @@ Both projects can also be run from their own folder (`cd frontend && npm run dev
 
 | Command           | Description                                  |
 | ----------------- | ------------------------------------------- |
-| `npm run dev`     | Vite dev server on port 5173                 |
+| `npm run dev`     | Vite dev server + API on port 3000           |
 | `npm run build`   | Production build to `frontend/dist`          |
 | `npm run preview` | Preview the production build                 |
 | `npm run lint`    | Type-check (`tsc --noEmit`)                  |
