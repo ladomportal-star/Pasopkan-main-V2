@@ -15,3 +15,8 @@ firebase-debug.log
 
 # Build output
 dist/
+
+# Local env files hold real values - commit only the *.example templates
+.env
+.env.*
+!.env.example
