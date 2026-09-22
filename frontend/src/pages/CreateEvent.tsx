@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
-import { Calendar, Undo, Redo, Heading3, FileImage, Folder, FileText, Plus, User, Users, Mail, Phone, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Inbox, Ticket, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, Image as ImageIcon, Video, MapPin, Loader2, Trash2, X, Check, QrCode, LogOut, Edit, ShieldCheck, DollarSign, RefreshCcw, FileCheck, BookOpen, AlertCircle, ShieldAlert, ArrowLeft, ArrowRight, Globe, Clock, Settings, Lock, Eye, UploadCloud, ExternalLink, Monitor, Smartphone, CheckCircle2, Sparkles, Paperclip, Search, Quote, Minus, Heading1, Heading2, Link as LinkIcon, Award, Unlink, Superscript, Subscript, Strikethrough, RemoveFormatting, MessageSquare, MessageCircle, Type, Palette, GripVertical, Info, BarChart3, TrendingUp } from 'lucide-react';
+import { Calendar, Undo, Redo, Heading3, FileImage, Folder, FileText, Plus, User, Users, Mail, Phone, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Inbox, Ticket, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, Image as ImageIcon, Video, MapPin, Loader2, Trash2, X, Check, QrCode, LogOut, Edit, ShieldCheck, DollarSign, RefreshCcw, FileCheck, BookOpen, AlertCircle, ShieldAlert, ArrowLeft, ArrowRight, Globe, Clock, Settings, Lock, Eye, UploadCloud, ExternalLink, Monitor, Smartphone, CheckCircle2, Sparkles, Paperclip, Search, Quote, Minus, Heading1, Heading2, Link as LinkIcon, Award, Unlink, Superscript, Subscript, Strikethrough, RemoveFormatting, MessageSquare, MessageCircle, Type, Palette, GripVertical, Info, BarChart3, TrendingUp, KeyRound, RotateCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../context/LanguageContext';
 import { safeStorage } from '../lib/storage';
@@ -700,6 +700,8 @@ export default function CreateEvent() {
   const [activeStep, setActiveStep] = useState(1);
   const [activeTab, setActiveTab] = useState<'createEvent' | 'analytics' | 'terms'>('analytics');
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const is2FaEnabled = safeStorage.getItem('user_2fa_enabled') === 'true';
+  const [showTwoFaRequiredModal, setShowTwoFaRequiredModal] = useState(false);
   
 
 
@@ -2948,7 +2950,13 @@ export default function CreateEvent() {
           
           {(activeTab === 'createEvent' || editingEventId) && (
             <button 
-              onClick={() => setActiveTab('createEvent')}
+              onClick={() => {
+                if (!is2FaEnabled) {
+                  setShowTwoFaRequiredModal(true);
+                  return;
+                }
+                setActiveTab('createEvent');
+              }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'createEvent' ? 'bg-adv-orange/10 text-adv-orange font-bold border-l-4 border-adv-orange' : 'text-gray-500 hover:text-adv-slate hover:bg-gray-50'}`}
             >
               <Plus className="w-5 h-5 shrink-0 text-adv-orange" />
@@ -2982,8 +2990,16 @@ export default function CreateEvent() {
               <span className="text-sm font-bold text-adv-slate uppercase">{lang === 'lo' ? 'la' : lang}</span>
             </button>
             <button 
-              onClick={() => { resetForm(); setActiveStep(1); setActiveTab('createEvent'); }}
-              className="flex items-center gap-2 bg-adv-orange hover:bg-adv-orange/90 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors"
+              onClick={() => {
+                if (!is2FaEnabled) {
+                  setShowTwoFaRequiredModal(true);
+                  return;
+                }
+                resetForm(); 
+                setActiveStep(1); 
+                setActiveTab('createEvent'); 
+              }}
+              className="flex items-center gap-2 bg-adv-orange hover:bg-adv-orange/90 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               {t.createEvent}
@@ -3006,7 +3022,59 @@ export default function CreateEvent() {
         <div className="flex-1 overflow-y-auto p-6 lg:p-10">
           <div className="max-w-6xl mx-auto">
             
-            {activeTab === 'createEvent' && (
+            {activeTab === 'createEvent' && !is2FaEnabled && (
+              <div className="max-w-xl mx-auto my-12 bg-white rounded-3xl p-8 sm:p-10 shadow-lg border border-gray-100 text-center">
+                <div className="w-16 h-16 rounded-3xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-5 border border-amber-200 shadow-sm">
+                  <ShieldAlert className="w-8 h-8" />
+                </div>
+                <span className="inline-block px-3.5 py-1 bg-amber-100/70 text-amber-700 text-xs font-black uppercase tracking-wider rounded-full mb-3">
+                  {lang === 'lo' ? 'ຄວາມປອດໄພຜູ້ຈັດງານ' : 'Organizer Security Required'}
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black text-adv-slate mb-3">
+                  {lang === 'lo' ? 'ຕ້ອງຕັ້ງຄ່າ 2FA ກ່ອນສ້າງກິດຈະກຳ' : '2FA Setup Required'}
+                </h2>
+                <p className="text-xs sm:text-sm text-gray-500 font-medium leading-relaxed mb-6">
+                  {lang === 'lo'
+                    ? 'ເພື່ອຄວາມປອດໄພຂອງບັນຊີຜູ້ຈັດງານ, ລາຍຮັບຈາກປີ້ ແລະ ຂໍ້ມູນກິດຈະກຳ, ທ່ານຕ້ອງຕັ້ງຄ່າການຢືນຢັນຕົວຕົນ 2 ຂັ້ນຕອນ (2FA) ກ່ອນຈຶ່ງຈະສາມາດສ້າງກິດຈະກຳໄດ້.'
+                    : 'To protect your organizer credentials, ticket revenue, and attendee check-ins, you must set up Two-Factor Authentication (2FA) before creating events.'}
+                </p>
+
+                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 text-left mb-8 space-y-2.5 text-xs text-gray-600">
+                  <div className="flex items-center gap-2 font-medium">
+                    <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                    <span>{lang === 'lo' ? 'ປົກປ້ອງບັນຊີທະນາຄານ ແລະ ລາຍຮັບ' : 'Protects payout bank accounts & ticket revenue'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 font-medium">
+                    <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                    <span>{lang === 'lo' ? 'ປ້ອງກັນການສ້າງກິດຈະກຳປອມແປງ' : 'Prevents unauthorized event publishing'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 font-medium">
+                    <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                    <span>{lang === 'lo' ? 'ໃຊ້ງານງ່າຍຜ່ານ Google Authenticator ຫຼື Authy' : 'Works with Google Authenticator or Authy'}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/')}
+                    className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    {lang === 'lo' ? 'ກັບຄືນໜ້າຫຼັກ' : 'Return Home'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/security/2fa')}
+                    className="px-6 py-3 bg-adv-orange hover:bg-orange-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                  >
+                    <KeyRound className="w-4 h-4" />
+                    <span>{lang === 'lo' ? 'ຕັ້ງຄ່າ 2FA ດຽວນີ້' : 'Set Up 2FA Now'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'createEvent' && is2FaEnabled && (
               <>
                 {/* Stepper & Actions */}
                 <div className="flex items-center justify-between mb-8 border-b border-gray-100">
@@ -6618,6 +6686,81 @@ export default function CreateEvent() {
                  </div>
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 2FA Setup Required Modal */}
+      <AnimatePresence>
+        {showTwoFaRequiredModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+            onClick={() => setShowTwoFaRequiredModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-gray-100 text-adv-slate"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4 border border-amber-200 shadow-sm">
+                <ShieldAlert className="w-7 h-7" />
+              </div>
+              
+              <div className="text-center mb-5">
+                <span className="inline-block px-3 py-1 bg-amber-100/70 text-amber-700 text-[10px] font-black uppercase tracking-wider rounded-full mb-2">
+                  {lang === 'lo' ? 'ຄວາມປອດໄພຜູ້ຈັດງານ' : 'Organizer Security Required'}
+                </span>
+                <h3 className="text-lg sm:text-xl font-black text-adv-slate">
+                  {lang === 'lo' ? 'ຈຳເປັນຕ້ອງຕັ້ງຄ່າ 2FA ກ່ອນ' : '2FA Setup Required'}
+                </h3>
+                <p className="text-xs text-gray-500 font-medium leading-relaxed mt-2">
+                  {lang === 'lo'
+                    ? 'ເພື່ອຄວາມປອດໄພຂອງບັນຊີຜູ້ຈັດງານ, ລາຍຮັບຈາກປີ້ ແລະ ຂໍ້ມູນກິດຈະກຳ, ທ່ານຕ້ອງຕັ້ງຄ່າການຢືນຢັນຕົວຕົນ 2 ຂັ້ນຕອນ (2FA) ກ່ອນຈຶ່ງຈະສາມາດສ້າງກິດຈະກຳໄດ້.'
+                    : 'To protect your organizer credentials, ticket revenue, and attendee check-ins, you must set up Two-Factor Authentication (2FA) before creating events.'}
+                </p>
+              </div>
+
+              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 mb-6 space-y-2.5 text-xs text-gray-600">
+                <div className="flex items-center gap-2 font-medium">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                  <span>{lang === 'lo' ? 'ປົກປ້ອງບັນຊີທະນາຄານ ແລະ ລາຍຮັບ' : 'Protects payout bank accounts & ticket revenue'}</span>
+                </div>
+                <div className="flex items-center gap-2 font-medium">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                  <span>{lang === 'lo' ? 'ປ້ອງກັນການສ້າງກິດຈະກຳປອມແປງ' : 'Prevents unauthorized event publishing'}</span>
+                </div>
+                <div className="flex items-center gap-2 font-medium">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                  <span>{lang === 'lo' ? 'ໃຊ້ງານງ່າຍຜ່ານ Google Authenticator ຫຼື Authy' : 'Works with Google Authenticator or Authy'}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowTwoFaRequiredModal(false)}
+                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
+                >
+                  {lang === 'lo' ? 'ຍົກເລີກ' : 'Cancel'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowTwoFaRequiredModal(false);
+                    navigate('/security/2fa');
+                  }}
+                  className="flex-1 py-3 bg-adv-orange hover:bg-orange-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  <span>{lang === 'lo' ? 'ຕັ້ງຄ່າ 2FA ດຽວນີ້' : 'Set Up 2FA Now'}</span>
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

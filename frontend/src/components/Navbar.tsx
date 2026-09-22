@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Ticket, User, Plus, Search, Shield, Moon, Sun, Menu, X, Compass, Globe, Activity, MapPin, Zap, Lightbulb, Mountain, PartyPopper, Bell, Calendar, Info, Star, ChevronRight, ArrowLeft , ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
+import { Ticket, User, Plus, Search, Shield, Moon, Sun, Menu, X, Compass, Globe, Activity, MapPin, Zap, Lightbulb, Mountain, PartyPopper, Bell, Calendar, Info, Star, ChevronRight, ArrowLeft, ShieldCheck, AlertCircle, Loader2, Clock, RotateCw, Check, ShieldAlert, KeyRound } from 'lucide-react';
 import Logo from './Logo';
 import SearchModal from './SearchModal';
 import OtpInput from './OtpInput';
@@ -9,6 +9,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { PWAInstallButton } from './PWAInstallButton';
+import { safeStorage } from '../lib/storage';
 
 const translations = {
   en: {
@@ -150,11 +151,13 @@ export default function Navbar() {
   const navigate = useNavigate();
   const { user, loginWithGoogle } = useAuth();
   
-  // Auth/OTP modal state
+  // Auth/OTP & 2FA modal state
+  const [showTwoFaRequiredModal, setShowTwoFaRequiredModal] = useState(false);
   const [showAuthOtpModal, setShowAuthOtpModal] = useState(false);
   const [authOtpCode, setAuthOtpCode] = useState('');
   const [authOtpError, setAuthOtpError] = useState('');
   const [authOtpCountdown, setAuthOtpCountdown] = useState(0);
+  const [otpSentFeedback, setOtpSentFeedback] = useState(false);
   const expectedAuthOtp = '123456';
 
   const [authTwoFaCode, setAuthTwoFaCode] = useState('');
@@ -162,6 +165,29 @@ export default function Navbar() {
   const expectedTwoFa = '987654';
 
   const [isVerifyingAuthOtp, setIsVerifyingAuthOtp] = useState(false);
+
+  const handleCreateEventClick = () => {
+    const is2FaEnabled = safeStorage.getItem('user_2fa_enabled') === 'true';
+    if (!is2FaEnabled) {
+      setShowTwoFaRequiredModal(true);
+      return;
+    }
+
+    setAuthOtpCountdown(60);
+    setAuthOtpCode('');
+    setAuthOtpError('');
+    setAuthTwoFaCode('');
+    setAuthTwoFaError('');
+    setOtpSentFeedback(false);
+    setShowAuthOtpModal(true);
+  };
+
+  const handleResendOtp = () => {
+    setAuthOtpCountdown(60);
+    setAuthOtpError('');
+    setOtpSentFeedback(true);
+    setTimeout(() => setOtpSentFeedback(false), 3000);
+  };
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -215,7 +241,7 @@ export default function Navbar() {
               <Link to="/category/festival" className="hover:text-adv-orange transition-colors">{t.festivals}</Link>
               <Link to="/category/voucher" className="hover:text-adv-orange transition-colors">{t.voucher}</Link>
               <div className="w-px h-4 bg-gray-200 mx-2" />
-              <button onClick={() => setShowAuthOtpModal(true)} className="flex items-center gap-2 text-adv-orange hover:text-orange-600 transition-colors">
+              <button onClick={handleCreateEventClick} className="flex items-center gap-2 text-adv-orange hover:text-orange-600 transition-colors font-bold cursor-pointer">
                 <Plus className="w-4 h-4" />
                 {t.createEvent}
               </button>
@@ -240,6 +266,15 @@ export default function Navbar() {
               title={t.search}
             >
               <Search className="w-5 h-5" />
+            </button>
+
+            {/* Mobile Create Event Trigger */}
+            <button 
+              onClick={handleCreateEventClick}
+              className="lg:hidden p-2 text-adv-orange hover:text-orange-600 transition-all rounded-full hover:bg-orange-50 cursor-pointer"
+              title={t.createEvent}
+            >
+              <Plus className="w-5 h-5" />
             </button>
 
 
@@ -512,6 +547,81 @@ export default function Navbar() {
       </AnimatePresence>
 
 
+      {/* 2FA Setup Required Modal */}
+      <AnimatePresence>
+        {showTwoFaRequiredModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+            onClick={() => setShowTwoFaRequiredModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-gray-100 text-adv-slate"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4 border border-amber-200 shadow-sm">
+                <ShieldAlert className="w-7 h-7" />
+              </div>
+              
+              <div className="text-center mb-5">
+                <span className="inline-block px-3 py-1 bg-amber-100/70 text-amber-700 text-[10px] font-black uppercase tracking-wider rounded-full mb-2">
+                  {lang === 'lo' ? 'ຄວາມປອດໄພຜູ້ຈັດງານ' : 'Organizer Security Required'}
+                </span>
+                <h3 className="text-lg sm:text-xl font-black text-adv-slate">
+                  {lang === 'lo' ? 'ຈຳເປັນຕ້ອງຕັ້ງຄ່າ 2FA ກ່ອນ' : '2FA Setup Required'}
+                </h3>
+                <p className="text-xs text-gray-500 font-medium leading-relaxed mt-2">
+                  {lang === 'lo'
+                    ? 'ເພື່ອຄວາມປອດໄພຂອງບັນຊີຜູ້ຈັດງານ, ລາຍຮັບຈາກປີ້ ແລະ ຂໍ້ມູນກິດຈະກຳ, ທ່ານຕ້ອງຕັ້ງຄ່າການຢືນຢັນຕົວຕົນ 2 ຂັ້ນຕອນ (2FA) ກ່ອນຈຶ່ງຈະສາມາດສ້າງກິດຈະກຳໄດ້.'
+                    : 'To protect your organizer credentials, ticket revenue, and attendee check-ins, you must set up Two-Factor Authentication (2FA) before creating events.'}
+                </p>
+              </div>
+
+              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 mb-6 space-y-2.5 text-xs text-gray-600">
+                <div className="flex items-center gap-2 font-medium">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                  <span>{lang === 'lo' ? 'ປົກປ້ອງບັນຊີທະນາຄານ ແລະ ລາຍຮັບ' : 'Protects payout bank accounts & ticket revenue'}</span>
+                </div>
+                <div className="flex items-center gap-2 font-medium">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                  <span>{lang === 'lo' ? 'ປ້ອງກັນການສ້າງກິດຈະກຳປອມແປງ' : 'Prevents unauthorized event publishing'}</span>
+                </div>
+                <div className="flex items-center gap-2 font-medium">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                  <span>{lang === 'lo' ? 'ໃຊ້ງານງ່າຍຜ່ານ Google Authenticator ຫຼື Authy' : 'Works with Google Authenticator or Authy'}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowTwoFaRequiredModal(false)}
+                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
+                >
+                  {lang === 'lo' ? 'ຍົກເລີກ' : 'Cancel'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowTwoFaRequiredModal(false);
+                    navigate('/security/2fa');
+                  }}
+                  className="flex-1 py-3 bg-adv-orange hover:bg-orange-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  <span>{lang === 'lo' ? 'ຕັ້ງຄ່າ 2FA ດຽວນີ້' : 'Set Up 2FA Now'}</span>
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Auth / OTP Modal */}
       <AnimatePresence>
         {showAuthOtpModal && (
@@ -526,119 +636,153 @@ export default function Navbar() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="max-w-md w-full bg-white rounded-2xl p-5 sm:p-7 shadow-2xl border border-gray-100 text-adv-slate"
+              className="max-w-md w-full bg-white rounded-3xl p-5 sm:p-7 shadow-2xl border border-gray-100 text-adv-slate"
               onClick={e => e.stopPropagation()}
             >
-              <div className="w-12 h-12 rounded-2xl bg-orange-50 text-adv-orange flex items-center justify-center mx-auto mb-3 border border-orange-100">
+              <div className="w-12 h-12 rounded-2xl bg-orange-50 text-adv-orange flex items-center justify-center mx-auto mb-3 border border-orange-100 shadow-sm">
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <h3 className="text-base sm:text-lg font-black text-center mb-1">
-                {lang === 'lo' ? 'ຢືນຢັນຕົວຕົນເພື່ອກວດສອບ ແລະ ເຜີຍແຜ່' : 'Verify Identity to Publish'}
+                {lang === 'lo' ? 'ຢືນຢັນຕົວຕົນເພື່ອສ້າງກິດຈະກຳ' : 'Verify Identity to Create Event'}
               </h3>
               <p className="text-[11px] sm:text-xs text-gray-400 font-medium text-center mb-4 leading-relaxed">
                 {lang === 'lo'
-                  ? 'ກະລຸນາປ້ອນລະຫັດ OTP 6 ຫຼັກ ເພື່ອຢືນຢັນການເຜີຍແຜ່ກິດຈະກຳນີ້. ການຢືນຢັນຈະຊ່ວຍໃຫ້ໝັ້ນໃຈວ່າຂໍ້ມູນປອດໄພ.'
-                  : 'Enter the 6-digit OTP and 2FA codes to securely access the organizer center.'}
+                  ? 'ກະລຸນາປ້ອນລະຫັດ OTP 6 ຫຼັກ ແລະ ລະຫັດ 2FA ເພື່ອຢືນຢັນຕົວຕົນກ່ອນເຂົ້າສູ່ໜ້າສ້າງກິດຈະກຳ.'
+                  : 'Enter the 6-digit OTP and 2FA codes to securely access the event creation center.'}
               </p>
 
+              {/* SMS OTP Code Section */}
               <div className="mb-4">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block text-center mb-2">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">
                     {lang === 'lo' ? 'ລະຫັດຢືນຢັນ OTP 6 ຫຼັກ' : '6-Digit SMS OTP Code'}
                   </label>
-                  
-                  <OtpInput
-                    length={6}
-                    autoFocus={true}
-                    value={authOtpCode}
-                    onChange={(val) => {
-                      setAuthOtpCode(val);
+                  <span className="text-[10px] font-bold text-gray-400">
+                    {lang === 'lo' ? 'ສົ່ງໄປຍັງເບີໂທຂອງທ່ານ' : 'Sent to registered phone'}
+                  </span>
+                </div>
+                
+                <OtpInput
+                  length={6}
+                  autoFocus={true}
+                  value={authOtpCode}
+                  onChange={(val) => {
+                    setAuthOtpCode(val);
+                    setAuthOtpError('');
+                  }}
+                  error={!!authOtpError}
+                />
+
+                {authOtpError && (
+                  <div className="text-red-500 text-xs font-bold mt-2 text-center flex items-center justify-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{authOtpError}</span>
+                  </div>
+                )}
+
+                {/* OTP 60s Countdown & Send Again Button */}
+                <div className="mt-3 flex flex-col items-center">
+                  {authOtpCountdown > 0 ? (
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 border border-gray-150 rounded-full text-xs font-medium text-gray-500">
+                      <Clock className="w-3.5 h-3.5 text-adv-orange animate-pulse" />
+                      <span>
+                        {lang === 'lo'
+                          ? `ສົ່ງລະຫັດໃໝ່ໃນ ${authOtpCountdown} ວິນາທີ`
+                          : `Resend code in ${authOtpCountdown}s`}
+                      </span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleResendOtp}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-orange-50 hover:bg-orange-100 text-adv-orange rounded-full text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                    >
+                      <RotateCw className="w-3.5 h-3.5" />
+                      <span>{lang === 'lo' ? 'ສົ່ງອີກຄັ້ງ' : 'Send again'}</span>
+                    </button>
+                  )}
+
+                  {otpSentFeedback && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-[11px] font-bold text-emerald-600 mt-2 flex items-center gap-1"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{lang === 'lo' ? 'ສົ່ງລະຫັດ OTP ໃໝ່ສຳເລັດແລ້ວ!' : 'New OTP code sent successfully!'}</span>
+                    </motion.div>
+                  )}
+                </div>
+              </div>
+
+              {/* 2FA Code Section */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">
+                    {lang === 'lo' ? 'ລະຫັດ 2FA 6 ຫຼັກ' : '6-Digit 2FA Code'}
+                  </label>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                    <Check className="w-2.5 h-2.5" />
+                    {lang === 'lo' ? 'ຕັ້ງຄ່າ 2FA ແລ້ວ' : '2FA Active'}
+                  </span>
+                </div>
+                
+                <OtpInput
+                  length={6}
+                  autoFocus={false}
+                  value={authTwoFaCode}
+                  onChange={(val) => {
+                    setAuthTwoFaCode(val);
+                    setAuthTwoFaError('');
+                  }}
+                  error={!!authTwoFaError}
+                />
+
+                {authTwoFaError && (
+                  <div className="text-red-500 text-xs font-bold mt-2 text-center flex items-center justify-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{authTwoFaError}</span>
+                  </div>
+                )}
+                
+                {/* Demo Helper Pill */}
+                <div className="mt-4 flex justify-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthOtpCode(expectedAuthOtp);
                       setAuthOtpError('');
                     }}
-                    error={!!authOtpError}
-                  />
-
-                  {authOtpError && (
-                    <div className="text-red-500 text-xs font-bold mt-2 text-center flex items-center justify-center gap-1">
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      <span>{authOtpError}</span>
-                    </div>
-                  )}
-
-                  <div className="mt-4 flex flex-col items-center">
-                    {authOtpCountdown > 0 ? (
-                      <span className="text-xs text-gray-400 font-bold">
-                        {lang === 'lo' ? `ສົ່ງໃໝ່ໃນ ${authOtpCountdown} ວິນາທີ` : `Resend in ${authOtpCountdown}s`}
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setAuthOtpCountdown(60);
-                          setAuthOtpError('');
-                        }}
-                        className="text-xs text-adv-orange font-bold hover:underline"
-                      >
-                        {lang === 'lo' ? 'ສົ່ງລະຫັດໃໝ່' : 'Resend OTP Code'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block text-center mb-2">
-                    {lang === 'lo' ? 'ລະຫັດ 2FA 6 ຫຼັກ' : '6-Digit 2FA Code (Authenticator)'}
-                  </label>
-                  
-                  <OtpInput
-                    length={6}
-                    autoFocus={false}
-                    value={authTwoFaCode}
-                    onChange={(val) => {
-                      setAuthTwoFaCode(val);
+                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full text-[10px] font-bold transition-colors cursor-pointer"
+                  >
+                    <Info className="w-3 h-3 text-adv-orange" />
+                    OTP: {expectedAuthOtp}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthTwoFaCode(expectedTwoFa);
                       setAuthTwoFaError('');
                     }}
-                    error={!!authTwoFaError}
-                  />
-
-                  {authTwoFaError && (
-                    <div className="text-red-500 text-xs font-bold mt-2 text-center flex items-center justify-center gap-1">
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      <span>{authTwoFaError}</span>
-                    </div>
-                  )}
-                  
-                  {/* Demo Helper Pill */}
-                  <div className="mt-5 flex justify-center gap-2 flex-wrap">
-                    <button
-                      onClick={() => {
-                        setAuthOtpCode(expectedAuthOtp);
-                        setAuthOtpError('');
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-full text-[10px] font-bold transition-colors"
-                    >
-                      <Info className="w-3 h-3" />
-                      OTP: {expectedAuthOtp}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setAuthTwoFaCode(expectedTwoFa);
-                        setAuthTwoFaError('');
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-full text-[10px] font-bold transition-colors"
-                    >
-                      <Info className="w-3 h-3" />
-                      2FA: {expectedTwoFa}
-                    </button>
-                  </div>
+                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full text-[10px] font-bold transition-colors cursor-pointer"
+                  >
+                    <Info className="w-3 h-3 text-adv-orange" />
+                    2FA: {expectedTwoFa}
+                  </button>
                 </div>
+              </div>
 
+              {/* Action Buttons */}
               <div className="flex gap-3 mt-6">
                 <button
+                  type="button"
                   onClick={() => setShowAuthOtpModal(false)}
-                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-xl text-xs font-black uppercase tracking-wider transition-colors"
+                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
                 >
                   {lang === 'lo' ? 'ຍົກເລີກ' : 'Cancel'}
                 </button>                
                 <button
+                  type="button"
                   onClick={async () => {
                     let hasError = false;
                     if (authOtpCode !== expectedAuthOtp) {
@@ -652,18 +796,18 @@ export default function Navbar() {
                     if (hasError) return;
 
                     setIsVerifyingAuthOtp(true);
-                    await new Promise(r => setTimeout(r, 1000));
+                    await new Promise(r => setTimeout(r, 800));
                     setIsVerifyingAuthOtp(false);
                     setShowAuthOtpModal(false);
-                    navigate('/create'); // Navigate to create page
+                    navigate('/create');
                   }}
                   disabled={authOtpCode.length < 6 || authTwoFaCode.length < 6 || isVerifyingAuthOtp}
-                  className="flex-1 py-3 bg-adv-orange hover:bg-orange-600 disabled:bg-orange-300 disabled:cursor-not-allowed text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors flex justify-center items-center gap-2"
+                  className="flex-1 py-3 bg-adv-orange hover:bg-orange-600 disabled:bg-orange-300 disabled:cursor-not-allowed text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors flex justify-center items-center gap-2 shadow-md cursor-pointer"
                 >
                   {isVerifyingAuthOtp ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    lang === 'lo' ? 'ຢືນຢັນ' : 'Verify'
+                    lang === 'lo' ? 'ຢືນຢັນ & ສືບຕໍ່' : 'Verify & Continue'
                   )}
                 </button>
               </div>
