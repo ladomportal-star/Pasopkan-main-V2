@@ -47,4 +47,3 @@ export async function createNotification(req: Request, res: Response) {
   const notification = await insertNotification(userUid, input);
   return ok(res, { notification }, 201);
 }
-

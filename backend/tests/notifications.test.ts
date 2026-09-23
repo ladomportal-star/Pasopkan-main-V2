@@ -133,16 +133,28 @@ describe("notifications (database-backed, per user)", () => {
 
     expect((await request(app).post("/api/notifications").send(body)).status).toBe(401);
     expect(
-      (await request(app).post("/api/notifications").set(await as("nobody-special")).send(body))
-        .status,
+      (
+        await request(app)
+          .post("/api/notifications")
+          .set(await as("nobody-special"))
+          .send(body)
+      ).status,
     ).toBe(403);
 
-    await db.insert(users).values({ firebaseUid: "the-admin", email: "admin@test.local", role: "admin" });
+    await db
+      .insert(users)
+      .values({ firebaseUid: "the-admin", email: "admin@test.local", role: "admin" });
 
-    const bad = await request(app).post("/api/notifications").set(await as("the-admin")).send({});
+    const bad = await request(app)
+      .post("/api/notifications")
+      .set(await as("the-admin"))
+      .send({});
     expect(bad.status).toBe(400);
 
-    const res = await request(app).post("/api/notifications").set(await as("the-admin")).send(body);
+    const res = await request(app)
+      .post("/api/notifications")
+      .set(await as("the-admin"))
+      .send(body);
     expect(res.status).toBe(201);
     expect(res.body.notification).toMatchObject({ title: "Event Approved", isUnread: true });
 

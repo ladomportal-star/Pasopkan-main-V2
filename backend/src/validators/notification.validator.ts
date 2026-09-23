@@ -13,9 +13,7 @@ export const notificationIdParam = z.object({ id: z.string().uuid() });
 /** Admin-issued notification to another user (e.g. an event approval/rejection). */
 export const createNotificationBody = z.object({
   userUid: z.string().min(1),
-  type: z
-    .enum(["upcomingEvent", "ticket", "promo", "verified", "system", "noted"])
-    .optional(),
+  type: z.enum(["upcomingEvent", "ticket", "promo", "verified", "system", "noted"]).optional(),
   title: z.string().min(1),
   titleLo: z.string().optional(),
   message: z.string().min(1),

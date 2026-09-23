@@ -36,4 +36,3 @@ router.delete("/notifications/:id", validate({ params: notificationIdParam }), r
 router.delete("/notifications", removeAllNotifications);
 
 export default router;
-
