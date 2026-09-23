@@ -107,3 +107,21 @@ export async function getLatestNotifications(): Promise<{
     };
   }
 }
+
+export async function addServerNotification(notif: Partial<ServerNotification>): Promise<ServerNotification> {
+  const newNotif: ServerNotification = {
+    id: notif.id || `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    title: notif.title || 'Notification',
+    titleLo: notif.titleLo,
+    message: notif.message || '',
+    messageLo: notif.messageLo,
+    time: notif.time || 'Just now',
+    timeLo: notif.timeLo || 'ດຽວນີ້',
+    type: (notif.type as any) || 'system',
+    isUnread: notif.isUnread !== undefined ? notif.isUnread : true,
+    createdAt: notif.createdAt || new Date().toISOString(),
+  };
+  SERVER_NOTIFICATIONS.unshift(newNotif);
+  return newNotif;
+}
+

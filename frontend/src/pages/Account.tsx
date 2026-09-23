@@ -807,6 +807,33 @@ export default function Account() {
     }
   }, [location.state]);
 
+  // Sync organizer events when admin approves, rejects or updates them
+  useEffect(() => {
+    const handleSyncEvents = () => {
+      try {
+        const savedOrganizerEventsStr = safeStorage.getItem('organizer_events');
+        if (savedOrganizerEventsStr) {
+          const saved = JSON.parse(savedOrganizerEventsStr);
+          if (Array.isArray(saved) && saved.length > 0) {
+            setMyEvents(prev => {
+              const defaultEvts = prev.filter(e => ['1', '2', '3', '4', '6'].includes(String(e.id)) && !saved.some((s: any) => String(s.id) === String(e.id)));
+              return [...saved, ...defaultEvts];
+            });
+          }
+        }
+      } catch {
+        // Fallback
+      }
+    };
+
+    window.addEventListener('storage', handleSyncEvents);
+    window.addEventListener('pasopkan_notification_added', handleSyncEvents);
+    return () => {
+      window.removeEventListener('storage', handleSyncEvents);
+      window.removeEventListener('pasopkan_notification_added', handleSyncEvents);
+    };
+  }, []);
+
   
   // Staff Scanner Links State
   interface StaffLink {
@@ -1515,8 +1542,20 @@ export default function Account() {
                           </span>
                         )}
                         {selectedEvent.status === 'pending' && (
-                          <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[9px] sm:text-[10px] font-black uppercase tracking-widest shrink-0">
-                            Pending Approval
+                          <span className="px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider shrink-0 border border-amber-200 dark:border-amber-800">
+                            {lang === 'lo' ? 'ລໍຖ້າອະນຸມັດ' : 'Pending Approval'}
+                          </span>
+                        )}
+                        {selectedEvent.status === 'approved' && (
+                          <span className="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider shrink-0 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            {lang === 'lo' ? 'ອະນຸມັດແລ້ວ' : 'Approved & Live'}
+                          </span>
+                        )}
+                        {selectedEvent.status === 'rejected' && (
+                          <span className="px-2.5 py-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-black uppercase tracking-wider shrink-0 border border-red-200 dark:border-red-800 flex items-center gap-1">
+                            <XCircle className="w-3 h-3" />
+                            {lang === 'lo' ? 'ຖືກປະຕິເສດ' : 'Rejected'}
                           </span>
                         )}
                       </div>
@@ -1531,6 +1570,59 @@ export default function Account() {
                       </div>
                    </div>
                 </div>
+
+                {/* Status Decision Notice Banner */}
+                {selectedEvent.status === 'rejected' && (
+                  <div className="mt-4 p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-left">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-xl bg-red-100 dark:bg-red-900/60 text-red-600 dark:text-red-400 shrink-0">
+                        <AlertCircle className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-red-900 dark:text-red-200 text-sm">
+                          {lang === 'lo' ? 'ກິດຈະກຳນີ້ຖືກປະຕິເສດໂດຍແອດມິນ' : 'Event Submission Rejected by Administrator'}
+                        </h4>
+                        <p className="text-xs text-red-700 dark:text-red-300 mt-1 leading-relaxed">
+                          {selectedEvent.rejectionReason 
+                            ? `${lang === 'lo' ? 'ເຫດຜົນ: ' : 'Reason: '}${selectedEvent.rejectionReason}`
+                            : (lang === 'lo' ? 'ກະລຸນາກວດສອບ ແລະ ແກ້ໄຂຂໍ້ມູນກິດຈະກຳ ຈາກນັ້ນສົ່ງໃໝ່ເພື່ອຮັບການກວດສອບ.' : 'Please update your event details, ticket setup, or cover image and resubmit.')}
+                        </p>
+                        <Link
+                          to={`/create?adminEdit=${selectedEvent.id}`}
+                          className="inline-flex items-center gap-1.5 mt-3 px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span>{lang === 'lo' ? 'ແກ້ໄຂ ແລະ ສົ່ງໃໝ່' : 'Edit & Resubmit'}</span>
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedEvent.status === 'approved' && (
+                  <div className="mt-4 p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-left flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 shrink-0">
+                        <CheckCircle2 className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-emerald-900 dark:text-emerald-300">
+                          {lang === 'lo' ? 'ກິດຈະກຳໄດ້ຮັບການອະນຸມັດແລ້ວ' : 'Event Approved & Live'}
+                        </p>
+                        <p className="text-[11px] text-emerald-700 dark:text-emerald-400">
+                          {lang === 'lo' ? 'ກິດຈະກຳນີ້ເປີດໃຫ້ຊື້ປີ້ ແລະ ເຂົ້າຮ່ວມງານໄດ້ແລ້ວ.' : 'This event is publicly active and accepting ticket purchases.'}
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to={`/event/${selectedEvent.id}`}
+                      className="shrink-0 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
+                    >
+                      <span>{lang === 'lo' ? 'ເບິ່ງໜ້າງານ' : 'View Page'}</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </Link>
+                  </div>
+                )}
               </div>
               {/* Action Buttons */}
               <div className="w-full">

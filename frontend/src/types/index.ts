@@ -76,4 +76,10 @@ export interface AppNotification {
   timeLo?: string;
   type?: 'upcomingEvent' | 'noted' | 'ticket' | 'promo' | 'verified' | 'system' | string;
   isUnread: boolean;
+  eventId?: string;
+  organizerEmail?: string;
+  rejectionReason?: string;
+  status?: 'approved' | 'rejected' | 'pending' | string;
+  createdAt?: string;
+  link?: string;
 }

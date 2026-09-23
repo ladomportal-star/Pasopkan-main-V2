@@ -128,4 +128,12 @@ export const api = {
       undefined,
       opts,
     ),
+
+  createNotification: (data: Partial<import('../types').AppNotification>, opts?: RequestOptions) =>
+    request<{ notification: import('../types').AppNotification }>(
+      'POST',
+      '/notifications',
+      data,
+      opts,
+    ),
 };

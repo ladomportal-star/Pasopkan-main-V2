@@ -103,7 +103,7 @@ export default function HomeBlogSection() {
   const heroTitle = isLao && heroBlog.titleLao ? heroBlog.titleLao : heroBlog.title;
 
   return (
-    <section className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 py-10 sm:py-16 border-t border-gray-100">
+    <section className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 pt-6 sm:pt-8 md:pt-10 pb-10 sm:pb-16 border-t border-gray-100">
       {/* Header */}
       <div className="mb-6 sm:mb-10">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 text-adv-orange text-xs font-bold mb-2.5">

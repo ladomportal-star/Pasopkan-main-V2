@@ -2999,7 +2999,7 @@ export default function CreateEvent() {
                 setActiveStep(1); 
                 setActiveTab('createEvent'); 
               }}
-              className="flex items-center gap-2 bg-adv-orange hover:bg-adv-orange/90 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer"
+              className="hidden sm:flex items-center gap-2 bg-adv-orange hover:bg-adv-orange/90 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               {t.createEvent}

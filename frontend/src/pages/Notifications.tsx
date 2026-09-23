@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   ArrowLeft, 
   Bell, 
@@ -10,6 +10,7 @@ import {
   Star, 
   ShieldCheck, 
   AlertCircle,
+  XCircle,
   SlidersHorizontal,
   ChevronDown,
   ChevronUp,
@@ -147,7 +148,13 @@ const translations = {
   }
 };
 
-function getNotificationIcon(type?: string) {
+function getNotificationIcon(type?: string, notif?: AppNotification) {
+  if (notif?.status === 'rejected' || type === 'rejected') {
+    return { icon: XCircle, color: 'text-red-500', bg: 'bg-red-50 border-red-100' };
+  }
+  if (notif?.status === 'approved' || type === 'verified') {
+    return { icon: ShieldCheck, color: 'text-emerald-500', bg: 'bg-emerald-50 border-emerald-100' };
+  }
   switch (type) {
     case 'upcomingEvent':
       return { icon: Calendar, color: 'text-orange-500', bg: 'bg-orange-50 border-orange-100' };
@@ -155,8 +162,6 @@ function getNotificationIcon(type?: string) {
       return { icon: Ticket, color: 'text-blue-500', bg: 'bg-blue-50 border-blue-100' };
     case 'promo':
       return { icon: Star, color: 'text-amber-500', bg: 'bg-amber-50 border-amber-100' };
-    case 'verified':
-      return { icon: ShieldCheck, color: 'text-emerald-500', bg: 'bg-emerald-50 border-emerald-100' };
     case 'system':
       return { icon: AlertCircle, color: 'text-purple-500', bg: 'bg-purple-50 border-purple-100' };
     default:
@@ -180,6 +185,29 @@ export default function Notifications() {
     }
     return INITIAL_NOTIFICATIONS;
   });
+
+  useEffect(() => {
+    const handleNotificationSync = () => {
+      try {
+        const saved = safeStorage.getItem('pasopkan_user_notifications');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setNotifications(parsed);
+          }
+        }
+      } catch {
+        // Fallback
+      }
+    };
+
+    window.addEventListener('pasopkan_notification_added', handleNotificationSync);
+    window.addEventListener('storage', handleNotificationSync);
+    return () => {
+      window.removeEventListener('pasopkan_notification_added', handleNotificationSync);
+      window.removeEventListener('storage', handleNotificationSync);
+    };
+  }, []);
 
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
   const [showPreferences, setShowPreferences] = useState(false);
@@ -411,7 +439,7 @@ export default function Notifications() {
             ) : (
               <div className="space-y-3">
                 {filteredNotifications.map((notif) => {
-                  const iconInfo = getNotificationIcon(notif.type);
+                  const iconInfo = getNotificationIcon(notif.type, notif);
                   const IconComponent = iconInfo.icon;
                   const titleText = lang === 'lo' && notif.titleLo ? notif.titleLo : notif.title;
                   const messageText = lang === 'lo' && notif.messageLo ? notif.messageLo : notif.message;
@@ -447,10 +475,26 @@ export default function Notifications() {
                           {notif.isUnread && (
                             <span className="w-2 h-2 rounded-full bg-adv-orange shrink-0 animate-pulse" />
                           )}
+                          {notif.status === 'approved' && (
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-wider shrink-0">
+                              {lang === 'lo' ? 'ອະນຸມັດແລ້ວ' : 'Approved'}
+                            </span>
+                          )}
+                          {notif.status === 'rejected' && (
+                            <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-black uppercase tracking-wider shrink-0">
+                              {lang === 'lo' ? 'ຖືກປະຕິເສດ' : 'Rejected'}
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs sm:text-sm text-gray-500 leading-relaxed line-clamp-2 sm:line-clamp-none">
                           {messageText}
                         </p>
+                        {notif.rejectionReason && (
+                          <div className="mt-2 p-2.5 rounded-xl bg-red-50 border border-red-100 text-xs text-red-700">
+                            <span className="font-bold">{lang === 'lo' ? 'ເຫດຜົນ: ' : 'Reason: '}</span>
+                            {notif.rejectionReason}
+                          </div>
+                        )}
                         <span className="text-[11px] text-gray-400 font-medium mt-2 block">
                           {timeText}
                         </span>

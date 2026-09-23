@@ -16,6 +16,7 @@ import AdminBlogsTab from '../components/AdminBlogsTab';
 import { safeStorage } from '../lib/storage';
 import SEO from '../components/SEO';
 import { AdaptiveImage } from '../components/AdaptiveImage';
+import { notifyOrganizerEventDecision } from '../lib/notificationHelper';
 
 // Helper functions for robust event image resolution
 const getEventMainImage = (evt: any): string => {
@@ -1288,6 +1289,9 @@ export default function AdminDashboard() {
         console.error(err);
       }
 
+      // Notify organizer of event approval
+      notifyOrganizerEventDecision(approvedEvent, 'approved');
+
       setEventsList([approvedEvent, ...eventsList]);
       setPendingEventsList(pendingEventsList.filter(e => e.id !== id));
       setSelectedPendingIds(prev => prev.filter(item => item !== id));
@@ -1310,12 +1314,16 @@ export default function AdminDashboard() {
         try {
           const saved = safeStorage.getItem('organizer_events');
           const allEvents = saved ? JSON.parse(saved) : [...events];
-          const updatedStorageEvents = allEvents.map((e: any) => e.id === eventToReject.id ? { ...e, status: 'rejected' } : e);
+          const updatedStorageEvents = allEvents.map((e: any) => e.id === eventToReject.id ? { ...e, status: 'rejected', rejectionReason: reason } : e);
           safeStorage.setItem('organizer_events', JSON.stringify(updatedStorageEvents));
         } catch (err) {
           console.error(err);
         }
       }
+
+      // Notify organizer of event rejection
+      notifyOrganizerEventDecision(eventToReject, 'rejected', reason);
+
       setApprovalDecisionHistory(prev => [
         { id: eventToReject.id, title: eventToReject.title, decision: 'rejected', timestamp: new Date().toISOString(), reason },
         ...prev.slice(0, 9)
@@ -1355,6 +1363,9 @@ export default function AdminDashboard() {
           allEvents = [approved, ...allEvents];
         }
         addActivityLog('Event approved', item.title);
+
+        // Notify organizer of event approval
+        notifyOrganizerEventDecision(approved, 'approved');
       });
 
       safeStorage.setItem('organizer_events', JSON.stringify(allEvents));
@@ -1378,7 +1389,7 @@ export default function AdminDashboard() {
       const saved = safeStorage.getItem('organizer_events');
       if (saved) {
         let allEvents = JSON.parse(saved);
-        allEvents = allEvents.map((e: any) => selectedPendingIds.includes(e.id) ? { ...e, status: 'rejected' } : e);
+        allEvents = allEvents.map((e: any) => selectedPendingIds.includes(e.id) ? { ...e, status: 'rejected', rejectionReason: reason } : e);
         safeStorage.setItem('organizer_events', JSON.stringify(allEvents));
       }
     } catch (err) {
@@ -1387,6 +1398,8 @@ export default function AdminDashboard() {
 
     toReject.forEach(item => {
       addActivityLog('Event rejected', `${item.title}${reason ? `: ${reason}` : ''}`);
+      // Notify organizer of event rejection
+      notifyOrganizerEventDecision(item, 'rejected', reason);
     });
 
     setPendingEventsList(pendingEventsList.filter(e => !selectedPendingIds.includes(e.id)));
@@ -1659,6 +1672,15 @@ export default function AdminDashboard() {
     // Update selected event if it's the one we're editing
     if (selectedEvent?.id === mergedEvent.id) {
       setSelectedEvent(mergedEvent);
+    }
+
+    // Notify organizer if status was changed during edit
+    if (originalEvent?.status !== mergedEvent.status) {
+      if (mergedEvent.status === 'approved') {
+        notifyOrganizerEventDecision(mergedEvent, 'approved');
+      } else if (mergedEvent.status === 'rejected') {
+        notifyOrganizerEventDecision(mergedEvent, 'rejected', (mergedEvent as any).rejectionReason || 'Event submission requirements not met');
+      }
     }
     
     // Persist to storage

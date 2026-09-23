@@ -162,12 +162,12 @@ const CategoryRowSkeleton: React.FC<{ title: string }> = ({ title }) => {
   return (
     <div className="flex flex-col mb-0">
       {/* Row Header */}
-      <div className="flex items-end justify-between mb-2.5 sm:mb-6">
-        <h3 className="text-lg sm:text-2xl md:text-3xl font-display font-bold text-adv-slate">
+      <div className="flex items-center justify-between mb-1 sm:mb-1.5">
+        <h3 className="text-lg sm:text-2xl md:text-3xl font-display font-bold text-adv-slate leading-none">
           {title}
         </h3>
         {/* Actions */}
-        <div className="flex items-center gap-2 sm:gap-6 shrink-0 mb-1 sm:mb-0">
+        <div className="flex items-center gap-2 sm:gap-6 shrink-0">
           <div className="w-16 sm:w-20 h-3.5 sm:h-4 bg-gray-150 rounded-md animate-pulse" />
           <div className="flex items-center gap-2 hidden">
             {/* Nav buttons removed from skeleton header, they appear inside carousel area now */}
@@ -176,7 +176,7 @@ const CategoryRowSkeleton: React.FC<{ title: string }> = ({ title }) => {
       </div>
 
       {/* Horizontal List */}
-      <div className="flex overflow-x-auto pb-2 sm:pb-5 -ml-5 -mr-4 pl-5 sm:mx-0 sm:pl-0 hide-scrollbar gap-3 sm:gap-6 snap-x snap-mandatory scroll-pl-5 sm:scroll-pl-0">
+      <div className="flex overflow-x-auto pb-0 sm:pb-1 -ml-5 -mr-4 pl-5 sm:mx-0 sm:pl-0 hide-scrollbar gap-3 sm:gap-6 snap-x snap-mandatory scroll-pl-5 sm:scroll-pl-0">
         {[1, 2, 3, 4].map((n) => (
           <LandscapeEventCardSkeleton key={n} />
         ))}
@@ -240,16 +240,16 @@ const CategoryRow: React.FC<{ category: string, events: LaoEvent[], title: strin
 
   return (
     <div className="flex flex-col mb-0 relative">
-      <div className="flex items-end justify-between mb-2.5 sm:mb-6">
-        <h3 className="text-lg sm:text-2xl md:text-3xl font-display font-bold text-adv-slate">
+      <div className="flex items-center justify-between mb-1 sm:mb-1.5">
+        <h3 className="text-lg sm:text-2xl md:text-3xl font-display font-bold text-adv-slate leading-none">
           {title}
         </h3>
-        <div className="flex items-center gap-2 sm:gap-6 shrink-0 mb-1 sm:mb-0">
+        <div className="flex items-center gap-2 sm:gap-6 shrink-0">
           <Link 
             to={`/category/${categoryId}`}
-            className="text-[10px] sm:text-xs font-black text-adv-orange hover:text-black transition-colors uppercase tracking-wider sm:tracking-widest flex items-center gap-1 group/btn"
+            className="text-[10px] sm:text-xs font-black text-adv-orange hover:text-black transition-colors uppercase tracking-wider sm:tracking-widest inline-flex items-center gap-1 group/btn"
           >
-            {lang === 'en' ? 'Show More' : 'ເບິ່ງເພີ່ມເຕີມ'}
+            <span>{lang === 'en' ? 'See More' : 'ເບິ່ງເພີ່ມເຕີມ'}</span>
             <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover/btn:translate-x-1" />
           </Link>
         </div>
@@ -259,7 +259,7 @@ const CategoryRow: React.FC<{ category: string, events: LaoEvent[], title: strin
         <div 
           ref={scrollRef}
           onScroll={checkScroll}
-          className="flex overflow-x-auto overflow-y-hidden pb-2 sm:pb-5 -ml-5 -mr-4 pl-5 sm:mx-0 sm:pl-0 hide-scrollbar gap-3 sm:gap-6 snap-x snap-mandatory scroll-pl-5 sm:scroll-pl-0 scroll-smooth hardware-accelerated"
+          className="flex overflow-x-auto overflow-y-hidden pb-0 sm:pb-1 -ml-5 -mr-4 pl-5 sm:mx-0 sm:pl-0 hide-scrollbar gap-3 sm:gap-6 snap-x snap-mandatory scroll-pl-5 sm:scroll-pl-0 scroll-smooth hardware-accelerated"
         >
           {events.map((event, index) => (
             <LandscapeEventCard 
@@ -347,22 +347,14 @@ const PopularEventsRow: React.FC<{
 
   return (
     <div className="flex flex-col mb-0 relative">
-      <div className="flex items-end justify-between mb-4 sm:mb-6">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black bg-orange-100 text-adv-orange border border-orange-200/80 uppercase tracking-wider">
-              <Flame className="w-3.5 h-3.5 fill-adv-orange text-adv-orange" />
-              {lang === 'lo' ? '5 ອັນດັບສູງສຸດ' : 'Top 5'}
-            </span>
-          </div>
-          <h3 className="text-lg sm:text-2xl md:text-3xl font-display font-bold text-adv-slate flex items-center gap-2">
+      <div className="flex items-center justify-between mb-1 sm:mb-1.5">
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg sm:text-2xl md:text-3xl font-display font-bold text-adv-slate leading-none">
             {title}
           </h3>
-        </div>
-
-        <div className="flex items-center gap-2 sm:gap-6 shrink-0 mb-1 sm:mb-0">
-          <span className="text-[10px] sm:text-xs font-bold text-gray-400">
-            {lang === 'lo' ? 'ຈັດລຳດັບຕາມປີ້ທີ່ຂາຍດີທີ່ສຸດ' : 'Ranked by ticket sales'}
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black bg-orange-100 text-adv-orange border border-orange-200/80 uppercase tracking-wider shrink-0">
+            <Flame className="w-3.5 h-3.5 fill-adv-orange text-adv-orange" />
+            {lang === 'lo' ? '5 ອັນດັບສູງສຸດ' : 'Top 5'}
           </span>
         </div>
       </div>
@@ -371,7 +363,7 @@ const PopularEventsRow: React.FC<{
         <div 
           ref={scrollRef}
           onScroll={checkScroll}
-          className="flex lg:grid lg:grid-cols-5 overflow-x-auto overflow-y-hidden pb-2 sm:pb-5 -ml-5 -mr-4 pl-5 sm:mx-0 sm:pl-0 lg:mx-0 lg:pl-0 lg:overflow-visible hide-scrollbar gap-3 sm:gap-6 lg:gap-4 xl:gap-5 snap-x snap-mandatory scroll-pl-5 sm:scroll-pl-0 scroll-smooth hardware-accelerated"
+          className="flex lg:grid lg:grid-cols-5 overflow-x-auto overflow-y-hidden pb-0 sm:pb-1 -ml-5 -mr-4 pl-5 sm:mx-0 sm:pl-0 lg:mx-0 lg:pl-0 lg:overflow-visible hide-scrollbar gap-3 sm:gap-6 lg:gap-4 xl:gap-5 snap-x snap-mandatory scroll-pl-5 sm:scroll-pl-0 scroll-smooth hardware-accelerated"
         >
           {popularEvents.map(({ event, ticketsSold }, index) => (
             <LandscapeEventCard 
@@ -522,7 +514,11 @@ export default function Home() {
     try {
       const saved = safeStorage.getItem('organizer_events');
       if (saved) {
-        allEvents = JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingIds = new Set(parsed.map((e: any) => e.id));
+          allEvents = [...parsed, ...events.filter(e => !existingIds.has(e.id))];
+        }
       }
     } catch (e) {
       console.error(e);
@@ -536,8 +532,8 @@ export default function Home() {
     const todayStr = `${year}-${month}-${day}`;
 
     const activeEvents = allEvents.filter(evt => {
-      const checkDate = evt.endDate || evt.date;
-      return checkDate >= todayStr && evt.status !== 'pending' && evt.status !== 'rejected';
+      const checkDate = evt.endDate || evt.bookingEndDate || evt.date;
+      return (!checkDate || checkDate >= todayStr) && evt.status !== 'pending' && evt.status !== 'rejected';
     });
 
     setFetchedEvents(activeEvents);
@@ -576,7 +572,7 @@ export default function Home() {
         description={lang === 'lo' ? 'ຄົ້ນພົບ ແລະ ຈອງປີ້ງານກິດຈະກຳ, ເວີກຊັອບ, ກິລາ ແລະ ເທດສະການຊັ້ນນຳໃນປະເທດລາວ' : 'Explore and book tickets for the best workshops, outdoor adventures, festivals, and cultural events across Laos.'}
       />
       
-      <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 pt-4">
+      <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 pt-2 sm:pt-3">
         <section 
           className="relative h-[220px] sm:h-[360px] landscape:h-[260px] lg:h-[1080px] flex flex-col justify-center items-center overflow-hidden rounded-[1.5rem] sm:rounded-[2rem] touch-pan-y select-none cursor-grab active:cursor-grabbing"
           onTouchStart={handleTouchStart}
@@ -636,11 +632,11 @@ export default function Home() {
       </div>
 
       {/* Category Icons Navigation - Hidden in desktop mode (md and up) as requested, available on mobile for touch navigation */}
-      <section className="md:hidden max-w-7xl mx-auto px-5 sm:px-8 mt-6 sm:mt-8 mb-6">
+      <section className="md:hidden max-w-7xl mx-auto px-5 sm:px-8 mt-5 sm:mt-6 mb-2">
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex justify-between sm:justify-center overflow-x-auto hide-scrollbar sm:gap-12 pb-2 max-w-2xl mx-auto"
+          className="flex justify-between sm:justify-center overflow-x-auto hide-scrollbar sm:gap-12 pb-1 max-w-2xl mx-auto"
         >
            {[
              { id: 'workshop', label: t.workshops, icon: Lightbulb },
@@ -673,49 +669,43 @@ export default function Home() {
         </motion.div>
       </section>
 
-      <section id="events-section" className="pl-5 pr-4 sm:px-8 lg:px-12 max-w-7xl mx-auto pb-4 sm:pb-16 mt-6 sm:mt-10 lg:mt-12">
-        <div className="space-y-12 sm:space-y-16 md:space-y-20">
+      <section id="events-section" className="pl-5 pr-4 sm:px-8 lg:px-12 max-w-7xl mx-auto pb-0 mt-6 sm:mt-8 md:mt-10">
+        <div className="flex flex-col gap-6 sm:gap-8 md:gap-10">
           {/* Popular Events Section - sorted by ticket sold the most (Top 5) */}
-          <div>
-            {isLoading ? (
-              <CategoryRowSkeleton 
-                title={lang === 'lo' ? 'ກິດຈະກຳຍອດນິຍົມ' : 'Popular Events'} 
+          {isLoading ? (
+            <CategoryRowSkeleton 
+              title={lang === 'lo' ? 'ກິດຈະກຳຍອດນິຍົມ' : 'Popular Events'} 
+            />
+          ) : (
+            popularEvents.length > 0 && (
+              <PopularEventsRow 
+                popularEvents={popularEvents}
+                title={lang === 'lo' ? 'ກິດຈະກຳຍອດນິຍົມ' : 'Popular Events'}
               />
-            ) : (
-              popularEvents.length > 0 && (
-                <PopularEventsRow 
-                  popularEvents={popularEvents}
-                  title={lang === 'lo' ? 'ກິດຈະກຳຍອດນິຍົມ' : 'Popular Events'}
-                />
-              )
-            )}
-          </div>
+            )
+          )}
 
           {isLoading ? (
-            <>
-              {/* Skeletons for Categories list */}
-              {categories.map((category) => (
-                <CategoryRowSkeleton 
-                  key={category} 
-                  title={categoryTitles[category][lang]} 
-                />
-              ))}
-            </>
+            categories.map((category) => (
+              <CategoryRowSkeleton 
+                key={category} 
+                title={categoryTitles[category][lang]} 
+              />
+            ))
           ) : (
-            <>
-              {categories.map((category) => {
-                const categoryEvents = fetchedEvents.filter(e => e.category === category);
-                if (categoryEvents.length === 0) return null;
-                return (
-                  <CategoryRow 
-                    key={category}
-                    category={category}
-                    events={categoryEvents}
-                    title={categoryTitles[category][lang]}
-                  />
-                );
-              })}
-            </>
+            categories.map((category) => {
+              const categoryEvents = fetchedEvents.filter(e => e.category === category);
+              if (categoryEvents.length === 0) return null;
+
+              return (
+                <CategoryRow 
+                  key={category}
+                  category={category}
+                  events={categoryEvents}
+                  title={categoryTitles[category][lang]}
+                />
+              );
+            })
           )}
         </div>
       </section>

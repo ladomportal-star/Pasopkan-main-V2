@@ -564,7 +564,6 @@ export default function StaffScanner() {
                 referrerPolicy="no-referrer"
               />
             </Link>
-            <div className="h-6 w-px bg-gray-200 dark:bg-zinc-800 mx-1 hidden sm:block mt-3 sm:mt-4" />
           </div>
 
           {/* Language Switcher */}

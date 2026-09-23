@@ -66,7 +66,6 @@ const MOCK_NOTIFICATIONS = [
     time: '2 hours ago',
     timeLo: '2 ຊົ່ວໂມງກ່ອນ',
     type: 'upcomingEvent',
-    icon: Calendar,
     isUnread: true
   },
   {
@@ -78,7 +77,6 @@ const MOCK_NOTIFICATIONS = [
     time: '5 hours ago',
     timeLo: '5 ຊົ່ວໂມງກ່ອນ',
     type: 'noted',
-    icon: Info,
     isUnread: true,
     image: 'https://images.unsplash.com/photo-1544377193-33dcf4d68fb5?q=80&w=2574&auto=format&fit=crop'
   },
@@ -91,7 +89,6 @@ const MOCK_NOTIFICATIONS = [
     time: '1 day ago',
     timeLo: '1 ມື້ກ່ອນ',
     type: 'ticket',
-    icon: Ticket,
     isUnread: true
   },
   {
@@ -103,7 +100,6 @@ const MOCK_NOTIFICATIONS = [
     time: '2 days ago',
     timeLo: '2 ມື້ກ່ອນ',
     type: 'promo',
-    icon: Star,
     isUnread: false
   },
   {
@@ -115,7 +111,6 @@ const MOCK_NOTIFICATIONS = [
     time: '3 days ago',
     timeLo: '3 ມື້ກ່ອນ',
     type: 'verified',
-    icon: ShieldCheck,
     isUnread: false
   },
   {
@@ -127,10 +122,40 @@ const MOCK_NOTIFICATIONS = [
     time: '5 days ago',
     timeLo: '5 ມື້ກ່ອນ',
     type: 'system',
-    icon: AlertCircle,
     isUnread: false
   }
 ];
+
+function getNavbarNotifIcon(notif: any): React.ComponentType<{ className?: string }> {
+  if (typeof notif?.icon === 'function') {
+    return notif.icon;
+  }
+  if (notif?.icon && typeof notif.icon === 'object' && (notif.icon.$$typeof || notif.icon.render)) {
+    return notif.icon;
+  }
+  const status = notif?.status;
+  const type = notif?.type;
+  if (status === 'approved' || type === 'verified') return ShieldCheck;
+  if (status === 'rejected') return AlertCircle;
+  if (type === 'upcomingEvent') return Calendar;
+  if (type === 'ticket') return Ticket;
+  if (type === 'promo') return Star;
+  if (type === 'noted') return Info;
+  if (type === 'system') return AlertCircle;
+  return Bell;
+}
+
+const sanitizeNotifications = (list: any[]): any[] => {
+  if (!Array.isArray(list)) return [];
+  return list.map(item => {
+    if (!item || typeof item !== 'object') return item;
+    if (item.icon && typeof item.icon !== 'function' && !item.icon.$$typeof && !item.icon.render) {
+      const { icon, ...rest } = item;
+      return rest;
+    }
+    return item;
+  });
+};
 
 export default function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -138,10 +163,46 @@ export default function Navbar() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [selectedNotif, setSelectedNotif] = useState<any | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<any[]>(() => {
+    try {
+      const saved = safeStorage.getItem('pasopkan_user_notifications');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return sanitizeNotifications(parsed);
+        }
+      }
+    } catch {
+      // Fallback
+    }
+    return MOCK_NOTIFICATIONS;
+  });
   const notificationRef = useRef<HTMLDivElement>(null);
   
   const hasUnread = notifications.some(n => n.isUnread);
+
+  useEffect(() => {
+    const handleNotificationSync = () => {
+      try {
+        const saved = safeStorage.getItem('pasopkan_user_notifications');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setNotifications(sanitizeNotifications(parsed));
+          }
+        }
+      } catch {
+        // Fallback
+      }
+    };
+
+    window.addEventListener('pasopkan_notification_added', handleNotificationSync);
+    window.addEventListener('storage', handleNotificationSync);
+    return () => {
+      window.removeEventListener('pasopkan_notification_added', handleNotificationSync);
+      window.removeEventListener('storage', handleNotificationSync);
+    };
+  }, []);
   const { lang, toggleLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const { isAuthenticated } = useAuth();
@@ -210,12 +271,24 @@ export default function Navbar() {
   }, []);
 
   const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, isUnread: false })));
+    const updated = notifications.map(n => ({ ...n, isUnread: false }));
+    setNotifications(updated);
+    try {
+      safeStorage.setItem('pasopkan_user_notifications', JSON.stringify(sanitizeNotifications(updated)));
+    } catch {
+      // Ignore
+    }
   };
 
   const handleNotifClick = (notif: any) => {
     setSelectedNotif(notif);
-    setNotifications(notifications.map(n => n.id === notif.id ? { ...n, isUnread: false } : n));
+    const updated = notifications.map(n => n.id === notif.id ? { ...n, isUnread: false } : n);
+    setNotifications(updated);
+    try {
+      safeStorage.setItem('pasopkan_user_notifications', JSON.stringify(sanitizeNotifications(updated)));
+    } catch {
+      // Ignore
+    }
     setIsNotificationsOpen(false); // Close dropdown when opening detail
   };
 
@@ -266,15 +339,6 @@ export default function Navbar() {
               title={t.search}
             >
               <Search className="w-5 h-5" />
-            </button>
-
-            {/* Mobile Create Event Trigger */}
-            <button 
-              onClick={handleCreateEventClick}
-              className="lg:hidden p-2 text-adv-orange hover:text-orange-600 transition-all rounded-full hover:bg-orange-50 cursor-pointer"
-              title={t.createEvent}
-            >
-              <Plus className="w-5 h-5" />
             </button>
 
 
@@ -347,7 +411,7 @@ export default function Navbar() {
                           </div>
                         ) : (
                           notifications.map((notif) => {
-                            const NotifIcon = notif.icon || Bell;
+                            const NotifIcon = getNavbarNotifIcon(notif);
                             return (
                               <div
                                 key={notif.id}
@@ -442,15 +506,24 @@ export default function Navbar() {
               <div className="flex-1 overflow-y-auto p-8">
                 <div className={`w-16 h-16 rounded-[2rem] flex items-center justify-center mb-8 ${
                   selectedNotif.type === 'upcomingEvent' ? 'bg-blue-50 text-blue-500' :
+                  selectedNotif.type === 'verified' || selectedNotif.status === 'approved' ? 'bg-emerald-50 text-emerald-600' :
+                  selectedNotif.status === 'rejected' ? 'bg-red-50 text-red-600' :
                   'bg-orange-50 text-adv-orange'
                 }`}>
-                  <selectedNotif.icon className="w-8 h-8" />
+                  {(() => {
+                    const ModalIcon = getNavbarNotifIcon(selectedNotif);
+                    return <ModalIcon className="w-8 h-8" />;
+                  })()}
                 </div>
                 
                 <div className="space-y-6">
                   <div>
                     <span className="text-[10px] font-black uppercase tracking-widest text-adv-orange mb-2 block">
-                      {selectedNotif.type === 'upcomingEvent' ? t.upcomingEvent : t.noted}
+                      {selectedNotif.status === 'approved' || selectedNotif.type === 'verified'
+                        ? (lang === 'lo' ? 'ກິດຈະກຳໄດ້ຮັບອະນຸມັດ' : 'Event Approved')
+                        : selectedNotif.status === 'rejected'
+                        ? (lang === 'lo' ? 'ກິດຈະກຳຖືກປະຕິເສດ' : 'Event Rejected')
+                        : selectedNotif.type === 'upcomingEvent' ? t.upcomingEvent : t.noted}
                     </span>
                     <h3 className="text-2xl font-bold text-adv-slate leading-tight font-display">
                       {selectedNotif.title}
@@ -463,6 +536,29 @@ export default function Navbar() {
                       {selectedNotif.message}
                     </p>
                   </div>
+
+                  {selectedNotif.rejectionReason && (
+                    <div className="p-4 bg-red-50 rounded-2xl border border-red-100 flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                      <div>
+                        <h5 className="text-xs font-bold text-red-800 uppercase tracking-wider">
+                          {lang === 'lo' ? 'ເຫດຜົນການປະຕິເສດ' : 'Rejection Reason'}
+                        </h5>
+                        <p className="text-xs text-red-700 mt-1">{selectedNotif.rejectionReason}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedNotif.link && (
+                    <Link
+                      to={selectedNotif.link}
+                      onClick={() => setSelectedNotif(null)}
+                      className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-adv-orange text-white font-bold text-sm rounded-2xl hover:bg-orange-600 transition-colors shadow-sm"
+                    >
+                      <span>{lang === 'lo' ? 'ເບິ່ງລາຍລະອຽດໃນບັນຊີ' : 'View in Account'}</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  )}
                   
                   {selectedNotif.image && (
                     <div 

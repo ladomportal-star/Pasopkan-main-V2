@@ -85,6 +85,10 @@ const t = {
     actions: 'Actions',
     checkinNow: 'Check In',
     checkedInAt: 'Arrived at',
+    confirmCheckinTitle: 'Confirm Booking Check-in',
+    confirmCheckinSubtitle: 'Verify guest details and confirm session arrival',
+    confirmCheckinPrompt: 'Are you sure you want to check in this guest for this booking session?',
+    confirmCheckinBtn: 'Confirm Check In',
     rescheduleSlot: 'Move Slot',
     viewAnswers: 'Questionnaire',
     modalWalkinTitle: 'Add On-Site Walk-In Booking',
@@ -182,6 +186,10 @@ const t = {
     actions: 'ຈັດການ',
     checkinNow: 'ເຊັກອິນ',
     checkedInAt: 'ມາຮອດເວລາ',
+    confirmCheckinTitle: 'ຢືນຢັນການເຊັກອິນການຈອງ',
+    confirmCheckinSubtitle: 'ກວດສອບຂໍ້ມູນແຂກ ແລະ ຢືນຢັນການມາຮອດໜ້າງານ',
+    confirmCheckinPrompt: 'ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການເຊັກອິນແຂກທ່ານນີ້ສໍາລັບຮອບເວລານີ້?',
+    confirmCheckinBtn: 'ຢືນຢັນການເຊັກອິນ',
     rescheduleSlot: 'ປ່ຽນຮອບເວລາ',
     viewAnswers: 'ເບິ່ງແບບສອບຖາມ',
     modalWalkinTitle: 'ເພີ່ມແຂກ Walk-in ໜ້າງານ',
@@ -316,6 +324,24 @@ export default function BookingDayManagement({
   const [rescheduleSlot, setRescheduleSlot] = useState('');
 
   const [answersModalAttendee, setAnswersModalAttendee] = useState<EventAttendee | null>(null);
+  const [checkinConfirmAttendee, setCheckinConfirmAttendee] = useState<EventAttendee | null>(null);
+  const [isProcessingCheckin, setIsProcessingCheckin] = useState(false);
+
+  const handleConfirmCheckin = () => {
+    if (!checkinConfirmAttendee) return;
+    setIsProcessingCheckin(true);
+    try {
+      onToggleCheckin(checkinConfirmAttendee.ticketId || checkinConfirmAttendee.id, true, 'Manage Event Desk');
+      setToastMessage(
+        lang === 'lo'
+          ? `ເຊັກອິນ ${checkinConfirmAttendee.attendeeName} ສຳເລັດແລ້ວ!`
+          : `Checked in ${checkinConfirmAttendee.attendeeName} successfully!`
+      );
+      setCheckinConfirmAttendee(null);
+    } finally {
+      setIsProcessingCheckin(false);
+    }
+  };
 
   // Generate Sample Guests State
   const [showGenerateModal, setShowGenerateModal] = useState(false);
@@ -1460,13 +1486,9 @@ export default function BookingDayManagement({
                       }`}
                     >
                       {/* Guest Info */}
-                      <div className="flex items-start gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-adv-orange border border-orange-500/20 flex items-center justify-center font-black text-sm shrink-0">
-                          {att.firstName ? att.firstName[0].toUpperCase() : 'G'}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <h5 className="font-black text-sm sm:text-base truncate">{att.attendeeName}</h5>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <h5 className="font-black text-sm sm:text-base truncate">{att.attendeeName}</h5>
                             <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-gray-200/80 dark:bg-zinc-800 text-gray-700 dark:text-gray-300">
                               {att.ticketType}
                             </span>
@@ -1494,7 +1516,6 @@ export default function BookingDayManagement({
                             </span>
                           </div>
                         </div>
-                      </div>
 
                       {/* Slot Badge & Checkin Status & Actions */}
                       <div className="flex flex-wrap items-center justify-between md:justify-end gap-3 pt-2 md:pt-0 border-t md:border-t-0 border-gray-100 dark:border-zinc-850">
@@ -1513,7 +1534,7 @@ export default function BookingDayManagement({
                         ) : (
                           <button
                             type="button"
-                            onClick={() => onToggleCheckin(att.ticketId || att.id, true, 'Manage Event Desk')}
+                            onClick={() => setCheckinConfirmAttendee(att)}
                             className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
                           >
                             <UserCheck className="w-3.5 h-3.5" />
@@ -1607,13 +1628,21 @@ export default function BookingDayManagement({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
-                    att.isCheckedIn
-                      ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                      : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                  }`}>
-                    {att.isCheckedIn ? 'Checked In' : 'Pending'}
-                  </span>
+                  {att.isCheckedIn ? (
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>{currentLang.checkedInStatus}</span>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setCheckinConfirmAttendee(att)}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+                    >
+                      <UserCheck className="w-3.5 h-3.5" />
+                      <span>{currentLang.checkinNow}</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => handleOpenReschedule(att)}
@@ -2137,6 +2166,152 @@ export default function BookingDayManagement({
                     <span>{currentLang.generateButton} ({generateCount})</span>
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 10. Check-in Confirmation Pop-up Modal */}
+      <AnimatePresence>
+        {checkinConfirmAttendee && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => !isProcessingCheckin && setCheckinConfirmAttendee(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              className={`w-full max-w-md rounded-3xl p-6 sm:p-7 border shadow-2xl relative overflow-hidden ${
+                theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
+              }`}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Close icon */}
+              <button
+                type="button"
+                disabled={isProcessingCheckin}
+                onClick={() => setCheckinConfirmAttendee(null)}
+                className="absolute top-5 right-5 p-1 rounded-xl hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+
+              {/* Accent Badge & Icon */}
+              <div className="flex flex-col items-center text-center mb-5">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 flex items-center justify-center mb-3.5 shadow-sm">
+                  <UserCheck className="w-8 h-8" />
+                </div>
+                <span className="inline-block px-3 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider rounded-full mb-1.5 border border-emerald-500/20">
+                  {lang === 'lo' ? 'ການເຊັກອິນການຈອງ' : 'Event Booking Check-In'}
+                </span>
+                <h3 className="text-xl font-black">
+                  {currentLang.confirmCheckinTitle}
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1 max-w-xs">
+                  {currentLang.confirmCheckinPrompt}
+                </p>
+              </div>
+
+              {/* Booking & Guest Info Card */}
+              <div className={`p-4 rounded-2xl border mb-5 space-y-3 ${
+                theme === 'dark' ? 'bg-zinc-950/80 border-zinc-800' : 'bg-[#F9FAFB] border-gray-100'
+              }`}>
+                {/* Guest Identity */}
+                <div className="flex items-start justify-between gap-3 pb-3 border-b border-gray-100 dark:border-zinc-850">
+                  <div className="min-w-0">
+                    <h5 className="font-black text-sm sm:text-base truncate">
+                      {checkinConfirmAttendee.attendeeName}
+                    </h5>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-orange-500/10 text-adv-orange">
+                        {checkinConfirmAttendee.ticketType || 'Standard'}
+                      </span>
+                      {checkinConfirmAttendee.price && (
+                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
+                          {checkinConfirmAttendee.price}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <span className="text-[10px] font-mono font-bold px-2 py-1 rounded bg-gray-200/80 dark:bg-zinc-800 text-gray-700 dark:text-gray-300">
+                      #{checkinConfirmAttendee.ticketId || checkinConfirmAttendee.id}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Session Date & Time Slot */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800">
+                    <Calendar className="w-4 h-4 text-adv-orange shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-[9px] uppercase font-bold text-gray-400">
+                        {currentLang.date}
+                      </p>
+                      <p className="font-bold truncate text-[11px]">
+                        {checkinConfirmAttendee.visitDate || selectedDate}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800">
+                    <Clock className="w-4 h-4 text-blue-500 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-[9px] uppercase font-bold text-gray-400">
+                        {currentLang.slot}
+                      </p>
+                      <p className="font-bold truncate text-[11px]">
+                        {checkinConfirmAttendee.timeSlot || 'General'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact info */}
+                {(checkinConfirmAttendee.phone || checkinConfirmAttendee.email) && (
+                  <div className="pt-1 flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400 font-medium">
+                    {checkinConfirmAttendee.phone && (
+                      <span className="flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-gray-400" />
+                        {checkinConfirmAttendee.phone}
+                      </span>
+                    )}
+                    {checkinConfirmAttendee.email && (
+                      <span className="flex items-center gap-1.5 truncate max-w-[210px]">
+                        <Mail className="w-3.5 h-3.5 text-gray-400" />
+                        {checkinConfirmAttendee.email}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  disabled={isProcessingCheckin}
+                  onClick={() => setCheckinConfirmAttendee(null)}
+                  className={`flex-1 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer ${
+                    theme === 'dark'
+                      ? 'bg-zinc-800 hover:bg-zinc-750 text-gray-300'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  {currentLang.cancel}
+                </button>
+                <button
+                  type="button"
+                  disabled={isProcessingCheckin}
+                  onClick={handleConfirmCheckin}
+                  className="flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-md hover:shadow-lg active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{currentLang.confirmCheckinBtn}</span>
+                </button>
               </div>
             </motion.div>
           </div>

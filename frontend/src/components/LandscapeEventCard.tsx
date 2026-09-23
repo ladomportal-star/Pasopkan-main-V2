@@ -188,21 +188,23 @@ const LandscapeEventCard: React.FC<LandscapeEventCardProps> = ({ event, index, u
 
       <div className="p-3 sm:p-4 flex flex-col flex-1 min-w-0">
         {/* Badges under image: Location on line 1, Date/Time on line 2 */}
-        <div className="flex flex-col gap-1.5 mb-2.5">
+        <div className="flex flex-col gap-1.5 mb-2.5 min-h-[46px] sm:min-h-[50px] justify-start">
           <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200/60 w-fit max-w-full">
             <MapPin className="w-3 h-3 text-adv-orange shrink-0" />
             <span className="truncate">{event.venue || event.location}</span>
           </div>
 
-          {dateBadge && (
+          {dateBadge ? (
             <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200/60 w-fit max-w-full">
               <Calendar className="w-3 h-3 text-adv-orange shrink-0" />
               <span className="truncate">{dateBadge}</span>
             </div>
+          ) : (
+            <div className="h-[21px] sm:h-[23px] invisible" aria-hidden="true" />
           )}
         </div>
 
-        <h3 className="text-sm sm:text-base md:text-lg font-bold text-adv-slate leading-snug line-clamp-2 break-words mb-2 ">
+        <h3 className="text-sm sm:text-base md:text-lg font-bold text-adv-slate leading-snug line-clamp-2 break-words mb-2 min-h-[2.5rem] sm:min-h-[2.85rem]">
           {event.title}
         </h3>
 
