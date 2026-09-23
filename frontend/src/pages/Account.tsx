@@ -1,7 +1,7 @@
 import { BankAccountInfo, PayoutBill, EventData } from "../types";
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import * as XLSX from 'xlsx';
-import { User, Settings, CreditCard, Bell, Shield, HelpCircle, LogOut, ChevronLeft, ChevronRight, Camera, Calendar as CalendarIcon, MapPin, Plus, CheckCircle2, XCircle, X, AlertCircle, AlertTriangle, Loader2, Image as ImageIcon, Ticket, Download, Link2, Copy, ExternalLink, QrCode, Trash2, ShieldCheck , Building, Save, Edit2, ChevronDown, DollarSign, Info, Smartphone, Lock, Search, Phone, Mail, FileText, Users, Eye, Filter, PieChart, Sparkles, UserCheck, MessageSquare, ClipboardList, CheckSquare, Clock, Globe, ListFilter, Check, UserX, BarChart3, CheckCheck, KeyRound, RefreshCw, ShieldAlert } from 'lucide-react';
+import { User, Settings, CreditCard, Bell, Shield, HelpCircle, LogOut, ChevronLeft, ChevronRight, Camera, Calendar as CalendarIcon, CalendarDays, MapPin, Plus, CheckCircle2, XCircle, X, AlertCircle, AlertTriangle, Loader2, Image as ImageIcon, Ticket, Download, Link2, Copy, ExternalLink, QrCode, Trash2, ShieldCheck , Building, Save, Edit2, ChevronDown, DollarSign, Info, Smartphone, Lock, Search, Phone, Mail, FileText, Users, Eye, Filter, PieChart, Sparkles, UserCheck, MessageSquare, ClipboardList, CheckSquare, Clock, Globe, ListFilter, Check, UserX, BarChart3, CheckCheck, KeyRound, RefreshCw, ShieldAlert } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { safeStorage } from '../lib/storage';
 import { api } from '../lib/api';
@@ -15,6 +15,8 @@ import { CheckinRecord, EventAttendee, useAttendees, useCheckins } from '../lib/
 import SEO from '../components/SEO';
 import OtpInput from '../components/OtpInput';
 import ManageCouponsSection from '../components/ManageCouponsSection';
+import BookingDayManagement from '../components/BookingDayManagement';
+import AccountMiniDashboard from '../components/AccountMiniDashboard';
 
 const LazyScanner = React.lazy(() =>
   (import('@yudiel/react-qr-scanner')
@@ -603,14 +605,14 @@ export default function Account() {
 
   const [profilePic, setProfilePic] = useState<string | null>(() => {
     try {
-      return localStorage.getItem('pasopkan_user_profile_pic');
+      return safeStorage.getItem('pasopkan_user_profile_pic') || localStorage.getItem('pasopkan_user_profile_pic');
     } catch (e) {
       return null;
     }
   });
   const [profile, setProfile] = useState(() => {
     try {
-      const saved = localStorage.getItem('pasopkan_user_profile');
+      const saved = safeStorage.getItem('pasopkan_user_profile') || localStorage.getItem('pasopkan_user_profile');
       if (saved) return JSON.parse(saved);
     } catch (e) {}
     return {
@@ -631,7 +633,36 @@ export default function Account() {
         hasSeating: true,
         zoneImage: '/src/assets/images/seating_map_layout_1782798956470.jpg'
       },
-      { ...events[1], registered: 85, scanned: 80, hasSeating: false }
+      { ...events[1], registered: 85, scanned: 80, hasSeating: false },
+      { 
+        ...(events.find(e => e.id === '4') || events[3] || {
+          id: '4',
+          title: 'Lao Cooking Masterclass',
+          dateType: 'booking',
+          bookingDuration: '3.5 Hours',
+          bookingCapacity: '12',
+          bookingTimeSlots: ['08:30 - 11:30', '11:30 - 14:30', '14:30 - 17:30'],
+          bookingSlotCapacities: {
+            '08:30 - 11:30': 12,
+            '11:30 - 14:30': 12,
+            '14:30 - 17:30': 12
+          },
+          bookingAvailableDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          bookingApprovalMode: 'instant',
+          bookingStartDate: '2026-09-01',
+          bookingEndDate: '2026-12-31',
+          date: '2026-09-01',
+          endDate: '2026-12-31',
+          ticketTiers: [
+            { id: 't7', name: 'Cooking Class Seat', price: 300, available: 15, description: 'Includes recipe book and ingredients.' },
+            { id: 't8', name: 'VIP Chef Table & Wine', price: 550, available: 8, description: 'Includes private station and premium paired wine.' }
+          ]
+        }), 
+        dateType: 'booking',
+        registered: 24, 
+        scanned: 8, 
+        hasSeating: false 
+      }
     ];
 
     try {
@@ -684,7 +715,9 @@ export default function Account() {
     checkedInCount,
     pendingCount,
     withAnswersCount,
-    setCheckinStatus
+    setCheckinStatus,
+    addAttendee,
+    rescheduleBooking
   } = useAttendees(selectedEventId);
 
   const [attendeeFilter, setAttendeeFilter] = useState<'all' | 'checked_in' | 'pending'>('all');
@@ -761,6 +794,30 @@ export default function Account() {
     });
   }, [eventAttendees, attendeeFilter, attendeeTierFilter, attendeeSearchQuery]);
 
+  // Mini dashboard metrics across all organizer events
+  const calculateEventIncome = (ev: any): number => {
+    if (!ev) return 0;
+    if (ev.grossRevenue && typeof ev.grossRevenue === 'number') return ev.grossRevenue;
+    const tiers = ev.ticketTiers || [];
+    if (tiers.length > 0) {
+      const paidTiers = tiers.filter((t: any) => (t.price || 0) > 0);
+      const avgPrice = paidTiers.length > 0
+        ? paidTiers.reduce((sum: number, t: any) => {
+            const p = Number(t.price) || 0;
+            return sum + (p > 10000 ? p : p * 1000);
+          }, 0) / paidTiers.length
+        : (ev.price && ev.price > 10000 ? ev.price : (Number(ev.price) || 150) * 1000);
+      return Math.round((Number(ev.registered) || 0) * (avgPrice || 150000));
+    }
+    return (Number(ev.registered) || 0) * 150000;
+  };
+
+  const selectedEventAttendeesCount = Number(selectedEvent?.registered) || eventAttendees.length;
+  const selectedEventCheckedInCount = Number(selectedEvent?.scanned) || checkedInCount;
+  const selectedEventIncome = useMemo(() => {
+    return calculateEventIncome(selectedEvent);
+  }, [selectedEvent]);
+
   const [scannerError, setScannerError] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState('');
   const location = useLocation();
@@ -774,6 +831,33 @@ export default function Account() {
       window.scrollTo(0, 0);
     }
   }, [location.state]);
+
+  // Sync organizer events when admin approves, rejects or updates them
+  useEffect(() => {
+    const handleSyncEvents = () => {
+      try {
+        const savedOrganizerEventsStr = safeStorage.getItem('organizer_events');
+        if (savedOrganizerEventsStr) {
+          const saved = JSON.parse(savedOrganizerEventsStr);
+          if (Array.isArray(saved) && saved.length > 0) {
+            setMyEvents(prev => {
+              const defaultEvts = prev.filter(e => ['1', '2', '3', '4', '6'].includes(String(e.id)) && !saved.some((s: any) => String(s.id) === String(e.id)));
+              return [...saved, ...defaultEvts];
+            });
+          }
+        }
+      } catch {
+        // Fallback
+      }
+    };
+
+    window.addEventListener('storage', handleSyncEvents);
+    window.addEventListener('pasopkan_notification_added', handleSyncEvents);
+    return () => {
+      window.removeEventListener('storage', handleSyncEvents);
+      window.removeEventListener('pasopkan_notification_added', handleSyncEvents);
+    };
+  }, []);
 
   
   // Staff Scanner Links State
@@ -813,7 +897,7 @@ export default function Account() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('pasopkan_staff_links', JSON.stringify(staffLinks));
+      safeStorage.setItem('pasopkan_staff_links', JSON.stringify(staffLinks));
     } catch (e) {}
   }, [staffLinks]);
 
@@ -1080,7 +1164,7 @@ export default function Account() {
       icon: Bell, 
       label: t.notifications, 
       desc: lang === 'en' ? 'Control how you receive activity updates' : 'ຄວບຄຸມວິທີທີ່ທ່ານໄດ້ຮັບການແຈ້ງເຕືອນກິດຈະກຳ',
-      path: '/notifications',
+      path: '/notifications?tab=settings',
       color: 'text-adv-orange dark:text-orange-450',
       bg: 'bg-orange-50 dark:bg-orange-500/10'
     },
@@ -1203,8 +1287,8 @@ export default function Account() {
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 500;
-          const MAX_HEIGHT = 500;
+          const MAX_WIDTH = 256;
+          const MAX_HEIGHT = 256;
           let width = img.width;
           let height = img.height;
 
@@ -1223,12 +1307,12 @@ export default function Account() {
           canvas.height = height;
           const ctx = canvas.getContext('2d');
           ctx?.drawImage(img, 0, 0, width, height);
-          const base64Pic = canvas.toDataURL('image/jpeg', 0.8);
+          const base64Pic = canvas.toDataURL('image/jpeg', 0.7);
           
           setProfilePic(base64Pic);
           
           try {
-            localStorage.setItem('pasopkan_user_profile_pic', base64Pic);
+            safeStorage.setItem('pasopkan_user_profile_pic', base64Pic);
           } catch (err) {
             console.error('LocalStorage quota exceeded, skipping local cache', err);
           }
@@ -1461,8 +1545,21 @@ export default function Account() {
                 <ChevronRight className="w-4.5 h-4.5 rotate-90" />
               </div>
             </div>
-
           </div>
+
+          {selectedEvent && (
+            <AccountMiniDashboard
+              theme={theme}
+              lang={lang}
+              isSingleEvent={true}
+              eventTitle={selectedEvent.title}
+              totalAttendees={selectedEventAttendeesCount}
+              totalCheckedIn={selectedEventCheckedInCount}
+              totalIncome={selectedEventIncome}
+              onNavigateToPayouts={() => { setActiveTab('payouts'); window.scrollTo(0, 0); }}
+            />
+          )}
+
           {selectedEvent && (
             <div className="space-y-6 sm:space-y-8">
               {/* Event Card */}
@@ -1476,18 +1573,63 @@ export default function Account() {
                    <div className="flex-1 text-center sm:text-left min-w-0 pt-1">
                       <div className="flex flex-wrap items-center gap-2.5 justify-center sm:justify-start mb-2 sm:mb-3">
                         <h3 className="text-xl sm:text-2xl font-black text-adv-slate dark:text-white truncate">{selectedEvent.title}</h3>
+                        {selectedEvent.dateType === 'booking' && (
+                          <span className="px-2.5 py-0.5 rounded-full bg-orange-500/10 text-adv-orange border border-orange-500/20 text-[10px] font-black uppercase tracking-wider shrink-0 flex items-center gap-1">
+                            <CalendarDays className="w-3 h-3" />
+                            {lang === 'lo' ? 'ກິດຈະກຳແບບຈອງລາຍວັນ' : 'Booking Experience'}
+                          </span>
+                        )}
                         {selectedEvent.status === 'pending' && (
-                          <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 text-[9px] sm:text-[10px] font-black uppercase tracking-widest shrink-0">
-                            Pending Approval
+                          <span className="px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider shrink-0 border border-amber-200 dark:border-amber-800">
+                            {lang === 'lo' ? 'ລໍຖ້າອະນຸມັດ' : 'Pending Approval'}
+                          </span>
+                        )}
+                        {selectedEvent.status === 'rejected' && (
+                          <span className="px-2.5 py-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-black uppercase tracking-wider shrink-0 border border-red-200 dark:border-red-800 flex items-center gap-1">
+                            <XCircle className="w-3 h-3" />
+                            {lang === 'lo' ? 'ຖືກປະຕິເສດ' : 'Rejected'}
                           </span>
                         )}
                       </div>
                       <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-2.5 sm:gap-5 text-sm sm:text-base text-gray-500 dark:text-gray-400 font-semibold">
-                         <span className="flex items-center gap-1.5 sm:gap-2"><CalendarIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-adv-orange shrink-0" /> {selectedEvent.date}</span>
+                         <span className="flex items-center gap-1.5 sm:gap-2">
+                           <CalendarIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-adv-orange shrink-0" /> 
+                           {selectedEvent.dateType === 'booking' 
+                             ? `${selectedEvent.bookingStartDate || selectedEvent.date} to ${selectedEvent.bookingEndDate || 'Ongoing'} • Daily Sessions` 
+                             : selectedEvent.date}
+                         </span>
                          <span className="flex items-center gap-1.5 sm:gap-2"><MapPin className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-adv-orange shrink-0" /> {selectedEvent.location}</span>
                       </div>
                    </div>
                 </div>
+
+                {/* Status Decision Notice Banner */}
+                {selectedEvent.status === 'rejected' && (
+                  <div className="mt-4 p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-left">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-xl bg-red-100 dark:bg-red-900/60 text-red-600 dark:text-red-400 shrink-0">
+                        <AlertCircle className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-red-900 dark:text-red-200 text-sm">
+                          {lang === 'lo' ? 'ກິດຈະກຳນີ້ຖືກປະຕິເສດໂດຍແອດມິນ' : 'Event Submission Rejected by Administrator'}
+                        </h4>
+                        <p className="text-xs text-red-700 dark:text-red-300 mt-1 leading-relaxed">
+                          {selectedEvent.rejectionReason 
+                            ? `${lang === 'lo' ? 'ເຫດຜົນ: ' : 'Reason: '}${selectedEvent.rejectionReason}`
+                            : (lang === 'lo' ? 'ກະລຸນາກວດສອບ ແລະ ແກ້ໄຂຂໍ້ມູນກິດຈະກຳ ຈາກນັ້ນສົ່ງໃໝ່ເພື່ອຮັບການກວດສອບ.' : 'Please update your event details, ticket setup, or cover image and resubmit.')}
+                        </p>
+                        <Link
+                          to={`/create?adminEdit=${selectedEvent.id}`}
+                          className="inline-flex items-center gap-1.5 mt-3 px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span>{lang === 'lo' ? 'ແກ້ໄຂ ແລະ ສົ່ງໃໝ່' : 'Edit & Resubmit'}</span>
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               {/* Action Buttons */}
               <div className="w-full">
@@ -1608,8 +1750,24 @@ export default function Account() {
                 lang={lang}
               />
 
-              {/* Seating Map (Only visible if event has one) */}
-              {(selectedEvent.hasSeating === true || String(selectedEvent.hasSeating) === 'true') && (
+              {selectedEvent.dateType === 'booking' ? (
+                <BookingDayManagement
+                  event={selectedEvent}
+                  attendees={eventAttendees}
+                  onToggleCheckin={(ticketId, status, staffLabel) => {
+                    const targetStatus = typeof status === 'boolean' ? status : true;
+                    setCheckinStatus(ticketId, targetStatus, staffLabel || 'Manage Event Desk');
+                  }}
+                  onAddAttendee={(att) => addAttendee(att)}
+                  onRescheduleAttendee={(ticketId, newDate, newSlot) => rescheduleBooking(ticketId, newDate, newSlot)}
+                  theme={theme}
+                  lang={lang}
+                  onOpenScanner={() => setShowScanner(true)}
+                />
+              ) : (
+                <>
+                  {/* Seating Map (Only visible if event has one) */}
+                  {(selectedEvent.hasSeating === true || String(selectedEvent.hasSeating) === 'true') && (
                 <div className={`rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-8 shadow-sm border transition-all ${
                   theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-gray-100 text-adv-slate'
                 }`}>
@@ -1708,6 +1866,60 @@ export default function Account() {
                         </select>
                       </div>
                     )}
+
+                    {/* Generate Example Guests for this event */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const sampleGuests = [
+                          { first: 'Anousone', last: 'Sengsouvanh', email: 'anousone.s@laotel.la', phone: '+856 20 5512 8899', ticketTier: selectedEvent.tiers?.[0]?.name || selectedEvent.ticketTiers?.[0]?.name || 'Standard Pass', price: selectedEvent.price ? `${selectedEvent.price.toLocaleString()} LAK` : '150,000 LAK' },
+                          { first: 'Phonexay', last: 'Vongxay', email: 'phonexay.v@gmail.com', phone: '+856 20 7789 2234', ticketTier: selectedEvent.tiers?.[0]?.name || selectedEvent.ticketTiers?.[0]?.name || 'Standard Pass', price: selectedEvent.price ? `${selectedEvent.price.toLocaleString()} LAK` : '150,000 LAK' },
+                          { first: 'Souphaphone', last: 'Inthavong', email: 'soupha.inthavong@outlook.com', phone: '+856 20 9923 4411', ticketTier: selectedEvent.tiers?.[1]?.name || selectedEvent.ticketTiers?.[1]?.name || selectedEvent.tiers?.[0]?.name || 'VIP Pass', price: '300,000 LAK' },
+                          { first: 'Khamkeo', last: 'Phommachan', email: 'khamkeo.p@gmail.com', phone: '+856 20 5543 1122', ticketTier: selectedEvent.tiers?.[0]?.name || selectedEvent.ticketTiers?.[0]?.name || 'Standard Pass', price: selectedEvent.price ? `${selectedEvent.price.toLocaleString()} LAK` : '150,000 LAK' },
+                          { first: 'Noy', last: 'Sayasane', email: 'noy.sayasane@hotmail.com', phone: '+856 20 2233 4455', ticketTier: selectedEvent.tiers?.[1]?.name || selectedEvent.ticketTiers?.[1]?.name || 'VIP Pass', price: '300,000 LAK' },
+                        ];
+                        sampleGuests.forEach((sample, i) => {
+                          const orderNum = Math.floor(1000 + Math.random() * 9000);
+                          const isCheck = i === 0 || i === 2;
+                          const newAtt: any = {
+                            id: `att_gen_${Date.now()}_${i}`,
+                            ticketId: `TK-${selectedEvent.id}-${orderNum}`,
+                            orderId: `ORD-${Date.now().toString().slice(-6)}-${orderNum}`,
+                            eventId: String(selectedEvent.id),
+                            firstName: sample.first,
+                            lastName: sample.last,
+                            attendeeName: `${sample.first} ${sample.last}`,
+                            email: sample.email,
+                            phone: sample.phone,
+                            ticketType: sample.ticketTier,
+                            zone: selectedEvent.hasSeating ? 'Zone A' : 'General Admission',
+                            seat: selectedEvent.hasSeating ? `A-${i + 1}` : `General #${i + 1}`,
+                            price: sample.price,
+                            purchaseDate: new Date(Date.now() - (i + 1) * 3600000 * 12).toISOString(),
+                            isCheckedIn: isCheck,
+                            checkedInTime: isCheck ? `${(9 + i).toString().padStart(2, '0')}:15` : undefined,
+                            checkedInTimestamp: isCheck ? Date.now() - i * 1800000 : undefined,
+                            staffLabel: isCheck ? 'Organizer Desk' : undefined,
+                            customAnswers: {
+                              'registered_via': 'Example Guest Generator',
+                              'dietary_preference': i % 2 === 0 ? 'Regular' : 'Vegetarian'
+                            }
+                          };
+                          addAttendee(newAtt);
+                        });
+                        addToast(
+                          lang === 'lo'
+                            ? `✨ ສ້າງລາຍຊື່ແຂກຕົວຢ່າງ 5 ຄົນສຳເລັດແລ້ວ!`
+                            : `✨ Successfully generated 5 example guests!`,
+                          'success'
+                        );
+                      }}
+                      className="px-3.5 py-2.5 rounded-xl bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 hover:scale-[1.02] active:scale-[0.98] font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 border border-purple-500/20 shadow-sm shrink-0 cursor-pointer"
+                      title="Generate sample guest entries to test check-in"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+                      <span>{lang === 'en' ? 'Generate Guests' : 'ສ້າງແຂກຕົວຢ່າງ'}</span>
+                    </button>
 
                     {/* Export to Excel Button */}
                     <button
@@ -1965,6 +2177,8 @@ export default function Account() {
             )}
             </div>
                 </div>
+                </>
+              )}
               </div>
             )}
         </div>

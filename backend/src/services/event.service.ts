@@ -1,12 +1,6 @@
 import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { db } from "../config/database.ts";
-import {
-  coupons,
-  eventDates,
-  events,
-  organizers,
-  ticketTiers,
-} from "../models/schema.ts";
+import { coupons, eventDates, events, organizers, ticketTiers } from "../models/schema.ts";
 import { HttpError } from "../middlewares/error.middleware.ts";
 import { getUserRole } from "./user.service.ts";
 import type { CreateEventBody, UpdateEventBody } from "../validators/event.validator.ts";

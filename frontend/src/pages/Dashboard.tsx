@@ -10,6 +10,7 @@ import { useTheme } from '../context/ThemeContext';
 import SEO from '../components/SEO';
 import ETicketModal from '../components/ETicketModal';
 import { useCheckins } from '../lib/checkinsStore';
+import { safeStorage } from '../lib/storage';
 
 const translations = {
     en: {
@@ -570,18 +571,18 @@ export default function Dashboard() {
     
     setTickets(updatedTickets);
     
-    // Save updated tickets to localStorage
+    // Save updated tickets to safeStorage
     try {
-      localStorage.setItem('pasopkan_user_tickets', JSON.stringify(updatedTickets));
-      const existingRefundedRaw = localStorage.getItem('pasopkan_refunded_tickets');
+      safeStorage.setItem('pasopkan_user_tickets', JSON.stringify(updatedTickets));
+      const existingRefundedRaw = safeStorage.getItem('pasopkan_refunded_tickets') || localStorage.getItem('pasopkan_refunded_tickets');
       const refundedList: string[] = existingRefundedRaw ? JSON.parse(existingRefundedRaw) : [];
       if (!refundedList.includes(refundTicket.id)) {
         refundedList.push(refundTicket.id);
       }
-      localStorage.setItem('pasopkan_refunded_tickets', JSON.stringify(refundedList));
+      safeStorage.setItem('pasopkan_refunded_tickets', JSON.stringify(refundedList));
 
       // Also register in admin refunds for immediate visibility
-      const existingRefundsRaw = localStorage.getItem('pasopkan_admin_refunds');
+      const existingRefundsRaw = safeStorage.getItem('pasopkan_admin_refunds') || localStorage.getItem('pasopkan_admin_refunds');
       const adminRefunds = existingRefundsRaw ? JSON.parse(existingRefundsRaw) : [];
       if (!adminRefunds.some((r: any) => r.ticketId === refundTicket.id)) {
         const price = Number(refundTicket.tier?.price) || 0;
@@ -605,7 +606,7 @@ export default function Dashboard() {
           processedDate: new Date().toISOString().replace('T', ' ').slice(0, 16),
           processedBy: 'User Self-Service'
         });
-        localStorage.setItem('pasopkan_admin_refunds', JSON.stringify(adminRefunds));
+        safeStorage.setItem('pasopkan_admin_refunds', JSON.stringify(adminRefunds));
       }
       window.dispatchEvent(new Event('pasopkan_storage_update'));
     } catch (e) {

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Ticket, User, Plus, Search, Shield, Moon, Sun, Menu, X, Compass, Globe, Activity, MapPin, Zap, Lightbulb, Mountain, PartyPopper, Bell, Calendar, Info, Star, ChevronRight, ArrowLeft , ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
+import { Ticket, User, Plus, Search, Shield, Moon, Sun, Menu, X, Compass, Globe, Activity, MapPin, Zap, Lightbulb, Mountain, PartyPopper, Bell, Calendar, Info, Star, ChevronRight, ArrowLeft, ShieldCheck, AlertCircle, Loader2, Clock, RotateCw, Check, ShieldAlert, KeyRound, Settings } from 'lucide-react';
 import Logo from './Logo';
 import SearchModal from './SearchModal';
 import OtpInput from './OtpInput';
@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNotifications, timeAgo } from '../context/NotificationsContext';
 import type { AppNotification } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
+import { safeStorage } from '../lib/storage';
 
 const translations = {
   en: {
@@ -57,11 +58,24 @@ const translations = {
   }
 };
 
-/** Icon for a notification type (the server sends the type, never a component). */
-const notifIcon = (type?: string) =>
-  ({ upcomingEvent: Calendar, ticket: Ticket, promo: Star, verified: ShieldCheck, system: AlertCircle, noted: Info } as Record<string, typeof Bell>)[
-    type ?? ''
-  ] ?? Bell;
+function getNavbarNotifIcon(notif: any): React.ComponentType<{ className?: string }> {
+  if (typeof notif?.icon === 'function') {
+    return notif.icon;
+  }
+  if (notif?.icon && typeof notif.icon === 'object' && (notif.icon.$$typeof || notif.icon.render)) {
+    return notif.icon;
+  }
+  const status = notif?.status;
+  const type = notif?.type;
+  if (status === 'approved' || type === 'verified') return ShieldCheck;
+  if (status === 'rejected') return AlertCircle;
+  if (type === 'upcomingEvent') return Calendar;
+  if (type === 'ticket') return Ticket;
+  if (type === 'promo') return Star;
+  if (type === 'noted') return Info;
+  if (type === 'system') return AlertCircle;
+  return Bell;
+}
 
 export default function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -71,7 +85,7 @@ export default function Navbar() {
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
   const notificationRef = useRef<HTMLDivElement>(null);
-  
+
   const hasUnread = unreadCount > 0;
   const { lang, toggleLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
@@ -82,11 +96,13 @@ export default function Navbar() {
   const navigate = useNavigate();
   const { user, loginWithGoogle } = useAuth();
   
-  // Auth/OTP modal state
+  // Auth/OTP & 2FA modal state
+  const [showTwoFaRequiredModal, setShowTwoFaRequiredModal] = useState(false);
   const [showAuthOtpModal, setShowAuthOtpModal] = useState(false);
   const [authOtpCode, setAuthOtpCode] = useState('');
   const [authOtpError, setAuthOtpError] = useState('');
   const [authOtpCountdown, setAuthOtpCountdown] = useState(0);
+  const [otpSentFeedback, setOtpSentFeedback] = useState(false);
   const expectedAuthOtp = '123456';
 
   const [authTwoFaCode, setAuthTwoFaCode] = useState('');
@@ -94,6 +110,29 @@ export default function Navbar() {
   const expectedTwoFa = '987654';
 
   const [isVerifyingAuthOtp, setIsVerifyingAuthOtp] = useState(false);
+
+  const handleCreateEventClick = () => {
+    const is2FaEnabled = safeStorage.getItem('user_2fa_enabled') === 'true';
+    if (!is2FaEnabled) {
+      setShowTwoFaRequiredModal(true);
+      return;
+    }
+
+    setAuthOtpCountdown(60);
+    setAuthOtpCode('');
+    setAuthOtpError('');
+    setAuthTwoFaCode('');
+    setAuthTwoFaError('');
+    setOtpSentFeedback(false);
+    setShowAuthOtpModal(true);
+  };
+
+  const handleResendOtp = () => {
+    setAuthOtpCountdown(60);
+    setAuthOtpError('');
+    setOtpSentFeedback(true);
+    setTimeout(() => setOtpSentFeedback(false), 3000);
+  };
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -147,7 +186,7 @@ export default function Navbar() {
               <Link to="/category/festival" className="hover:text-adv-orange transition-colors">{t.festivals}</Link>
               <Link to="/category/voucher" className="hover:text-adv-orange transition-colors">{t.voucher}</Link>
               <div className="w-px h-4 bg-gray-200 mx-2" />
-              <button onClick={() => setShowAuthOtpModal(true)} className="flex items-center gap-2 text-adv-orange hover:text-orange-600 transition-colors">
+              <button onClick={handleCreateEventClick} className="flex items-center gap-2 text-adv-orange hover:text-orange-600 transition-colors font-bold cursor-pointer">
                 <Plus className="w-4 h-4" />
                 {t.createEvent}
               </button>
@@ -244,7 +283,7 @@ export default function Navbar() {
                           </div>
                         ) : (
                           notifications.map((notif) => {
-                            const NotifIcon = notifIcon(notif.type);
+                            const NotifIcon = getNavbarNotifIcon(notif);
                             return (
                               <div
                                 key={notif.id}
@@ -276,6 +315,24 @@ export default function Navbar() {
                             );
                           })
                         )}
+                      </div>
+
+                      <div className="px-3 py-2 border-t border-gray-100 flex items-center justify-between bg-gray-50/70">
+                        <Link 
+                          to="/notifications" 
+                          onClick={() => setIsNotificationsOpen(false)}
+                          className="text-xs font-bold text-gray-500 hover:text-adv-orange transition-colors px-1 py-0.5"
+                        >
+                          {lang === 'lo' ? 'ເບິ່ງທັງໝົດ' : 'View All'}
+                        </Link>
+                        <Link 
+                          to="/notifications?tab=settings" 
+                          onClick={() => setIsNotificationsOpen(false)}
+                          className="inline-flex items-center gap-1 text-xs font-bold text-adv-orange hover:text-orange-600 transition-colors px-1 py-0.5"
+                        >
+                          <Settings className="w-3.5 h-3.5" />
+                          <span>{lang === 'lo' ? 'ຕັ້ງຄ່າ' : 'Settings'}</span>
+                        </Link>
                       </div>
                     </motion.div>
                   )}
@@ -339,15 +396,24 @@ export default function Navbar() {
               <div className="flex-1 overflow-y-auto p-8">
                 <div className={`w-16 h-16 rounded-[2rem] flex items-center justify-center mb-8 ${
                   selectedNotif.type === 'upcomingEvent' ? 'bg-blue-50 text-blue-500' :
+                  selectedNotif.type === 'verified' || selectedNotif.status === 'approved' ? 'bg-emerald-50 text-emerald-600' :
+                  selectedNotif.status === 'rejected' ? 'bg-red-50 text-red-600' :
                   'bg-orange-50 text-adv-orange'
                 }`}>
-                  {(() => { const SelectedIcon = notifIcon(selectedNotif.type); return <SelectedIcon className="w-8 h-8" />; })()}
+                  {(() => {
+                    const ModalIcon = getNavbarNotifIcon(selectedNotif);
+                    return <ModalIcon className="w-8 h-8" />;
+                  })()}
                 </div>
                 
                 <div className="space-y-6">
                   <div>
                     <span className="text-[10px] font-black uppercase tracking-widest text-adv-orange mb-2 block">
-                      {selectedNotif.type === 'upcomingEvent' ? t.upcomingEvent : t.noted}
+                      {selectedNotif.status === 'approved' || selectedNotif.type === 'verified'
+                        ? (lang === 'lo' ? 'ກິດຈະກຳໄດ້ຮັບອະນຸມັດ' : 'Event Approved')
+                        : selectedNotif.status === 'rejected'
+                        ? (lang === 'lo' ? 'ກິດຈະກຳຖືກປະຕິເສດ' : 'Event Rejected')
+                        : selectedNotif.type === 'upcomingEvent' ? t.upcomingEvent : t.noted}
                     </span>
                     <h3 className="text-2xl font-bold text-adv-slate leading-tight font-display">
                       {lang === 'lo' && selectedNotif.titleLo ? selectedNotif.titleLo : selectedNotif.title}
@@ -360,6 +426,29 @@ export default function Navbar() {
                       {lang === 'lo' && selectedNotif.messageLo ? selectedNotif.messageLo : selectedNotif.message}
                     </p>
                   </div>
+
+                  {selectedNotif.rejectionReason && (
+                    <div className="p-4 bg-red-50 rounded-2xl border border-red-100 flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                      <div>
+                        <h5 className="text-xs font-bold text-red-800 uppercase tracking-wider">
+                          {lang === 'lo' ? 'ເຫດຜົນການປະຕິເສດ' : 'Rejection Reason'}
+                        </h5>
+                        <p className="text-xs text-red-700 mt-1">{selectedNotif.rejectionReason}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedNotif.link && (
+                    <Link
+                      to={selectedNotif.link}
+                      onClick={() => setSelectedNotif(null)}
+                      className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-adv-orange text-white font-bold text-sm rounded-2xl hover:bg-orange-600 transition-colors shadow-sm"
+                    >
+                      <span>{lang === 'lo' ? 'ເບິ່ງລາຍລະອຽດໃນບັນຊີ' : 'View in Account'}</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  )}
                   
                   {selectedNotif.type === 'upcomingEvent' && (
                     <div className="bg-blue-50/50 p-6 rounded-3xl border border-blue-100 flex items-start gap-4">
@@ -424,6 +513,81 @@ export default function Navbar() {
       </AnimatePresence>
 
 
+      {/* 2FA Setup Required Modal */}
+      <AnimatePresence>
+        {showTwoFaRequiredModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+            onClick={() => setShowTwoFaRequiredModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-gray-100 text-adv-slate"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4 border border-amber-200 shadow-sm">
+                <ShieldAlert className="w-7 h-7" />
+              </div>
+              
+              <div className="text-center mb-5">
+                <span className="inline-block px-3 py-1 bg-amber-100/70 text-amber-700 text-[10px] font-black uppercase tracking-wider rounded-full mb-2">
+                  {lang === 'lo' ? 'ຄວາມປອດໄພຜູ້ຈັດງານ' : 'Organizer Security Required'}
+                </span>
+                <h3 className="text-lg sm:text-xl font-black text-adv-slate">
+                  {lang === 'lo' ? 'ຈຳເປັນຕ້ອງຕັ້ງຄ່າ 2FA ກ່ອນ' : '2FA Setup Required'}
+                </h3>
+                <p className="text-xs text-gray-500 font-medium leading-relaxed mt-2">
+                  {lang === 'lo'
+                    ? 'ເພື່ອຄວາມປອດໄພຂອງບັນຊີຜູ້ຈັດງານ, ລາຍຮັບຈາກປີ້ ແລະ ຂໍ້ມູນກິດຈະກຳ, ທ່ານຕ້ອງຕັ້ງຄ່າການຢືນຢັນຕົວຕົນ 2 ຂັ້ນຕອນ (2FA) ກ່ອນຈຶ່ງຈະສາມາດສ້າງກິດຈະກຳໄດ້.'
+                    : 'To protect your organizer credentials, ticket revenue, and attendee check-ins, you must set up Two-Factor Authentication (2FA) before creating events.'}
+                </p>
+              </div>
+
+              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 mb-6 space-y-2.5 text-xs text-gray-600">
+                <div className="flex items-center gap-2 font-medium">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                  <span>{lang === 'lo' ? 'ປົກປ້ອງບັນຊີທະນາຄານ ແລະ ລາຍຮັບ' : 'Protects payout bank accounts & ticket revenue'}</span>
+                </div>
+                <div className="flex items-center gap-2 font-medium">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                  <span>{lang === 'lo' ? 'ປ້ອງກັນການສ້າງກິດຈະກຳປອມແປງ' : 'Prevents unauthorized event publishing'}</span>
+                </div>
+                <div className="flex items-center gap-2 font-medium">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                  <span>{lang === 'lo' ? 'ໃຊ້ງານງ່າຍຜ່ານ Google Authenticator ຫຼື Authy' : 'Works with Google Authenticator or Authy'}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowTwoFaRequiredModal(false)}
+                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
+                >
+                  {lang === 'lo' ? 'ຍົກເລີກ' : 'Cancel'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowTwoFaRequiredModal(false);
+                    navigate('/security/2fa');
+                  }}
+                  className="flex-1 py-3 bg-adv-orange hover:bg-orange-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  <span>{lang === 'lo' ? 'ຕັ້ງຄ່າ 2FA ດຽວນີ້' : 'Set Up 2FA Now'}</span>
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Auth / OTP Modal */}
       <AnimatePresence>
         {showAuthOtpModal && (
@@ -438,119 +602,153 @@ export default function Navbar() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="max-w-md w-full bg-white rounded-2xl p-5 sm:p-7 shadow-2xl border border-gray-100 text-adv-slate"
+              className="max-w-md w-full bg-white rounded-3xl p-5 sm:p-7 shadow-2xl border border-gray-100 text-adv-slate"
               onClick={e => e.stopPropagation()}
             >
-              <div className="w-12 h-12 rounded-2xl bg-orange-50 text-adv-orange flex items-center justify-center mx-auto mb-3 border border-orange-100">
+              <div className="w-12 h-12 rounded-2xl bg-orange-50 text-adv-orange flex items-center justify-center mx-auto mb-3 border border-orange-100 shadow-sm">
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <h3 className="text-base sm:text-lg font-black text-center mb-1">
-                {lang === 'lo' ? 'ຢືນຢັນຕົວຕົນເພື່ອກວດສອບ ແລະ ເຜີຍແຜ່' : 'Verify Identity to Publish'}
+                {lang === 'lo' ? 'ຢືນຢັນຕົວຕົນເພື່ອສ້າງກິດຈະກຳ' : 'Verify Identity to Create Event'}
               </h3>
               <p className="text-[11px] sm:text-xs text-gray-400 font-medium text-center mb-4 leading-relaxed">
                 {lang === 'lo'
-                  ? 'ກະລຸນາປ້ອນລະຫັດ OTP 6 ຫຼັກ ເພື່ອຢືນຢັນການເຜີຍແຜ່ກິດຈະກຳນີ້. ການຢືນຢັນຈະຊ່ວຍໃຫ້ໝັ້ນໃຈວ່າຂໍ້ມູນປອດໄພ.'
-                  : 'Enter the 6-digit OTP and 2FA codes to securely access the organizer center.'}
+                  ? 'ກະລຸນາປ້ອນລະຫັດ OTP 6 ຫຼັກ ແລະ ລະຫັດ 2FA ເພື່ອຢືນຢັນຕົວຕົນກ່ອນເຂົ້າສູ່ໜ້າສ້າງກິດຈະກຳ.'
+                  : 'Enter the 6-digit OTP and 2FA codes to securely access the event creation center.'}
               </p>
 
+              {/* SMS OTP Code Section */}
               <div className="mb-4">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block text-center mb-2">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">
                     {lang === 'lo' ? 'ລະຫັດຢືນຢັນ OTP 6 ຫຼັກ' : '6-Digit SMS OTP Code'}
                   </label>
-                  
-                  <OtpInput
-                    length={6}
-                    autoFocus={true}
-                    value={authOtpCode}
-                    onChange={(val) => {
-                      setAuthOtpCode(val);
+                  <span className="text-[10px] font-bold text-gray-400">
+                    {lang === 'lo' ? 'ສົ່ງໄປຍັງເບີໂທຂອງທ່ານ' : 'Sent to registered phone'}
+                  </span>
+                </div>
+                
+                <OtpInput
+                  length={6}
+                  autoFocus={true}
+                  value={authOtpCode}
+                  onChange={(val) => {
+                    setAuthOtpCode(val);
+                    setAuthOtpError('');
+                  }}
+                  error={!!authOtpError}
+                />
+
+                {authOtpError && (
+                  <div className="text-red-500 text-xs font-bold mt-2 text-center flex items-center justify-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{authOtpError}</span>
+                  </div>
+                )}
+
+                {/* OTP 60s Countdown & Send Again Button */}
+                <div className="mt-3 flex flex-col items-center">
+                  {authOtpCountdown > 0 ? (
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 border border-gray-150 rounded-full text-xs font-medium text-gray-500">
+                      <Clock className="w-3.5 h-3.5 text-adv-orange animate-pulse" />
+                      <span>
+                        {lang === 'lo'
+                          ? `ສົ່ງລະຫັດໃໝ່ໃນ ${authOtpCountdown} ວິນາທີ`
+                          : `Resend code in ${authOtpCountdown}s`}
+                      </span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleResendOtp}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-orange-50 hover:bg-orange-100 text-adv-orange rounded-full text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                    >
+                      <RotateCw className="w-3.5 h-3.5" />
+                      <span>{lang === 'lo' ? 'ສົ່ງອີກຄັ້ງ' : 'Send again'}</span>
+                    </button>
+                  )}
+
+                  {otpSentFeedback && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-[11px] font-bold text-emerald-600 mt-2 flex items-center gap-1"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{lang === 'lo' ? 'ສົ່ງລະຫັດ OTP ໃໝ່ສຳເລັດແລ້ວ!' : 'New OTP code sent successfully!'}</span>
+                    </motion.div>
+                  )}
+                </div>
+              </div>
+
+              {/* 2FA Code Section */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">
+                    {lang === 'lo' ? 'ລະຫັດ 2FA 6 ຫຼັກ' : '6-Digit 2FA Code'}
+                  </label>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                    <Check className="w-2.5 h-2.5" />
+                    {lang === 'lo' ? 'ຕັ້ງຄ່າ 2FA ແລ້ວ' : '2FA Active'}
+                  </span>
+                </div>
+                
+                <OtpInput
+                  length={6}
+                  autoFocus={false}
+                  value={authTwoFaCode}
+                  onChange={(val) => {
+                    setAuthTwoFaCode(val);
+                    setAuthTwoFaError('');
+                  }}
+                  error={!!authTwoFaError}
+                />
+
+                {authTwoFaError && (
+                  <div className="text-red-500 text-xs font-bold mt-2 text-center flex items-center justify-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{authTwoFaError}</span>
+                  </div>
+                )}
+                
+                {/* Demo Helper Pill */}
+                <div className="mt-4 flex justify-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthOtpCode(expectedAuthOtp);
                       setAuthOtpError('');
                     }}
-                    error={!!authOtpError}
-                  />
-
-                  {authOtpError && (
-                    <div className="text-red-500 text-xs font-bold mt-2 text-center flex items-center justify-center gap-1">
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      <span>{authOtpError}</span>
-                    </div>
-                  )}
-
-                  <div className="mt-4 flex flex-col items-center">
-                    {authOtpCountdown > 0 ? (
-                      <span className="text-xs text-gray-400 font-bold">
-                        {lang === 'lo' ? `ສົ່ງໃໝ່ໃນ ${authOtpCountdown} ວິນາທີ` : `Resend in ${authOtpCountdown}s`}
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setAuthOtpCountdown(60);
-                          setAuthOtpError('');
-                        }}
-                        className="text-xs text-adv-orange font-bold hover:underline"
-                      >
-                        {lang === 'lo' ? 'ສົ່ງລະຫັດໃໝ່' : 'Resend OTP Code'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block text-center mb-2">
-                    {lang === 'lo' ? 'ລະຫັດ 2FA 6 ຫຼັກ' : '6-Digit 2FA Code (Authenticator)'}
-                  </label>
-                  
-                  <OtpInput
-                    length={6}
-                    autoFocus={false}
-                    value={authTwoFaCode}
-                    onChange={(val) => {
-                      setAuthTwoFaCode(val);
+                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full text-[10px] font-bold transition-colors cursor-pointer"
+                  >
+                    <Info className="w-3 h-3 text-adv-orange" />
+                    OTP: {expectedAuthOtp}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthTwoFaCode(expectedTwoFa);
                       setAuthTwoFaError('');
                     }}
-                    error={!!authTwoFaError}
-                  />
-
-                  {authTwoFaError && (
-                    <div className="text-red-500 text-xs font-bold mt-2 text-center flex items-center justify-center gap-1">
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      <span>{authTwoFaError}</span>
-                    </div>
-                  )}
-                  
-                  {/* Demo Helper Pill */}
-                  <div className="mt-5 flex justify-center gap-2 flex-wrap">
-                    <button
-                      onClick={() => {
-                        setAuthOtpCode(expectedAuthOtp);
-                        setAuthOtpError('');
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-full text-[10px] font-bold transition-colors"
-                    >
-                      <Info className="w-3 h-3" />
-                      OTP: {expectedAuthOtp}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setAuthTwoFaCode(expectedTwoFa);
-                        setAuthTwoFaError('');
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-full text-[10px] font-bold transition-colors"
-                    >
-                      <Info className="w-3 h-3" />
-                      2FA: {expectedTwoFa}
-                    </button>
-                  </div>
+                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full text-[10px] font-bold transition-colors cursor-pointer"
+                  >
+                    <Info className="w-3 h-3 text-adv-orange" />
+                    2FA: {expectedTwoFa}
+                  </button>
                 </div>
+              </div>
 
+              {/* Action Buttons */}
               <div className="flex gap-3 mt-6">
                 <button
+                  type="button"
                   onClick={() => setShowAuthOtpModal(false)}
-                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-xl text-xs font-black uppercase tracking-wider transition-colors"
+                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
                 >
                   {lang === 'lo' ? 'ຍົກເລີກ' : 'Cancel'}
                 </button>                
                 <button
+                  type="button"
                   onClick={async () => {
                     let hasError = false;
                     if (authOtpCode !== expectedAuthOtp) {
@@ -564,18 +762,18 @@ export default function Navbar() {
                     if (hasError) return;
 
                     setIsVerifyingAuthOtp(true);
-                    await new Promise(r => setTimeout(r, 1000));
+                    await new Promise(r => setTimeout(r, 800));
                     setIsVerifyingAuthOtp(false);
                     setShowAuthOtpModal(false);
-                    navigate('/create'); // Navigate to create page
+                    navigate('/create');
                   }}
                   disabled={authOtpCode.length < 6 || authTwoFaCode.length < 6 || isVerifyingAuthOtp}
-                  className="flex-1 py-3 bg-adv-orange hover:bg-orange-600 disabled:bg-orange-300 disabled:cursor-not-allowed text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors flex justify-center items-center gap-2"
+                  className="flex-1 py-3 bg-adv-orange hover:bg-orange-600 disabled:bg-orange-300 disabled:cursor-not-allowed text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors flex justify-center items-center gap-2 shadow-md cursor-pointer"
                 >
                   {isVerifyingAuthOtp ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    lang === 'lo' ? 'ຢືນຢັນ' : 'Verify'
+                    lang === 'lo' ? 'ຢືນຢັນ & ສືບຕໍ່' : 'Verify & Continue'
                   )}
                 </button>
               </div>

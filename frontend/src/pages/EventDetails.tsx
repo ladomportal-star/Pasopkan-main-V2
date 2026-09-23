@@ -40,8 +40,6 @@ import {
   FileEdit,
   ShieldAlert,
   User,
-  Mail,
-  Phone,
   Building2,
   ShieldCheck,
   Image as ImageIcon,
@@ -1235,16 +1233,6 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
 
                        {/* Round White Action Buttons: Share */}
                        <div className="absolute top-4 right-4 flex items-center gap-2.5 z-20 pointer-events-auto">
-                         {event.showRemainingTickets && (
-                           <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-2 rounded-full border border-white/20 text-emerald-300 text-xs font-black shadow-lg shadow-black/30">
-                             <Ticket className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                             <span>
-                               {lang === 'en' 
-                                 ? `${totalAvailableTickets} Available` 
-                                 : `ເຫຼືອ ${totalAvailableTickets} ໃບ`}
-                             </span>
-                           </div>
-                         )}
                          <button 
                            onClick={(e) => { e.stopPropagation(); handleShare(); }} 
                            className="w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center text-adv-slate hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
@@ -1392,16 +1380,6 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
                            <span className="inline-flex items-center gap-1 bg-adv-orange/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/10 border border-white/10">
                              {event.category || 'Event'}
                            </span>
-                           {event.showRemainingTickets && (
-                             <span className="inline-flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-black text-emerald-300 border border-white/20 shadow-lg shadow-black/30">
-                               <Ticket className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                               <span>
-                                 {lang === 'en' 
-                                   ? `${totalAvailableTickets} Available` 
-                                   : `ເຫຼືອ ${totalAvailableTickets} ໃບ`}
-                               </span>
-                             </span>
-                           )}
                          </div>
                          
                          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight mb-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] font-sans text-white">
@@ -1631,12 +1609,6 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
                     <h3 className="font-bold text-adv-slate text-sm group-hover/organizer:text-adv-orange transition-colors">
                       {event.organizer || (lang === 'en' ? 'Pasopkan Partner' : 'ພັນທະມິດ Pasopkan')}
                     </h3>
-                    {(event.organizerEmail || (event.organizerContact && event.organizerContact.includes('@'))) && (
-                      <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium mt-0.5">
-                        <Mail className="w-3.5 h-3.5 text-adv-orange shrink-0" />
-                        <span className="truncate max-w-[200px]">{event.organizerEmail || event.organizerContact}</span>
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -1664,49 +1636,6 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
                           : `${event.organizer || 'ພັນທະມິດ Pasopkan'} ແມ່ນຜູ້ຈັດງານລະດັບພຣີມ່ຽມທີ່ໄດ້ຮັບການຢືນຢັນໃນ Pasopkan, ມຸ່ງໝັ້ນທີ່ຈະສ້າງສັນ ແລະ ນຳສະເໜີກິດຈະກຳວັດທະນະທຳ, ການຜະຈົນໄພ ແລະ ງານສັງຄົມ ທີ່ປອດໄພ ແລະ ໜ້າຈົດຈຳທີ່ສຸດໃນລາວ.`
                       )}
                     </p>
-                  </div>
-
-                  {/* Organizer Contact Info (Email & Phone) */}
-                  <div className="space-y-2 pt-2 border-t border-gray-100">
-                    {(event.organizerEmail || (event.organizerContact && event.organizerContact.includes('@'))) && (
-                      <div className="flex items-center gap-2.5 p-2.5 bg-gray-50 rounded-xl border border-gray-100 text-xs">
-                        <div className="w-7 h-7 rounded-lg bg-orange-50 text-adv-orange flex items-center justify-center shrink-0 border border-orange-100">
-                          <Mail className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                            {t.organizerEmail || (lang === 'en' ? 'Organizer Email' : 'ອີເມວຜູ້ຈັດງານ')}
-                          </span>
-                          <a 
-                            href={`mailto:${event.organizerEmail || event.organizerContact}`} 
-                            className="text-adv-slate hover:text-adv-orange font-bold truncate block transition-colors underline underline-offset-2"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {event.organizerEmail || event.organizerContact}
-                          </a>
-                        </div>
-                      </div>
-                    )}
-
-                    {(event.organizerPhone || (event.organizerContact && !event.organizerContact.includes('@'))) && (
-                      <div className="flex items-center gap-2.5 p-2.5 bg-gray-50 rounded-xl border border-gray-100 text-xs">
-                        <div className="w-7 h-7 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center shrink-0 border border-gray-200">
-                          <Phone className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                            {lang === 'en' ? 'Contact Phone' : 'ເບີໂທຕິດຕໍ່'}
-                          </span>
-                          <a 
-                            href={`tel:${event.organizerPhone || event.organizerContact}`} 
-                            className="text-adv-slate hover:text-adv-orange font-bold truncate block transition-colors"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {event.organizerPhone || event.organizerContact}
-                          </a>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
@@ -2147,12 +2076,6 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
                   <h3 className="font-bold text-adv-slate text-sm">
                     {event.organizer || (lang === 'en' ? 'Pasopkan Partner' : 'ພັນທະມິດ Pasopkan')}
                   </h3>
-                  {(event.organizerEmail || (event.organizerContact && event.organizerContact.includes('@'))) && (
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium mt-0.5">
-                      <Mail className="w-3.5 h-3.5 text-adv-orange shrink-0" />
-                      <span className="truncate max-w-[180px]">{event.organizerEmail || event.organizerContact}</span>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -2180,49 +2103,6 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
                         : `${event.organizer || 'ພັນທະມິດ Pasopkan'} ແມ່ນຜູ້ຈັດງານລະດັບພຣີມ່ຽມທີ່ໄດ້ຮັບການຢືນຢັນໃນ Pasopkan, ມຸ່ງໝັ້ນທີ່ຈະສ້າງສັນ ແລະ ນຳສະເໜີກິດຈະກຳວັດທະນະທຳ, ການຜະຈົນໄພ ແລະ ງານສັງຄົມ ທີ່ປອດໄພ ແລະ ໜ້າຈົດຈຳທີ່ສຸດໃນລາວ.`
                     )}
                   </p>
-                </div>
-
-                {/* Organizer Contact Info (Email & Phone) */}
-                <div className="space-y-2 pt-2 border-t border-gray-100">
-                  {(event.organizerEmail || (event.organizerContact && event.organizerContact.includes('@'))) && (
-                    <div className="flex items-center gap-2.5 p-2.5 bg-gray-50 rounded-xl border border-gray-100 text-xs">
-                      <div className="w-7 h-7 rounded-lg bg-orange-50 text-adv-orange flex items-center justify-center shrink-0 border border-orange-100">
-                        <Mail className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                          {t.organizerEmail || (lang === 'en' ? 'Organizer Email' : 'ອີເມວຜູ້ຈັດງານ')}
-                        </span>
-                        <a 
-                          href={`mailto:${event.organizerEmail || event.organizerContact}`} 
-                          className="text-adv-slate hover:text-adv-orange font-bold truncate block transition-colors underline underline-offset-2"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {event.organizerEmail || event.organizerContact}
-                        </a>
-                      </div>
-                    </div>
-                  )}
-
-                  {(event.organizerPhone || (event.organizerContact && !event.organizerContact.includes('@'))) && (
-                    <div className="flex items-center gap-2.5 p-2.5 bg-gray-50 rounded-xl border border-gray-100 text-xs">
-                      <div className="w-7 h-7 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center shrink-0 border border-gray-200">
-                        <Phone className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                          {lang === 'en' ? 'Contact Phone' : 'ເບີໂທຕິດຕໍ່'}
-                        </span>
-                        <a 
-                          href={`tel:${event.organizerPhone || event.organizerContact}`} 
-                          className="text-adv-slate hover:text-adv-orange font-bold truncate block transition-colors"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {event.organizerPhone || event.organizerContact}
-                        </a>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             )}

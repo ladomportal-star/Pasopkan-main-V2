@@ -130,4 +130,19 @@ export const api = {
 
   clearNotifications: (opts?: RequestOptions) =>
     request('DELETE', '/notifications', undefined, opts),
+
+  /** Admin-only: push a notification to another user. The backend requires
+   *  a `userUid` in the body (400s without one) — most current callers don't
+   *  have the recipient's real uid yet (see lib/notificationHelper.ts), so
+   *  this stays best-effort and non-fatal on the caller's side. */
+  createNotification: (
+    data: Partial<import('../types').AppNotification> & { userUid?: string },
+    opts?: RequestOptions,
+  ) =>
+    request<{ notification: import('../types').AppNotification }>(
+      'POST',
+      '/notifications',
+      data,
+      opts,
+    ),
 };

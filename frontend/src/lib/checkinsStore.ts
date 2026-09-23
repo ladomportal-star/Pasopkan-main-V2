@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { safeStorage } from './storage';
 
 export interface CheckinRecord {
   id: string;
@@ -35,6 +36,8 @@ export interface EventAttendee {
   seat: string;
   price?: string;
   purchaseDate?: string;
+  visitDate?: string;
+  timeSlot?: string;
   isCheckedIn: boolean;
   checkedInTime?: string;
   checkedInTimestamp?: number;
@@ -550,6 +553,84 @@ if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
 
 // Generate fallback mock attendees if an event has none
 function generateMockAttendeesForEvent(eventId: string): EventAttendee[] {
+  // Check if this is event '4' (booking masterclass)
+  if (String(eventId) === '4') {
+    const today = new Date();
+    const formatDate = (offsetDays: number) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() + offsetDays);
+      return d.toISOString().split('T')[0];
+    };
+
+    const slots = ['08:30 - 11:30', '11:30 - 14:30', '14:30 - 17:30'];
+    const mockBookings = [
+      // Today Bookings (08:30 - 11:30)
+      { first: 'Keomany', last: 'Sayavong', email: 'keomany.s@laotel.com', phone: '+856 20 5522 3344', slot: slots[0], dayOffset: 0, checked: true, checkTime: '08:25', tier: 'Cooking Class Seat', price: '300,000 LAK', diet: 'None / Standard', spice: 'Medium / ເຜັດປານກາງ' },
+      { first: 'Alex', last: 'Vanderbilt', email: 'alex.v@traveler.net', phone: '+856 20 7788 9911', slot: slots[0], dayOffset: 0, checked: true, checkTime: '08:31', tier: 'VIP Chef Table & Wine', price: '550,000 LAK', diet: 'Vegetarian', spice: 'Mild / ບໍ່ເຜັດ' },
+      { first: 'Noy', last: 'Phomvihane', email: 'noy.p@vte.la', phone: '+856 20 9944 1122', slot: slots[0], dayOffset: 0, checked: true, checkTime: '08:35', tier: 'Cooking Class Seat', price: '300,000 LAK', diet: 'No Pork', spice: 'Authentic Lao Spicy / ເຜັດແທ້' },
+      { first: 'Emma', last: 'Watson', email: 'emma.w@uknomad.com', phone: '+856 20 4455 6677', slot: slots[0], dayOffset: 0, checked: false, tier: 'Cooking Class Seat', price: '300,000 LAK', diet: 'Vegan', spice: 'Mild / ບໍ່ເຜັດ' },
+      { first: 'Bounmy', last: 'Thepvongsa', email: 'bounmy.t@laoair.la', phone: '+856 20 2233 4455', slot: slots[0], dayOffset: 0, checked: false, tier: 'Cooking Class Seat', price: '300,000 LAK', diet: 'None / Standard', spice: 'Medium / ເຜັດປານກາງ' },
+      
+      // Today Bookings (11:30 - 14:30)
+      { first: 'Somphet', last: 'Luangrath', email: 'somphet.l@edl.la', phone: '+856 20 5511 7788', slot: slots[1], dayOffset: 0, checked: true, checkTime: '11:28', tier: 'VIP Chef Table & Wine', price: '550,000 LAK', diet: 'None / Standard', spice: 'Authentic Lao Spicy / ເຜັດແທ້' },
+      { first: 'Claire', last: 'Dubois', email: 'claire.d@parisfood.fr', phone: '+856 20 6677 8899', slot: slots[1], dayOffset: 0, checked: false, tier: 'Cooking Class Seat', price: '300,000 LAK', diet: 'Halal', spice: 'Mild / ບໍ່ເຜັດ' },
+      { first: 'Chanthone', last: 'Vongsavath', email: 'chanthone.v@bcel.la', phone: '+856 20 9988 7766', slot: slots[1], dayOffset: 0, checked: false, tier: 'Cooking Class Seat', price: '300,000 LAK', diet: 'No Pork', spice: 'Medium / ເຜັດປານກາງ' },
+      { first: 'Liam', last: 'O\'Connor', email: 'liam.oc@cork.ie', phone: '+856 20 3344 5566', slot: slots[1], dayOffset: 0, checked: false, tier: 'Cooking Class Seat', price: '300,000 LAK', diet: 'None / Standard', spice: 'Medium / ເຜັດປານກາງ' },
+
+      // Today Bookings (14:30 - 17:30)
+      { first: 'Soukthavy', last: 'Inthavong', email: 'souk.i@techlao.com', phone: '+856 20 5566 2211', slot: slots[2], dayOffset: 0, checked: false, tier: 'VIP Chef Table & Wine', price: '550,000 LAK', diet: 'Vegetarian', spice: 'Medium / ເຜັດປານກາງ' },
+      { first: 'Lucas', last: 'Meyer', email: 'lucas.m@berlin.de', phone: '+856 20 7711 3355', slot: slots[2], dayOffset: 0, checked: false, tier: 'Cooking Class Seat', price: '300,000 LAK', diet: 'None / Standard', spice: 'Authentic Lao Spicy / ເຜັດແທ້' },
+
+      // Tomorrow Bookings (+1 Day)
+      { first: 'Vilaphone', last: 'Souvannavong', email: 'vila.s@gov.la', phone: '+856 20 5599 0011', slot: slots[0], dayOffset: 1, checked: false, tier: 'Cooking Class Seat', price: '300,000 LAK', diet: 'None / Standard', spice: 'Medium / ເຜັດປານກາງ' },
+      { first: 'Hannah', last: 'Schmidt', email: 'hannah.s@munich.de', phone: '+856 20 6622 4488', slot: slots[0], dayOffset: 1, checked: false, tier: 'VIP Chef Table & Wine', price: '550,000 LAK', diet: 'Vegan', spice: 'Mild / ບໍ່ເຜັດ' },
+      { first: 'Thongbay', last: 'Sikhot', email: 'thongbay@jdbbank.la', phone: '+856 20 9911 8833', slot: slots[1], dayOffset: 1, checked: false, tier: 'Cooking Class Seat', price: '300,000 LAK', diet: 'No Pork', spice: 'Authentic Lao Spicy / ເຜັດແທ້' },
+      { first: 'Daniel', last: 'Kim', email: 'daniel.k@seoul.kr', phone: '+856 20 8822 5599', slot: slots[1], dayOffset: 1, checked: false, tier: 'Cooking Class Seat', price: '300,000 LAK', diet: 'None / Standard', spice: 'Medium / ເຜັດປານກາງ' },
+      { first: 'Mina', last: 'Takahashi', email: 'mina.t@tokyo.jp', phone: '+856 20 3399 2211', slot: slots[2], dayOffset: 1, checked: false, tier: 'VIP Chef Table & Wine', price: '550,000 LAK', diet: 'None / Standard', spice: 'Mild / ບໍ່ເຜັດ' },
+
+      // Day + 2 Bookings
+      { first: 'Phoxay', last: 'Khamvongsa', email: 'phoxay.k@laopost.la', phone: '+856 20 5544 1199', slot: slots[0], dayOffset: 2, checked: false, tier: 'Cooking Class Seat', price: '300,000 LAK', diet: 'None / Standard', spice: 'Medium / ເຜັດປານກາງ' },
+      { first: 'Sarah', last: 'Miller', email: 'sarah.m@sydney.au', phone: '+856 20 7733 6611', slot: slots[1], dayOffset: 2, checked: false, tier: 'VIP Chef Table & Wine', price: '550,000 LAK', diet: 'Vegetarian', spice: 'Mild / ບໍ່ເຜັດ' },
+      
+      // Yesterday (-1 Day)
+      { first: 'Manivanh', last: 'Douangdy', email: 'manivanh.d@vientiane.la', phone: '+856 20 5588 3322', slot: slots[0], dayOffset: -1, checked: true, checkTime: '08:29', tier: 'Cooking Class Seat', price: '300,000 LAK', diet: 'None / Standard', spice: 'Authentic Lao Spicy / ເຜັດແທ້' },
+      { first: 'Oliver', last: 'Brown', email: 'oliver.b@london.co.uk', phone: '+856 20 4422 9900', slot: slots[1], dayOffset: -1, checked: true, checkTime: '11:32', tier: 'VIP Chef Table & Wine', price: '550,000 LAK', diet: 'None / Standard', spice: 'Medium / ເຜັດປານກາງ' }
+    ];
+
+    return mockBookings.map((b, index) => {
+      const visitDate = formatDate(b.dayOffset);
+      return {
+        id: `att_4_bk_${index + 1}`,
+        ticketId: `tk_cook_${index + 101}`,
+        orderId: `ord_cook_${200 + index}`,
+        eventId: '4',
+        firstName: b.first,
+        lastName: b.last,
+        attendeeName: `${b.first} ${b.last}`,
+        email: b.email,
+        phone: b.phone,
+        ticketType: b.tier,
+        tierId: b.tier.includes('VIP') ? 't8' : 't7',
+        zone: 'Kitchen Studio',
+        seat: `Station ${(index % 12) + 1}`,
+        price: b.price,
+        purchaseDate: new Date(Date.now() - (1000 * 60 * 60 * 24 * (index + 1))).toISOString(),
+        visitDate: visitDate,
+        timeSlot: b.slot,
+        isCheckedIn: b.checked,
+        checkedInTime: b.checkTime,
+        checkedInTimestamp: b.checked ? Date.now() - (1000 * 60 * 60 * 2) : undefined,
+        staffLabel: b.checked ? 'Host Desk' : undefined,
+        customAnswers: {
+          'q_diet': b.diet,
+          'q_spice': b.spice,
+          'dietary': b.diet,
+          'special_requests': index % 2 === 0 ? 'Would love to learn Mok Pa techniques' : 'Looking forward to authentic Larb!'
+        }
+      };
+    });
+  }
+
   const names = [
     { first: 'Khamla', last: 'Phommasone', email: 'khamla.p@example.com', phone: '+856 20 5511 2233', company: 'Lao Telecom', role: 'Solutions Architect' },
     { first: 'Sengaloun', last: 'Vongphachanh', email: 'sengaloun.v@example.com', phone: '+856 20 2244 6688', company: 'EDL Laos', role: 'Systems Manager' },
@@ -603,7 +684,7 @@ function generateMockAttendeesForEvent(eventId: string): EventAttendee[] {
 export function getAllAttendees(): EventAttendee[] {
   if (typeof window === 'undefined') return INITIAL_MOCK_ATTENDEES;
   try {
-    const saved = localStorage.getItem(STORAGE_KEY_ATTENDEES);
+    const saved = safeStorage.getItem(STORAGE_KEY_ATTENDEES) || localStorage.getItem(STORAGE_KEY_ATTENDEES);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -620,7 +701,7 @@ export function getAllAttendees(): EventAttendee[] {
 
   // Save initial default mock items if none exist
   try {
-    localStorage.setItem(STORAGE_KEY_ATTENDEES, JSON.stringify(INITIAL_MOCK_ATTENDEES));
+    safeStorage.setItem(STORAGE_KEY_ATTENDEES, JSON.stringify(INITIAL_MOCK_ATTENDEES));
   } catch (e) {}
   return INITIAL_MOCK_ATTENDEES;
 }
@@ -640,9 +721,9 @@ export function getAttendeesForEvent(eventId: string): EventAttendee[] {
 export function saveAllAttendees(records: EventAttendee[]): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY_ATTENDEES, JSON.stringify(records));
+    safeStorage.setItem(STORAGE_KEY_ATTENDEES, JSON.stringify(records));
   } catch (e) {
-    console.error('Error saving attendees:', e);
+    console.warn('Error saving attendees to storage:', e);
   }
 
   // Also sync checkins list to keep checkins store in 1:1 sync
@@ -677,6 +758,8 @@ export function addEventAttendee(attendee: Partial<EventAttendee>): EventAttende
     seat: attendee.seat || 'Seat 1',
     price: attendee.price || '0 LAK',
     purchaseDate: attendee.purchaseDate || new Date().toISOString(),
+    visitDate: attendee.visitDate || '',
+    timeSlot: attendee.timeSlot || '',
     isCheckedIn: !!attendee.isCheckedIn,
     checkedInTime: attendee.checkedInTime,
     checkedInTimestamp: attendee.checkedInTimestamp,
@@ -735,6 +818,33 @@ export function updateAttendeeCheckinStatus(
   return updatedRecord;
 }
 
+export function rescheduleAttendeeBooking(
+  ticketIdOrId: string, 
+  newDate: string, 
+  newTimeSlot: string
+): EventAttendee | null {
+  const all = getAllAttendees();
+  const index = all.findIndex(a => 
+    a.id === ticketIdOrId || 
+    a.ticketId.toLowerCase() === ticketIdOrId.toLowerCase()
+  );
+
+  if (index === -1) {
+    return null;
+  }
+
+  const updatedRecord: EventAttendee = {
+    ...all[index],
+    visitDate: newDate,
+    timeSlot: newTimeSlot
+  };
+
+  const updatedAll = [...all];
+  updatedAll[index] = updatedRecord;
+  saveAllAttendees(updatedAll);
+  return updatedRecord;
+}
+
 // ----------------------------------------------------
 // CHECKINS COMPATIBILITY & SYNC
 // ----------------------------------------------------
@@ -759,7 +869,7 @@ function syncCheckinsFromAttendees(attendees: EventAttendee[]): void {
     }));
 
   try {
-    localStorage.setItem(STORAGE_KEY_CHECKINS, JSON.stringify(checkedInItems));
+    safeStorage.setItem(STORAGE_KEY_CHECKINS, JSON.stringify(checkedInItems));
   } catch (e) {}
 }
 
@@ -804,7 +914,7 @@ export function getAllCheckins(): CheckinRecord[] {
   }
 
   try {
-    const saved = localStorage.getItem(STORAGE_KEY_CHECKINS);
+    const saved = safeStorage.getItem(STORAGE_KEY_CHECKINS) || localStorage.getItem(STORAGE_KEY_CHECKINS);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -827,9 +937,9 @@ export function getCheckinsForEvent(eventId: string): CheckinRecord[] {
 export function saveAllCheckins(records: CheckinRecord[]): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY_CHECKINS, JSON.stringify(records));
+    safeStorage.setItem(STORAGE_KEY_CHECKINS, JSON.stringify(records));
   } catch (e) {
-    console.error('Error saving checkins:', e);
+    console.warn('Error saving checkins:', e);
   }
   notifySubscribers();
 }
@@ -1015,6 +1125,8 @@ export function useAttendees(eventId?: string) {
     toggleCheckin: (ticketIdOrId: string, currentStatus: boolean, staffLabel?: string) => 
       updateAttendeeCheckinStatus(ticketIdOrId, true, staffLabel),
     setCheckinStatus: (ticketIdOrId: string, status: boolean, staffLabel?: string) => 
-      updateAttendeeCheckinStatus(ticketIdOrId, status, staffLabel)
+      updateAttendeeCheckinStatus(ticketIdOrId, status, staffLabel),
+    rescheduleBooking: (ticketIdOrId: string, newDate: string, newTimeSlot: string) =>
+      rescheduleAttendeeBooking(ticketIdOrId, newDate, newTimeSlot)
   };
 }

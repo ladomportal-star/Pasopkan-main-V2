@@ -101,3 +101,4 @@ export async function clearNotifications(userUid: string) {
     .returning({ id: notifications.id });
   return rows.length;
 }
+

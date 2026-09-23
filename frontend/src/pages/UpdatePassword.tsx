@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Smartphone, CheckCircle2, Copy, Check, ShieldCheck, Lock, RefreshCcw } from 'lucide-react';
+import { ArrowLeft, Smartphone, CheckCircle2, Copy, Check, ShieldCheck, Lock, RefreshCcw, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -184,7 +184,15 @@ export default function UpdatePassword() {
                 </div>
               </div>
 
-              <div className="pt-2">
+              <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate('/create')}
+                  className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-adv-orange text-white font-bold text-xs hover:bg-orange-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{lang === 'lo' ? 'ສ້າງ Event ດຽວນີ້' : 'Create Event Now'}</span>
+                </button>
                 <button
                   type="button"
                   onClick={handleDisable}

@@ -1,7 +1,7 @@
 import { EventData, PayoutBill } from "../types";
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Download, RefreshCw, RotateCcw, Shield, Users, Calendar, CheckCircle2, XCircle, Trash2, Edit, ExternalLink, Search, Filter, X, MessageSquare, ChevronDown, MapPin, Save, LayoutDashboard, TrendingUp, TrendingDown, DollarSign, Activity, Loader2, AlertCircle, Menu, Globe, User, Bell, Plus, Info, Upload, Image as ImageIcon, Printer, CreditCard, Lock, Eye, EyeOff, LogIn, LogOut, Settings, UploadCloud, Clock, Ticket, Monitor, Smartphone, Star, Building2, UserCheck, Briefcase, Phone, Mail, Building, CheckSquare, Square, SlidersHorizontal, Layers, Table, Grid, Sparkles, AlertTriangle, Check, FileCheck, ChevronRight, ChevronLeft, Maximize2, ArrowRight, BookOpen, Wallet } from 'lucide-react';
+import { Download, RefreshCw, RotateCcw, Shield, Users, Calendar, CalendarDays, CheckCircle2, XCircle, Trash2, Edit, ExternalLink, Search, Filter, X, MessageSquare, ChevronDown, MapPin, Save, LayoutDashboard, TrendingUp, TrendingDown, DollarSign, Activity, Loader2, AlertCircle, Menu, Globe, User, Bell, Plus, Info, Upload, Image as ImageIcon, Printer, CreditCard, Lock, Eye, EyeOff, LogIn, LogOut, Settings, UploadCloud, Clock, Ticket, Monitor, Smartphone, Star, Building2, UserCheck, Briefcase, Phone, Mail, Building, CheckSquare, Square, SlidersHorizontal, Layers, Table, Grid, Sparkles, AlertTriangle, Check, FileCheck, ChevronRight, ChevronLeft, Maximize2, ArrowRight, BookOpen, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { events } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
@@ -16,6 +16,7 @@ import AdminBlogsTab from '../components/AdminBlogsTab';
 import { safeStorage } from '../lib/storage';
 import SEO from '../components/SEO';
 import { AdaptiveImage } from '../components/AdaptiveImage';
+import { notifyOrganizerEventDecision } from '../lib/notificationHelper';
 
 // Helper functions for robust event image resolution
 const getEventMainImage = (evt: any): string => {
@@ -310,7 +311,10 @@ const translations = {
     eventsByOrganizer: 'Events Hosted by Organizer',
     searchOrganizersPlaceholder: 'Search organizers by name, company, email, phone...',
     searchUsersPlaceholder: 'Search users by name, email, phone...',
-    eventUpcoming: 'Event Upcoming',
+    eventUpcoming: 'Event Upcoming (Event Type)',
+    eventType: 'Event Type',
+    bookingType: 'Booking Type',
+    bookingUpcoming: 'Booking Experiences (Booking Type)',
     eventAlreadyDone: 'Event Already Done',
     moneyCanGet: 'Money Can Get (Payout)',
     netPayout: 'Net Payout',
@@ -542,7 +546,10 @@ const translations = {
     eventsByOrganizer: 'Event ທີ່ສ້າງໂດຍຜູ້ຈັດງານນີ້',
     searchOrganizersPlaceholder: 'ຄົ້ນຫາຊື່, ອົງກອນ, ອີເມວ, ເບີໂທ...',
     searchUsersPlaceholder: 'ຄົ້ນຫາຜູ້ໃຊ້ຕາມຊື່, ອີເມວ, ເບີໂທ...',
-    eventUpcoming: 'event ທີ່ຈະມາເຖິງ',
+    eventUpcoming: 'Event ທົ່ວໄປ (Event Type)',
+    eventType: 'Event ທົ່ວໄປ',
+    bookingType: 'ກິດຈະກຳຈອງ (Booking Type)',
+    bookingUpcoming: 'ກິດຈະກຳຈອງ (Booking Type)',
     eventAlreadyDone: 'event ທີ່ສຳເລັດແລ້ວ',
     moneyCanGet: 'ເງິນທີ່ຈະໄດ້ຮັບ (Payout)',
     netPayout: 'ເງິນທີ່ໄດ້ຮັບຕົວຈິງ',
@@ -849,7 +856,7 @@ export default function AdminDashboard() {
     setAdminPassword('');
   };
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'approvals' | 'users' | 'organizers' | 'events' | 'past-events' | 'payouts' | 'refunds' | 'activity-log' | 'notifications' | 'site-settings' | 'blogs'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'approvals' | 'users' | 'organizers' | 'events' | 'bookings' | 'past-events' | 'payouts' | 'refunds' | 'activity-log' | 'notifications' | 'site-settings' | 'blogs'>('overview');
   const [selectedOrganizerForEvents, setSelectedOrganizerForEvents] = useState<any | null>(null);
   const [organizerStatusFilter, setOrganizerStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
   const [userStatusFilter, setUserStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
@@ -1192,7 +1199,28 @@ export default function AdminDashboard() {
         }));
         break;
       case 'events':
-        exportToCSV('pasopkan_events.csv', eventsList);
+        exportToCSV('pasopkan_standard_events.csv', eventsList.filter(e => e.dateType !== 'booking'));
+        break;
+      case 'bookings':
+        const bookingExport = eventsList.filter(e => e.dateType === 'booking').map(e => {
+          const fin = getEventFinancialSummary(e);
+          return {
+            'Experience Title': e.title,
+            'Type': 'Booking Experience',
+            'Organizer': e.organizer || '',
+            'Category': e.category || '',
+            'Booking Range': `${e.bookingStartDate || e.date} to ${e.bookingEndDate || 'Ongoing'}`,
+            'Time Slots': (e.bookingTimeSlots || []).join('; '),
+            'Slot Capacity': e.bookingCapacity || '10',
+            'Location': e.location || '',
+            'Tickets Sold': fin.ticketsSold,
+            'Gross Revenue (LAK)': fin.grossRevenue,
+            'Platform Fee (LAK)': fin.platformFeeAmount,
+            'Payout Can Get (LAK)': fin.moneyCanGet,
+            'Payout Status': fin.payoutStatus
+          };
+        });
+        exportToCSV('pasopkan_booking_experiences.csv', bookingExport);
         break;
       case 'past-events':
         const pastEventsExport = eventsList.filter(e => new Date(e.date) < new Date()).map(e => {
@@ -1261,6 +1289,9 @@ export default function AdminDashboard() {
         console.error(err);
       }
 
+      // Notify organizer of event approval
+      notifyOrganizerEventDecision(approvedEvent, 'approved');
+
       setEventsList([approvedEvent, ...eventsList]);
       setPendingEventsList(pendingEventsList.filter(e => e.id !== id));
       setSelectedPendingIds(prev => prev.filter(item => item !== id));
@@ -1283,12 +1314,16 @@ export default function AdminDashboard() {
         try {
           const saved = safeStorage.getItem('organizer_events');
           const allEvents = saved ? JSON.parse(saved) : [...events];
-          const updatedStorageEvents = allEvents.map((e: any) => e.id === eventToReject.id ? { ...e, status: 'rejected' } : e);
+          const updatedStorageEvents = allEvents.map((e: any) => e.id === eventToReject.id ? { ...e, status: 'rejected', rejectionReason: reason } : e);
           safeStorage.setItem('organizer_events', JSON.stringify(updatedStorageEvents));
         } catch (err) {
           console.error(err);
         }
       }
+
+      // Notify organizer of event rejection
+      notifyOrganizerEventDecision(eventToReject, 'rejected', reason);
+
       setApprovalDecisionHistory(prev => [
         { id: eventToReject.id, title: eventToReject.title, decision: 'rejected', timestamp: new Date().toISOString(), reason },
         ...prev.slice(0, 9)
@@ -1328,6 +1363,9 @@ export default function AdminDashboard() {
           allEvents = [approved, ...allEvents];
         }
         addActivityLog('Event approved', item.title);
+
+        // Notify organizer of event approval
+        notifyOrganizerEventDecision(approved, 'approved');
       });
 
       safeStorage.setItem('organizer_events', JSON.stringify(allEvents));
@@ -1351,7 +1389,7 @@ export default function AdminDashboard() {
       const saved = safeStorage.getItem('organizer_events');
       if (saved) {
         let allEvents = JSON.parse(saved);
-        allEvents = allEvents.map((e: any) => selectedPendingIds.includes(e.id) ? { ...e, status: 'rejected' } : e);
+        allEvents = allEvents.map((e: any) => selectedPendingIds.includes(e.id) ? { ...e, status: 'rejected', rejectionReason: reason } : e);
         safeStorage.setItem('organizer_events', JSON.stringify(allEvents));
       }
     } catch (err) {
@@ -1360,6 +1398,8 @@ export default function AdminDashboard() {
 
     toReject.forEach(item => {
       addActivityLog('Event rejected', `${item.title}${reason ? `: ${reason}` : ''}`);
+      // Notify organizer of event rejection
+      notifyOrganizerEventDecision(item, 'rejected', reason);
     });
 
     setPendingEventsList(pendingEventsList.filter(e => !selectedPendingIds.includes(e.id)));
@@ -1632,6 +1672,15 @@ export default function AdminDashboard() {
     // Update selected event if it's the one we're editing
     if (selectedEvent?.id === mergedEvent.id) {
       setSelectedEvent(mergedEvent);
+    }
+
+    // Notify organizer if status was changed during edit
+    if (originalEvent?.status !== mergedEvent.status) {
+      if (mergedEvent.status === 'approved') {
+        notifyOrganizerEventDecision(mergedEvent, 'approved');
+      } else if (mergedEvent.status === 'rejected') {
+        notifyOrganizerEventDecision(mergedEvent, 'rejected', (mergedEvent as any).rejectionReason || 'Event submission requirements not met');
+      }
     }
     
     // Persist to storage
@@ -2384,59 +2433,38 @@ export default function AdminDashboard() {
             
             <button
                onClick={() => setActiveTab('approvals')}
-               className={`flex items-center justify-between gap-3 px-4 py-3 w-full justify-start rounded-2xl text-sm font-bold transition-all duration-200 whitespace-nowrap shrink-0 ${
+               className={`flex items-center gap-3 px-4 py-3 w-full justify-start rounded-2xl text-sm font-bold transition-all duration-200 whitespace-nowrap shrink-0 ${
                  activeTab === 'approvals' 
                    ? 'bg-adv-orange text-white shadow-lg shadow-orange-100' 
                    : 'text-gray-500 bg-white border border-gray-100 hover:border-adv-orange/30'
                }`}
             >
-               <div className="flex items-center gap-3">
-                 <CheckCircle2 className={`w-4 h-4 ${activeTab === 'approvals' ? 'text-white' : 'text-gray-400'}`} />
-                 {t.pendingApprovals}
-               </div>
-               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
-                 activeTab === 'approvals' ? 'bg-white/20 text-white' : 'bg-orange-50 text-adv-orange'
-               }`}>
-                 {pendingEventsList.length}
-               </span>
+              <CheckCircle2 className={`w-4 h-4 ${activeTab === 'approvals' ? 'text-white' : 'text-gray-400'}`} />
+              {t.pendingApprovals}
             </button>
             
             <button
                onClick={() => setActiveTab('users')}
-               className={`flex items-center justify-between gap-3 px-4 py-3 w-full justify-start rounded-2xl text-sm font-bold transition-all duration-200 whitespace-nowrap shrink-0 ${
+               className={`flex items-center gap-3 px-4 py-3 w-full justify-start rounded-2xl text-sm font-bold transition-all duration-200 whitespace-nowrap shrink-0 ${
                  activeTab === 'users' 
                    ? 'bg-adv-orange text-white shadow-lg shadow-orange-100' 
                    : 'text-gray-500 bg-white border border-gray-100 hover:border-adv-orange/30'
                }`}
             >
-              <div className="flex items-center gap-3">
-                <Users className={`w-4 h-4 ${activeTab === 'users' ? 'text-white' : 'text-gray-400'}`} />
-                <span>{t.manageUsers}</span>
-              </div>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
-                activeTab === 'users' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
-              }`}>
-                {usersList.filter(u => u.role !== 'organizer').length}
-              </span>
+              <Users className={`w-4 h-4 ${activeTab === 'users' ? 'text-white' : 'text-gray-400'}`} />
+              <span>{t.manageUsers}</span>
             </button>
 
             <button
                onClick={() => setActiveTab('organizers')}
-               className={`flex items-center justify-between gap-3 px-4 py-3 w-full justify-start rounded-2xl text-sm font-bold transition-all duration-200 whitespace-nowrap shrink-0 ${
+               className={`flex items-center gap-3 px-4 py-3 w-full justify-start rounded-2xl text-sm font-bold transition-all duration-200 whitespace-nowrap shrink-0 ${
                  activeTab === 'organizers' 
                    ? 'bg-adv-orange text-white shadow-lg shadow-orange-100' 
                    : 'text-gray-500 bg-white border border-gray-100 hover:border-adv-orange/30'
                }`}
             >
-              <div className="flex items-center gap-3">
-                <Building2 className={`w-4 h-4 ${activeTab === 'organizers' ? 'text-white' : 'text-gray-400'}`} />
-                <span>{t.manageOrganizers}</span>
-              </div>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
-                activeTab === 'organizers' ? 'bg-white/20 text-white' : 'bg-orange-50 text-adv-orange'
-              }`}>
-                {usersList.filter(u => u.role === 'organizer').length}
-              </span>
+              <Building2 className={`w-4 h-4 ${activeTab === 'organizers' ? 'text-white' : 'text-gray-400'}`} />
+              <span>{t.manageOrganizers}</span>
             </button>
             
             <button
@@ -2448,7 +2476,19 @@ export default function AdminDashboard() {
                }`}
             >
               <Calendar className={`w-4 h-4 ${activeTab === 'events' ? 'text-white' : 'text-gray-400'}`} />
-              {t.eventUpcoming}
+              <span>{lang === 'lo' ? 'Event ທົ່ວໄປ (Event Type)' : 'Event Type (Standard)'}</span>
+            </button>
+            
+            <button
+               onClick={() => setActiveTab('bookings')}
+               className={`flex items-center gap-3 px-4 py-3 w-full justify-start rounded-2xl text-sm font-bold transition-all duration-200 whitespace-nowrap shrink-0 ${
+                 activeTab === 'bookings' 
+                   ? 'bg-adv-orange text-white shadow-lg shadow-orange-100' 
+                   : 'text-gray-500 bg-white border border-gray-100 hover:border-adv-orange/30'
+               }`}
+            >
+              <CalendarDays className={`w-4 h-4 ${activeTab === 'bookings' ? 'text-white' : 'text-gray-400'}`} />
+              <span>{lang === 'lo' ? 'ກິດຈະກຳຈອງ (Booking Type)' : 'Booking Type (Daily)'}</span>
             </button>
             
             <button
@@ -2477,23 +2517,14 @@ export default function AdminDashboard() {
 
             <button
                onClick={() => setActiveTab('refunds')}
-               className={`flex items-center justify-between gap-3 px-4 py-3 w-full justify-start rounded-2xl text-sm font-bold transition-all duration-200 whitespace-nowrap shrink-0 ${
+               className={`flex items-center gap-3 px-4 py-3 w-full justify-start rounded-2xl text-sm font-bold transition-all duration-200 whitespace-nowrap shrink-0 ${
                  activeTab === 'refunds' 
                    ? 'bg-adv-orange text-white shadow-lg shadow-orange-100' 
                    : 'text-gray-500 bg-white border border-gray-100 hover:border-adv-orange/30'
                }`}
             >
-              <div className="flex items-center gap-3">
-                <RotateCcw className={`w-4 h-4 ${activeTab === 'refunds' ? 'text-white' : 'text-gray-400'}`} />
-                {t.refunds || (lang === 'lo' ? 'ການຄືນເງິນ' : 'Refunds')}
-              </div>
-              {pendingRefundsCount > 0 && (
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
-                  activeTab === 'refunds' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'
-                }`}>
-                  {pendingRefundsCount}
-                </span>
-              )}
+              <RotateCcw className={`w-4 h-4 ${activeTab === 'refunds' ? 'text-white' : 'text-gray-400'}`} />
+              <span>{t.refunds || (lang === 'lo' ? 'ການຄືນເງິນ' : 'Refunds')}</span>
             </button>
 
             <button
@@ -2589,21 +2620,14 @@ export default function AdminDashboard() {
             
             <button
                onClick={() => setActiveTab('approvals')}
-               className={`flex items-center justify-between gap-3 px-4 py-2 rounded-2xl text-sm font-bold transition-all duration-200 whitespace-nowrap shrink-0 ${
+               className={`flex items-center gap-3 px-4 py-2 rounded-2xl text-sm font-bold transition-all duration-200 whitespace-nowrap shrink-0 ${
                  activeTab === 'approvals' 
                    ? 'bg-adv-orange text-white shadow-lg shadow-orange-100' 
                    : 'text-gray-500 bg-white border border-gray-100 hover:border-adv-orange/30'
                }`}
             >
-               <div className="flex items-center gap-3">
-                 <CheckCircle2 className={`w-4 h-4 ${activeTab === 'approvals' ? 'text-white' : 'text-gray-400'}`} />
-                 {t.pendingApprovals}
-               </div>
-               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
-                 activeTab === 'approvals' ? 'bg-white/20 text-white' : 'bg-orange-50 text-adv-orange'
-               }`}>
-                 {pendingEventsList.length}
-               </span>
+              <CheckCircle2 className={`w-4 h-4 ${activeTab === 'approvals' ? 'text-white' : 'text-gray-400'}`} />
+              {t.pendingApprovals}
             </button>
             
             <button
@@ -2616,11 +2640,6 @@ export default function AdminDashboard() {
             >
               <Users className={`w-4 h-4 ${activeTab === 'users' ? 'text-white' : 'text-gray-400'}`} />
               <span>{t.manageUsers}</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
-                activeTab === 'users' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
-              }`}>
-                {usersList.filter(u => u.role !== 'organizer').length}
-              </span>
             </button>
             
             <button
@@ -2633,23 +2652,30 @@ export default function AdminDashboard() {
             >
               <Building2 className={`w-4 h-4 ${activeTab === 'organizers' ? 'text-white' : 'text-gray-400'}`} />
               <span>{t.manageOrganizers}</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
-                activeTab === 'organizers' ? 'bg-white/20 text-white' : 'bg-orange-50 text-adv-orange'
-              }`}>
-                {usersList.filter(u => u.role === 'organizer').length}
-              </span>
             </button>
             
             <button
                onClick={() => setActiveTab('events')}
-               className={`flex items-center gap-3 px-4 py-2 rounded-2xl text-sm font-bold transition-all duration-200 whitespace-nowrap shrink-0 ${
+               className={`flex items-center gap-2.5 px-4 py-2 rounded-2xl text-sm font-bold transition-all duration-200 whitespace-nowrap shrink-0 ${
                  activeTab === 'events' 
                    ? 'bg-adv-orange text-white shadow-lg shadow-orange-100' 
                    : 'text-gray-500 bg-white border border-gray-100 hover:border-adv-orange/30'
                }`}
             >
               <Calendar className={`w-4 h-4 ${activeTab === 'events' ? 'text-white' : 'text-gray-400'}`} />
-              {t.eventUpcoming}
+              <span>{lang === 'lo' ? 'Event ທົ່ວໄປ' : 'Event Type'}</span>
+            </button>
+            
+            <button
+               onClick={() => setActiveTab('bookings')}
+               className={`flex items-center gap-2.5 px-4 py-2 rounded-2xl text-sm font-bold transition-all duration-200 whitespace-nowrap shrink-0 ${
+                 activeTab === 'bookings' 
+                   ? 'bg-adv-orange text-white shadow-lg shadow-orange-100' 
+                   : 'text-gray-500 bg-white border border-gray-100 hover:border-adv-orange/30'
+               }`}
+            >
+              <CalendarDays className={`w-4 h-4 ${activeTab === 'bookings' ? 'text-white' : 'text-gray-400'}`} />
+              <span>{lang === 'lo' ? 'ກິດຈະກຳຈອງ' : 'Booking Type'}</span>
             </button>
             
             <button
@@ -2678,23 +2704,14 @@ export default function AdminDashboard() {
 
             <button
                onClick={() => setActiveTab('refunds')}
-               className={`flex items-center justify-between gap-3 px-4 py-2 rounded-2xl text-sm font-bold transition-all duration-200 whitespace-nowrap shrink-0 ${
+               className={`flex items-center gap-3 px-4 py-2 rounded-2xl text-sm font-bold transition-all duration-200 whitespace-nowrap shrink-0 ${
                  activeTab === 'refunds' 
                    ? 'bg-adv-orange text-white shadow-lg shadow-orange-100' 
                    : 'text-gray-500 bg-white border border-gray-100 hover:border-adv-orange/30'
                }`}
             >
-              <div className="flex items-center gap-3">
-                <RotateCcw className={`w-4 h-4 ${activeTab === 'refunds' ? 'text-white' : 'text-gray-400'}`} />
-                {t.refunds || (lang === 'lo' ? 'ການຄືນເງິນ' : 'Refunds')}
-              </div>
-              {pendingRefundsCount > 0 && (
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
-                  activeTab === 'refunds' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'
-                }`}>
-                  {pendingRefundsCount}
-                </span>
-              )}
+              <RotateCcw className={`w-4 h-4 ${activeTab === 'refunds' ? 'text-white' : 'text-gray-400'}`} />
+              <span>{t.refunds || (lang === 'lo' ? 'ການຄືນເງິນ' : 'Refunds')}</span>
             </button>
 
             <button
@@ -2759,7 +2776,8 @@ export default function AdminDashboard() {
                      activeTab === 'approvals' ? t.pendingApprovals : 
                      activeTab === 'users' ? t.manageUsers : 
                      activeTab === 'organizers' ? t.manageOrganizers : 
-                     activeTab === 'events' ? t.eventUpcoming : 
+                     activeTab === 'events' ? (lang === 'lo' ? 'Event ທົ່ວໄປ (Event Type)' : 'Upcoming Events (Event Type)') : 
+                     activeTab === 'bookings' ? (lang === 'lo' ? 'ກິດຈະກຳຈອງ (Booking Type)' : 'Booking Experiences (Booking Type)') : 
                      activeTab === 'past-events' ? t.eventAlreadyDone :
                      activeTab === 'payouts' ? t.payouts :
                      activeTab === 'refunds' ? (t.manageRefunds || (lang === 'lo' ? 'ຈັດການການຄືນເງິນ' : 'Refund Management')) :
@@ -2776,7 +2794,7 @@ export default function AdminDashboard() {
                   )}
                 </div>
                 <div className="flex items-center gap-3">
-                  {(activeTab === 'overview' || activeTab === 'events' || activeTab === 'past-events') && (
+                  {(activeTab === 'overview' || activeTab === 'events' || activeTab === 'bookings' || activeTab === 'past-events') && (
                     <>
                       <select
                         value={filterMonth}
@@ -2828,7 +2846,7 @@ export default function AdminDashboard() {
                       </button>
                     </div>
                   )}
-                  {['users', 'organizers', 'events', 'past-events', 'approvals', 'payouts', 'activity-log'].includes(activeTab) && (
+                  {['users', 'organizers', 'events', 'bookings', 'past-events', 'approvals', 'payouts', 'activity-log'].includes(activeTab) && (
                     <div className="flex gap-2">
                       <button 
                         onClick={() => {
@@ -3460,8 +3478,16 @@ export default function AdminDashboard() {
                           className="p-4 rounded-2xl bg-white border border-gray-100 hover:border-adv-orange/30 hover:bg-orange-50 transition-all group text-left shadow-sm"
                         >
                           <Calendar className="w-6 h-6 text-gray-300 group-hover:text-adv-orange mb-3 transition-colors" />
-                          <div className="font-bold text-adv-slate mb-1">{t.eventUpcoming}</div>
-                          <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{eventsList.filter(e => new Date(`${e.date}T23:59:59`) >= new Date()).length} {t.activeEvents}</div>
+                          <div className="font-bold text-adv-slate mb-1">{lang === 'lo' ? 'Event ທົ່ວໄປ (Event Type)' : 'Event Type (Standard)'}</div>
+                          <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{eventsList.filter(e => e.dateType !== 'booking' && new Date(`${e.date}T23:59:59`) >= new Date()).length} {t.activeEvents}</div>
+                        </button>
+                        <button 
+                          onClick={() => setActiveTab('bookings')}
+                          className="p-4 rounded-2xl bg-white border border-gray-100 hover:border-adv-orange/30 hover:bg-orange-50 transition-all group text-left shadow-sm"
+                        >
+                          <CalendarDays className="w-6 h-6 text-gray-300 group-hover:text-adv-orange mb-3 transition-colors" />
+                          <div className="font-bold text-adv-slate mb-1">{lang === 'lo' ? 'ກິດຈະກຳຈອງ (Booking Type)' : 'Booking Type (Daily)'}</div>
+                          <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{eventsList.filter(e => e.dateType === 'booking').length} {lang === 'lo' ? 'ກິດຈະກຳ' : 'Experiences'}</div>
                         </button>
                         <Link 
                           to="/create"
@@ -3603,7 +3629,18 @@ export default function AdminDashboard() {
                                       {/* Event Meta Header */}
                                       <div className="flex-1 min-w-0">
                                         <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-                                          <span className="px-2.5 py-0.5 rounded-lg bg-orange-50 text-adv-orange text-[10px] font-black uppercase tracking-wider border border-orange-100/80">
+                                          {event.dateType === 'booking' ? (
+                                            <span className="px-2.5 py-0.5 rounded-lg bg-orange-50 text-adv-orange text-[10px] font-black uppercase tracking-wider border border-orange-200 flex items-center gap-1">
+                                              <CalendarDays className="w-3 h-3" />
+                                              {lang === 'lo' ? 'ກິດຈະກຳຈອງ (Booking)' : 'Booking Type'}
+                                            </span>
+                                          ) : (
+                                            <span className="px-2.5 py-0.5 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-wider border border-blue-100 flex items-center gap-1">
+                                              <Calendar className="w-3 h-3" />
+                                              {lang === 'lo' ? 'Event ທົ່ວໄປ' : 'Event Type'}
+                                            </span>
+                                          )}
+                                          <span className="px-2.5 py-0.5 rounded-lg bg-gray-50 text-gray-600 text-[10px] font-black uppercase tracking-wider border border-gray-200">
                                             {event.category || 'Event'}
                                           </span>
                                           {isUrgent && (
@@ -4422,76 +4459,334 @@ export default function AdminDashboard() {
               {activeTab === 'events' && (
                 <div className="space-y-4">
                   {eventsList.filter(e => {
-                    const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase());
-                    const isUpcoming = new Date(`${e.date}T23:59:59`) >= new Date();
-                    const eventDate = new Date(e.date);
-                    const matchesMonth = filterMonth === 'all' || (eventDate.getMonth() + 1).toString().padStart(2, '0') === filterMonth;
-                    const matchesYear = filterYear === 'all' || eventDate.getFullYear().toString() === filterYear;
-                    return matchesSearch && isUpcoming && matchesMonth && matchesYear;
-                  }).map(event => {
-                    const fin = getEventFinancialSummary(event);
-                    return (
-
-                    <div key={event.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-3xl bg-white border border-gray-100 hover:border-adv-orange/30 transition-all group gap-5 shadow-sm">
-                      <div className="flex items-center gap-5">
-                        <div className="relative w-20 h-20 rounded-2xl overflow-hidden shrink-0 shadow-md">
-                          <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
+                    const isStandard = e.dateType !== 'booking';
+                      const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (e.organizer && e.organizer.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                        (e.location && e.location.toLowerCase().includes(searchQuery.toLowerCase()));
+                      const isUpcoming = new Date(`${e.date}T23:59:59`) >= new Date();
+                      const eventDate = new Date(e.date);
+                      const matchesMonth = filterMonth === 'all' || (eventDate.getMonth() + 1).toString().padStart(2, '0') === filterMonth;
+                      const matchesYear = filterYear === 'all' || eventDate.getFullYear().toString() === filterYear;
+                      return isStandard && matchesSearch && isUpcoming && matchesMonth && matchesYear;
+                    }).map(event => {
+                      const fin = getEventFinancialSummary(event);
+                      return (
+                        <div key={event.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-3xl bg-white border border-gray-100 hover:border-adv-orange/30 transition-all group gap-5 shadow-sm">
+                          <div className="flex items-center gap-5">
+                            <div className="relative w-20 h-20 rounded-2xl overflow-hidden shrink-0 shadow-md">
+                              <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 uppercase tracking-widest text-[9px] font-black">
+                                  <Calendar className="w-2.5 h-2.5" />
+                                  {lang === 'lo' ? 'Event ທົ່ວໄປ' : 'Event Type'}
+                                </span>
+                                {event.category && (
+                                  <span className="px-2 py-0.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 uppercase tracking-widest text-[9px] font-bold">
+                                    {event.category}
+                                  </span>
+                                )}
+                              </div>
+                              <h3 className="text-lg font-black text-adv-slate group-hover:text-adv-orange transition-colors">{event.title}</h3>
+                              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-2 text-xs text-gray-400 font-bold">
+                                <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-green-50 border border-green-100 text-green-600 uppercase tracking-widest text-[10px]">
+                                  {t.upcoming}
+                                </span>
+                                {event.featured && (
+                                  <span className="flex items-center gap-1 px-3 py-1 rounded-lg bg-amber-50 border border-amber-100 text-amber-500 uppercase tracking-widest text-[10px] font-black">
+                                    <Star className="w-3 h-3 fill-amber-500" />
+                                    {lang === 'lo' ? 'ແນະນຳ' : 'Featured'}
+                                  </span>
+                                )}
+                                <span className="flex items-center gap-1.5">
+                                  <Calendar className="w-3.5 h-3.5 text-gray-300" />
+                                  {new Date(event.date).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                                </span>
+                                <span className="flex items-center gap-1.5">
+                                  <MapPin className="w-3.5 h-3.5 text-gray-300" />
+                                  {event.location}
+                                </span>
+                                <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-orange-50 border border-orange-100 text-adv-orange uppercase tracking-widest text-[10px] font-black">
+                                  <Ticket className="w-3.5 h-3.5" /> {fin.ticketsSold} {t.ticketsSold}
+                                </span>
+                                <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-700 uppercase tracking-widest text-[10px] font-black">
+                                  <Wallet className="w-3.5 h-3.5" /> {lang === 'lo' ? 'ເງິນທີ່ຈະໄດ້ຮັບ' : 'Payout'}: {new Intl.NumberFormat('lo-LA').format(fin.moneyCanGet)} ₭
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Link
+                              to={`/event/${event.id}`}
+                              target="_blank"
+                              className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 text-gray-500 hover:text-adv-orange hover:bg-orange-50 transition-all shadow-xs"
+                              title={lang === 'lo' ? 'ເບິ່ງໜ້າ Event' : 'Live Preview'}
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </Link>
+                            <button 
+                              onClick={() => setSelectedEvent(event)}
+                              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-adv-slate hover:bg-orange-50 hover:border-adv-orange/30 hover:text-adv-orange transition-all text-sm font-black uppercase tracking-wider shadow-sm"
+                            >
+                              <Edit className="w-4 h-4" />
+                              {t.manage}
+                            </button>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="text-lg font-black text-adv-slate group-hover:text-adv-orange transition-colors">{event.title}</h3>
-                          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-2 text-xs text-gray-400 font-bold">
-                            <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-green-50 border border-green-100 text-green-600 uppercase tracking-widest text-[10px]">
-                              {t.upcoming}
+                      );
+                    })}
+
+                    {eventsList.filter(e => {
+                      const isStandard = e.dateType !== 'booking';
+                      const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (e.organizer && e.organizer.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                        (e.location && e.location.toLowerCase().includes(searchQuery.toLowerCase()));
+                      const isUpcoming = new Date(`${e.date}T23:59:59`) >= new Date();
+                      const eventDate = new Date(e.date);
+                      const matchesMonth = filterMonth === 'all' || (eventDate.getMonth() + 1).toString().padStart(2, '0') === filterMonth;
+                      const matchesYear = filterYear === 'all' || eventDate.getFullYear().toString() === filterYear;
+                      return isStandard && matchesSearch && isUpcoming && matchesMonth && matchesYear;
+                    }).length === 0 && (
+                      <div className="text-center py-20 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
+                        <Calendar className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+                        <p className="text-gray-400 font-bold">{t.noUpcomingEvents}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+              {activeTab === 'bookings' && (
+                <div className="space-y-6">
+                  {/* Booking Experiences KPI Cards */}
+                  {(() => {
+                    const bookingEvents = eventsList.filter(e => e.dateType === 'booking');
+                    const totalSlots = bookingEvents.reduce((acc, e) => acc + (e.bookingTimeSlots?.length || 0), 0);
+                    const totalBookingAttendees = bookingEvents.reduce((acc, e) => {
+                      const fin = getEventFinancialSummary(e);
+                      return acc + fin.ticketsSold;
+                    }, 0);
+                    const totalBookingRevenue = bookingEvents.reduce((acc, e) => {
+                      const fin = getEventFinancialSummary(e);
+                      return acc + fin.grossRevenue;
+                    }, 0);
+
+                    return (
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="p-5 rounded-2xl bg-white border border-gray-100 shadow-xs hover:border-adv-orange/30 transition-all">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                              {lang === 'lo' ? 'ກິດຈະກຳຈອງທັງໝົດ' : 'Active Experiences'}
                             </span>
-                            {event.featured && (
-                              <span className="flex items-center gap-1 px-3 py-1 rounded-lg bg-amber-50 border border-amber-100 text-amber-500 uppercase tracking-widest text-[10px] font-black">
-                                <Star className="w-3 h-3 fill-amber-500" />
-                                {lang === 'lo' ? 'ແນະນຳ' : 'Featured'}
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1.5">
-                              <Calendar className="w-3.5 h-3.5 text-gray-300" />
-                              {new Date(event.date).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                            <div className="w-8 h-8 rounded-xl bg-orange-50 text-adv-orange flex items-center justify-center">
+                              <CalendarDays className="w-4 h-4" />
+                            </div>
+                          </div>
+                          <div className="text-2xl font-black text-adv-slate">{bookingEvents.length}</div>
+                          <div className="text-[11px] text-gray-400 font-medium mt-0.5">
+                            {lang === 'lo' ? 'ກິດຈະກຳປະເພດຈອງ' : 'Recurring booking events'}
+                          </div>
+                        </div>
+
+                        <div className="p-5 rounded-2xl bg-white border border-gray-100 shadow-xs hover:border-adv-orange/30 transition-all">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                              {lang === 'lo' ? 'ຮອບເວລາປະຈຳວັນ' : 'Daily Time Slots'}
                             </span>
-                            <span className="flex items-center gap-1.5">
-                              <MapPin className="w-3.5 h-3.5 text-gray-300" />
-                              {event.location}
+                            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                              <Clock className="w-4 h-4" />
+                            </div>
+                          </div>
+                          <div className="text-2xl font-black text-adv-slate">{totalSlots}</div>
+                          <div className="text-[11px] text-gray-400 font-medium mt-0.5">
+                            {lang === 'lo' ? 'ຮອບເວລາເປີດໃຫ້ຈອງ' : 'Time slots across all experiences'}
+                          </div>
+                        </div>
+
+                        <div className="p-5 rounded-2xl bg-white border border-gray-100 shadow-xs hover:border-adv-orange/30 transition-all">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                              {lang === 'lo' ? 'ຈຳນວນການຈອງແລ້ວ' : 'Total Bookings'}
                             </span>
-                            <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-orange-50 border border-orange-100 text-adv-orange uppercase tracking-widest text-[10px] font-black">
-                              <Ticket className="w-3.5 h-3.5" /> {fin.ticketsSold} {t.ticketsSold}
+                            <div className="w-8 h-8 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
+                              <Ticket className="w-4 h-4" />
+                            </div>
+                          </div>
+                          <div className="text-2xl font-black text-adv-slate">{totalBookingAttendees}</div>
+                          <div className="text-[11px] text-gray-400 font-medium mt-0.5">
+                            {lang === 'lo' ? 'ຜູ້ເຂົ້າຮ່ວມທີ່ຈອງສຳເລັດ' : 'Guests & tickets booked'}
+                          </div>
+                        </div>
+
+                        <div className="p-5 rounded-2xl bg-white border border-gray-100 shadow-xs hover:border-adv-orange/30 transition-all">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                              {lang === 'lo' ? 'ຍອດຂາຍປະເພດຈອງ' : 'Booking Volume'}
                             </span>
-                            <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-700 uppercase tracking-widest text-[10px] font-black">
-                              <Wallet className="w-3.5 h-3.5" /> {lang === 'lo' ? 'ເງິນທີ່ຈະໄດ້ຮັບ' : 'Payout'}: {new Intl.NumberFormat('lo-LA').format(fin.moneyCanGet)} ₭
-                            </span>
+                            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                              <Wallet className="w-4 h-4" />
+                            </div>
+                          </div>
+                          <div className="text-2xl font-black text-adv-slate">
+                            {new Intl.NumberFormat('lo-LA').format(totalBookingRevenue)} ₭
+                          </div>
+                          <div className="text-[11px] text-gray-400 font-medium mt-0.5">
+                            {lang === 'lo' ? 'ລາຍຮັບຈາກກິດຈະກຳຈອງ' : 'Gross booking revenue'}
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => setSelectedEvent(event)}
-                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-adv-slate hover:bg-orange-50 hover:border-adv-orange/30 hover:text-adv-orange transition-all text-sm font-black uppercase tracking-wider shadow-sm"
+                    );
+                  })()}
+
+                  {/* Booking Experiences List */}
+                  <div className="space-y-4">
+                    {eventsList.filter(e => {
+                      const isBooking = e.dateType === 'booking';
+                      const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (e.organizer && e.organizer.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                        (e.location && e.location.toLowerCase().includes(searchQuery.toLowerCase()));
+                      const eventDate = new Date(e.date);
+                      const matchesMonth = filterMonth === 'all' || (eventDate.getMonth() + 1).toString().padStart(2, '0') === filterMonth;
+                      const matchesYear = filterYear === 'all' || eventDate.getFullYear().toString() === filterYear;
+                      return isBooking && matchesSearch && matchesMonth && matchesYear;
+                    }).map(event => {
+                      const fin = getEventFinancialSummary(event);
+                      return (
+                        <div key={event.id} className="flex flex-col lg:flex-row lg:items-center justify-between p-5 rounded-3xl bg-white border border-gray-100 hover:border-adv-orange/30 transition-all group gap-5 shadow-sm">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 flex-1 min-w-0">
+                            <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden shrink-0 shadow-md">
+                              <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                              <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
+                              <div className="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-black/60 backdrop-blur-xs text-white text-[9px] font-black uppercase tracking-wider">
+                                {event.bookingDuration || 'Flexible'}
+                              </div>
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                                <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-orange-50 border border-orange-200 text-adv-orange uppercase tracking-widest text-[9px] font-black">
+                                  <CalendarDays className="w-3 h-3" />
+                                  {lang === 'lo' ? 'ກິດຈະກຳຈອງ (Booking Type)' : 'Booking Type'}
+                                </span>
+                                {event.category && (
+                                  <span className="px-2 py-0.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 uppercase tracking-widest text-[9px] font-bold">
+                                    {event.category}
+                                  </span>
+                                )}
+                                {event.featured && (
+                                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-50 border border-amber-100 text-amber-500 uppercase tracking-widest text-[9px] font-black">
+                                    <Star className="w-2.5 h-2.5 fill-amber-500" />
+                                    {lang === 'lo' ? 'ແນະນຳ' : 'Featured'}
+                                  </span>
+                                )}
+                              </div>
+
+                              <h3 className="text-lg font-black text-adv-slate group-hover:text-adv-orange transition-colors line-clamp-1">{event.title}</h3>
+                              
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-xs text-gray-400 font-bold">
+                                <span className="flex items-center gap-1.5 text-gray-600">
+                                  <Calendar className="w-3.5 h-3.5 text-gray-300" />
+                                  {event.bookingStartDate ? `${event.bookingStartDate} → ${event.bookingEndDate || 'Ongoing'}` : event.date}
+                                </span>
+                                <span className="flex items-center gap-1.5 text-gray-600">
+                                  <MapPin className="w-3.5 h-3.5 text-gray-300" />
+                                  {event.location}
+                                </span>
+                                {event.organizer && (
+                                  <span className="flex items-center gap-1.5 text-gray-600">
+                                    <Building2 className="w-3.5 h-3.5 text-gray-300" />
+                                    {event.organizer}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Time Slots Chips */}
+                              {event.bookingTimeSlots && event.bookingTimeSlots.length > 0 && (
+                                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 mr-1">
+                                    {lang === 'lo' ? 'ຮອບເວລາ:' : 'Slots:'}
+                                  </span>
+                                  {event.bookingTimeSlots.map((slot, idx) => {
+                                    const slotCap = event.bookingSlotCapacities?.[slot] || event.bookingCapacity || '10';
+                                    return (
+                                      <span key={idx} className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gray-50 border border-gray-200/80 text-[10px] font-bold text-adv-slate">
+                                        <Clock className="w-2.5 h-2.5 text-adv-orange" />
+                                        <span>{slot}</span>
+                                        <span className="text-gray-400 font-normal">({slotCap} pax)</span>
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row lg:flex-col sm:items-end justify-between gap-4 shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-gray-50">
+                            <div className="flex items-center gap-3">
+                              <div className="px-3 py-1.5 rounded-xl bg-orange-50 border border-orange-100 text-right">
+                                <div className="text-[10px] font-black uppercase tracking-wider text-adv-orange">{lang === 'lo' ? 'ຈອງແລ້ວ' : 'Booked'}</div>
+                                <div className="text-sm font-black text-adv-slate">{fin.ticketsSold} {t.ticketsSold}</div>
+                              </div>
+                              <div className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-100 text-right">
+                                <div className="text-[10px] font-black uppercase tracking-wider text-emerald-700">{lang === 'lo' ? 'ເງິນທີ່ຈະໄດ້ຮັບ' : 'Payout'}</div>
+                                <div className="text-sm font-black text-emerald-800">{new Intl.NumberFormat('lo-LA').format(fin.moneyCanGet)} ₭</div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 self-end">
+                              <Link
+                                to={`/event/${event.id}`}
+                                target="_blank"
+                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-50 border border-gray-100 text-gray-600 hover:text-adv-orange hover:bg-orange-50 transition-all text-xs font-black uppercase tracking-wider shadow-xs"
+                                title={lang === 'lo' ? 'ເບິ່ງໜ້າການຈອງຕົວຈິງ' : 'Live Booking Preview'}
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                <span>{lang === 'lo' ? 'ເບິ່ງໜ້າຈອງ' : 'Preview'}</span>
+                              </Link>
+                              <button 
+                                onClick={() => setSelectedEvent(event)}
+                                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-adv-slate text-white hover:bg-black transition-all text-xs font-black uppercase tracking-wider shadow-sm"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                                <span>{t.manage}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {eventsList.filter(e => {
+                      const isBooking = e.dateType === 'booking';
+                      const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (e.organizer && e.organizer.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                        (e.location && e.location.toLowerCase().includes(searchQuery.toLowerCase()));
+                      const eventDate = new Date(e.date);
+                      const matchesMonth = filterMonth === 'all' || (eventDate.getMonth() + 1).toString().padStart(2, '0') === filterMonth;
+                      const matchesYear = filterYear === 'all' || eventDate.getFullYear().toString() === filterYear;
+                      return isBooking && matchesSearch && matchesMonth && matchesYear;
+                    }).length === 0 && (
+                      <div className="text-center py-20 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
+                        <CalendarDays className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+                        <h4 className="text-adv-slate font-black text-base mb-1">
+                          {lang === 'lo' ? 'ບໍ່ພົບກິດຈະກຳແບບຈອງ' : 'No Booking Experiences Found'}
+                        </h4>
+                        <p className="text-gray-400 font-medium text-xs max-w-sm mx-auto mb-4">
+                          {lang === 'lo' 
+                            ? 'ຍັງບໍ່ມີກິດຈະກຳປະເພດຈອງລາຍວັນທີ່ກົງກັບເງື່ອນໄຂການຄົ້ນຫາຂອງທ່ານ' 
+                            : 'No daily booking experiences match your current search or date filters.'}
+                        </p>
+                        <Link
+                          to="/create"
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-adv-orange text-white text-xs font-black uppercase tracking-wider hover:bg-orange-600 transition-all shadow-md shadow-orange-500/20"
                         >
-                          <Edit className="w-4 h-4" />
-                          {t.manage}
-                        </button>
+                          <Plus className="w-4 h-4" />
+                          {lang === 'lo' ? 'ສ້າງກິດຈະກຳແບບຈອງໃໝ່' : 'Create Booking Experience'}
+                        </Link>
                       </div>
-                    </div>
-                  );
-                })}
-                  {eventsList.filter(e => {
-                    const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase());
-                    const isUpcoming = new Date(`${e.date}T23:59:59`) >= new Date();
-                    const eventDate = new Date(e.date);
-                    const matchesMonth = filterMonth === 'all' || (eventDate.getMonth() + 1).toString().padStart(2, '0') === filterMonth;
-                    const matchesYear = filterYear === 'all' || eventDate.getFullYear().toString() === filterYear;
-                    return matchesSearch && isUpcoming && matchesMonth && matchesYear;
-                  }).length === 0 && (
-                    <div className="text-center py-20 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
-                      <Calendar className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-                      <p className="text-gray-400 font-bold">{t.noUpcomingEvents}</p>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
 

@@ -78,4 +78,9 @@ export interface AppNotification {
   isUnread: boolean;
   /** ISO timestamp from the server; the "x minutes ago" text is derived from it. */
   createdAt: string;
+  eventId?: string;
+  organizerEmail?: string;
+  rejectionReason?: string;
+  status?: 'approved' | 'rejected' | 'pending' | string;
+  link?: string;
 }

@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.ts";
+import { db } from "../src/config/database.ts";
+import { users } from "../src/models/schema.ts";
 import { createNotification } from "../src/services/notification.service.ts";
 import { as } from "./helpers/auth.ts";
 import { createEvent } from "./helpers/seed.ts";
@@ -124,5 +126,28 @@ describe("notifications (database-backed, per user)", () => {
     const host = (await inbox("host")).body.notifications;
     expect(host).toHaveLength(1);
     expect(host[0].title).toBe("New ticket order");
+  });
+
+  it("POST /api/notifications: only an admin may push a notification to another user", async () => {
+    const body = { userUid: "target-user", title: "Event Approved", message: "Congrats" };
+
+    expect((await request(app).post("/api/notifications").send(body)).status).toBe(401);
+    expect(
+      (await request(app).post("/api/notifications").set(await as("nobody-special")).send(body))
+        .status,
+    ).toBe(403);
+
+    await db.insert(users).values({ firebaseUid: "the-admin", email: "admin@test.local", role: "admin" });
+
+    const bad = await request(app).post("/api/notifications").set(await as("the-admin")).send({});
+    expect(bad.status).toBe(400);
+
+    const res = await request(app).post("/api/notifications").set(await as("the-admin")).send(body);
+    expect(res.status).toBe(201);
+    expect(res.body.notification).toMatchObject({ title: "Event Approved", isUnread: true });
+
+    const target = (await inbox("target-user")).body.notifications;
+    expect(target).toHaveLength(1);
+    expect(target[0].title).toBe("Event Approved");
   });
 });

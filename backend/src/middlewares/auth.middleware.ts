@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { env } from "../config/env.ts";
+import { getUserRole } from "../services/user.service.ts";
 import { logger } from "../utils/logger.ts";
 
 /**
@@ -82,6 +83,15 @@ export async function optionalAuth(req: Request, res: Response, next: NextFuncti
 export function requireRegisteredUser(req: Request, res: Response, next: NextFunction) {
   if (!req.user || req.user.isAnonymous) {
     return res.status(403).json({ error: "Sign in with an account to do this" });
+  }
+  next();
+}
+
+/** Restrict a route to the platform's admins (their `users.role`). */
+export async function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.user) return res.status(401).json({ error: "Missing or invalid authorization header" });
+  if ((await getUserRole(req.user.uid)) !== "admin") {
+    return res.status(403).json({ error: "Admins only" });
   }
   next();
 }
