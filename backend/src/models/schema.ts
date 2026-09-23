@@ -176,22 +176,6 @@ export const ticketTiers = pgTable(
   (t) => [index("ticket_tiers_event_idx").on(t.eventId)],
 );
 
-export const ticketZones = pgTable(
-  "ticket_zones",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    eventId: uuid("event_id")
-      .notNull()
-      .references(() => events.id, { onDelete: "cascade" }),
-    name: text("name").notNull(),
-    priceKip: integer("price_kip").notNull().default(0),
-    capacity: integer("capacity").notNull().default(0),
-    sold: integer("sold").notNull().default(0),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [index("ticket_zones_event_idx").on(t.eventId)],
-);
-
 export const coupons = pgTable(
   "coupons",
   {
@@ -331,32 +315,6 @@ export const payments = pgTable(
 );
 
 /* ============================================================================
- *  Reviews
- * ========================================================================== */
-
-export const reviews = pgTable(
-  "reviews",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    eventId: text("event_id").notNull(),
-    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
-    authorFirebaseUid: text("author_firebase_uid").notNull(),
-    userName: text("user_name").notNull(),
-    userRealName: text("user_real_name"),
-    rating: integer("rating").notNull(), // 1..5
-    comment: text("comment").notNull(),
-    reviewDate: text("review_date").notNull(), // YYYY-MM-DD
-    avatarUrl: text("avatar_url"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [
-    index("reviews_event_idx").on(t.eventId),
-    unique("reviews_event_author_uq").on(t.eventId, t.authorFirebaseUid),
-  ],
-);
-
-/* ============================================================================
  *  Notifications  (per-user inbox; `read_at` null = unread)
  * ========================================================================== */
 
@@ -385,7 +343,6 @@ export const notifications = pgTable(
 
 export const usersRelations = relations(users, ({ many }) => ({
   orders: many(orders),
-  reviews: many(reviews),
 }));
 
 export const organizersRelations = relations(organizers, ({ many }) => ({
@@ -396,7 +353,6 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
   organizer: one(organizers, { fields: [events.organizerId], references: [organizers.id] }),
   dates: many(eventDates),
   tiers: many(ticketTiers),
-  zones: many(ticketZones),
   coupons: many(coupons),
 }));
 
@@ -406,10 +362,6 @@ export const eventDatesRelations = relations(eventDates, ({ one }) => ({
 
 export const ticketTiersRelations = relations(ticketTiers, ({ one }) => ({
   event: one(events, { fields: [ticketTiers.eventId], references: [events.id] }),
-}));
-
-export const ticketZonesRelations = relations(ticketZones, ({ one }) => ({
-  event: one(events, { fields: [ticketZones.eventId], references: [events.id] }),
 }));
 
 export const couponsRelations = relations(coupons, ({ one }) => ({
@@ -428,10 +380,6 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
 
 export const checkInsRelations = relations(checkIns, ({ one }) => ({
   orderItem: one(orderItems, { fields: [checkIns.orderItemId], references: [orderItems.id] }),
-}));
-
-export const reviewsRelations = relations(reviews, ({ one }) => ({
-  user: one(users, { fields: [reviews.userId], references: [users.id] }),
 }));
 
 export const paymentsRelations = relations(payments, ({ one }) => ({

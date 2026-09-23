@@ -9,12 +9,6 @@ const tier = z.object({
   sortOrder: z.coerce.number().int().default(0),
 });
 
-const zone = z.object({
-  name: z.string().min(1),
-  priceKip: z.coerce.number().int().nonnegative().default(0),
-  capacity: z.coerce.number().int().nonnegative().default(0),
-});
-
 const eventDate = z.object({
   date: z.string().min(1),
   startTime: z.string().optional(),
@@ -80,16 +74,14 @@ export const createEventBody = z.object({
     .optional(),
 
   tiers: z.array(tier).default([]),
-  zones: z.array(zone).default([]),
   dates: z.array(eventDate).default([]),
   coupons: z.array(coupon).default([]),
 });
 
 // Partial for PATCH-style updates. The child arrays drop their `.default([])`
-// so "not sent" stays undefined and never wipes existing tiers/zones/etc.
+// so "not sent" stays undefined and never wipes existing tiers/dates/etc.
 export const updateEventBody = createEventBody.partial().extend({
   tiers: z.array(tier).optional(),
-  zones: z.array(zone).optional(),
   dates: z.array(eventDate).optional(),
   coupons: z.array(coupon).optional(),
 });

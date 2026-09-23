@@ -6,7 +6,6 @@ import {
   events,
   organizers,
   ticketTiers,
-  ticketZones,
 } from "../models/schema.ts";
 import { HttpError } from "../middlewares/error.middleware.ts";
 import { getUserRole } from "./user.service.ts";
@@ -19,16 +18,13 @@ type Executor = Pick<typeof db, "insert" | "select" | "update" | "delete" | "que
 
 /** Columns that live directly on the `events` row (i.e. not the nested arrays). */
 function eventColumns<T extends Partial<CreateEventBody>>(body: T) {
-  const { organizer: _o, tiers: _t, zones: _z, dates: _d, coupons: _c, ...cols } = body;
+  const { organizer: _o, tiers: _t, dates: _d, coupons: _c, ...cols } = body;
   return cols;
 }
 
 async function insertChildren(tx: Executor, eventId: string, body: Partial<CreateEventBody>) {
   if (body.tiers?.length) {
     await tx.insert(ticketTiers).values(body.tiers.map((tItem) => ({ ...tItem, eventId })));
-  }
-  if (body.zones?.length) {
-    await tx.insert(ticketZones).values(body.zones.map((z) => ({ ...z, eventId })));
   }
   if (body.dates?.length) {
     await tx.insert(eventDates).values(body.dates.map((d) => ({ ...d, eventId })));
@@ -38,7 +34,7 @@ async function insertChildren(tx: Executor, eventId: string, body: Partial<Creat
   }
 }
 
-/** Create an event and all of its tiers / zones / dates / coupons atomically. */
+/** Create an event and all of its tiers / dates / coupons atomically. */
 export async function createEvent(body: CreateEventBody, ownerUid: string) {
   return db.transaction(async (tx) => {
     // Every event is owned by an organizer profile belonging to its creator, so
@@ -89,7 +85,6 @@ export async function updateEvent(idOrRef: string, patch: UpdateEventBody, actor
 
     for (const [key, table] of [
       ["tiers", ticketTiers],
-      ["zones", ticketZones],
       ["dates", eventDates],
       ["coupons", coupons],
     ] as const) {
@@ -137,7 +132,7 @@ export async function listEvents(query: {
       rows.map((r) => r.id),
     ),
     orderBy: desc(events.createdAt),
-    with: { tiers: true, zones: true, dates: true, coupons: true, organizer: true },
+    with: { tiers: true, dates: true, coupons: true, organizer: true },
   });
 }
 
@@ -191,6 +186,6 @@ async function resolveEvent(ref: string, exec: Executor) {
 function getEventById(id: string, exec: Executor) {
   return exec.query.events.findFirst({
     where: eq(events.id, id),
-    with: { tiers: true, zones: true, dates: true, coupons: true, organizer: true },
+    with: { tiers: true, dates: true, coupons: true, organizer: true },
   });
 }
