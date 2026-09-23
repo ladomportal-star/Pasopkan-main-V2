@@ -80,14 +80,6 @@ export function toEventPayload(e: FeEvent): Record<string, unknown> {
         quantityTotal: t.available != null ? num(t.available) || null : null,
       })),
 
-    zones: (e.seatingZones ?? e.zones ?? [])
-      .filter((z: FeEvent) => z?.name)
-      .map((z: FeEvent) => ({
-        name: String(z.name),
-        priceKip: num(z.price),
-        capacity: num(z.capacity),
-      })),
-
     dates: (e.availableDates ?? [])
       .filter((d: FeEvent) => d?.date)
       .map((d: FeEvent) => ({

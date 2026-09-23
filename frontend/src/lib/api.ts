@@ -90,19 +90,6 @@ export const api = {
   updateEvent: (idOrRef: string, patch: Record<string, unknown>, opts?: RequestOptions) =>
     request<{ event: { id: string } }>('PUT', `/events/${encodeURIComponent(idOrRef)}`, patch, opts),
 
-  createReview: (
-    review: {
-      eventId: string;
-      rating: number;
-      comment: string;
-      userName?: string;
-      userRealName?: string;
-      date?: string;
-      avatarUrl?: string;
-    },
-    opts?: RequestOptions,
-  ) => request('POST', '/reviews', review, opts),
-
   scanCheckin: (
     scan: {
       ticketCode: string;
