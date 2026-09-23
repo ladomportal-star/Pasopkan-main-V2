@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Ticket, User, Plus, Search, Shield, Moon, Sun, Menu, X, Compass, Globe, Activity, MapPin, Zap, Lightbulb, Mountain, PartyPopper, Bell, Calendar, Info, Star, ChevronRight, ArrowLeft, ShieldCheck, AlertCircle, Loader2, Clock, RotateCw, Check, ShieldAlert, KeyRound } from 'lucide-react';
+import { Ticket, User, Plus, Search, Shield, Moon, Sun, Menu, X, Compass, Globe, Activity, MapPin, Zap, Lightbulb, Mountain, PartyPopper, Bell, Calendar, Info, Star, ChevronRight, ArrowLeft, ShieldCheck, AlertCircle, Loader2, Clock, RotateCw, Check, ShieldAlert, KeyRound, Settings } from 'lucide-react';
 import Logo from './Logo';
 import SearchModal from './SearchModal';
 import OtpInput from './OtpInput';
@@ -443,6 +443,24 @@ export default function Navbar() {
                             );
                           })
                         )}
+                      </div>
+
+                      <div className="px-3 py-2 border-t border-gray-100 flex items-center justify-between bg-gray-50/70">
+                        <Link 
+                          to="/notifications" 
+                          onClick={() => setIsNotificationsOpen(false)}
+                          className="text-xs font-bold text-gray-500 hover:text-adv-orange transition-colors px-1 py-0.5"
+                        >
+                          {lang === 'lo' ? 'ເບິ່ງທັງໝົດ' : 'View All'}
+                        </Link>
+                        <Link 
+                          to="/notifications?tab=settings" 
+                          onClick={() => setIsNotificationsOpen(false)}
+                          className="inline-flex items-center gap-1 text-xs font-bold text-adv-orange hover:text-orange-600 transition-colors px-1 py-0.5"
+                        >
+                          <Settings className="w-3.5 h-3.5" />
+                          <span>{lang === 'lo' ? 'ຕັ້ງຄ່າ' : 'Settings'}</span>
+                        </Link>
                       </div>
                     </motion.div>
                   )}

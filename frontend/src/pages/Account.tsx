@@ -1,5 +1,5 @@
 import { BankAccountInfo, PayoutBill, EventData } from "../types";
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { User, Settings, CreditCard, Bell, Shield, HelpCircle, LogOut, ChevronLeft, ChevronRight, Camera, Calendar as CalendarIcon, CalendarDays, MapPin, Plus, CheckCircle2, XCircle, X, AlertCircle, AlertTriangle, Loader2, Image as ImageIcon, Ticket, Download, Link2, Copy, ExternalLink, QrCode, Trash2, ShieldCheck , Building, Save, Edit2, ChevronDown, DollarSign, Info, Smartphone, Lock, Search, Phone, Mail, FileText, Users, Eye, Filter, PieChart, Sparkles, UserCheck, MessageSquare, ClipboardList, CheckSquare, Clock, Globe, ListFilter, Check, UserX, BarChart3, CheckCheck, KeyRound, RefreshCw, ShieldAlert } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -16,6 +16,7 @@ import SEO from '../components/SEO';
 import OtpInput from '../components/OtpInput';
 import ManageCouponsSection from '../components/ManageCouponsSection';
 import BookingDayManagement from '../components/BookingDayManagement';
+import AccountMiniDashboard from '../components/AccountMiniDashboard';
 
 const LazyScanner = React.lazy(() =>
   (import('@yudiel/react-qr-scanner')
@@ -793,6 +794,30 @@ export default function Account() {
     });
   }, [eventAttendees, attendeeFilter, attendeeTierFilter, attendeeSearchQuery]);
 
+  // Mini dashboard metrics across all organizer events
+  const calculateEventIncome = (ev: any): number => {
+    if (!ev) return 0;
+    if (ev.grossRevenue && typeof ev.grossRevenue === 'number') return ev.grossRevenue;
+    const tiers = ev.ticketTiers || [];
+    if (tiers.length > 0) {
+      const paidTiers = tiers.filter((t: any) => (t.price || 0) > 0);
+      const avgPrice = paidTiers.length > 0
+        ? paidTiers.reduce((sum: number, t: any) => {
+            const p = Number(t.price) || 0;
+            return sum + (p > 10000 ? p : p * 1000);
+          }, 0) / paidTiers.length
+        : (ev.price && ev.price > 10000 ? ev.price : (Number(ev.price) || 150) * 1000);
+      return Math.round((Number(ev.registered) || 0) * (avgPrice || 150000));
+    }
+    return (Number(ev.registered) || 0) * 150000;
+  };
+
+  const selectedEventAttendeesCount = Number(selectedEvent?.registered) || eventAttendees.length;
+  const selectedEventCheckedInCount = Number(selectedEvent?.scanned) || checkedInCount;
+  const selectedEventIncome = useMemo(() => {
+    return calculateEventIncome(selectedEvent);
+  }, [selectedEvent]);
+
   const [scannerError, setScannerError] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState('');
   const location = useLocation();
@@ -1139,7 +1164,7 @@ export default function Account() {
       icon: Bell, 
       label: t.notifications, 
       desc: lang === 'en' ? 'Control how you receive activity updates' : 'ຄວບຄຸມວິທີທີ່ທ່ານໄດ້ຮັບການແຈ້ງເຕືອນກິດຈະກຳ',
-      path: '/notifications',
+      path: '/notifications?tab=settings',
       color: 'text-adv-orange dark:text-orange-450',
       bg: 'bg-orange-50 dark:bg-orange-500/10'
     },
@@ -1520,8 +1545,21 @@ export default function Account() {
                 <ChevronRight className="w-4.5 h-4.5 rotate-90" />
               </div>
             </div>
-
           </div>
+
+          {selectedEvent && (
+            <AccountMiniDashboard
+              theme={theme}
+              lang={lang}
+              isSingleEvent={true}
+              eventTitle={selectedEvent.title}
+              totalAttendees={selectedEventAttendeesCount}
+              totalCheckedIn={selectedEventCheckedInCount}
+              totalIncome={selectedEventIncome}
+              onNavigateToPayouts={() => { setActiveTab('payouts'); window.scrollTo(0, 0); }}
+            />
+          )}
+
           {selectedEvent && (
             <div className="space-y-6 sm:space-y-8">
               {/* Event Card */}
@@ -1544,12 +1582,6 @@ export default function Account() {
                         {selectedEvent.status === 'pending' && (
                           <span className="px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider shrink-0 border border-amber-200 dark:border-amber-800">
                             {lang === 'lo' ? 'ລໍຖ້າອະນຸມັດ' : 'Pending Approval'}
-                          </span>
-                        )}
-                        {selectedEvent.status === 'approved' && (
-                          <span className="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider shrink-0 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3" />
-                            {lang === 'lo' ? 'ອະນຸມັດແລ້ວ' : 'Approved & Live'}
                           </span>
                         )}
                         {selectedEvent.status === 'rejected' && (
@@ -1596,31 +1628,6 @@ export default function Account() {
                         </Link>
                       </div>
                     </div>
-                  </div>
-                )}
-
-                {selectedEvent.status === 'approved' && (
-                  <div className="mt-4 p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-left flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 shrink-0">
-                        <CheckCircle2 className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-emerald-900 dark:text-emerald-300">
-                          {lang === 'lo' ? 'ກິດຈະກຳໄດ້ຮັບການອະນຸມັດແລ້ວ' : 'Event Approved & Live'}
-                        </p>
-                        <p className="text-[11px] text-emerald-700 dark:text-emerald-400">
-                          {lang === 'lo' ? 'ກິດຈະກຳນີ້ເປີດໃຫ້ຊື້ປີ້ ແລະ ເຂົ້າຮ່ວມງານໄດ້ແລ້ວ.' : 'This event is publicly active and accepting ticket purchases.'}
-                        </p>
-                      </div>
-                    </div>
-                    <Link
-                      to={`/event/${selectedEvent.id}`}
-                      className="shrink-0 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
-                    >
-                      <span>{lang === 'lo' ? 'ເບິ່ງໜ້າງານ' : 'View Page'}</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </Link>
                   </div>
                 )}
               </div>
