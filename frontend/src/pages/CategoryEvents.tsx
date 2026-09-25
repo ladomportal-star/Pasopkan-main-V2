@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Filter, Calendar, Tag, MapPin, History, ChevronDown, X } from 'lucide-react';
-import { events, LaoEvent } from '../data/events';
+import { LaoEvent } from '../data/events';
 import EventCard from '../components/EventCard';
 import { useLanguage } from '../context/LanguageContext';
-import { safeStorage } from '../lib/storage';
+import { api } from '../lib/api';
+import { fromBackendEvent } from '../lib/eventPayload';
 import SEO from '../components/SEO';
 
 const translations = {
@@ -75,35 +76,20 @@ export default function CategoryEvents() {
   }, [categoryEvents]);
 
   useEffect(() => {
+    let cancelled = false;
     setIsLoading(true);
-    const timer = setTimeout(() => {
-      let allEvents: LaoEvent[] = [...events];
-      try {
-        const saved = safeStorage.getItem('organizer_events');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const eventMap = new Map<string, LaoEvent>(events.map(e => [e.id, e]));
-            parsed.forEach((e: LaoEvent) => {
-              if (e && e.id) eventMap.set(e.id, e);
-            });
-            allEvents = Array.from(eventMap.values());
-          }
-        }
-      } catch (err) {
-        console.error("Error parsing saved organizer events", err);
-      }
-
-      const filtered = allEvents.filter(e => 
-        e.category && 
-        e.category.toLowerCase() === categoryId?.toLowerCase() && 
-        e.status !== 'pending' && 
-        e.status !== 'rejected'
+    api.listEvents().then((res) => {
+      if (cancelled) return;
+      const allEvents: LaoEvent[] = (res.data?.events ?? []).map(fromBackendEvent);
+      const filtered = allEvents.filter(
+        (e) => e.category && e.category.toLowerCase() === categoryId?.toLowerCase(),
       );
       setCategoryEvents(filtered);
       setIsLoading(false);
-    }, 400);
-    return () => clearTimeout(timer);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [categoryId]);
 
   const getTranslatedCategory = (cat: string) => {

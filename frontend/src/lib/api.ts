@@ -175,6 +175,29 @@ export const api = {
       opts,
     ),
 
+  /** Preview a scanned ticket code against the real order — does NOT check it in. */
+  lookupTicket: (code: string, opts?: RequestOptions) =>
+    request<{
+      ticket: {
+        ticketCode: string;
+        itemStatus: string;
+        orderStatus: string | null;
+        eventId: string | null;
+        eventTitle: string | null;
+        orderCreatedAt: string | null;
+        tierName: string;
+        seatLabel: string | null;
+        zoneName: string | null;
+        unitPriceKip: number;
+        attendeeName: string | null;
+        attendeeEmail: string | null;
+        attendeePhone: string | null;
+        customAnswers: Record<string, string | string[]> | null;
+        alreadyCheckedIn: boolean;
+        checkedInAt: string | null;
+      };
+    }>('GET', `/checkins/lookup/${encodeURIComponent(code)}`, undefined, opts),
+
   getNotifications: (opts?: RequestOptions) =>
     request<{ notifications: import('../types').AppNotification[]; unreadCount: number }>(
       'GET',

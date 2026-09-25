@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, X, Calendar, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { events } from '../data/events';
+import { LaoEvent } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
-import { safeStorage } from '../lib/storage';
+import { api } from '../lib/api';
+import { fromBackendEvent } from '../lib/eventPayload';
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -42,10 +43,17 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const { lang } = useLanguage();
   const t = translations[lang];
 
+  const [searchEvents, setSearchEvents] = useState<LaoEvent[]>([]);
+
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
       document.body.style.overflow = 'hidden';
+      if (searchEvents.length === 0) {
+        api.listEvents().then((res) => {
+          setSearchEvents((res.data?.events ?? []).map(fromBackendEvent));
+        });
+      }
     } else {
       setQuery('');
       document.body.style.overflow = 'unset';
@@ -53,20 +61,8 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     return () => {
       document.body.style.overflow = 'unset';
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
-
-  const searchEvents = (() => {
-    let all = events;
-    try {
-      const saved = safeStorage.getItem('organizer_events');
-      if (saved) {
-        all = JSON.parse(saved);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    return all.filter(e => e.status !== 'pending' && e.status !== 'rejected');
-  })();
 
   const filteredEvents = searchEvents
     .filter(event => 

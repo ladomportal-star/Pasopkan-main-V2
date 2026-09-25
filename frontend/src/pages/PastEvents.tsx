@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Calendar as CalendarIcon, MapPin, ChevronRight, Inbox, RefreshCw, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { events } from '../data/events';
+import { LaoEvent } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
+import { fromBackendEvent } from '../lib/eventPayload';
 import SEO from '../components/SEO';
 
 const translations = {
@@ -44,44 +46,47 @@ export default function PastEvents() {
   const t = translations[lang];
   
   const [isLoading, setIsLoading] = useState(true);
-  const [pastEvents, setPastEvents] = useState<typeof events>([]);
+  const [pastEvents, setPastEvents] = useState<LaoEvent[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 3000);
-  };
-
-  const handleClearHistory = () => {
-    localStorage.removeItem('pasopkan_past_events');
-    setPastEvents([]);
-    showToast(t.clearedSuccess);
-  };
-
-  const handleRestoreHistory = () => {
-    const initialPast = events.slice(0, 3);
-    localStorage.setItem('pasopkan_past_events', JSON.stringify(initialPast));
-    setPastEvents(initialPast);
-    showToast(t.restoredSuccess);
-  };
+  const { user } = useAuth();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      // Initialize with mock past events
-      const saved = localStorage.getItem('pasopkan_past_events');
-      if (saved) {
-        setPastEvents(JSON.parse(saved));
-      } else {
-        const initialPast = events.slice(0, 3);
-        setPastEvents(initialPast);
-        localStorage.setItem('pasopkan_past_events', JSON.stringify(initialPast));
-      }
+    let cancelled = false;
+    if (!user) {
+      setPastEvents([]);
       setIsLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, []);
+      return;
+    }
+    setIsLoading(true);
+
+    const load = async () => {
+      const res = await api.listOrders();
+      const orders = (res.data?.tickets ?? []) as any[];
+      const attended = orders.filter((o) => o.status === 'confirmed' || o.status === 'paid');
+
+      const uniqueEventIds = Array.from(new Set(attended.map((o) => String(o.eventId))));
+      const eventResults = await Promise.all(uniqueEventIds.map((id) => api.getEvent(id)));
+      const today = new Date().toISOString().split('T')[0];
+
+      const events: LaoEvent[] = eventResults
+        .map((r) => (r.data?.event ? fromBackendEvent(r.data.event) : null))
+        .filter((e): e is LaoEvent => {
+          if (!e) return false;
+          const checkDate = e.endDate || e.date;
+          return !!checkDate && checkDate < today;
+        });
+
+      if (!cancelled) {
+        setPastEvents(events);
+        setIsLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   if (isLoading) {
     return (
@@ -130,14 +135,6 @@ export default function PastEvents() {
             <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-adv-slate">{t.title}</h1>
           </div>
           
-          {pastEvents.length > 0 && (
-            <button
-              onClick={handleClearHistory}
-              className="text-xs font-bold text-red-500 hover:text-red-600 bg-red-50/50 hover:bg-red-50 px-3 py-1.5 rounded-full border border-red-100 transition-all cursor-pointer self-start sm:self-auto shadow-xs"
-            >
-              {t.clearHistory}
-            </button>
-          )}
         </div>
 
         <AnimatePresence mode="wait">
@@ -235,20 +232,12 @@ export default function PastEvents() {
               </p>
 
               <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-                <Link 
-                  to="/" 
+                <Link
+                  to="/"
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-adv-orange text-black px-7 py-3.5 rounded-full font-bold text-xs sm:text-sm shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition-all hover:scale-[1.02] cursor-pointer"
                 >
                   {t.exploreUpcoming}
                 </Link>
-                
-                <button
-                  onClick={handleRestoreHistory}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-gray-500 hover:text-adv-slate bg-gray-50 hover:bg-gray-100 border border-gray-200 px-6 py-3.5 rounded-full font-bold text-xs sm:text-sm transition-all cursor-pointer"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  {t.restoreHistory}
-                </button>
               </div>
             </motion.div>
           )}

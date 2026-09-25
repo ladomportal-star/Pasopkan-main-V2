@@ -38,11 +38,12 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { events, LaoEvent } from '../data/events';
+import { LaoEvent } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { CheckinRecord, EventAttendee, useCheckins, useAttendees } from '../lib/checkinsStore';
 import { api } from '../lib/api';
+import { fromBackendEvent } from '../lib/eventPayload';
 import SEO from '../components/SEO';
 
 const LazyScanner = React.lazy(() =>
@@ -178,28 +179,34 @@ export default function StaffScanner() {
   const eventId = searchParams.get('eventId') || '1';
   const staffLabel = searchParams.get('staffLabel') || 'Main Entrance Gate';
 
-  const selectedEvent: LaoEvent = useMemo(() => {
-    try {
-      const orgEventsRaw = localStorage.getItem('organizer_events');
-      if (orgEventsRaw) {
-        const orgEvents = JSON.parse(orgEventsRaw);
-        if (Array.isArray(orgEvents)) {
-          const found = orgEvents.find((e: any) => e.id === eventId);
-          if (found) return found;
-        }
+  const emptyEvent = useMemo(
+    () =>
+      ({
+        id: eventId,
+        title: '',
+        date: '',
+        time: '',
+        location: '',
+        venue: '',
+        image: '',
+        category: 'Other',
+        description: '',
+        ticketTiers: [],
+      }) as unknown as LaoEvent,
+    [eventId],
+  );
+  const [selectedEvent, setSelectedEvent] = useState<LaoEvent>(emptyEvent);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.getEvent(eventId).then((res) => {
+      if (!cancelled && res.data?.event) {
+        setSelectedEvent(fromBackendEvent(res.data.event));
       }
-    } catch(e) {}
-    try {
-      const userEventsRaw = localStorage.getItem('pasopkan_user_events');
-      if (userEventsRaw) {
-        const userEvents = JSON.parse(userEventsRaw);
-        if (Array.isArray(userEvents)) {
-          const found = userEvents.find((e: any) => e.id === eventId);
-          if (found) return found;
-        }
-      }
-    } catch (e) {}
-    return events.find(e => e.id === eventId) || events[0];
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [eventId]);
 
   const totalCapacity = useMemo(() => {
@@ -310,15 +317,16 @@ export default function StaffScanner() {
     }, 5000);
   };
 
-  // Ticket Lookup helper
-  const lookupTicket = (code: string) => {
+  // Ticket lookup: preview a scanned code against the real order (GET
+  // /api/checkins/lookup/:code) — this never checks the ticket in, so
+  // re-scanning while staff decide is harmless. confirmCheckIn() below does
+  // the actual (idempotent) check-in once staff confirm what they see here.
+  const lookupTicket = async (code: string) => {
     const cleanCode = code.trim();
     if (!cleanCode) return;
 
-    // Check if valid code format
-    const isValid = cleanCode.startsWith('tk_') || cleanCode.startsWith('TK-') || cleanCode.length >= 4;
-
-    if (!isValid) {
+    const res = await api.lookupTicket(cleanCode);
+    if (!res.ok || !res.data) {
       setScannedTicket({
         ticketId: cleanCode,
         attendeeName: 'Unknown Attendee',
@@ -337,100 +345,56 @@ export default function StaffScanner() {
       return;
     }
 
-    // Check if already checked in
+    const ticket = res.data.ticket;
+    const isRefunded = ticket.itemStatus === 'refunded' || ticket.itemStatus === 'void';
+    const isUnpaid = ticket.orderStatus !== 'confirmed' && ticket.orderStatus !== 'paid';
+    const bookingDate = ticket.orderCreatedAt
+      ? new Date(ticket.orderCreatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : 'N/A';
     const existingCheckin = checkins.find(c => c.ticketId.toLowerCase() === cleanCode.toLowerCase());
 
-    // Generate ticket details deterministically or from user purchases
-    const userTicketsStr = localStorage.getItem('pasopkan_user_tickets');
-    let foundUserTicket: any = null;
-    if (userTicketsStr) {
-      try {
-        const userTickets = JSON.parse(userTicketsStr);
-        foundUserTicket = userTickets.find((ut: any) => 
-          ut.id?.toLowerCase() === cleanCode.toLowerCase() || 
-          ut.ticketId?.toLowerCase() === cleanCode.toLowerCase()
-        );
-      } catch (e) {}
-    }
-
-    // Check if ticket is refunded via registry or status
-    const refundedTicketsStr = localStorage.getItem('pasopkan_refunded_tickets');
-    let isRefunded = false;
-    if (refundedTicketsStr) {
-      try {
-        const refundedList = JSON.parse(refundedTicketsStr);
-        if (Array.isArray(refundedList) && refundedList.some((id: string) => id?.toLowerCase() === cleanCode.toLowerCase())) {
-          isRefunded = true;
-        }
-      } catch (e) {}
-    }
-
-    if (foundUserTicket && (foundUserTicket.status === 'pending_refund' || foundUserTicket.status === 'refunded')) {
-      isRefunded = true;
-    }
-
-    const firstNames = ['Alex', 'Sarah', 'Sengdeuan', 'John', 'Michael', 'Emma', 'Daniel', 'Sophia', 'James', 'Khamla'];
-    const lastNames = ['Keo', 'Connor', 'Souksavat', 'Smith', 'Scott', 'Davis', 'Wilson', 'Anderson', 'Phomvihane', 'Taylor'];
-    
-    const index = Math.abs(cleanCode.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % firstNames.length;
-    
-    let mockName = `${firstNames[index]} ${lastNames[index]}`;
-    let mockEmail = `${(mockName || '').toLowerCase().replace(' ', '.')}@example.com`;
-    let mockPhone = `+856 20 ${5000 + (index * 123)} ${1000 + (index * 456)}`;
-    let tierName = selectedEvent.ticketTiers?.[0]?.name || 'Standard Pass';
-    let tierPrice = selectedEvent.ticketTiers?.[0]?.price;
-    let priceText = tierPrice ? `${tierPrice.toLocaleString()} LAK` : '350,000 LAK';
-    let bookingDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
-    if (foundUserTicket) {
-      if (foundUserTicket.userName) mockName = foundUserTicket.userName;
-      if (foundUserTicket.tier) {
-        tierName = foundUserTicket.tier.name;
-        priceText = foundUserTicket.tier.price ? `${foundUserTicket.tier.price.toLocaleString()} LAK` : priceText;
-      }
-      if (foundUserTicket.purchaseDate || foundUserTicket.bookingDate) {
-        bookingDate = new Date(foundUserTicket.purchaseDate || foundUserTicket.bookingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      }
-    }
-
-    // Handle refunded ticket - strictly invalidate entry
-    if (isRefunded) {
+    if (isRefunded || isUnpaid) {
       setScannedTicket({
-        ticketId: cleanCode,
-        attendeeName: foundUserTicket?.attendeeName || foundUserTicket?.userName || mockName,
-        email: foundUserTicket?.email || mockEmail,
-        phone: foundUserTicket?.phone || mockPhone,
-        ticketType: tierName,
-        zone: selectedEvent.hasSeating ? 'VIP Zone A' : 'Main Arena',
-        seat: selectedEvent.hasSeating ? `Row ${(index % 12) + 1}, Seat ${(index % 20) + 1}` : 'Standing Area',
-        price: priceText,
-        bookingDate: bookingDate,
+        ticketId: ticket.ticketCode,
+        attendeeName: ticket.attendeeName || 'Guest',
+        email: ticket.attendeeEmail || 'N/A',
+        phone: ticket.attendeePhone || 'N/A',
+        ticketType: ticket.tierName,
+        zone: ticket.zoneName || (selectedEvent.hasSeating ? 'VIP Zone A' : 'Main Arena'),
+        seat: ticket.seatLabel || 'Standing Area',
+        price: `${ticket.unitPriceKip.toLocaleString()} LAK`,
+        bookingDate,
         alreadyCheckedIn: false,
         isValid: false,
-        isRefunded: true
+        isRefunded
       });
       if ('vibrate' in navigator) navigator.vibrate([300, 100, 300, 100, 300]);
-      showToast(lang === 'lo' ? 'ປີ້ຖືກຄືນເງິນແລ້ວ - ລະຫັດບໍ່ຖືກຕ້ອງ!' : 'Ticket has been refunded - Invalid QR Code!', 'error');
+      showToast(
+        isRefunded
+          ? (lang === 'lo' ? 'ປີ້ຖືກຄືນເງິນແລ້ວ - ລະຫັດບໍ່ຖືກຕ້ອງ!' : 'Ticket has been refunded - Invalid QR Code!')
+          : (lang === 'lo' ? 'ຍັງບໍ່ໄດ້ຊຳລະເງິນ' : 'This ticket has not been paid for'),
+        'error',
+      );
       return;
     }
 
     setScannedTicket({
-      ticketId: cleanCode,
-      attendeeName: mockName,
-      email: mockEmail,
-      phone: mockPhone,
-      ticketType: tierName,
-      zone: selectedEvent.hasSeating ? 'VIP Zone A' : 'Main Arena',
-      seat: selectedEvent.hasSeating ? `Row ${(index % 12) + 1}, Seat ${(index % 20) + 1}` : 'Standing Area',
-      price: priceText,
-      bookingDate: bookingDate,
-      alreadyCheckedIn: !!existingCheckin,
+      ticketId: ticket.ticketCode,
+      attendeeName: ticket.attendeeName || 'Guest',
+      email: ticket.attendeeEmail || 'N/A',
+      phone: ticket.attendeePhone || 'N/A',
+      ticketType: ticket.tierName,
+      zone: ticket.zoneName || (selectedEvent.hasSeating ? 'VIP Zone A' : 'Main Arena'),
+      seat: ticket.seatLabel || 'Standing Area',
+      price: `${ticket.unitPriceKip.toLocaleString()} LAK`,
+      bookingDate,
+      alreadyCheckedIn: ticket.alreadyCheckedIn || !!existingCheckin,
       checkedInRecord: existingCheckin,
-      customAnswers: foundUserTicket?.customAnswers || existingCheckin?.customAnswers,
+      customAnswers: ticket.customAnswers || existingCheckin?.customAnswers,
       isValid: true
     });
 
-    if (existingCheckin) {
+    if (ticket.alreadyCheckedIn || existingCheckin) {
       if ('vibrate' in navigator) navigator.vibrate([200, 100, 200]);
       showToast(t.alreadyScanned, 'warning');
     } else {

@@ -100,7 +100,7 @@ export function toEventPayload(e: FeEvent): Record<string, unknown> {
       .map((c: FeEvent) => ({
         code: String(c.code),
         discountType: c.discountType === "fixed" || c.type === "fixed" ? "fixed" : "percent",
-        discountValue: num(c.discountValue ?? c.percentage ?? c.amount ?? c.value),
+        discountValue: num(c.discountValue ?? c.discount ?? c.percentage ?? c.amount ?? c.value),
       })),
   };
 }

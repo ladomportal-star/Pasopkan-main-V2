@@ -7,7 +7,8 @@ import { safeStorage } from '../lib/storage';
 import { api } from '../lib/api';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
-import { events, SeatingZone, Coupon } from '../data/events';
+import { LaoEvent, SeatingZone, Coupon } from '../data/events';
+import { fromBackendEvent, toEventPayload } from '../lib/eventPayload';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
@@ -624,65 +625,57 @@ export default function Account() {
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [myEvents, setMyEvents] = useState(() => {
-    const defaultEvents = [
-      { 
-        ...events[0], 
-        registered: 124, 
-        scanned: 45, 
-        hasSeating: true,
-        zoneImage: '/src/assets/images/seating_map_layout_1782798956470.jpg'
-      },
-      { ...events[1], registered: 85, scanned: 80, hasSeating: false },
-      { 
-        ...(events.find(e => e.id === '4') || events[3] || {
-          id: '4',
-          title: 'Lao Cooking Masterclass',
-          dateType: 'booking',
-          bookingDuration: '3.5 Hours',
-          bookingCapacity: '12',
-          bookingTimeSlots: ['08:30 - 11:30', '11:30 - 14:30', '14:30 - 17:30'],
-          bookingSlotCapacities: {
-            '08:30 - 11:30': 12,
-            '11:30 - 14:30': 12,
-            '14:30 - 17:30': 12
-          },
-          bookingAvailableDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-          bookingApprovalMode: 'instant',
-          bookingStartDate: '2026-09-01',
-          bookingEndDate: '2026-12-31',
-          date: '2026-09-01',
-          endDate: '2026-12-31',
-          ticketTiers: [
-            { id: 't7', name: 'Cooking Class Seat', price: 300, available: 15, description: 'Includes recipe book and ingredients.' },
-            { id: 't8', name: 'VIP Chef Table & Wine', price: 550, available: 8, description: 'Includes private station and premium paired wine.' }
-          ]
-        }), 
-        dateType: 'booking',
-        registered: 24, 
-        scanned: 8, 
-        hasSeating: false 
-      }
-    ];
+  // A handful of legacy display-only fields (registered/scanned/tiers/...)
+  // that predate the real backend and aren't part of LaoEvent proper.
+  type OrganizerEvent = LaoEvent & Record<string, any>;
+  const [myEvents, setMyEvents] = useState<OrganizerEvent[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string>('');
+  // A placeholder so `selectedEvent` is never undefined — while events are
+  // still loading, and for an organizer with no events at all yet.
+  const noEvent = useMemo(
+    () =>
+      ({
+        id: '',
+        title: '',
+        date: '',
+        time: '',
+        location: '',
+        venue: '',
+        image: '',
+        category: 'Other',
+        description: '',
+        ticketTiers: [],
+        registered: 0,
+      }) as unknown as OrganizerEvent,
+    [],
+  );
+  const selectedEvent = myEvents.find(e => e.id === selectedEventId) || myEvents[0] || noEvent;
 
-    try {
-      const savedOrganizerEventsStr = safeStorage.getItem('organizer_events');
-      if (savedOrganizerEventsStr) {
-        const savedOrganizerEvents = JSON.parse(savedOrganizerEventsStr);
-        if (Array.isArray(savedOrganizerEvents) && savedOrganizerEvents.length > 0) {
-          // Merge custom created events, ensuring we don't duplicate by ID
-          const existingIds = new Set(savedOrganizerEvents.map(e => e.id));
-          return [...savedOrganizerEvents, ...defaultEvents.filter(e => !existingIds.has(e.id))];
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load organizer events:', e);
-    }
-    
-    return defaultEvents;
-  });
-  const [selectedEventId, setSelectedEventId] = useState<string>(myEvents[0]?.id || '1');
-  const selectedEvent = myEvents.find(e => e.id === selectedEventId) || myEvents[0];
+  // The organizer's own events (drafts included) — the real replacement for
+  // what used to be a hardcoded sample list merged with organizer_events.
+  const loadMyEvents = async () => {
+    const res = await api.listEvents({ mine: true });
+    const mine = (res.data?.events ?? []).map((e) => {
+      const mapped = fromBackendEvent(e);
+      const registered = (mapped.ticketTiers || []).reduce(
+        (sum: number, t: any) => sum + (Number(t.sold) || 0),
+        0,
+      );
+      return { ...mapped, registered };
+    });
+    setMyEvents(mine);
+    setSelectedEventId((prev) => prev || mine[0]?.id || '');
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    loadMyEvents().catch(() => {
+      if (!cancelled) setMyEvents([]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [showScanner, setShowScanner] = useState(false);
   const [scannedIds, setScannedIds] = useState<string[]>([]);
@@ -832,23 +825,12 @@ export default function Account() {
     }
   }, [location.state]);
 
-  // Sync organizer events when admin approves, rejects or updates them
+  // Re-fetch when an admin approves/rejects an event elsewhere, or another
+  // tab changes something — re-pull from the API rather than trusting
+  // whatever's sitting in localStorage.
   useEffect(() => {
     const handleSyncEvents = () => {
-      try {
-        const savedOrganizerEventsStr = safeStorage.getItem('organizer_events');
-        if (savedOrganizerEventsStr) {
-          const saved = JSON.parse(savedOrganizerEventsStr);
-          if (Array.isArray(saved) && saved.length > 0) {
-            setMyEvents(prev => {
-              const defaultEvts = prev.filter(e => ['1', '2', '3', '4', '6'].includes(String(e.id)) && !saved.some((s: any) => String(s.id) === String(e.id)));
-              return [...saved, ...defaultEvts];
-            });
-          }
-        }
-      } catch {
-        // Fallback
-      }
+      loadMyEvents().catch(() => {});
     };
 
     window.addEventListener('storage', handleSyncEvents);
@@ -1202,8 +1184,6 @@ export default function Account() {
     }
   ];
 
-  const pastEvents = events.slice(0, 3);
-
   const [showFullMap, setShowFullMap] = useState(false);
   const [isSavingZone, setIsSavingZone] = useState(false);
   const [showZoneSuccess, setShowZoneSuccess] = useState(false);
@@ -1259,24 +1239,14 @@ export default function Account() {
     ));
   };
 
-  const handleUpdateEventCoupons = (updatedCoupons: Coupon[]) => {
-    setMyEvents(prev => {
-      const updated = prev.map(e => {
-        if (String(e.id) === String(selectedEvent.id)) {
-          return {
-            ...e,
-            coupons: updatedCoupons,
-          };
-        }
-        return e;
-      });
-      try {
-        safeStorage.setItem('organizer_events', JSON.stringify(updated));
-      } catch (err) {
-        console.error('Failed to save organizer events:', err);
-      }
-      return updated;
-    });
+  const handleUpdateEventCoupons = async (updatedCoupons: Coupon[]) => {
+    setMyEvents(prev =>
+      prev.map(e => (String(e.id) === String(selectedEvent.id) ? { ...e, coupons: updatedCoupons } : e)),
+    );
+    const res = await api.updateEvent(String(selectedEvent.id), toEventPayload({ ...selectedEvent, coupons: updatedCoupons }));
+    if (!res.ok) {
+      console.error('Failed to save coupons:', res.error);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -51,4 +51,29 @@ describe("check-ins", () => {
     expect(res.status).toBe(409);
     expect(res.body.error).toMatch(/not been paid/);
   });
+
+  it("404s a ticket code that doesn't match any real order (no scan-anything backdoor)", async () => {
+    const { event } = await ticketCode("Free");
+    const res = await scan({ ticketCode: "NOT-A-REAL-CODE", eventId: event.id });
+    expect(res.status).toBe(404);
+  });
+
+  it("lookup previews a real ticket without checking it in, then reflects the check-in", async () => {
+    const { event, code } = await ticketCode("Free");
+
+    const miss = await request(app)
+      .get("/api/checkins/lookup/NOT-A-REAL-CODE")
+      .set(await as("staff-1"));
+    expect(miss.status).toBe(404);
+
+    const before = await request(app).get(`/api/checkins/lookup/${code}`).set(await as("staff-1"));
+    expect(before.status).toBe(200);
+    expect(before.body.ticket.ticketCode).toBe(code);
+    expect(before.body.ticket.alreadyCheckedIn).toBe(false);
+
+    await scan({ ticketCode: code, eventId: event.id });
+
+    const after = await request(app).get(`/api/checkins/lookup/${code}`).set(await as("staff-1"));
+    expect(after.body.ticket.alreadyCheckedIn).toBe(true);
+  });
 });
