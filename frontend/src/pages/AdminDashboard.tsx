@@ -7,7 +7,6 @@ import { events } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { supabase } from "../lib/supabase";
 import Logo from '../components/Logo';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, ReferenceLine, Legend } from 'recharts';
 import SiteSettingsTab from '../components/SiteSettingsTab';
@@ -737,32 +736,14 @@ export default function AdminDashboard() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // Check if current user is an admin in Firestore
+  // Grant dashboard access once AuthContext has synced the user's role from
+  // the backend `users` table (the actual source of truth for admin status).
   useEffect(() => {
-    const checkUserRole = async () => {
-      if (user) {
-        const adminEmails = ['phanyadeth@gmail.com', 'admin@pasopkan.com'];
-        if (adminEmails.includes(user.email || '')) {
-          setIsAdminAuthenticated(true);
-          sessionStorage.setItem('pasopkan_admin_authorized', 'true');
-          return;
-        }
-
-        // Only query Firestore if we have a real active Firebase authenticated user matching our user.uid
-        if (user.id) {
-          try {
-            const { data, error } = await supabase.from('users').select('role').eq('id', user.id).single();
-            if (data && data.role === 'admin' && !error) {
-              setIsAdminAuthenticated(true);
-              sessionStorage.setItem('pasopkan_admin_authorized', 'true');
-            }
-          } catch (err) {
-            console.error(err);
-          }
-        }
-      }
-    };
-    checkUserRole();
+    const adminEmails = ['phanyadeth@gmail.com', 'admin@pasopkan.com'];
+    if (user && (user.role === 'admin' || adminEmails.includes(user.email || ''))) {
+      setIsAdminAuthenticated(true);
+      sessionStorage.setItem('pasopkan_admin_authorized', 'true');
+    }
   }, [user]);
 
   const handleAdminPasswordLogin = async (e: React.FormEvent) => {

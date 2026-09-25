@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { safeStorage } from '../lib/storage';
+import { api, BackendUser } from '../lib/api';
 import DotsLoader from '../components/DotsLoader';
 
 export type AppUser = User & {
@@ -43,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session) {
         setToken(session.access_token);
         safeStorage.setItem('token', session.access_token);
-        fetchAndSetUserProfile(session.user);
+        fetchAndSetUserProfile(session.user, session.access_token);
       } else {
         setLoading(false);
       }
@@ -54,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session) {
         setToken(session.access_token);
         safeStorage.setItem('token', session.access_token);
-        await fetchAndSetUserProfile(session.user);
+        await fetchAndSetUserProfile(session.user, session.access_token);
       } else {
         setToken(null);
         setUser(null);
@@ -66,56 +67,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchAndSetUserProfile = async (supabaseUser: User) => {
+  /** Map the backend's `users` row onto the `AppUser` shape the UI reads. */
+  const mergeBackendUser = (supabaseUser: User, backendUser: BackendUser): AppUser => ({
+    ...supabaseUser,
+    name: backendUser.displayName ?? undefined,
+    phone: backendUser.phone ?? undefined,
+    avatar: backendUser.avatarUrl ?? undefined,
+    role: backendUser.role,
+    displayName: backendUser.displayName || supabaseUser.email,
+    photoURL: backendUser.avatarUrl ?? undefined,
+  });
+
+  /** Sync the Supabase session into our own `users` table (source of truth
+   *  for `role` and profile fields) and load the result into state. */
+  const fetchAndSetUserProfile = async (supabaseUser: User, accessToken: string) => {
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', supabaseUser.id)
-        .single();
-      
-      let appUser: AppUser = { ...supabaseUser };
-      
-      if (data && !error) {
-        appUser = {
-          ...appUser,
-          name: data.name || data.first_name,
-          firstName: data.first_name,
-          lastName: data.last_name,
-          phone: data.phone,
-          avatar: data.profile_pic,
-          role: data.role,
-          displayName: data.name || data.first_name || supabaseUser.email,
-          photoURL: data.profile_pic
-        };
-      } else {
-        // If they don't have a profile yet, create one
-        const nameParts = supabaseUser.user_metadata?.full_name?.split(' ') || [];
-        const newProfile = {
-          id: supabaseUser.id,
-          email: supabaseUser.email,
-          first_name: nameParts[0] || '',
-          last_name: nameParts.slice(1).join(' ') || '',
-          name: supabaseUser.user_metadata?.full_name || '',
-          profile_pic: supabaseUser.user_metadata?.avatar_url || ''
-        };
-        await supabase.from('users').insert(newProfile);
-        
-        appUser = {
-          ...appUser,
-          name: newProfile.name,
-          firstName: newProfile.first_name,
-          lastName: newProfile.last_name,
-          displayName: newProfile.name || supabaseUser.email,
-          avatar: newProfile.profile_pic,
-          photoURL: newProfile.profile_pic
-        };
-      }
-      
-      setUser(appUser);
+      const { data, error } = await api.syncAccount(
+        {
+          email: supabaseUser.email ?? '',
+          displayName: supabaseUser.user_metadata?.full_name || undefined,
+          avatarUrl: supabaseUser.user_metadata?.avatar_url || undefined,
+        },
+        { token: accessToken, throwOnError: true },
+      );
+      if (error || !data) throw new Error(error || 'No data returned');
+      setUser(mergeBackendUser(supabaseUser, data.user));
     } catch (e) {
-      console.error('Error fetching user profile from Supabase:', e);
-      setUser(supabaseUser); // fallback
+      console.error('Error syncing user profile with backend:', e);
+      setUser(supabaseUser); // fallback: signed in, but role/profile unknown
     } finally {
       setLoading(false);
     }
@@ -176,29 +155,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  /** Push profile edits to the backend. Only `displayName`/`phone`/`avatarUrl`
+   *  are persisted server-side today — fields like gender/dob have no column
+   *  in the `users` table yet, so they're kept in local state only. */
   const syncProfileToSupabase = async (profileData: any) => {
-    if (!user) return;
-    
+    if (!user || !token) return;
+
+    const displayName =
+      profileData.firstName || profileData.lastName
+        ? `${profileData.firstName || ''} ${profileData.lastName || ''}`.trim()
+        : (user.displayName ?? undefined);
+
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({
-          first_name: profileData.firstName,
-          last_name: profileData.lastName,
-          name: `${profileData.firstName || ''} ${profileData.lastName || ''}`.trim(),
-          phone: profileData.phone,
-          gender: profileData.gender,
-          dob: profileData.dob,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
-        
-      if (error) throw error;
-      
-      // Update local state
-      setUser(prev => prev ? { ...prev, ...profileData } : null);
+      const { data, error } = await api.syncAccount(
+        {
+          email: user.email ?? '',
+          displayName,
+          phone: profileData.phone ?? user.phone,
+          avatarUrl: profileData.profilePic ?? profileData.avatarUrl ?? user.avatar,
+        },
+        { token, throwOnError: true },
+      );
+      if (error || !data) throw new Error(error || 'No data returned');
+
+      setUser((prev) =>
+        prev ? { ...prev, ...profileData, ...mergeBackendUser(prev, data.user) } : null,
+      );
     } catch (e) {
-      console.error('Failed to sync profile to Supabase', e);
+      console.error('Failed to sync profile with backend', e);
     }
   };
 

@@ -5,9 +5,9 @@
  * production the frontend and backend share an origin (or CORS is set).
  *
  * All helpers are non-throwing by default: on a network error or non-2xx
- * response they resolve to `{ ok: false, ... }` so callers can dual-write
- * to Firestore/localStorage without a try/catch. Pass `{ throwOnError: true }`
- * when you do want an exception.
+ * response they resolve to `{ ok: false, ... }` so callers can handle the
+ * failure without a try/catch. Pass `{ throwOnError: true }` when you do
+ * want an exception.
  */
 import { safeStorage } from './storage';
 
@@ -24,6 +24,19 @@ interface RequestOptions {
   token?: string | null;
   throwOnError?: boolean;
   signal?: AbortSignal;
+}
+
+/** Shape of the `users` row the backend returns from `/account/sync`. */
+export interface BackendUser {
+  id: string;
+  firebaseUid: string;
+  email: string;
+  displayName: string | null;
+  phone: string | null;
+  avatarUrl: string | null;
+  role: 'user' | 'organizer' | 'admin';
+  createdAt: string;
+  updatedAt: string;
 }
 
 function authToken(explicit?: string | null): string | null {
@@ -82,7 +95,7 @@ export const api = {
   syncAccount: (
     profile: { email: string; displayName?: string; phone?: string; avatarUrl?: string },
     opts?: RequestOptions,
-  ) => request('POST', '/account/sync', profile, opts),
+  ) => request<{ success: true; user: BackendUser }>('POST', '/account/sync', profile, opts),
 
   createEvent: (event: Record<string, unknown>, opts?: RequestOptions) =>
     request<{ event: { id: string } }>('POST', '/events', event, opts),

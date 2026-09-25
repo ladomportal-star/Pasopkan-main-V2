@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Pasopkan API server (Express + Drizzle ORM + Firebase Admin)",
+  "description": "Pasopkan API server (Express + Drizzle ORM + Supabase Auth)",
   "main": "src/server.ts",
   "scripts": {
     "predev": "node ./scripts/free-port.mjs",
