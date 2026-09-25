@@ -66,14 +66,18 @@ describe("check-ins", () => {
       .set(await as("staff-1"));
     expect(miss.status).toBe(404);
 
-    const before = await request(app).get(`/api/checkins/lookup/${code}`).set(await as("staff-1"));
+    const before = await request(app)
+      .get(`/api/checkins/lookup/${code}`)
+      .set(await as("staff-1"));
     expect(before.status).toBe(200);
     expect(before.body.ticket.ticketCode).toBe(code);
     expect(before.body.ticket.alreadyCheckedIn).toBe(false);
 
     await scan({ ticketCode: code, eventId: event.id });
 
-    const after = await request(app).get(`/api/checkins/lookup/${code}`).set(await as("staff-1"));
+    const after = await request(app)
+      .get(`/api/checkins/lookup/${code}`)
+      .set(await as("staff-1"));
     expect(after.body.ticket.alreadyCheckedIn).toBe(true);
   });
 });
