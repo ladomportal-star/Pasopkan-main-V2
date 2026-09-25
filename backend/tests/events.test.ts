@@ -77,7 +77,7 @@ describe("events", () => {
     expect(byOwner.body.event.title).toBe("After");
     expect(byOwner.body.event.tiers).toHaveLength(2); // untouched when not sent
 
-    await db.insert(users).values({ firebaseUid: "admin-1", email: "a@test.local", role: "admin" });
+    await db.insert(users).values({ authUid: "admin-1", email: "a@test.local", role: "admin" });
     const byAdmin = await request(app)
       .put(`/api/events/${event.id}`)
       .set(await as("admin-1"))

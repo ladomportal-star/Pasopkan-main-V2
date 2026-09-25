@@ -29,10 +29,13 @@ interface RequestOptions {
 /** Shape of the `users` row the backend returns from `/account/sync`. */
 export interface BackendUser {
   id: string;
-  firebaseUid: string;
+  authUid: string;
   email: string;
-  displayName: string | null;
+  firstName: string | null;
+  lastName: string | null;
   phone: string | null;
+  gender: 'male' | 'female' | 'other' | null;
+  dateOfBirth: string | null;
   avatarUrl: string | null;
   role: 'user' | 'organizer' | 'admin';
   createdAt: string;
@@ -93,7 +96,15 @@ export const api = {
   /* ---- domain helpers ---- */
 
   syncAccount: (
-    profile: { email: string; displayName?: string; phone?: string; avatarUrl?: string },
+    profile: {
+      email: string;
+      firstName?: string;
+      lastName?: string;
+      phone?: string;
+      gender?: 'male' | 'female' | 'other';
+      dateOfBirth?: string;
+      avatarUrl?: string;
+    },
     opts?: RequestOptions,
   ) => request<{ success: true; user: BackendUser }>('POST', '/account/sync', profile, opts),
 

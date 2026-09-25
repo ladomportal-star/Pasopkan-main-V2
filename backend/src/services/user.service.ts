@@ -4,8 +4,11 @@ import { users } from "../models/schema.ts";
 
 export interface ProfileInput {
   email?: string;
-  displayName?: string;
+  firstName?: string;
+  lastName?: string;
   phone?: string;
+  gender?: "male" | "female" | "other";
+  dateOfBirth?: string;
   avatarUrl?: string;
 }
 
@@ -15,24 +18,26 @@ export async function getOrCreateUser(uid: string, email?: string) {
 }
 
 /**
- * Upsert the user row keyed by the identity provider's user id (stored in
- * `firebase_uid` for historical reasons — it now holds the Supabase Auth `sub`).
- * Only fields the caller actually supplied are written, so a partial sync
- * never wipes data that is already stored.
+ * Upsert the user row keyed by the identity provider's user id (`auth_uid`,
+ * the Supabase Auth `sub`). Only fields the caller actually supplied are
+ * written, so a partial sync never wipes data that is already stored.
  */
 export async function upsertUserProfile(uid: string, profile: ProfileInput) {
   const patch = {
     ...(profile.email && { email: profile.email }),
-    ...(profile.displayName !== undefined && { displayName: profile.displayName }),
+    ...(profile.firstName !== undefined && { firstName: profile.firstName }),
+    ...(profile.lastName !== undefined && { lastName: profile.lastName }),
     ...(profile.phone !== undefined && { phone: profile.phone }),
+    ...(profile.gender !== undefined && { gender: profile.gender }),
+    ...(profile.dateOfBirth !== undefined && { dateOfBirth: profile.dateOfBirth }),
     ...(profile.avatarUrl !== undefined && { avatarUrl: profile.avatarUrl }),
   };
 
   const [row] = await db
     .insert(users)
-    .values({ firebaseUid: uid, email: profile.email ?? "", ...patch })
+    .values({ authUid: uid, email: profile.email ?? "", ...patch })
     .onConflictDoUpdate({
-      target: users.firebaseUid,
+      target: users.authUid,
       set: { ...patch, updatedAt: new Date() },
     })
     .returning();
@@ -42,10 +47,6 @@ export async function upsertUserProfile(uid: string, profile: ProfileInput) {
 
 /** The user's application role ("user" | "organizer" | "admin"); "user" if unknown. */
 export async function getUserRole(uid: string, exec: Pick<typeof db, "select"> = db) {
-  const [row] = await exec
-    .select({ role: users.role })
-    .from(users)
-    .where(eq(users.firebaseUid, uid))
-    .limit(1);
+  const [row] = await exec.select({ role: users.role }).from(users).where(eq(users.authUid, uid)).limit(1);
   return row?.role ?? "user";
 }

@@ -143,7 +143,7 @@ describe("notifications (database-backed, per user)", () => {
 
     await db
       .insert(users)
-      .values({ firebaseUid: "the-admin", email: "admin@test.local", role: "admin" });
+      .values({ authUid: "the-admin", email: "admin@test.local", role: "admin" });
 
     const bad = await request(app)
       .post("/api/notifications")

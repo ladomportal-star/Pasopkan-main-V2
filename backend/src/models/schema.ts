@@ -19,6 +19,7 @@ import {
  * ========================================================================== */
 
 export const userRole = pgEnum("user_role", ["user", "organizer", "admin"]);
+export const gender = pgEnum("gender", ["male", "female", "other"]);
 export const eventCategory = pgEnum("event_category", [
   "Sports",
   "Workshop",
@@ -59,10 +60,13 @@ export const notificationType = pgEnum("notification_type", [
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
-  firebaseUid: text("firebase_uid").notNull().unique(), // Firebase Auth UID
+  authUid: text("auth_uid").notNull().unique(), // Supabase Auth user id (JWT `sub`)
   email: text("email").notNull(),
-  displayName: text("display_name"),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
   phone: text("phone"),
+  gender: gender("gender"),
+  dateOfBirth: date("date_of_birth"),
   avatarUrl: text("avatar_url"),
   role: userRole("role").notNull().default("user"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -322,7 +326,7 @@ export const notifications = pgTable(
   "notifications",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    // Identity-provider user id of the recipient (same value as users.firebase_uid).
+    // Identity-provider user id of the recipient (same value as users.auth_uid).
     userUid: text("user_uid").notNull(),
     type: notificationType("type").notNull().default("system"),
     title: text("title").notNull(),

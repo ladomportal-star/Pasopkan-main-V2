@@ -29,6 +29,13 @@
       "when": 1790144137410,
       "tag": "0003_drop_reviews_and_ticket_zones",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790331390230,
+      "tag": "0004_users_auth_uid_profile_fields",
+      "breakpoints": true
     }
   ]
 }

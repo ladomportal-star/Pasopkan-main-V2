@@ -58,40 +58,35 @@ const translations = {
 export default function EditProfile() {
   const navigate = useNavigate();
   const { lang } = useLanguage();
-  const { syncProfileToFirestore } = useAuth();
+  const { user, syncProfileToFirestore } = useAuth();
   const t = translations[lang];
   const [profilePic, setProfilePic] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [formData, setFormData] = useState(() => {
-    try {
-      const saved = localStorage.getItem('pasopkan_user_profile');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return {
-          firstName: 'Sirithida',
-          lastName: 'Souksavat',
-          email: 'sirithida.ssv@gmail.com',
-          phone: '',
-          gender: '' as 'male' | 'female' | 'other' | '',
-          dateOfBirth: parsed.dateOfBirth || parsed.dob || '',
-          dob: parsed.dob || parsed.dateOfBirth || '',
-          ...parsed
-        };
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    return {
-      firstName: 'Sirithida',
-      lastName: 'Souksavat',
-      email: 'sirithida.ssv@gmail.com',
-      phone: '',
-      gender: '' as 'male' | 'female' | 'other' | '',
-      dateOfBirth: '',
-      dob: '',
-    };
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    gender: '' as 'male' | 'female' | 'other' | '',
+    dateOfBirth: '',
+    dob: '',
   });
+
+  // Load the real, backend-synced profile once AuthContext has it.
+  useEffect(() => {
+    if (!user) return;
+    setFormData({
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      gender: (user.gender as 'male' | 'female' | 'other' | undefined) || '',
+      dateOfBirth: user.dateOfBirth || '',
+      dob: user.dateOfBirth || '',
+    });
+    if (user.avatar) setProfilePic(user.avatar);
+  }, [user]);
 
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);

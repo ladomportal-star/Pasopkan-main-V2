@@ -11,6 +11,8 @@ export type AppUser = User & {
   firstName?: string;
   lastName?: string;
   phone?: string;
+  gender?: 'male' | 'female' | 'other';
+  dateOfBirth?: string;
   avatar?: string;
   role?: string;
   displayName?: string;
@@ -68,24 +70,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /** Map the backend's `users` row onto the `AppUser` shape the UI reads. */
-  const mergeBackendUser = (supabaseUser: User, backendUser: BackendUser): AppUser => ({
-    ...supabaseUser,
-    name: backendUser.displayName ?? undefined,
-    phone: backendUser.phone ?? undefined,
-    avatar: backendUser.avatarUrl ?? undefined,
-    role: backendUser.role,
-    displayName: backendUser.displayName || supabaseUser.email,
-    photoURL: backendUser.avatarUrl ?? undefined,
-  });
+  const mergeBackendUser = (supabaseUser: User, backendUser: BackendUser): AppUser => {
+    const name = [backendUser.firstName, backendUser.lastName].filter(Boolean).join(' ');
+    return {
+      ...supabaseUser,
+      name: name || undefined,
+      firstName: backendUser.firstName ?? undefined,
+      lastName: backendUser.lastName ?? undefined,
+      phone: backendUser.phone ?? undefined,
+      gender: backendUser.gender ?? undefined,
+      dateOfBirth: backendUser.dateOfBirth ?? undefined,
+      avatar: backendUser.avatarUrl ?? undefined,
+      role: backendUser.role,
+      displayName: name || supabaseUser.email,
+      photoURL: backendUser.avatarUrl ?? undefined,
+    };
+  };
 
   /** Sync the Supabase session into our own `users` table (source of truth
    *  for `role` and profile fields) and load the result into state. */
   const fetchAndSetUserProfile = async (supabaseUser: User, accessToken: string) => {
     try {
+      const fullName: string = supabaseUser.user_metadata?.full_name || '';
+      const [firstName, ...rest] = fullName.split(' ');
       const { data, error } = await api.syncAccount(
         {
           email: supabaseUser.email ?? '',
-          displayName: supabaseUser.user_metadata?.full_name || undefined,
+          firstName: firstName || undefined,
+          lastName: rest.length > 0 ? rest.join(' ') : undefined,
           avatarUrl: supabaseUser.user_metadata?.avatar_url || undefined,
         },
         { token: accessToken, throwOnError: true },
@@ -155,23 +167,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  /** Push profile edits to the backend. Only `displayName`/`phone`/`avatarUrl`
-   *  are persisted server-side today — fields like gender/dob have no column
-   *  in the `users` table yet, so they're kept in local state only. */
+  /** Push profile edits (name, phone, gender, date of birth, avatar) to the backend. */
   const syncProfileToSupabase = async (profileData: any) => {
     if (!user || !token) return;
 
-    const displayName =
-      profileData.firstName || profileData.lastName
-        ? `${profileData.firstName || ''} ${profileData.lastName || ''}`.trim()
-        : (user.displayName ?? undefined);
+    const gender: 'male' | 'female' | 'other' | undefined = ['male', 'female', 'other'].includes(
+      profileData.gender,
+    )
+      ? profileData.gender
+      : undefined;
 
     try {
       const { data, error } = await api.syncAccount(
         {
           email: user.email ?? '',
-          displayName,
+          firstName: profileData.firstName ?? user.firstName,
+          lastName: profileData.lastName ?? user.lastName,
           phone: profileData.phone ?? user.phone,
+          gender: gender ?? user.gender,
+          dateOfBirth: profileData.dateOfBirth || profileData.dob || user.dateOfBirth,
           avatarUrl: profileData.profilePic ?? profileData.avatarUrl ?? user.avatar,
         },
         { token, throwOnError: true },
