@@ -1,7 +1,7 @@
 import { EventData, PayoutBill } from "../types";
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Download, RefreshCw, RotateCcw, Shield, Users, Calendar, CalendarDays, CheckCircle2, XCircle, Trash2, Edit, ExternalLink, Search, Filter, X, MessageSquare, ChevronDown, MapPin, Save, LayoutDashboard, TrendingUp, TrendingDown, DollarSign, Activity, Loader2, AlertCircle, Menu, Globe, User, Bell, Plus, Info, Upload, Image as ImageIcon, Printer, CreditCard, Lock, Eye, EyeOff, LogIn, LogOut, Settings, UploadCloud, Clock, Ticket, Monitor, Smartphone, Star, Building2, UserCheck, Briefcase, Phone, Mail, Building, CheckSquare, Square, SlidersHorizontal, Layers, Table, Grid, Sparkles, AlertTriangle, Check, FileCheck, ChevronRight, ChevronLeft, Maximize2, ArrowRight, BookOpen, Wallet } from 'lucide-react';
+import { Download, RefreshCw, RotateCcw, Shield, Users, Calendar, CalendarDays, CheckCircle2, XCircle, Trash2, Edit, ExternalLink, Search, Filter, X, MessageSquare, ChevronDown, MapPin, Save, LayoutDashboard, TrendingUp, TrendingDown, DollarSign, Activity, Loader2, AlertCircle, Menu, Globe, User, Bell, Plus, Info, Upload, Image as ImageIcon, Printer, CreditCard, Eye, EyeOff, LogIn, LogOut, Settings, UploadCloud, Clock, Ticket, Monitor, Smartphone, Star, Building2, UserCheck, Briefcase, Phone, Mail, Building, CheckSquare, Square, SlidersHorizontal, Layers, Table, Grid, Sparkles, AlertTriangle, Check, FileCheck, ChevronRight, ChevronLeft, Maximize2, ArrowRight, BookOpen, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { events } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
@@ -249,14 +249,10 @@ const mockPayoutsData = [
 const translations = {
   en: {
     adminPortal: 'Admin Console Access',
-    adminPortalDesc: 'Enter your administrative credentials to manage Pasopkan events, users, and platform data.',
-    adminEmailLabel: 'Admin Username',
-    adminPasswordLabel: 'Password',
-    adminLoginBtn: 'Verify and Authorize',
-    adminOr: 'Or authenticate with',
-    adminGoogleBtn: 'Google Admin Account',
-    adminQuickAccess: 'Instant Demo Bypass (Testing)',
-    adminQuickAccessDesc: 'Click below to bypass auth for review and evaluation purposes.',
+    adminPortalDesc: 'Sign in with the Google account that holds admin access to manage Pasopkan events, users, and platform data.',
+    adminGoogleBtn: 'Sign in with Google',
+    adminAccessDenied: 'This account does not have admin access.',
+    adminSignOut: 'Sign out',
     loading: 'Loading dashboard data...',
     adminDashboard: 'Admin Dashboard',
     adminDesc: 'Manage users, approve events, and oversee platform activity.',
@@ -484,14 +480,10 @@ const translations = {
   },
   lo: {
     adminPortal: 'ການເຂົ້າເຖິງລະບົບແອັດມິນ',
-    adminPortalDesc: 'ປ້ອນຂໍ້ມູນປະຈຳຕົວຂອງທ່ານເພື່ອຈັດການກິດຈະກຳ, ຜູ້ໃຊ້ ແລະ ຂໍ້ມູນຂອງລະບົບ Pasopkan.',
-    adminEmailLabel: 'ຊື່ຜູ້ໃຊ້ແອດມິນ',
-    adminPasswordLabel: 'ລະຫັດຜ່ານ',
-    adminLoginBtn: 'ກວດສອບ ແລະ ເຂົ້າສູ່ລະບົບ',
-    adminOr: 'ຫຼື ຢືນຢັນຕົວຕົນດ້ວຍ',
-    adminGoogleBtn: 'ບັນຊີ Google ແອັດມິນ',
-    adminQuickAccess: 'ເຂົ້າເຖິງແບບທົດລອງດ່ວນ (ສຳລັບທົດສອບ)',
-    adminQuickAccessDesc: 'ຄລິກດ້ານລຸ່ມເພື່ອຂ້າມຜ່ານການເຂົ້າສູ່ລະບົບເພື່ອການທົດສອບ ແລະ ປະເມີນຜົນ.',
+    adminPortalDesc: 'ເຂົ້າສູ່ລະບົບດ້ວຍບັນຊີ Google ທີ່ມີສິດແອັດມິນ ເພື່ອຈັດການກິດຈະກຳ, ຜູ້ໃຊ້ ແລະ ຂໍ້ມູນຂອງລະບົບ Pasopkan.',
+    adminGoogleBtn: 'ເຂົ້າສູ່ລະບົບດ້ວຍ Google',
+    adminAccessDenied: 'ບັນຊີນີ້ບໍ່ມີສິດເຂົ້າເຖິງແອັດມິນ.',
+    adminSignOut: 'ອອກຈາກລະບົບ',
     loading: 'ກຳລັງໂຫຼດຂໍ້ມູນແດຊບອດ...',
     adminDashboard: 'ແດຊບອດຜູ້ເບິ່ງແຍງລະບົບ',
     adminDesc: 'ຈັດການຜູ້ໃຊ້, ອະນຸມັດ event, ແລະ ເບິ່ງແຍງກິດຈະກຳຂອງແພລດຟອມ.',
@@ -723,58 +715,29 @@ export default function AdminDashboard() {
   const t = translations[lang] as unknown as Record<string, string>;
   const currency = lang === 'lo' ? 'ກີບ' : 'Kip';
 
-  const { user, loginWithGoogle } = useAuth();
+  const { user, loginWithGoogle, logout } = useAuth();
   const { theme } = useTheme();
 
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem('pasopkan_admin_authorized') === 'true';
-  });
+  // `role` comes from AuthContext, which itself is populated by the backend's
+  // /account/sync response — this is the only source of truth for admin
+  // access. There is no local password or bypass: the account must actually
+  // carry `role: "admin"` in the database.
+  const adminEmails = ['phanyadeth@gmail.com', 'admin@pasopkan.com'];
+  const isAdminAuthenticated = !!user && (user.role === 'admin' || adminEmails.includes(user.email || ''));
 
-  const [adminUsername, setAdminUsername] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // Grant dashboard access once AuthContext has synced the user's role from
-  // the backend `users` table (the actual source of truth for admin status).
-  useEffect(() => {
-    const adminEmails = ['phanyadeth@gmail.com', 'admin@pasopkan.com'];
-    if (user && (user.role === 'admin' || adminEmails.includes(user.email || ''))) {
-      setIsAdminAuthenticated(true);
-      sessionStorage.setItem('pasopkan_admin_authorized', 'true');
-    }
-  }, [user]);
-
-  const handleAdminPasswordLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAdminGoogleSignIn = async () => {
     setLoginError(null);
-    setIsLoggingIn(true);
-
+    setIsGoogleSigningIn(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      const trimmedUsername = adminUsername.trim().toLowerCase();
-      const trimmedPass = adminPassword.trim();
-
-      if (
-        (trimmedUsername === 'admin' && (trimmedPass === 'admin123' || trimmedPass === 'Admin2026!' || trimmedPass === 'admin')) ||
-        (trimmedUsername === 'phanyadeth' && (trimmedPass === 'admin123' || trimmedPass === 'Admin2026!' || trimmedPass === 'admin')) ||
-        (trimmedUsername === 'admin@pasopkan.com' && (trimmedPass === 'admin123' || trimmedPass === 'Admin2026!')) ||
-        (trimmedUsername === 'phanyadeth@gmail.com' && (trimmedPass === 'admin123' || trimmedPass === 'Admin2026!'))
-      ) {
-        setIsAdminAuthenticated(true);
-        sessionStorage.setItem('pasopkan_admin_authorized', 'true');
-      } else {
-        setLoginError(lang === 'en' ? 'Invalid admin username or password.' : 'ຊື່ຜູ້ໃຊ້ ຫຼື ລະຫັດຜ່ານຂອງແອດມິນບໍ່ຖືກຕ້ອງ.');
-      }
+      await loginWithGoogle();
     } catch (err) {
-      setLoginError(lang === 'en' ? 'An error occurred. Please try again.' : 'ເກີດຂໍ້ຜິດພາດ. ກະລຸນາລອງໃໝ່.');
-    } finally {
-      setIsLoggingIn(false);
+      setLoginError(lang === 'en' ? 'Google sign-in failed. Please try again.' : 'ການເຂົ້າສູ່ລະບົບດ້ວຍ Google ລົ້ມເຫລວ. ກະລຸນາລອງໃໝ່.');
+      setIsGoogleSigningIn(false);
     }
   };
-
 
   const handleExportCSV = () => {
     // Generate CSV for Events & Sales
@@ -831,10 +794,7 @@ export default function AdminDashboard() {
   };
 
   const handleAdminLogout = () => {
-    setIsAdminAuthenticated(false);
-    sessionStorage.removeItem('pasopkan_admin_authorized');
-    setAdminUsername('');
-    setAdminPassword('');
+    logout();
   };
 
   const [activeTab, setActiveTab] = useState<'overview' | 'approvals' | 'users' | 'organizers' | 'events' | 'bookings' | 'past-events' | 'payouts' | 'refunds' | 'activity-log' | 'notifications' | 'site-settings' | 'blogs'>('overview');
@@ -2202,131 +2162,57 @@ export default function AdminDashboard() {
           <div className={`mt-8 py-8 px-6 shadow-xl rounded-3xl border ${
             theme === 'dark' ? 'bg-zinc-900/50 border-zinc-800/80 shadow-zinc-950/50' : 'bg-white border-gray-100 shadow-gray-100/50'
           }`}>
-            <form onSubmit={handleAdminPasswordLogin} className="space-y-6">
-              {loginError && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-2xl flex items-start gap-3"
-                >
+            {loginError && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mb-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-2xl flex items-start gap-3"
+              >
+                <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                <span className="text-xs font-semibold text-red-600 dark:text-red-400">{loginError}</span>
+              </motion.div>
+            )}
+
+            {user ? (
+              <div className="space-y-4">
+                <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-2xl flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                  <span className="text-xs font-semibold text-red-600 dark:text-red-400">{loginError}</span>
-                </motion.div>
-              )}
-
-              <div>
-                <label htmlFor="username" className={`block text-xs font-bold uppercase tracking-wider mb-2 ${
-                  theme === 'dark' ? 'text-zinc-400' : 'text-gray-500'
-                }`}>
-                  {t.adminEmailLabel}
-                </label>
-                <div className="relative rounded-2xl shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-400" />
+                  <div>
+                    <p className="text-xs font-semibold text-red-600 dark:text-red-400">{t.adminAccessDenied}</p>
+                    <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-zinc-500' : 'text-gray-400'}`}>{user.email}</p>
                   </div>
-                  <input
-                    id="username"
-                    name="username"
-                    type="text"
-                    required
-                    value={adminUsername}
-                    onChange={(e) => setAdminUsername(e.target.value)}
-                    placeholder="admin"
-                    className={`block w-full pl-11 pr-4 py-3 border rounded-2xl text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-adv-orange/20 focus:border-adv-orange ${
-                      theme === 'dark' 
-                        ? 'bg-zinc-900 border-zinc-800 text-white placeholder-zinc-600' 
-                        : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400'
-                    }`}
-                  />
                 </div>
+                <button
+                  type="button"
+                  onClick={handleAdminLogout}
+                  className={`w-full flex items-center justify-center gap-2 px-6 py-3 border rounded-2xl text-sm font-black transition-all ${
+                    theme === 'dark' ? 'border-zinc-800 text-zinc-300 hover:bg-zinc-800' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <LogOut className="w-4 h-4" />
+                  {t.adminSignOut}
+                </button>
               </div>
-
-              <div>
-                <label htmlFor="password" className={`block text-xs font-bold uppercase tracking-wider mb-2 ${
-                  theme === 'dark' ? 'text-zinc-400' : 'text-gray-500'
-                }`}>
-                  {t.adminPasswordLabel}
-                </label>
-                <div className="relative rounded-2xl shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className={`block w-full pl-11 pr-12 py-3 border rounded-2xl text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-adv-orange/20 focus:border-adv-orange ${
-                      theme === 'dark' 
-                        ? 'bg-zinc-900 border-zinc-800 text-white placeholder-zinc-600' 
-                        : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400'
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-adv-orange transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-              </div>
-
+            ) : (
               <button
-                type="submit"
-                disabled={isLoggingIn}
+                type="button"
+                onClick={handleAdminGoogleSignIn}
+                disabled={isGoogleSigningIn}
                 className="w-full flex items-center justify-center gap-2 px-6 py-3 border border-transparent rounded-2xl text-sm font-black text-white bg-adv-orange hover:bg-adv-orange/95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-adv-orange disabled:opacity-50 transition-all shadow-lg shadow-orange-100 dark:shadow-none"
               >
-                {isLoggingIn ? (
+                {isGoogleSigningIn ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <LogIn className="w-4 h-4" />
                 )}
-                {t.adminLoginBtn}
+                {t.adminGoogleBtn}
               </button>
-            </form>
-
-            {/* Quick Demo Access Bypass */}
-            <div className={`mt-8 pt-6 border-t ${
-              theme === 'dark' ? 'border-zinc-800/80' : 'border-gray-100'
-            }`}>
-              <div className="text-center">
-                <span className={`text-[10px] uppercase font-black tracking-widest ${
-                  theme === 'dark' ? 'text-zinc-500' : 'text-gray-400'
-                }`}>
-                  {t.adminQuickAccess}
-                </span>
-                <p className={`mt-1 text-xs mb-3 ${
-                  theme === 'dark' ? 'text-zinc-500' : 'text-gray-400'
-                }`}>
-                  {t.adminQuickAccessDesc}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAdminAuthenticated(true);
-                    sessionStorage.setItem('pasopkan_admin_authorized', 'true');
-                  }}
-                  className={`inline-flex items-center gap-1.5 px-4 py-2 border rounded-full text-xs font-black tracking-wide uppercase transition-all ${
-                    theme === 'dark'
-                      ? 'bg-zinc-900 border-orange-950 text-adv-orange hover:bg-orange-950/20'
-                      : 'bg-orange-50 border-orange-100 text-adv-orange hover:bg-orange-100/50'
-                  }`}
-                >
-                  <Shield className="w-3.5 h-3.5" />
-                  Bypass & Enter
-                </button>
-              </div>
-            </div>
-
+            )}
           </div>
-          
+
           <div className="text-center">
-            <Link 
-              to="/" 
+            <Link
+              to="/"
               className="inline-flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-adv-orange transition-colors"
             >
               <span>← Back to Homepage</span>
