@@ -110,4 +110,7 @@ export function checkEnv(warn: (msg: string) => void) {
   if (!env.otp.apiKey || !env.otp.senderId || !env.otp.templateId) {
     warn("OTP_API_KEY / OTP_SENDER_ID / OTP_TEMPLATE_ID not set - /api/otp/* will return 503.");
   }
+  if (env.isProd && env.corsOrigins.length === 0) {
+    warn("CORS_ORIGIN not set in production - all cross-origin browser requests will be blocked.");
+  }
 }

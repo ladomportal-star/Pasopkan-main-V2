@@ -32,20 +32,18 @@ export function createApp() {
   }
 
   // Security + transport
-  // In Google AI Studio iframe environment, disable frameguard and strict CSP to allow preview iframe and external assets
-  app.use(
-    helmet({
-      contentSecurityPolicy: false,
-      frameguard: false,
-      crossOriginEmbedderPolicy: false,
-      crossOriginResourcePolicy: false,
-      crossOriginOpenerPolicy: false,
-    }),
-  );
+  // This process only ever serves JSON under /api (see below) — it never
+  // renders HTML — so Helmet's full default header set (CSP, frameguard,
+  // HSTS, cross-origin isolation, ...) applies with no compatibility cost.
+  app.use(helmet());
 
+  // Cross-origin access is opt-in via CORS_ORIGIN. In development, an empty
+  // list reflects any origin for convenience; in production it must be set
+  // explicitly (checkEnv warns at boot otherwise) — reflecting `true` with
+  // `credentials: true` would let any website read authenticated responses.
   app.use(
     cors({
-      origin: env.corsOrigins.length > 0 ? env.corsOrigins : true,
+      origin: env.corsOrigins.length > 0 ? env.corsOrigins : !env.isProd,
       credentials: true,
     }),
   );
