@@ -3,17 +3,10 @@ import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { z } from "zod";
 
-/**
- * Parse + validate every environment variable once, at boot.
- * Import `env` from here instead of touching `process.env` directly.
- *
- * `.env` is loaded by an explicit path next to this file's own location
- * (Backend/.env) rather than plain `dotenv/config`, which reads relative to
- * `process.cwd()` — that's Backend/ when run via `tsx` from here, but the
- * repo root when this module is loaded through the root Vite dev server
- * (vite.config.ts mounts the Backend app), where a cwd-relative lookup
- * would silently find no .env and boot with an unconfigured database.
- */
+// Parse + validate every environment variable once, at boot.
+// Import `env` from here instead of touching `process.env` directly.
+// Loaded by explicit path (not plain `dotenv/config`) so Backend/.env is
+// found regardless of the process's cwd.
 const backendDir = path.resolve(fileURLToPath(new URL(".", import.meta.url)), "../..");
 dotenv.config({ path: path.join(backendDir, ".env") });
 

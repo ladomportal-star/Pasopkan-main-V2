@@ -131,10 +131,7 @@ export interface ResolvedTicketAd {
   reason?: string;
 }
 
-/**
- * Resolves the currently active ticket ad banner based on status, schedule time, and fallbacks.
- * If over time / expired or no custom ad is active, automatically falls back to '/Pasopkan ads.png'.
- */
+// Falls back to '/Pasopkan ads.png' when expired or no custom ad is active.
 export function resolveTicketAd(settings?: TicketSponsorSettings | null): ResolvedTicketAd {
   const DEFAULT_BANNER = '/Pasopkan ads.png';
   const DEFAULT_NAME = 'Pasopkan';

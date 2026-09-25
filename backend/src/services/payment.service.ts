@@ -4,14 +4,9 @@ import { payments } from "../models/schema.ts";
 import { logger } from "../utils/logger.ts";
 import { confirmOrderForPayment } from "./ticket.service.ts";
 
-/**
- * Payment gateway service. The `payments` table is the single source of truth.
- *
- * A webhook is only a *hint* that something changed: anyone can POST to it, so
- * its own "status" field is never believed. The transaction is re-checked with
- * the gateway's status API, and only a state the gateway itself reports moves a
- * payment to `completed` (which in turn confirms the buyer's order).
- */
+// A webhook is only a *hint* — its own "status" field is never trusted.
+// The transaction is always re-checked against the gateway's status API
+// before a payment moves to `completed` and confirms the buyer's order.
 
 const GATEWAY_STATUS_URL =
   process.env.PAYMENT_STATUS_URL ?? "https://payment-gateway.phajay.co/v1/api/payment/status";

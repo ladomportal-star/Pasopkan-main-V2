@@ -4,12 +4,8 @@ import { env } from "../config/env.ts";
 import { getUserRole } from "../services/user.service.ts";
 import { logger } from "../utils/logger.ts";
 
-/**
- * Authentication = verification of the Supabase Auth access token the
- * frontend signs users in with. Tokens are checked against the project's
- * public JWKS (signature, issuer, audience, expiry) — there is no shared
- * secret, no mock token, and no "trust the bearer string" escape hatch.
- */
+// Tokens are verified against Supabase's public JWKS — no shared secret,
+// no mock token, no "trust the bearer string" escape hatch.
 type AuthUser = NonNullable<Request["user"]>;
 
 const issuer = env.supabaseUrl ? `${env.supabaseUrl}/auth/v1` : "";

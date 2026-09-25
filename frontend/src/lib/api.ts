@@ -1,14 +1,6 @@
-/**
- * Typed client for the Pasopkan backend API.
- *
- * In dev, Vite proxies `/api/*` to the backend (see vite.config.ts). In
- * production the frontend and backend share an origin (or CORS is set).
- *
- * All helpers are non-throwing by default: on a network error or non-2xx
- * response they resolve to `{ ok: false, ... }` so callers can handle the
- * failure without a try/catch. Pass `{ throwOnError: true }` when you do
- * want an exception.
- */
+// Typed client for the Pasopkan backend API (/api/* — proxied in dev, see vite.config.ts).
+// Helpers are non-throwing by default: failures resolve to `{ ok: false, ... }`.
+// Pass `{ throwOnError: true }` to get an exception instead.
 import { safeStorage } from './storage';
 
 const BASE = '/api';
@@ -229,10 +221,8 @@ export const api = {
   clearNotifications: (opts?: RequestOptions) =>
     request('DELETE', '/notifications', undefined, opts),
 
-  /** Admin-only: push a notification to another user. The backend requires
-   *  a `userUid` in the body (400s without one) — most current callers don't
-   *  have the recipient's real uid yet (see lib/notificationHelper.ts), so
-   *  this stays best-effort and non-fatal on the caller's side. */
+  // Backend 400s without `userUid`; most callers don't have it yet (see
+  // lib/notificationHelper.ts), so this stays best-effort and non-fatal.
   createNotification: (
     data: Partial<import('../types').AppNotification> & { userUid?: string },
     opts?: RequestOptions,

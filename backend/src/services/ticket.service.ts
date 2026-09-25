@@ -47,15 +47,9 @@ export async function listOrders(uid: string) {
   });
 }
 
-/**
- * Create an order plus one ticket item per unit of quantity.
- *
- * Nothing about price or availability is taken from the client: the event and
- * ticket type are looked up in the database, the total is computed from the
- * tier's price, and stock is decremented atomically (so two buyers can never
- * both get the last ticket). A free order is confirmed immediately; a paid one
- * stays `pending` until the gateway confirms the payment.
- */
+// Price and availability are never taken from the client — both are looked up
+// server-side and stock is decremented atomically. Free orders confirm
+// immediately; paid ones stay `pending` until the gateway confirms payment.
 export async function createOrder(input: CreateOrderInput) {
   const qty = input.quantity;
   const userRow = await getOrCreateUser(input.uid, input.email);
@@ -205,10 +199,7 @@ export async function createOrder(input: CreateOrderInput) {
   });
 }
 
-/**
- * Called once the gateway has verified a payment: confirm the pending order that
- * was placed against this transaction (if any) and tell the buyer.
- */
+// Called once the gateway has verified a payment.
 export async function confirmOrderForPayment(transactionId: string) {
   return db.transaction(async (tx) => {
     const [order] = await tx
@@ -241,10 +232,8 @@ export async function confirmOrderForPayment(transactionId: string) {
   });
 }
 
-/**
- * Cancel orders that were reserved but never paid, and give their stock back.
- * Without this an abandoned checkout would hold tickets forever.
- */
+// Cancels orders reserved but never paid, and returns their stock — otherwise
+// an abandoned checkout would hold tickets forever.
 export async function releaseExpiredOrders(maxAgeMinutes = 30) {
   return db.transaction(async (tx) => {
     const expired = await tx

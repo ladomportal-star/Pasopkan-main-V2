@@ -7,10 +7,6 @@ interface Schemas {
   params?: ZodType;
 }
 
-/**
- * Validate parts of the request against zod schemas. On success the parsed
- * (and coerced) values replace the originals; on failure -> 400 with details.
- */
 export function validate(schemas: Schemas) {
   return (req: Request, res: Response, next: NextFunction) => {
     for (const key of ["body", "query", "params"] as const) {

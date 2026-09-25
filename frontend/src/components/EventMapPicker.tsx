@@ -16,13 +16,9 @@ interface EventMapPickerProps {
   showOpenInMapsButton?: boolean;
 }
 
-/**
- * Parses any user-provided Google Maps URL, embed code, My Maps link, or coordinate string
- * into a safe, valid embed URL.
- * CRITICAL: Never pass an HTTP/HTTPS URL directly into `q=` because Google Maps classic
- * interprets URLs as deprecated KML files and displays the error:
- * "Some custom on-map content could not be displayed."
- */
+// Parses a user-provided Google Maps URL/embed code/My Maps link/coordinate string into
+// a safe embed URL. Never pass an HTTP(S) URL into `q=` directly — Google Maps classic
+// treats it as a deprecated KML file and errors ("Some custom on-map content...").
 function parseMapEmbedUrl(rawUrl: string, lang = 'en'): string | null {
   if (!rawUrl || typeof rawUrl !== 'string') return null;
   let url = rawUrl.trim();

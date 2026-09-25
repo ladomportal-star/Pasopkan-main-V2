@@ -92,10 +92,7 @@ export async function updateEvent(idOrRef: string, patch: UpdateEventBody, actor
   });
 }
 
-/**
- * Public catalog listing. Callers only see published (and sold-out/completed)
- * events unless they ask for their own events (`mine`), which includes drafts.
- */
+// Callers only see published (and sold-out/completed) events unless `mine`, which includes drafts.
 export async function listEvents(query: {
   status?: string;
   mine?: boolean;

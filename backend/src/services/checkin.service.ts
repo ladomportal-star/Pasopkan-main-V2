@@ -9,11 +9,7 @@ export interface ScanResult {
   checkIn: Record<string, unknown>;
 }
 
-/**
- * Record a gate scan of `ticketCode`. The check-in is linked to the order item
- * it belongs to and that item is flagged `checked_in`. Re-scanning the same
- * code is idempotent and reports `already_checked_in`.
- */
+// Re-scanning the same ticketCode is idempotent and reports `already_checked_in`.
 export async function scanTicket(body: CreateCheckinBody, staff: string): Promise<ScanResult> {
   const existing = await db.query.checkIns.findFirst({
     where: eq(checkIns.ticketCode, body.ticketCode),
@@ -66,11 +62,8 @@ export async function listCheckins(eventId: string) {
     .orderBy(desc(checkIns.checkedInAt));
 }
 
-/**
- * Look up a scanned code against the real order item WITHOUT checking it in
- * — the gate app shows this to staff so they can verify the attendee before
- * tapping "confirm" (which then calls scanTicket).
- */
+// Looks up a scanned code WITHOUT checking it in, so staff can verify the
+// attendee before tapping "confirm" (which then calls scanTicket).
 export async function lookupTicket(ticketCode: string) {
   const item = await db.query.orderItems.findFirst({
     where: eq(orderItems.ticketCode, ticketCode),

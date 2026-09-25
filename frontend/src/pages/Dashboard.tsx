@@ -351,12 +351,8 @@ export default function Dashboard() {
     return false;
   };
 
-  /**
-   * Determine whether a ticket belongs in 'past' vs 'upcoming'.
-   * CRITICAL: We evaluate the EVENT'S start/end date, NOT the ticket purchase/booking date!
-   * A ticket purchased today for an event today or in the future is strictly UPCOMING.
-   * If a ticket is refunded successfully, it is moved to the 'past' tab.
-   */
+  // Evaluates the EVENT's start/end date, NOT the purchase date. A refunded
+  // ticket always counts as past regardless of the event date.
   const isTicketPast = (ticket: PurchasedTicket): boolean => {
     // 0. Tickets with successful refund are strictly placed in the Past tab
     if (isTicketRefunded(ticket)) {

@@ -3,13 +3,9 @@ import { useAuth } from './AuthContext';
 import { api } from '../lib/api';
 import type { AppNotification } from '../types';
 
-/**
- * The signed-in user's notification inbox, served by the backend
- * (`/api/notifications`). The server is the single source of truth: nothing is
- * seeded locally and nothing is kept in localStorage. Actions update the UI
- * immediately and are then confirmed against the server (rolling back by
- * re-fetching if the request fails).
- */
+// The server is the single source of truth — nothing seeded locally or kept
+// in localStorage. Actions update the UI immediately, then roll back by
+// re-fetching if the server request fails.
 interface NotificationsContextType {
   notifications: AppNotification[];
   unreadCount: number;

@@ -317,10 +317,8 @@ export default function StaffScanner() {
     }, 5000);
   };
 
-  // Ticket lookup: preview a scanned code against the real order (GET
-  // /api/checkins/lookup/:code) — this never checks the ticket in, so
-  // re-scanning while staff decide is harmless. confirmCheckIn() below does
-  // the actual (idempotent) check-in once staff confirm what they see here.
+  // Preview only — never checks the ticket in, so re-scanning is harmless.
+  // confirmCheckIn() below does the actual check-in.
   const lookupTicket = async (code: string) => {
     const cleanCode = code.trim();
     if (!cleanCode) return;

@@ -6,16 +6,8 @@ import * as schema from "../models/schema.ts";
 
 const { Pool } = pkg;
 
-/**
- * Build a pg Pool from either:
- *   1. env.databaseUrl  — a single connection string (Supabase gives you this)
- *   2. the discrete env.sql.* variables (local Postgres / other hosts)
- *
- * Supabase → Connect → Connection string → URI:
- *   - "Session pooler"  …pooler.supabase.com:5432   ← use this for the server
- *   - "Direct connection"  db.<ref>.supabase.co:5432 (IPv6-only on the free tier)
- *   - "Transaction pooler" …:6543                    ← serverless only, avoid here
- */
+// Supabase: use the "Session pooler" connection string (…pooler.supabase.com:5432),
+// not "Direct connection" (IPv6-only on the free tier) or "Transaction pooler" (:6543, serverless only).
 const isLocal = (target: string) =>
   /@(localhost|127\.0\.0\.1|::1)[:/]/.test(target) || /\b(localhost|127\.0\.0\.1)\b/.test(target);
 

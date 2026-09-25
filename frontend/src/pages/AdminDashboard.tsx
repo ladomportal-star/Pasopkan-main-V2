@@ -718,10 +718,7 @@ export default function AdminDashboard() {
   const { user, loginWithGoogle, logout } = useAuth();
   const { theme } = useTheme();
 
-  // `role` comes from AuthContext, which itself is populated by the backend's
-  // /account/sync response — this is the only source of truth for admin
-  // access. There is no local password or bypass: the account must actually
-  // carry `role: "admin"` in the database.
+  // `role` comes from the backend's /account/sync response.
   const adminEmails = ['phanyadeth@gmail.com', 'admin@pasopkan.com'];
   const isAdminAuthenticated = !!user && (user.role === 'admin' || adminEmails.includes(user.email || ''));
 

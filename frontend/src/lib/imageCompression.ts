@@ -1,7 +1,4 @@
-/**
- * Compress an image File or base64 Data URL to a lightweight JPEG Data URL.
- * Prevents LocalStorage QuotaExceededError and improves loading performance.
- */
+// Compresses to a lightweight JPEG Data URL to avoid LocalStorage QuotaExceededError.
 export async function compressImage(
   fileOrUrl: File | string,
   maxWidth = 1280,

@@ -17,11 +17,7 @@ export async function getOrCreateUser(uid: string, email?: string) {
   return upsertUserProfile(uid, { email });
 }
 
-/**
- * Upsert the user row keyed by the identity provider's user id (`auth_uid`,
- * the Supabase Auth `sub`). Only fields the caller actually supplied are
- * written, so a partial sync never wipes data that is already stored.
- */
+// Only fields the caller actually supplied are written, so a partial sync never wipes stored data.
 export async function upsertUserProfile(uid: string, profile: ProfileInput) {
   const patch = {
     ...(profile.email && { email: profile.email }),

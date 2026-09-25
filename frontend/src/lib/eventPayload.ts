@@ -1,15 +1,8 @@
-/**
- * Maps the organizer-facing event object (the shape stored in the
- * `organizer_events` localStorage list) to the backend `POST/PUT /api/events`
- * payload. Best-effort: unknown / empty fields are omitted so validation
- * never rejects a partially-filled draft.
- *
- * `fromBackendEvent` is the reverse direction: it takes the row `GET/POST/PUT
- * /api/events` returns (with nested `tiers`/`dates`/`coupons`/`organizer`,
- * see Backend/src/services/event.service.ts) and reshapes it into the same
- * `LaoEvent`-ish object every page component already knows how to render —
- * so wiring a page to the real API is a data-source swap, not a rewrite.
- */
+// Maps the organizer-facing event object to the backend `/api/events` payload.
+// Unknown/empty fields are omitted so validation never rejects a partial draft.
+// `fromBackendEvent` reverses this: backend row -> the `LaoEvent`-ish shape
+// every page component already renders, so wiring a page to the real API is
+// a data-source swap, not a rewrite.
 
 const CATEGORIES = ["Sports", "Workshop", "Festival", "Voucher", "Other"] as const;
 type Category = (typeof CATEGORIES)[number];

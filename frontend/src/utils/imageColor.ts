@@ -1,7 +1,4 @@
-/**
- * Utility to sample dominant/edge colors from an image client-side using Canvas.
- * Cached in-memory to avoid re-calculating for the same image URL.
- */
+// Samples dominant/edge colors from an image via Canvas; cached in-memory per image URL.
 
 export interface ExtractedColors {
   dominant: string;

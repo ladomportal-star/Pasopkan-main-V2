@@ -1,9 +1,6 @@
 import { z } from "zod";
 
-/**
- * What a client may say about a purchase. Price, title and availability are
- * deliberately NOT accepted: the server derives them from the database.
- */
+// Price, title and availability are deliberately NOT accepted — the server derives them.
 const attendee = z.object({
   firstName: z.string().max(100).optional(),
   lastName: z.string().max(100).optional(),

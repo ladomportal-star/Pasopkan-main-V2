@@ -383,10 +383,9 @@ export default function Checkout() {
     })),
   );
 
-  // Always-fresh snapshot of form state for handlers defined inside effects
-  // with narrower dependency arrays (the payment-gateway listener below), so
-  // that effect doesn't need to re-subscribe (and reconnect its socket) on
-  // every keystroke in the attendee-details form.
+  // Always-fresh snapshot so the payment-gateway listener effect below can
+  // read current form state without re-subscribing (and reconnecting its
+  // socket) on every keystroke.
   const latestFormRef = useRef({ ticketOwners, appliedCoupon });
   useEffect(() => {
     latestFormRef.current = { ticketOwners, appliedCoupon };
@@ -542,14 +541,10 @@ export default function Checkout() {
     return true;
   };
 
-  /**
-   * Create the real order(s) in the backend: one `POST /api/tickets` call per
-   * tier the buyer selected (the backend models "one order = one tier type",
-   * see Backend/src/services/ticket.service.ts createOrder / its tests) so a
-   * mixed-tier cart becomes multiple orders sharing the same payment txn id.
-   * Returns false (and leaves an error on screen) if any of them fail — stock
-   * can legitimately run out between viewing the event and paying for it.
-   */
+  // One `POST /api/tickets` call per tier (backend models one order = one
+  // tier type), so a mixed-tier cart becomes multiple orders sharing the
+  // same payment txn id. Returns false if any fail — stock can legitimately
+  // run out between viewing the event and paying for it.
   const createRealOrder = async (paymentTxnId?: string): Promise<boolean> => {
     if (!event) return false;
     const { ticketOwners: owners } = latestFormRef.current;
