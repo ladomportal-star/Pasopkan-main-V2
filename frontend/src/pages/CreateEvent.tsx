@@ -2727,6 +2727,7 @@ export default function CreateEvent() {
         currentStorageEvents = [...localEvents];
       }
 
+      setIsLoading(true);
       if (editingEventId) {
         setWasEditing(true);
         // Update existing event
@@ -2815,11 +2816,21 @@ export default function CreateEvent() {
           }
           return evt;
         });
+        const edited = updatedEvents.find((e) => String(e.id) === String(editingEventId));
+        const result = edited
+          ? await api.updateEvent(String(editingEventId), toEventPayload(edited))
+          : { ok: false, error: 'Event not found' };
+        if (!result.ok) {
+          setIsLoading(false);
+          setValidationError(
+            lang === 'lo'
+              ? `ບໍ່ສາມາດບັນທຶກການປ່ຽນແປງໄດ້: ${result.error ?? ''}`
+              : `Could not save changes: ${result.error ?? ''}`,
+          );
+          return;
+        }
         setLocalEvents(updatedEvents);
         safeStorage.setItem('organizer_events', JSON.stringify(updatedEvents));
-        // Mirror to Postgres (source of truth); non-blocking.
-        const edited = updatedEvents.find((e) => String(e.id) === String(editingEventId));
-        if (edited) api.updateEvent(String(editingEventId), toEventPayload(edited));
         setEditingEventId(null);
       } else {
         setWasEditing(false);
@@ -2896,13 +2907,25 @@ export default function CreateEvent() {
           attendeeMessage,
           status: eventStatus || 'pending',
         };
-        const updatedEvents = [newEvent, ...currentStorageEvents.filter(e => String(e.id) !== String(newEvent.id))];
+        const result = await api.createEvent(toEventPayload(newEvent));
+        if (!result.ok) {
+          setIsLoading(false);
+          setValidationError(
+            lang === 'lo'
+              ? `ບໍ່ສາມາດສ້າງກິດຈະກຳໄດ້: ${result.error ?? ''}`
+              : `Could not create the event: ${result.error ?? ''}`,
+          );
+          return;
+        }
+        // Use the real database id from here on, not the temporary client-side one.
+        const createdId = String((result.data?.event as { id?: string } | undefined)?.id ?? newEvent.id);
+        newEvent.id = createdId;
+        const updatedEvents = [newEvent, ...currentStorageEvents.filter(e => String(e.id) !== createdId)];
         setLocalEvents(updatedEvents);
         safeStorage.setItem('organizer_events', JSON.stringify(updatedEvents));
-        // Mirror to Postgres (source of truth); non-blocking.
-        api.createEvent(toEventPayload(newEvent));
       }
       }
+      setIsLoading(false);
       setShowSuccessModal(true);
   };
 

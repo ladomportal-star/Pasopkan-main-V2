@@ -28,6 +28,14 @@ export interface CreateOrderInput {
   selectedTime?: string;
   /** Gateway transaction id, when the buyer already paid through the gateway. */
   paymentTxnId?: string;
+  /** One entry per ticket (i.e. per unit of `quantity`), in order. */
+  attendees?: Array<{
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    customAnswers?: Record<string, string | string[]>;
+  }>;
 }
 
 /** All orders (with their ticket items) for one buyer. */
@@ -137,13 +145,21 @@ export async function createOrder(input: CreateOrderInput) {
     const items = await tx
       .insert(orderItems)
       .values(
-        Array.from({ length: qty }, (_, i) => ({
-          orderId: order.id,
-          tierId: tier.id,
-          tierName: tier.name,
-          unitPriceKip: unit,
-          ticketCode: `${orderNumber}-${i + 1}-${code(4)}`,
-        })),
+        Array.from({ length: qty }, (_, i) => {
+          const a = input.attendees?.[i];
+          const attendeeName = [a?.firstName, a?.lastName].filter(Boolean).join(" ") || null;
+          return {
+            orderId: order.id,
+            tierId: tier.id,
+            tierName: tier.name,
+            unitPriceKip: unit,
+            ticketCode: `${orderNumber}-${i + 1}-${code(4)}`,
+            attendeeName,
+            attendeeEmail: a?.email ?? null,
+            attendeePhone: a?.phone ?? null,
+            customAnswers: a?.customAnswers ?? null,
+          };
+        }),
       )
       .returning();
 

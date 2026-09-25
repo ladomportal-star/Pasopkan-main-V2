@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation, Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Ticket, Calendar, MapPin, QrCode, User, Settings, LogOut, X, CheckCircle2, XCircle, Loader2, Users, DollarSign, PieChart, Plus, RefreshCcw, ChevronLeft, ChevronRight, Clock, Star, Share2, FileText } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -7,6 +7,8 @@ import { LaoEvent, TicketTier } from '../data/events';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
+import { api } from '../lib/api';
+import { fromBackendEvent } from '../lib/eventPayload';
 import SEO from '../components/SEO';
 import ETicketModal from '../components/ETicketModal';
 import { useCheckins } from '../lib/checkinsStore';
@@ -182,7 +184,6 @@ interface PurchasedTicket {
 }
 
 export default function Dashboard() {
-  const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { lang } = useLanguage();
@@ -199,182 +200,81 @@ export default function Dashboard() {
 
 
   useEffect(() => {
+    let cancelled = false;
     setIsLoading(true);
-    // Instant execution for mobile responsiveness
-    const execute = () => {
-      const now = new Date();
-      // Refund eligible test ticket: Event scheduled in 3 days (72h) starting at 18:00
-      const in72Hours = new Date(now.getTime() + 72 * 60 * 60 * 1000);
-      // Non-refundable test ticket: Event scheduled in 18h (<48h) starting at 09:00
-      const in18Hours = new Date(now.getTime() + 18 * 60 * 60 * 1000);
 
-      const formatDate = (d: Date) => d.toISOString().split('T')[0];
+    const load = async () => {
+      const res = await api.listOrders();
+      const orders = (res.data?.tickets ?? []) as any[];
 
-      const mockTickets: PurchasedTicket[] = [
-        {
-          id: 'tk_refund_eligible',
-          event: {
-            id: 'mock_elig',
-            title: 'Vientiane Light Festival',
-            date: formatDate(in72Hours),
-            time: '18:00',
-            location: 'Vientiane, LA',
-            venue: 'Mekong Riverside',
-            image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=2000&auto=format&fit=crop',
-            category: 'Festival',
-            description: 'A magical night along the Mekong river.',
-            ticketTiers: []
-          },
-          tier: { id: 't1', name: 'Standard Floor', price: 150000, available: 0 },
-          quantity: 1,
-          bookingDate: new Date().toISOString(),
-          status: 'upcoming',
-          selectedDate: formatDate(in72Hours),
-          selectedTime: '18:00'
-        },
-        {
-          id: 'tk_refund_disabled',
-          event: {
-            id: 'mock_dis',
-            title: 'Digital Arts Workshop',
-            date: formatDate(in18Hours),
-            time: '09:00',
-            location: 'Vientiane, LA',
-            venue: 'Pasopkan Creative Space',
-            image: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?q=80&w=2000&auto=format&fit=crop',
-            category: 'Workshop',
-            description: 'Learn digital illustration from the pros.',
-            ticketTiers: []
-          },
-          tier: { id: 't2', name: 'General Admission', price: 50000, available: 0 },
-          quantity: 2,
-          bookingDate: new Date().toISOString(),
-          status: 'upcoming',
-          selectedDate: formatDate(in18Hours),
-          selectedTime: '09:00'
-        },
-        {
-          id: 'tk_past_1',
-          event: {
-            id: 'music_fest_25',
-            title: 'Lao Music Festival 2025',
-            date: '2025-12-15',
-            time: '18:00',
-            location: 'Vientiane, LA',
-            venue: 'National Stadium',
-            image: 'https://images.unsplash.com/photo-1459749411177-042180ceea72?q=80&w=2000&auto=format&fit=crop',
-            category: 'Festival',
-            description: 'The biggest music event of the year.',
-            ticketTiers: []
-          },
-          tier: { id: 'v1', name: 'VIP Front Row', price: 500000, available: 0 },
-          quantity: 1,
-          bookingDate: '2025-11-20T10:00:00Z',
-          status: 'past',
-          scanned: true,
-          selectedDate: '2025-12-15',
-          selectedTime: '18:00'
-        },
-        {
-          id: 'tk_past_2',
-          event: {
-            id: 'cooking_class_past',
-            title: 'Traditional Lao Cooking Class',
-            date: '2026-01-10',
-            time: '10:00',
-            location: 'Luang Prabang, LA',
-            venue: 'Bamboo Tree Garden',
-            image: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=2000&auto=format&fit=crop',
-            category: 'Workshop',
-            description: 'Master the art of sticky rice and laap.',
-            ticketTiers: []
-          },
-          tier: { id: 'ga1', name: 'General Admission', price: 120000, available: 0 },
-          quantity: 3,
-          bookingDate: '2026-01-05T14:30:00Z',
-          status: 'past',
-          scanned: false,
-          selectedDate: '2026-01-10',
-          selectedTime: '10:00'
-        }
-      ];
+      // Orders only carry a denormalized eventId/eventTitle snapshot; fetch
+      // each distinct event once for its image/venue/etc.
+      const uniqueEventIds = Array.from(new Set(orders.map((o) => String(o.eventId))));
+      const eventResults = await Promise.all(uniqueEventIds.map((id) => api.getEvent(id)));
+      const eventById = new Map<string, LaoEvent>();
+      uniqueEventIds.forEach((id, i) => {
+        const ev = eventResults[i].data?.event;
+        if (ev) eventById.set(id, fromBackendEvent(ev));
+      });
 
-      let loadedTickets = [...mockTickets];
-      
-      try {
-        // Read refunded registry first
-        const refundedRaw = localStorage.getItem('pasopkan_refunded_tickets');
-        const refundedIds = new Set<string>(refundedRaw ? JSON.parse(refundedRaw) : []);
+      const today = new Date().toISOString().split('T')[0];
 
-        const savedTicketsRaw = localStorage.getItem('pasopkan_user_tickets');
-        if (savedTicketsRaw) {
-          const savedTickets = JSON.parse(savedTicketsRaw);
-          if (Array.isArray(savedTickets)) {
-            // Track any saved tickets that were marked pending_refund or refunded
-            savedTickets.forEach(t => {
-              if (t.status === 'pending_refund' || t.status === 'refunded') {
-                refundedIds.add(t.id);
-              }
-            });
+      const mapped: PurchasedTicket[] = orders
+        // A "pending" order is an unpaid reservation, not a ticket yet.
+        .filter((o) => o.status !== 'pending')
+        .map((o) => {
+          const event: LaoEvent = eventById.get(String(o.eventId)) ?? ({
+            id: String(o.eventId),
+            title: o.eventTitle,
+            date: o.selectedDate || '',
+            time: o.selectedTime || '',
+            location: '',
+            venue: '',
+            image: '',
+            category: 'Other',
+            description: '',
+            ticketTiers: [],
+          } as unknown as LaoEvent);
+          const items: any[] = o.items ?? [];
+          const firstItem = items[0];
+          const tier: TicketTier = {
+            id: firstItem?.tierId ?? 'tier',
+            name: firstItem?.tierName ?? 'Ticket',
+            price: firstItem?.unitPriceKip ?? 0,
+            available: 0,
+          };
+          const eventDate = o.selectedDate || event.date || '';
+          const status: PurchasedTicket['status'] =
+            o.status === 'refunded' || o.status === 'cancelled'
+              ? 'refunded'
+              : eventDate && eventDate < today
+                ? 'past'
+                : 'upcoming';
 
-            // Keep real user purchased tickets, filtering out mock tickets so fresh mock definitions with accurate event start times take effect
-            const realTickets = savedTickets.filter(t => !['tk_refund_eligible', 'tk_refund_disabled', 'tk_past_1', 'tk_past_2'].includes(t.id));
-            const realTicketIds = new Set(realTickets.map(t => t.id));
-            loadedTickets = [...realTickets, ...loadedTickets.filter(t => !realTicketIds.has(t.id))];
-          }
-        }
-
-        // Apply refunded status to any ticket in loadedTickets that is marked as refunded
-        loadedTickets = loadedTickets.map(t => {
-          if (refundedIds.has(t.id)) {
-            return { ...t, status: 'refunded' as const };
-          }
-          return t;
-        });
-      } catch (e) {
-        console.error('Failed to load tickets from local storage:', e);
-      }
-
-      if (location.state?.newTicket) {
-        const { event, tier, quantity, selectedTiers, selectedDate, selectedTime } = location.state.newTicket;
-        const finalTime = selectedTime || event?.time || '';
-        const eventStartDate = selectedDate || event?.date || new Date().toISOString().split('T')[0];
-        let newlyCreatedTickets: PurchasedTicket[] = [];
-        if (selectedTiers && selectedTiers.length > 0) {
-          newlyCreatedTickets = selectedTiers.map((st: { tier: TicketTier; quantity: number }) => ({
-            id: `tk_${Math.random().toString(36).substr(2, 9)}`,
-            event,
-            tier: st.tier,
-            quantity: st.quantity,
-            bookingDate: new Date().toISOString(),
-            status: 'upcoming' as const,
-            selectedDate: eventStartDate,
-            selectedTime: finalTime
-          }));
-        } else {
-          newlyCreatedTickets = [{
-            id: `tk_${Math.random().toString(36).substr(2, 9)}`,
+          return {
+            id: o.id,
             event,
             tier,
-            quantity: quantity || 1,
-            bookingDate: new Date().toISOString(),
-            status: 'upcoming' as const,
-            selectedDate: eventStartDate,
-            selectedTime: finalTime
-          }];
-        }
-        
-        // Deduplicate new tickets against loaded ones just in case
-        const newlyCreatedIds = new Set(newlyCreatedTickets.map(t => t.id));
-        setTickets([...newlyCreatedTickets, ...loadedTickets.filter(t => !newlyCreatedIds.has(t.id))]);
-      } else {
-        setTickets(loadedTickets);
+            quantity: items.length || 1,
+            bookingDate: o.createdAt,
+            status,
+            scanned: items.some((it) => it.status === 'checked_in'),
+            selectedDate: o.selectedDate,
+            selectedTime: o.selectedTime,
+          };
+        });
+
+      if (!cancelled) {
+        setTickets(mapped);
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
-    
-    execute();
-  }, [location.state]);
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Helper to format event date cleanly without UTC timezone shift
   const formatTicketEventDate = (dateStr?: string, fallback = '') => {

@@ -3,6 +3,12 @@
  * `organizer_events` localStorage list) to the backend `POST/PUT /api/events`
  * payload. Best-effort: unknown / empty fields are omitted so validation
  * never rejects a partially-filled draft.
+ *
+ * `fromBackendEvent` is the reverse direction: it takes the row `GET/POST/PUT
+ * /api/events` returns (with nested `tiers`/`dates`/`coupons`/`organizer`,
+ * see Backend/src/services/event.service.ts) and reshapes it into the same
+ * `LaoEvent`-ish object every page component already knows how to render —
+ * so wiring a page to the real API is a data-source swap, not a rewrite.
  */
 
 const CATEGORIES = ["Sports", "Workshop", "Festival", "Voucher", "Other"] as const;
@@ -96,5 +102,92 @@ export function toEventPayload(e: FeEvent): Record<string, unknown> {
         discountType: c.discountType === "fixed" || c.type === "fixed" ? "fixed" : "percent",
         discountValue: num(c.discountValue ?? c.percentage ?? c.amount ?? c.value),
       })),
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type BackendEvent = any;
+
+/** Backend `events` row (+ nested tiers/dates/coupons/organizer) -> the page-facing event shape. */
+export function fromBackendEvent(e: BackendEvent): FeEvent {
+  const availableDates = (e.dates ?? []).map((d: BackendEvent) => ({
+    date: d.date,
+    startTime: d.startTime ?? "",
+    endTime: d.endTime ?? "",
+    timeSlots: d.timeSlots ?? [],
+  }));
+
+  return {
+    id: e.id,
+    legacyId: e.legacyId,
+    slug: e.slug,
+    title: e.title,
+    description: e.description ?? "",
+    category: e.category ?? "Other",
+    eventType: e.eventType,
+    status: e.status,
+
+    dateType: e.dateType,
+    date: e.startDate,
+    time: e.startTime,
+    endDate: e.endDate,
+    endTime: e.endTime,
+    flexibleDateDesc: e.flexibleDateDesc,
+    availableDates,
+    hasTimeSelection: availableDates.some((d: FeEvent) => !!d.startTime),
+    timeSlots: Array.from(new Set(availableDates.flatMap((d: FeEvent) => d.timeSlots))),
+    bookingAvailableDays: e.dateType === "booking" ? availableDates.map((d: FeEvent) => d.date) : [],
+    bookingTimeSlots:
+      e.dateType === "booking" ? Array.from(new Set(availableDates.flatMap((d: FeEvent) => d.timeSlots))) : [],
+    bookingSlotCapacities:
+      e.dateType === "booking"
+        ? Object.fromEntries((e.dates ?? []).map((d: BackendEvent) => [d.date, d.capacity ?? 0]))
+        : {},
+
+    venue: e.venueName ?? "",
+    location: e.addressText ?? "",
+    province: e.province,
+    district: e.district,
+    latitude: e.latitude ?? undefined,
+    longitude: e.longitude ?? undefined,
+    googleMapUrl: e.googleMapUrl,
+
+    image: e.coverImageUrl ?? "",
+    exampleImages: e.galleryUrls ?? [],
+    languages: e.languages ?? ["Lao", "English"],
+
+    hasSeating: !!e.hasSeating,
+    zoneImage: e.zoneImageUrl,
+    allowReviews: e.allowReviews !== false,
+    allowRefunds: !!e.allowRefunds,
+    showRemainingTickets: e.showRemainingTickets !== false,
+    enableCountdown: !!e.enableCountdown,
+
+    organizer: e.organizer?.name,
+    organizerInfo: e.organizer?.description,
+    organizerEmail: e.organizer?.contactEmail,
+    organizerPhone: e.organizer?.contactPhone,
+    organizerContact: e.organizer?.contactPhone,
+    organizerLogo: e.organizer?.logoUrl,
+    organizerId: e.organizerId,
+
+    ticketTiers: (e.tiers ?? []).map((t: BackendEvent) => ({
+      id: t.id,
+      name: t.name,
+      price: t.priceKip,
+      available: t.quantityTotal == null ? Infinity : Math.max(t.quantityTotal - t.quantitySold, 0),
+      description: t.description ?? `${t.name} Access`,
+      sold: t.quantitySold ?? 0,
+    })),
+    coupons: (e.coupons ?? []).map((c: BackendEvent) => ({
+      id: c.id,
+      code: c.code,
+      type: c.discountType === "fixed" ? "fixed" : "percentage",
+      discount: c.discountValue,
+      isActive: c.isActive,
+    })),
+
+    createdAt: e.createdAt,
+    views: e.viewsCount ?? 0,
   };
 }

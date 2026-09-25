@@ -24,13 +24,12 @@ import {
   LaoEvent,
   TicketTier,
   SeatingZone,
-  events,
   Coupon,
 } from "../data/events";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
 import { QRCodeSVG } from "qrcode.react";
-import { supabase } from "../lib/supabase";
+import { api } from "../lib/api";
 
 import { addEventAttendee } from "../lib/checkinsStore";
 import { safeStorage } from "../lib/storage";
@@ -384,6 +383,15 @@ export default function Checkout() {
     })),
   );
 
+  // Always-fresh snapshot of form state for handlers defined inside effects
+  // with narrower dependency arrays (the payment-gateway listener below), so
+  // that effect doesn't need to re-subscribe (and reconnect its socket) on
+  // every keystroke in the attendee-details form.
+  const latestFormRef = useRef({ ticketOwners, appliedCoupon });
+  useEffect(() => {
+    latestFormRef.current = { ticketOwners, appliedCoupon };
+  });
+
   const handleTicketOwnerChange = (
     index: number,
     field: "firstName" | "lastName" | "phone" | "email" | "gender" | "dob",
@@ -534,27 +542,83 @@ export default function Checkout() {
     return true;
   };
 
-  const handleFreeCheckout = () => {
+  /**
+   * Create the real order(s) in the backend: one `POST /api/tickets` call per
+   * tier the buyer selected (the backend models "one order = one tier type",
+   * see Backend/src/services/ticket.service.ts createOrder / its tests) so a
+   * mixed-tier cart becomes multiple orders sharing the same payment txn id.
+   * Returns false (and leaves an error on screen) if any of them fail — stock
+   * can legitimately run out between viewing the event and paying for it.
+   */
+  const createRealOrder = async (paymentTxnId?: string): Promise<boolean> => {
+    if (!event) return false;
+    const { ticketOwners: owners } = latestFormRef.current;
+    const groups =
+      selectedTiersList.length > 0
+        ? selectedTiersList
+        : tier
+          ? [{ tier, quantity: quantity || 1 }]
+          : [];
+    if (groups.length === 0) return false;
+
+    let offset = 0;
+    for (const group of groups) {
+      const attendees = owners.slice(offset, offset + group.quantity).map((o) => ({
+        firstName: o.firstName.trim() || undefined,
+        lastName: o.lastName.trim() || undefined,
+        email: o.email.trim() || undefined,
+        phone: o.phone.trim() || undefined,
+        customAnswers: o.customAnswers,
+      }));
+      offset += group.quantity;
+
+      const res = await api.createOrder({
+        eventId: String(event.id),
+        tierId: String(group.tier.id),
+        tierName: group.tier.name,
+        quantity: group.quantity,
+        selectedDate: state.selectedDate || event.date,
+        selectedTime: state.selectedTime || event.time,
+        paymentTxnId,
+        attendees,
+      });
+      if (!res.ok) {
+        alert(
+          res.error ||
+            (lang === "lo"
+              ? "ບໍ່ສາມາດສ້າງປີ້ໄດ້. ກະລຸນາລອງໃໝ່."
+              : "Could not create your ticket order. Please try again."),
+        );
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const handleFreeCheckout = async () => {
     if (!validateContactDetails()) return;
     setIsProcessing(true);
-    setTimeout(() => {
+    const created = await createRealOrder();
+    if (!created) {
       setIsProcessing(false);
-      setStep("success");
-      setTimeout(() => {
-        navigate("/dashboard", {
-          state: {
-            newTicket: {
-              event,
-              tier,
-              quantity: totalQuantity,
-              selectedTiers: selectedTiersList,
-              selectedDate: state.selectedDate,
-              selectedTime: state.selectedTime,
-            },
+      return;
+    }
+    setIsProcessing(false);
+    setStep("success");
+    setTimeout(() => {
+      navigate("/dashboard", {
+        state: {
+          newTicket: {
+            event,
+            tier,
+            quantity: totalQuantity,
+            selectedTiers: selectedTiersList,
+            selectedDate: state.selectedDate,
+            selectedTime: state.selectedTime,
           },
-        });
-      }, 3000);
-    }, 1500);
+        },
+      });
+    }, 3000);
   };
 
   const handleBankSelection = async () => {
@@ -653,9 +717,17 @@ export default function Checkout() {
     let pollInterval: any = null;
     let isCompleted = false;
 
-    const handlePaymentSuccess = () => {
+    const handlePaymentSuccess = async () => {
       if (isCompleted) return;
       isCompleted = true;
+      // The gateway confirmed payment; now record the order against it. If this
+      // fails (e.g. stock ran out while the buyer was paying), let the next
+      // poll tick retry rather than claiming success for a ticket that doesn't exist.
+      const created = await createRealOrder(transactionId ?? undefined);
+      if (!created) {
+        isCompleted = false;
+        return;
+      }
       setIsProcessing(false);
       setStep("success");
       setTimeout(() => {
@@ -903,27 +975,8 @@ export default function Checkout() {
         console.error("Error saving purchased event ID:", e);
       }
 
-      // 2. Firestore tickets collection tracking
-      const eventId = event.id;
-      const rawTitle = event.title;
-      const createSupabaseTicket = async () => {
-        if (!user) return;
-        try {
-          const { error } = await supabase.from('tickets').insert({
-            user_id: user.id,
-            event_id: event.id,
-            ticket_type: selectedTiersList[0]?.tier?.name || 'Standard',
-            quantity: quantity || selectedTiersList.reduce((acc, t) => acc + t.quantity, 0),
-            total_price: total,
-            status: 'valid'
-          });
-          if (error) throw error;
-        } catch (err: any) {
-          console.error("Failed to sync ticket to database:", err);
-        }
-      };
-
-      createSupabaseTicket();
+      // The real order was already created in the backend by createRealOrder()
+      // before this step was reached (see handleFreeCheckout / handlePaymentSuccess).
     }
   }, [step, event, tier, quantity, state?.selectedDate, state?.selectedTime]);
 

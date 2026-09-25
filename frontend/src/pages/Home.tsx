@@ -22,10 +22,11 @@ import {
   TrendingUp,
   Sparkles
 } from 'lucide-react';
-import { events, LaoEvent, getEventStatus } from '../data/events';
+import { LaoEvent, getEventStatus } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
 import LandscapeEventCard from '../components/LandscapeEventCard';
-import { safeStorage } from '../lib/storage';
+import { api } from '../lib/api';
+import { fromBackendEvent } from '../lib/eventPayload';
 import { getHomeHeroSettings, HomeHeroSettings, DEFAULT_HOME_HERO_SETTINGS } from '../lib/siteSettings';
 import SEO from '../components/SEO';
 import HomeBlogSection from '../components/HomeBlogSection';
@@ -72,61 +73,15 @@ const categoryToId: Record<string, string> = {
   'Voucher': 'voucher'
 };
 
-// Calculate views & purchases deterministically so that we always have high quality stats for all events
-const getEventStats = (event: LaoEvent) => {
-  const charSum = event.title.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const views = event.views || ((charSum % 800) + 400); // 400 to 1200 views
-  const purchases = event.purchases || Math.round(views * (0.15 + (charSum % 15) / 100)); // 15% to 30% conversion rate
-  return { views, purchases };
-};
+const getEventStats = (event: LaoEvent) => ({
+  views: event.views || 0,
+  purchases: event.purchases || 0,
+});
 
-// Calculate total sold tickets for sorting popular events accurately (Top 5)
-export const getEventTicketsSold = (event: LaoEvent): number => {
-  let soldCount = 0;
-
-  // Real tickets from user purchases in safeStorage / localStorage
-  try {
-    const rawTickets = safeStorage.getItem('pasopkan_user_tickets') || (typeof localStorage !== 'undefined' ? localStorage.getItem('pasopkan_user_tickets') : null);
-    if (rawTickets) {
-      const tickets = JSON.parse(rawTickets);
-      if (Array.isArray(tickets)) {
-        const userBought = tickets
-          .filter((t: any) => t?.event?.id === event.id || t?.eventId === event.id)
-          .reduce((sum: number, t: any) => sum + (Number(t?.quantity) || 1), 0);
-        soldCount += userBought;
-      }
-    }
-  } catch (e) {
-    // ignore
-  }
-
-  // Base sales from config or event attributes
-  const baseSalesConfig: Record<string, number> = {
-    '1': 420,
-    '2': 48,
-    '3': 85,
-    '4': 62,
-    '5': 310,
-    '6': 540,
-    '7': 15,
-    '8': 35,
-    '9': 110,
-    '10': 24,
-  };
-
-  if (baseSalesConfig[event.id]) {
-    soldCount += baseSalesConfig[event.id];
-  } else if (typeof (event as any).ticketsSold === 'number' && (event as any).ticketsSold > 0) {
-    soldCount += (event as any).ticketsSold;
-  } else if (typeof event.purchases === 'number' && event.purchases > 0) {
-    soldCount += event.purchases;
-  } else {
-    const stats = getEventStats(event);
-    soldCount += stats.purchases;
-  }
-
-  return soldCount;
-};
+// Total tickets sold per event, summed from each tier's real `sold` count
+// (Backend/src/models/schema.ts ticket_tiers.quantity_sold via fromBackendEvent).
+export const getEventTicketsSold = (event: LaoEvent): number =>
+  (event.ticketTiers || []).reduce((sum, tier: any) => sum + (Number(tier.sold) || 0), 0);
 
 const LandscapeEventCardSkeleton: React.FC = () => {
   return (
@@ -509,35 +464,30 @@ export default function Home() {
   }, [heroSlides.length, heroSettings.slideIntervalSeconds]);
 
   useEffect(() => {
+    let cancelled = false;
     setIsLoading(true);
-    let allEvents = events;
-    try {
-      const saved = safeStorage.getItem('organizer_events');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const existingIds = new Set(parsed.map((e: any) => e.id));
-          allEvents = [...parsed, ...events.filter(e => !existingIds.has(e.id))];
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
+    api.listEvents().then((res) => {
+      if (cancelled) return;
+      const allEvents: LaoEvent[] = (res.data?.events ?? []).map(fromBackendEvent);
 
-    // Filter out events that are expired or already in the past
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const todayStr = `${year}-${month}-${day}`;
+      // Filter out events that are expired or already in the past
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${day}`;
 
-    const activeEvents = allEvents.filter(evt => {
-      const checkDate = evt.endDate || evt.bookingEndDate || evt.date;
-      return (!checkDate || checkDate >= todayStr) && evt.status !== 'pending' && evt.status !== 'rejected';
+      const activeEvents = allEvents.filter(evt => {
+        const checkDate = evt.endDate || evt.bookingEndDate || evt.date;
+        return !checkDate || checkDate >= todayStr;
+      });
+
+      setFetchedEvents(activeEvents);
+      setIsLoading(false);
     });
-
-    setFetchedEvents(activeEvents);
-    setIsLoading(false);
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Top 5 Popular Events sorted by tickets sold the most

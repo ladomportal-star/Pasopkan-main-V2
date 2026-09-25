@@ -49,7 +49,9 @@ import {
   ExternalLink,
   Video
 } from 'lucide-react';
-import { events, LaoEvent, TicketTier } from '../data/events';
+import { LaoEvent, TicketTier } from '../data/events';
+import { api } from '../lib/api';
+import { fromBackendEvent } from '../lib/eventPayload';
 import { useLanguage } from '../context/LanguageContext';
 import { EventMapPicker } from '../components/EventMapPicker';
 import { AdaptiveImage } from '../components/AdaptiveImage';
@@ -787,21 +789,10 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
   };
 
   useEffect(() => {
-    let foundEvent = previewEventData;
-    if (!foundEvent) {
-      let allEvents = events;
-      try {
-        const saved = safeStorage.getItem('organizer_events');
-        if (saved) {
-          allEvents = JSON.parse(saved);
-        }
-      } catch (e) {
-        console.error(e);
-      }
-      foundEvent = allEvents.find(e => e.id === id);
-    }
+    let cancelled = false;
 
-    if (foundEvent) {
+    const applyEvent = (foundEvent: LaoEvent | undefined) => {
+      if (cancelled || !foundEvent) return;
       setEvent(foundEvent);
       const availableTier = foundEvent.ticketTiers?.find(tier => tier.available > 0);
       if (availableTier) setSelectedTier(availableTier);
@@ -835,7 +826,19 @@ export default function EventDetails({ previewEventData, onClosePreview }: Event
       } else {
         setSelectedTimeSlot(foundEvent.time || '');
       }
+    };
+
+    if (previewEventData) {
+      applyEvent(previewEventData);
+    } else if (id) {
+      api.getEvent(id).then((res) => {
+        applyEvent(res.data?.event ? fromBackendEvent(res.data.event) : undefined);
+      });
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [id, previewEventData]);
 
   const selectedSlotCapacity = useMemo(() => {

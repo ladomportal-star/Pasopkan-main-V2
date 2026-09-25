@@ -97,11 +97,62 @@ export const api = {
     opts?: RequestOptions,
   ) => request<{ success: true; user: BackendUser }>('POST', '/account/sync', profile, opts),
 
+  listEvents: (query?: { mine?: boolean; status?: string; limit?: number }, opts?: RequestOptions) => {
+    const params = new URLSearchParams();
+    if (query?.mine) params.set('mine', 'true');
+    if (query?.status) params.set('status', query.status);
+    if (query?.limit) params.set('limit', String(query.limit));
+    const qs = params.toString();
+    return request<{ events: Record<string, unknown>[] }>('GET', `/events${qs ? `?${qs}` : ''}`, undefined, opts);
+  },
+
+  getEvent: (idOrRef: string, opts?: RequestOptions) =>
+    request<{ event: Record<string, unknown> }>(
+      'GET',
+      `/events/${encodeURIComponent(idOrRef)}`,
+      undefined,
+      opts,
+    ),
+
   createEvent: (event: Record<string, unknown>, opts?: RequestOptions) =>
-    request<{ event: { id: string } }>('POST', '/events', event, opts),
+    request<{ event: Record<string, unknown> }>('POST', '/events', event, opts),
 
   updateEvent: (idOrRef: string, patch: Record<string, unknown>, opts?: RequestOptions) =>
-    request<{ event: { id: string } }>('PUT', `/events/${encodeURIComponent(idOrRef)}`, patch, opts),
+    request<{ event: Record<string, unknown> }>(
+      'PUT',
+      `/events/${encodeURIComponent(idOrRef)}`,
+      patch,
+      opts,
+    ),
+
+  listOrders: (opts?: RequestOptions) =>
+    request<{ tickets: Record<string, unknown>[] }>('GET', '/tickets', undefined, opts),
+
+  createOrder: (
+    order: {
+      eventId: string;
+      tierId: string;
+      tierName?: string;
+      quantity: number;
+      selectedDate?: string;
+      selectedTime?: string;
+      paymentTxnId?: string;
+      attendees?: Array<{
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        phone?: string;
+        customAnswers?: Record<string, string | string[]>;
+      }>;
+    },
+    opts?: RequestOptions,
+  ) =>
+    request<{ success: true; order: Record<string, unknown>; items: Record<string, unknown>[] }>(
+      'POST',
+      '/tickets',
+      order,
+      opts,
+    ),
 
   scanCheckin: (
     scan: {
