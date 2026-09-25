@@ -31,21 +31,12 @@ export function createApp() {
     );
   }
 
-  // Security + transport
-  // In production this process only ever serves JSON under /api — it never
-  // renders HTML — so Helmet's full default header set (CSP, frameguard,
-  // HSTS, cross-origin isolation, ...) applies with no compatibility cost.
-  // In dev, `frontend/vite.config.ts` mounts this same app as middleware
-  // inside the Vite dev server so `npm run dev` serves the SPA and the API
-  // from one process; Helmet's CSP would then also land on Vite's own HTML
-  // and block the inline bootstrap script its React Fast Refresh needs, so
-  // CSP is off there (every other Helmet default still applies).
-  app.use(helmet(env.isProd ? undefined : { contentSecurityPolicy: false }));
+  // This process only ever serves JSON — Helmet's full default set is safe.
+  app.use(helmet());
 
-  // Cross-origin access is opt-in via CORS_ORIGIN. In development, an empty
-  // list reflects any origin for convenience; in production it must be set
-  // explicitly (checkEnv warns at boot otherwise) — reflecting `true` with
-  // `credentials: true` would let any website read authenticated responses.
+  // Empty CORS_ORIGIN reflects any origin in dev; production must set it
+  // explicitly, since reflecting `true` with `credentials: true` would let
+  // any site read authenticated responses.
   app.use(
     cors({
       origin: env.corsOrigins.length > 0 ? env.corsOrigins : !env.isProd,

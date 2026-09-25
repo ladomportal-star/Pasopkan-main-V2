@@ -4,31 +4,15 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 /**
- * `npm run dev` serves the SPA *and* the real backend API from one process and
- * one port, so `fetch('/api/...')` (src/lib/api.ts) needs no proxy or CORS.
+ * Standalone Vite SPA on port 5173. The Backend runs as its own process on
+ * port 3000 (see ../Backend); the dev server proxies `/api/*` to it so
+ * `fetch('/api/...')` (src/lib/api.ts) needs no CORS config.
  * `DISABLE_HMR=true` turns off Hot Module Replacement (e.g. sandboxed editors).
+ * `VITE_API_PROXY_TARGET` overrides the proxy target (default http://localhost:3000).
  * Client env vars (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) live in frontend/.env.
  */
 export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-    {
-      name: 'api-server-middleware',
-      async configureServer(server) {
-        try {
-          // Loaded through Vite's SSR loader so the backend's own dependencies
-          // resolve from backend/node_modules (they are not installed here).
-          const { createApp } = await server.ssrLoadModule(
-            path.resolve(__dirname, '../backend/src/app.ts'),
-          );
-          server.middlewares.use(createApp());
-        } catch (e) {
-          console.error('Failed to mount Backend API in Vite dev server:', e);
-        }
-      },
-    },
-  ],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: { '@': path.resolve(__dirname, 'src') },
   },
@@ -48,8 +32,15 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 5173,
     host: '0.0.0.0',
+    open: true,
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:3000',
+        changeOrigin: true,
+      },
+    },
     hmr: process.env.DISABLE_HMR !== 'true',
   },
 });

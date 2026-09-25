@@ -28,13 +28,16 @@ commands inside `backend/` or `frontend/`.
 
 ```bash
 cd backend  && npm install && cp .env.example .env    # fill in DATABASE_URL, SUPABASE_URL, ...
-cd ../frontend && npm install
-npm run dev               # web app + API together on http://localhost:3000
+npm run dev                                            # API on http://localhost:3000
+
+# in a second terminal
+cd frontend && npm install
+npm run dev               # web app on http://localhost:5173
 ```
 
-`npm run dev` in `frontend/` runs the Vite dev server with the backend API
-mounted inside it, so the app and `/api/*` share one origin and port (no proxy,
-no CORS). To run the API alone: `cd backend && npm run dev` (`tsx watch`).
+Backend and frontend run as two separate processes on two separate ports.
+The Vite dev server proxies `/api/*` requests to `http://localhost:3000`
+(see `frontend/vite.config.ts`), so `fetch('/api/...')` needs no CORS setup.
 Client env vars (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) go in
 `frontend/.env` (copy `frontend/.env.example`); server settings go in `backend/.env`.
 
@@ -57,7 +60,7 @@ Client env vars (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) go in
 
 | Command           | Description                                  |
 | ----------------- | ------------------------------------------- |
-| `npm run dev`     | Vite dev server + API on port 3000           |
+| `npm run dev`     | Vite dev server on port 5173 (proxies `/api/*` to `:3000`) |
 | `npm run build`   | Production build to `frontend/dist`          |
 | `npm run preview` | Preview the production build                 |
 | `npm run lint`    | Type-check (`tsc --noEmit`)                  |
