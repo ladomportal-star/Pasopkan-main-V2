@@ -47,6 +47,10 @@ export async function upsertUserProfile(uid: string, profile: ProfileInput) {
 
 /** The user's application role ("user" | "organizer" | "admin"); "user" if unknown. */
 export async function getUserRole(uid: string, exec: Pick<typeof db, "select"> = db) {
-  const [row] = await exec.select({ role: users.role }).from(users).where(eq(users.authUid, uid)).limit(1);
+  const [row] = await exec
+    .select({ role: users.role })
+    .from(users)
+    .where(eq(users.authUid, uid))
+    .limit(1);
   return row?.role ?? "user";
 }
