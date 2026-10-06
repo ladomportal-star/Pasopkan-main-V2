@@ -43,7 +43,11 @@ export async function upsertUserProfile(uid: string, profile: ProfileInput) {
 
 /** The Supabase auth_uid already on file for this phone number, if any. */
 export async function getAuthUidByPhone(phone: string) {
-  const [row] = await db.select({ authUid: users.authUid }).from(users).where(eq(users.phone, phone)).limit(1);
+  const [row] = await db
+    .select({ authUid: users.authUid })
+    .from(users)
+    .where(eq(users.phone, phone))
+    .limit(1);
   return row?.authUid;
 }
 

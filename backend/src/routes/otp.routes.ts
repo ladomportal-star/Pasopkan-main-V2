@@ -96,7 +96,9 @@ otpRouter.post("/otp/verify", async (req, res) => {
       res.status(502).json({
         success: false,
         error:
-          sessionErr instanceof Error ? sessionErr.message : "Failed to sign in after OTP verification",
+          sessionErr instanceof Error
+            ? sessionErr.message
+            : "Failed to sign in after OTP verification",
       });
     }
   } catch (err: unknown) {

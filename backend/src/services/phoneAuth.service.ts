@@ -8,8 +8,10 @@ const noSession = { auth: { autoRefreshToken: false, persistSession: false } };
 // Built lazily (only once both keys are known to be set) so importing this
 // module never crashes a boot/test run that has no phone-login config —
 // createClient() throws synchronously on an empty key.
-let clients: { admin: ReturnType<typeof createClient>; anon: ReturnType<typeof createClient> } | null =
-  null;
+let clients: {
+  admin: ReturnType<typeof createClient>;
+  anon: ReturnType<typeof createClient>;
+} | null = null;
 function getClients() {
   if (!clients) {
     clients = {
