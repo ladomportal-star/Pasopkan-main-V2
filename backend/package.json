@@ -30,6 +30,7 @@
     "*.ts": "eslint --fix"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "cross-env": "^7.0.3",

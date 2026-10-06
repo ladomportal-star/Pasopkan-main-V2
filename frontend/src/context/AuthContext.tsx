@@ -23,7 +23,7 @@ interface AuthContextType {
   token: string | null;
   user: AppUser | null;
   login: (token: string) => void;
-  loginAnonymously: () => Promise<User>;
+  loginWithPhoneSession: (session: { accessToken: string; refreshToken: string }) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
@@ -95,9 +95,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const [firstName, ...rest] = fullName.split(' ');
       const { data, error } = await api.syncAccount(
         {
-          email: supabaseUser.email ?? '',
+          email: supabaseUser.email || undefined,
           firstName: firstName || undefined,
           lastName: rest.length > 0 ? rest.join(' ') : undefined,
+          phone: supabaseUser.phone || undefined,
           avatarUrl: supabaseUser.user_metadata?.avatar_url || undefined,
         },
         { token: accessToken, throwOnError: true },
@@ -117,20 +118,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(newToken);
   };
 
-  const loginAnonymously = async () => {
+  /** Loads a session the backend minted for a phone number it already
+   *  verified via OTP (see /api/otp/verify). Same identity every time the
+   *  same phone number signs in — not a fresh anonymous user. */
+  const loginWithPhoneSession = async (session: { accessToken: string; refreshToken: string }) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInAnonymously();
+      const { error } = await supabase.auth.setSession({
+        access_token: session.accessToken,
+        refresh_token: session.refreshToken,
+      });
       if (error) throw error;
-      if (data.user) {
-        return data.user;
-      }
-      throw new Error('No user returned from anonymous sign in');
+      // onAuthStateChange picks up the new session and clears `loading`.
     } catch (error: any) {
-      console.error('Anonymous sign-in failed:', error);
-      throw error;
-    } finally {
+      console.error('Phone sign-in failed:', error);
       setLoading(false);
+      throw error;
     }
   };
 
@@ -202,11 +205,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ 
-      token, 
-      user, 
-      login, 
-      loginAnonymously, 
-      loginWithGoogle, 
+      token,
+      user,
+      login,
+      loginWithPhoneSession,
+      loginWithGoogle,
       logout, 
       isAuthenticated: !!user,
       loading,

@@ -8,10 +8,11 @@ import { useTheme } from '../context/ThemeContext';
 import Logo from '../components/Logo';
 import OtpInput from '../components/OtpInput';
 import SEO from '../components/SEO';
+import { normalizeLaoPhone } from '../lib/phone';
 
 export default function Register() {
   const navigate = useNavigate();
-  const { loginAnonymously, loginWithGoogle } = useAuth();
+  const { loginWithPhoneSession, loginWithGoogle } = useAuth();
   const { lang, toggleLanguage } = useLanguage();
   const { theme } = useTheme();
   const [step, setStep] = useState<'details' | 'otp'>('details');
@@ -103,42 +104,54 @@ export default function Register() {
       }
     }
 
-    if (name.length > 0) {
-      setIsLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setIsLoading(false);
+    if (name.length === 0) return;
+
+    setIsLoading(true);
+    try {
+      const formattedPhone = normalizeLaoPhone(digits);
+      const res = await fetch('/api/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: formattedPhone }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send OTP');
       setStep('otp');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otp.length >= 4) {
-      setIsLoading(true);
-      setError(null);
-      try {
-        // Save profile locally first so AuthContext can pick it up for the new Firebase user
-        const parts = name.trim().split(/\s+/);
-        const firstName = parts[0] || '';
-        const lastName = parts.slice(1).join(' ') || '';
+    if (otp.length < 6) return;
 
-        const registrationProfile = {
-          firstName,
-          lastName,
-          email: email || '',
-          phone: phoneNumber,
-          gender: '',
-          dob: '',
-        };
-        localStorage.setItem('pasopkan_user_profile', JSON.stringify(registrationProfile));
+    setIsLoading(true);
+    setError(null);
+    try {
+      const formattedPhone = normalizeLaoPhone(phoneNumber.replace(/\D/g, ''));
+      const parts = name.trim().split(/\s+/);
+      const firstName = parts[0] || '';
+      const lastName = parts.slice(1).join(' ') || '';
 
-        await loginAnonymously();
-        navigate('/');
-      } catch (err: any) {
-        setError(err.message || 'Registration failed. Please try again.');
-      } finally {
-        setIsLoading(false);
+      const res = await fetch('/api/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: formattedPhone, code: otp, firstName, lastName, email }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success || !data.session) {
+        throw new Error(data.error || 'Incorrect verification code');
       }
+
+      await loginWithPhoneSession(data.session);
+      navigate('/');
+    } catch (err: any) {
+      setError(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 

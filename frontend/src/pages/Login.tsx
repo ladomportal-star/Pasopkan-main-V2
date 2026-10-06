@@ -8,6 +8,7 @@ import { useTheme } from '../context/ThemeContext';
 import Logo from '../components/Logo';
 import OtpInput from '../components/OtpInput';
 import { safeStorage } from '../lib/storage';
+import { normalizeLaoPhone } from '../lib/phone';
 import SEO from '../components/SEO';
 import { 
   getTermsSettings, 
@@ -21,7 +22,7 @@ import {
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { loginAnonymously, loginWithGoogle } = useAuth();
+  const { loginWithPhoneSession, loginWithGoogle } = useAuth();
   const { lang, toggleLanguage } = useLanguage();
   const { theme } = useTheme();
   const [step, setStep] = useState<'phone' | 'otp' | '2fa'>('phone');
@@ -166,15 +167,7 @@ export default function Login() {
       }
     }
 
-    
-    let formattedPhone = digits;
-    if (formattedPhone.startsWith('856020')) {
-      formattedPhone = '85620' + formattedPhone.substring(6);
-    } else if (formattedPhone.startsWith('020')) {
-      formattedPhone = '85620' + formattedPhone.substring(3);
-    } else if (formattedPhone.startsWith('20')) {
-      formattedPhone = '85620' + formattedPhone.substring(2);
-    }
+    const formattedPhone = normalizeLaoPhone(digits);
 
     setIsLoading(true);
     try {
@@ -213,11 +206,7 @@ export default function Login() {
     setError(null);
     setResendMessage(null);
     try {
-      const digits = phoneNumber.replace(/\D/g, '');
-      let formattedPhone = digits;
-      if (formattedPhone.startsWith('856020')) formattedPhone = '85620' + formattedPhone.substring(6);
-      else if (formattedPhone.startsWith('020')) formattedPhone = '85620' + formattedPhone.substring(3);
-      else if (formattedPhone.startsWith('20')) formattedPhone = '85620' + formattedPhone.substring(2);
+      const formattedPhone = normalizeLaoPhone(phoneNumber.replace(/\D/g, ''));
 
       const res = await fetch('/api/otp/send', {
         method: 'POST',
@@ -248,11 +237,7 @@ export default function Login() {
     }
     setIsLoading(true);
     try {
-      const digits = phoneNumber.replace(/\D/g, '');
-      let formattedPhone = digits;
-      if (formattedPhone.startsWith('856020')) formattedPhone = '85620' + formattedPhone.substring(6);
-      else if (formattedPhone.startsWith('020')) formattedPhone = '85620' + formattedPhone.substring(3);
-      else if (formattedPhone.startsWith('20')) formattedPhone = '85620' + formattedPhone.substring(2);
+      const formattedPhone = normalizeLaoPhone(phoneNumber.replace(/\D/g, ''));
 
       const res = await fetch('/api/otp/verify', {
         method: 'POST',
@@ -260,30 +245,13 @@ export default function Login() {
         body: JSON.stringify({ phone: formattedPhone, code: otp })
       });
       const data = await res.json();
-      if (!res.ok || !data.success) {
-        setError(t.incorrectOtp);
+      if (!res.ok || !data.success || !data.session) {
+        setError(data.error || t.incorrectOtp);
         setIsLoading(false);
         return;
       }
 
-      await loginAnonymously();
-      
-      // Link phone number in local profile and sync
-      const savedProfileStr = localStorage.getItem('pasopkan_user_profile');
-      let localProfile = {
-        firstName: 'Sirithida',
-        lastName: 'Souksavat',
-        email: 'sirithida.ssv@gmail.com',
-        phone: phoneNumber,
-        gender: '',
-        dob: '',
-      };
-      if (savedProfileStr) {
-        try {
-          localProfile = { ...localProfile, ...JSON.parse(savedProfileStr), phone: phoneNumber };
-        } catch (e) {}
-      }
-      localStorage.setItem('pasopkan_user_profile', JSON.stringify(localProfile));
+      await loginWithPhoneSession(data.session);
 
       if (safeStorage.getItem('user_2fa_enabled') === 'true') {
         setStep('2fa');

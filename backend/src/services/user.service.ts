@@ -41,6 +41,12 @@ export async function upsertUserProfile(uid: string, profile: ProfileInput) {
   return row;
 }
 
+/** The Supabase auth_uid already on file for this phone number, if any. */
+export async function getAuthUidByPhone(phone: string) {
+  const [row] = await db.select({ authUid: users.authUid }).from(users).where(eq(users.phone, phone)).limit(1);
+  return row?.authUid;
+}
+
 /** The user's application role ("user" | "organizer" | "admin"); "user" if unknown. */
 export async function getUserRole(uid: string, exec: Pick<typeof db, "select"> = db) {
   const [row] = await exec

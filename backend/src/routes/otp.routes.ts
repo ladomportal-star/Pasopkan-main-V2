@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { env } from "../config/env.ts";
+import { signInWithVerifiedPhone } from "../services/phoneAuth.service.ts";
 
 const otpRouter = Router();
 
@@ -47,7 +48,7 @@ otpRouter.post("/otp/send", async (req, res) => {
 
 otpRouter.post("/otp/verify", async (req, res) => {
   if (!configured()) return res.status(503).json(notConfigured);
-  const { phone, code } = req.body;
+  const { phone, code, firstName, lastName, email } = req.body;
   if (!code) {
     return res.status(400).json({ error: "Code required" });
   }
@@ -78,7 +79,26 @@ otpRouter.post("/otp/verify", async (req, res) => {
       return res.status(400).json({ error: "Invalid OTP", success: false });
     }
 
-    res.json({ success: true, data });
+    if (!phone) {
+      return res.json({ success: true, data });
+    }
+
+    // The code was valid — now mint a real Supabase session for this phone
+    // so the frontend can call setSession() instead of signing in anonymously.
+    try {
+      const session = await signInWithVerifiedPhone(phone, {
+        firstName: typeof firstName === "string" ? firstName : undefined,
+        lastName: typeof lastName === "string" ? lastName : undefined,
+        email: typeof email === "string" ? email : undefined,
+      });
+      res.json({ success: true, data, session });
+    } catch (sessionErr: unknown) {
+      res.status(502).json({
+        success: false,
+        error:
+          sessionErr instanceof Error ? sessionErr.message : "Failed to sign in after OTP verification",
+      });
+    }
   } catch (err: unknown) {
     res.status(500).json({ error: err instanceof Error ? err.message : "OTP request failed" });
   }

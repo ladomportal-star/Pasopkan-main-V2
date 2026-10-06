@@ -34,6 +34,12 @@ const schema = z.object({
   // Identity provider: the Supabase project the frontend signs users in with.
   // Access tokens are verified against its public JWKS (no shared secret).
   SUPABASE_URL: z.string().trim().optional().default(""),
+  // Anon key: public, safe to expose (same value the frontend ships). Needed
+  // server-side only to mint a phone-login session (see phoneAuth.service.ts).
+  SUPABASE_ANON_KEY: z.string().trim().optional().default(""),
+  // Service role key: full admin access, bypasses RLS. SECRET — never expose
+  // to the frontend or commit it. Used only to create/update phone-login users.
+  SUPABASE_SERVICE_ROLE_KEY: z.string().trim().optional().default(""),
 
   // OTP (api.otp.dev) — credentials live in the environment, never in source.
   OTP_API_KEY: z.string().trim().optional().default(""),
@@ -79,6 +85,8 @@ export const env = {
   },
 
   supabaseUrl: e.SUPABASE_URL.replace(/\/+$/, ""),
+  supabaseAnonKey: e.SUPABASE_ANON_KEY,
+  supabaseServiceRoleKey: e.SUPABASE_SERVICE_ROLE_KEY,
   otp: { apiKey: e.OTP_API_KEY, senderId: e.OTP_SENDER_ID, templateId: e.OTP_TEMPLATE_ID },
   frontendDist: e.FRONTEND_DIST,
 
@@ -102,6 +110,11 @@ export function checkEnv(warn: (msg: string) => void) {
   }
   if (!env.otp.apiKey || !env.otp.senderId || !env.otp.templateId) {
     warn("OTP_API_KEY / OTP_SENDER_ID / OTP_TEMPLATE_ID not set - /api/otp/* will return 503.");
+  }
+  if (!env.supabaseAnonKey || !env.supabaseServiceRoleKey) {
+    warn(
+      "SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY not set - phone login will verify the OTP but fail to sign the user in.",
+    );
   }
   if (env.isProd && env.corsOrigins.length === 0) {
     warn("CORS_ORIGIN not set in production - all cross-origin browser requests will be blocked.");
