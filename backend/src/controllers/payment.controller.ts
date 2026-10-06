@@ -15,5 +15,5 @@ export async function receiveWebhook(req: Request, res: Response) {
 
 /** Verify a transaction's status. */
 export async function getPaymentStatus(req: Request, res: Response) {
-  return ok(res, await paymentService.getPaymentStatus(req.params.transactionId));
+  return ok(res, await paymentService.getPaymentStatus(req.params.transactionId, req.user!.uid));
 }

@@ -9,12 +9,10 @@ node_modules/
 **/node_modules/
 **/.vite/
 
-# Firebase CLI local state
-.firebase/
-firebase-debug.log
-
 # Build output
 dist/
+Backend/src/generated/
+backend/src/generated/
 
 # Local env files hold real values - commit only the *.example templates
 .env

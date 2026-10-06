@@ -8,4 +8,4 @@ coverage/
 .env.*
 !.env.example
 
-# Drizzle keeps generated migrations under drizzle/ — those ARE committed.
+# Prisma SQL migrations under prisma/migrations are committed.

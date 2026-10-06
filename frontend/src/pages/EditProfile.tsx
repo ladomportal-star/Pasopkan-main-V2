@@ -58,7 +58,7 @@ const translations = {
 export default function EditProfile() {
   const navigate = useNavigate();
   const { lang } = useLanguage();
-  const { user, syncProfileToFirestore } = useAuth();
+  const { user, syncProfileToSupabase } = useAuth();
   const t = translations[lang];
   const [profilePic, setProfilePic] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -130,9 +130,9 @@ export default function EditProfile() {
           }
           
           try {
-            await syncProfileToFirestore({ profilePic: base64Pic });
+            await syncProfileToSupabase({ profilePic: base64Pic });
           } catch (err) {
-            console.error('Firestore sync error:', err);
+            console.error('Profile sync error:', err);
           }
         };
         img.src = reader.result as string;
@@ -181,7 +181,7 @@ export default function EditProfile() {
         dob: formData.dateOfBirth || formData.dob || '',
       };
       safeStorage.setItem('pasopkan_user_profile', JSON.stringify(payload));
-      await syncProfileToFirestore(payload);
+      await syncProfileToSupabase(payload);
     } catch (err) {
       console.error(err);
     }

@@ -35,7 +35,7 @@ import Contact from './pages/Contact';
 import About from './pages/About';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
-import AdminDashboard from './pages/AdminDashboard';
+import ApprovalCenter from './pages/ApprovalCenter';
 import StaffScanner from './pages/StaffScanner';
 
 // A wrapper to animate individual standalone pages
@@ -84,6 +84,7 @@ function AnimatedRoutes() {
           <Route path="checkout" element={<Checkout />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="account" element={<Account />} />
+          <Route path="organizer" element={<ApprovalCenter />} />
           <Route path="past-events" element={<PastEvents />} />
           <Route path="category/:categoryId" element={<CategoryEvents />} />
           <Route path="edit-profile" element={<EditProfile />} />
@@ -101,7 +102,7 @@ function AnimatedRoutes() {
         </Route>
         
         {/* Standalone Pages */}
-        <Route path="/admin" element={<PageTransition><AdminDashboard /></PageTransition>} />
+        <Route path="/admin" element={<PageTransition><ApprovalCenter admin /></PageTransition>} />
         <Route path="/create" element={<PageTransition><CreateEvent /></PageTransition>} />
         <Route path="/staff-scanner" element={<PageTransition><StaffScanner /></PageTransition>} />
         <Route path="/login" element={<PageTransition><Login /></PageTransition>} />

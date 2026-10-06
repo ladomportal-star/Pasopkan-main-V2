@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.ts";
 import { db } from "../src/config/database.ts";
-import { users } from "../src/models/schema.ts";
 import { as } from "./helpers/auth.ts";
 import { createEvent } from "./helpers/seed.ts";
 
@@ -77,7 +76,7 @@ describe("events", () => {
     expect(byOwner.body.event.title).toBe("After");
     expect(byOwner.body.event.tiers).toHaveLength(2); // untouched when not sent
 
-    await db.insert(users).values({ authUid: "admin-1", email: "a@test.local", role: "admin" });
+    await db.user.create({ data: { authId: "admin-1", email: "a@test.local", role: "admin" } });
     const byAdmin = await request(app)
       .put(`/api/events/${event.id}`)
       .set(await as("admin-1"))

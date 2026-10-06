@@ -1,103 +1,35 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../config/database.ts";
-import { notifications } from "../models/schema.ts";
-
-/** `db` or a transaction handle, so a notification can commit atomically with the change that caused it. */
-type Executor = Pick<typeof db, "insert" | "select" | "update" | "delete">;
-
-export type NotificationType = (typeof notifications.$inferInsert)["type"];
-
+import type { Prisma } from "../lib/prisma.ts";
+import type { Notification } from "../generated/prisma/client.ts";
+export type NotificationType = "upcomingEvent" | "ticket" | "promo" | "verified" | "system" | "noted";
 export interface NewNotification {
-  type?: NotificationType;
-  title: string;
-  titleLo?: string;
-  message: string;
-  messageLo?: string;
-  /** Deep-link context, e.g. { eventId, orderId } */
-  data?: Record<string, string>;
+  type?: NotificationType; title: string; titleLo?: string; message: string; messageLo?: string; data?: Record<string, string>;
 }
-
-/** Shape the frontend consumes: `isUnread` derived from `read_at`. */
-const toApi = (row: typeof notifications.$inferSelect) => ({
-  id: row.id,
-  type: row.type,
-  title: row.title,
-  titleLo: row.titleLo ?? undefined,
-  message: row.message,
-  messageLo: row.messageLo ?? undefined,
-  data: row.data ?? undefined,
-  isUnread: row.readAt === null,
-  createdAt: row.createdAt.toISOString(),
-});
-
-/** Create a notification for one user. Pass a transaction to commit it with the triggering change. */
-export async function createNotification(
-  userUid: string,
-  input: NewNotification,
-  exec: Executor = db,
-) {
-  const [row] = await exec
-    .insert(notifications)
-    .values({ ...input, userUid, type: input.type ?? "system" })
-    .returning();
-  return toApi(row);
+const toApi = (row: Notification) => ({ ...row, userId: undefined, isUnread: row.readAt === null, createdAt: row.createdAt.toISOString() });
+export async function createNotification(userUid: string, input: NewNotification, exec: Prisma.TransactionClient = db) {
+  const user = await exec.user.upsert({ where: { authId: userUid }, create: { authId: userUid }, update: {} });
+  return toApi(await exec.notification.create({ data: { ...input, userId: user.id } }));
 }
-
-export async function listNotifications(
-  userUid: string,
-  opts: { unreadOnly?: boolean; limit: number },
-) {
-  const where = opts.unreadOnly
-    ? and(eq(notifications.userUid, userUid), isNull(notifications.readAt))
-    : eq(notifications.userUid, userUid);
-
-  const [rows, [{ unread }]] = await Promise.all([
-    db
-      .select()
-      .from(notifications)
-      .where(where)
-      .orderBy(desc(notifications.createdAt))
-      .limit(opts.limit),
-    db
-      .select({ unread: sql<number>`count(*)::int` })
-      .from(notifications)
-      .where(and(eq(notifications.userUid, userUid), isNull(notifications.readAt))),
+const owner = (userUid: string) => ({ user: { authId: userUid } });
+export async function listNotifications(userUid: string, opts: { unreadOnly?: boolean; limit: number }) {
+  const [rows, unreadCount] = await Promise.all([
+    db.notification.findMany({ where: { ...owner(userUid), ...(opts.unreadOnly ? { readAt: null } : {}) }, orderBy: { createdAt: "desc" }, take: opts.limit }),
+    db.notification.count({ where: { ...owner(userUid), readAt: null } }),
   ]);
-
-  return { notifications: rows.map(toApi), unreadCount: unread };
+  return { notifications: rows.map(toApi), unreadCount };
 }
-
-/** Mark one of the caller's notifications read. Returns false if it isn't theirs / doesn't exist. */
 export async function markRead(userUid: string, id: string) {
-  const rows = await db
-    .update(notifications)
-    .set({ readAt: sql`coalesce(${notifications.readAt}, now())` })
-    .where(and(eq(notifications.id, id), eq(notifications.userUid, userUid)))
-    .returning({ id: notifications.id });
-  return rows.length > 0;
+  const row = await db.notification.findFirst({ where: { id, ...owner(userUid) } });
+  if (!row) return false;
+  await db.notification.updateMany({ where: { id, ...owner(userUid), readAt: null }, data: { readAt: new Date() } });
+  return true;
 }
-
 export async function markAllRead(userUid: string) {
-  const rows = await db
-    .update(notifications)
-    .set({ readAt: new Date() })
-    .where(and(eq(notifications.userUid, userUid), isNull(notifications.readAt)))
-    .returning({ id: notifications.id });
-  return rows.length;
+  return (await db.notification.updateMany({ where: { ...owner(userUid), readAt: null }, data: { readAt: new Date() } })).count;
 }
-
 export async function deleteNotification(userUid: string, id: string) {
-  const rows = await db
-    .delete(notifications)
-    .where(and(eq(notifications.id, id), eq(notifications.userUid, userUid)))
-    .returning({ id: notifications.id });
-  return rows.length > 0;
+  return (await db.notification.deleteMany({ where: { id, ...owner(userUid) } })).count > 0;
 }
-
 export async function clearNotifications(userUid: string) {
-  const rows = await db
-    .delete(notifications)
-    .where(eq(notifications.userUid, userUid))
-    .returning({ id: notifications.id });
-  return rows.length;
+  return (await db.notification.deleteMany({ where: owner(userUid) })).count;
 }

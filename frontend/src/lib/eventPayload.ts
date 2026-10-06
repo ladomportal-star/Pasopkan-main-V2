@@ -10,9 +10,9 @@ type Category = (typeof CATEGORIES)[number];
 const toCategory = (c: unknown): Category =>
   (CATEGORIES as readonly string[]).includes(String(c)) ? (c as Category) : "Other";
 
-const toStatus = (s: unknown): "draft" | "published" => {
+const toStatus = (s: unknown): "draft" | "pending_review" => {
   const v = String(s ?? "").toLowerCase();
-  return v === "active" || v === "published" ? "published" : "draft";
+  return ["active", "published", "pending_review"].includes(v) ? "pending_review" : "draft";
 };
 
 const num = (v: unknown): number => Number(String(v ?? "").replace(/[^0-9.-]/g, "")) || 0;
@@ -28,7 +28,6 @@ export function toEventPayload(e: FeEvent): Record<string, unknown> {
   const dateType = ["fixed", "flexible", "booking"].includes(e.dateType) ? e.dateType : "fixed";
 
   return {
-    legacyId: e.id != null ? String(e.id) : undefined,
     title: str(e.title) ?? "Untitled event",
     description: str(e.description),
     category: toCategory(e.category),
@@ -76,7 +75,9 @@ export function toEventPayload(e: FeEvent): Record<string, unknown> {
       .map((t: FeEvent) => ({
         name: String(t.name),
         priceKip: num(t.price),
-        quantityTotal: t.available != null ? num(t.available) || null : null,
+        quantityTotal: t.available != null && Number.isFinite(Number(t.available))
+          ? num(t.available) + num(t.sold)
+          : null,
       })),
 
     dates: (e.availableDates ?? [])

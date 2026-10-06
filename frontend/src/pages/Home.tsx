@@ -405,7 +405,7 @@ export default function Home() {
     setTouchEndX(null);
   };
 
-  // Fetch dynamic hero settings from Firestore / LocalStorage
+  // Fetch dynamic hero settings from site settings
   useEffect(() => {
     let isMounted = true;
     getHomeHeroSettings()

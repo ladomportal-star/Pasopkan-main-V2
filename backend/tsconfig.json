@@ -16,6 +16,6 @@
     "useDefineForClassFields": false,
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "drizzle.config.ts"],
-  "exclude": ["dist", "node_modules", "drizzle"]
+  "include": ["src/**/*.ts", "prisma.config.ts"],
+  "exclude": ["dist", "node_modules"]
 }

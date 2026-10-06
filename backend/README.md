@@ -1,107 +1,38 @@
 # Pasopkan backend
 
-Express + TypeScript API. Talks to PostgreSQL (Supabase) through Drizzle
-ORM and verifies Firebase ID tokens. Runs standalone on port `3000`; the
-frontend project calls it over HTTP.
+Express + TypeScript API using Prisma and PostgreSQL. Supabase JWTs are verified against the project's public JWKS. No client-supplied identity is trusted without token verification.
 
-```bash
-npm install
-cp .env.example .env      # fill in DATABASE_URL, FIREBASE_PROJECT_ID, …
-npm run dev               # tsx watch, http://localhost:3000
-```
+## Setup
 
-## Scripts
+Run `npm ci`, copy .env.example to .env and configure DATABASE_URL and SUPABASE_URL. Follow [DATABASE.md](DATABASE.md) before applying migrations. Generate the client with `npm run db:generate`, then run `npm run dev`.
 
-| Command               | Description                                        |
-| --------------------- | -------------------------------------------------- |
-| `npm run dev`         | Start with auto-reload (`tsx watch src/server.ts`) |
-| `npm run build`       | Bundle to `dist/server.cjs` (esbuild)              |
-| `npm run start`       | Run the built server (`NODE_ENV=production`)       |
-| `npm run typecheck`   | `tsc --noEmit`                                     |
-| `npm run lint`        | ESLint (`lint:fix` to autofix)                     |
-| `npm run format`      | Prettier write (`format:check` to verify)          |
-| `npm run test`        | Vitest suite (`test:watch` for watch mode)         |
-| `npm run check`       | typecheck + lint + test                            |
-| `npm run db:generate` | Generate a new SQL migration from the schema       |
-| `npm run db:migrate`  | Apply migrations in `drizzle/`                     |
-| `npm run db:push`     | Push the schema straight to the DB (prototyping)   |
-| `npm run db:studio`   | Open Drizzle Studio                                |
+| Command | Purpose |
+| --- | --- |
+| npm run typecheck | TypeScript checking |
+| npm run lint | ESLint |
+| npm test | Temporary local PostgreSQL cluster and API/constraint tests |
+| npm run build | Generate Prisma client and bundle dist/server.js |
+| npm start | Start production ESM build |
+| npm run db:generate | Generate Prisma client, NOT a SQL migration |
+| npm run db:validate | Validate Prisma schema |
+| npm run db:migrate | Deploy committed SQL migrations |
+| npm run db:studio | Open Prisma Studio |
 
-## Layout
+## Structure
 
-```
-src/
-├── config/       env.ts (zod-validated env)  ·  database.ts (pg Pool + Drizzle)
-├── controllers/  thin request handlers, one per resource
-├── routes/       path → controller wiring, mounted in routes/index.ts
-├── services/     business logic + in-memory fallbacks
-├── models/       Drizzle schema (schema.ts) + barrel (index.ts)
-├── middlewares/  auth · validate (zod) · error (404 + handler)
-├── validators/   zod request schemas, one per resource
-├── types/        express.d.ts (augments Request with `user`)
-├── utils/        logger.ts (pino)  ·  response.util.ts
-├── app.ts        builds the Express app (helmet, cors, compression, rate-limit, pino-http)
-└── server.ts     entry point — listen, graceful shutdown
+- prisma/schema.prisma: relational models.
+- prisma/migrations: versioned SQL, constraints, RLS and append-only audit trigger.
+- src/lib/prisma.ts: adapter and shared client.
+- src/services: business transactions and persistence.
+- src/routes, controllers, validators, middlewares: API boundaries and authorization.
+- tests: API tests with a local JWT issuer and an isolated database.
 
-tests/            Vitest + supertest integration tests
-drizzle/          committed SQL migrations
-```
+## Authorization and incomplete integrations
 
-Request flow: `route → (requireAuth) → (validate) → controller → service → models/db`.
+Business mutations require verified Supabase identity; checkout rejects anonymous sessions. Approved organizers can submit events; administrators publish them. Cancellation and refund approval are audited. Refund approval does not execute a remote transfer.
 
-## Endpoints
+Google login is enabled on the frontend. Phone OTP endpoints return 503 until a provider exists. Payment webhook processing is unavailable until the provider contract is implemented and verified. Payment status is authenticated and owner-scoped.
 
-| Method & path                    | Auth | Purpose                                                              |
-| -------------------------------- | ---- | -------------------------------------------------------------------- |
-| `GET  /api/health`               | –    | liveness                                                             |
-| `GET  /api/resolve-map-url`      | –    | resolve a Google Maps short link                                     |
-| `POST /api/account/sync`         | ✔    | upsert the caller's profile (email + name/phone/avatar)              |
-| `GET  /api/events`               | –    | list catalog (`?status=&organizerUid=&limit=`)                       |
-| `GET  /api/events/:id`           | –    | one event by uuid / slug / legacy id, with tiers·zones·dates·coupons |
-| `POST /api/events`               | ✔    | create an event + nested tiers/zones/dates/coupons (one tx)          |
-| `PUT  /api/events/:id`           | ✔    | update columns; a sent child array replaces that set                 |
-| `GET  /api/tickets`              | ✔    | the caller's orders + items                                          |
-| `POST /api/tickets`              | ✔    | create an order + one ticket per quantity                            |
-| `POST /api/checkins`             | ✔    | scan a `ticketCode` (idempotent)                                     |
-| `GET  /api/checkins?eventId=`    | ✔    | check-ins for an event                                               |
-| `GET  /api/reviews/:eventId`     | –    | reviews for an event                                                 |
-| `POST /api/reviews`              | ✔    | create/update the caller's review                                    |
-| `POST /api/webhook/payment`      | –    | gateway webhook — persisted to `payments`                            |
-| `GET  /api/payment/status/:txId` | –    | verify a transaction                                                 |
+Media endpoints upload images to Supabase Storage and resolve stored references. Service-role credentials stay on the backend. Frontend media wiring and storage provisioning remain release blockers.
 
-## Authentication
-
-Sign-in happens on the client against **Firebase Auth**, which returns an
-**ID token — an RS256-signed JWT**. Every `✔` endpoint above requires
-`Authorization: Bearer <idToken>`; `requireAuth` verifies the JWT
-signature against Google's public keys and checks `aud` / `iss` / expiry.
-
-- **No password ever reaches this service** — Firebase handles credentials,
-  so there is nothing here to hash or store.
-- Verification needs only `FIREBASE_PROJECT_ID`. A service-account key
-  (`GOOGLE_APPLICATION_CREDENTIALS`) is optional, for extras like
-  revocation checks.
-- An invalid, forged or expired token gets `401`; if Firebase Admin cannot
-  initialise at all the endpoint returns `503` rather than letting a
-  request through.
-- `AUTH_DEV_BYPASS=true` skips verification and trusts the bearer string as
-  the uid — **local development and tests only**. The process refuses to
-  start with it enabled while `NODE_ENV=production`.
-
-## Tooling
-
-- **Validation** — `zod` on every request body/query/params and on `env` at boot.
-- **Security** — `helmet`, `express-rate-limit` (`/api/*`), `cors`, `compression`.
-- **Logging** — `pino` + `pino-http` (pretty in dev, JSON in prod, silent in tests).
-- **Tests** — `vitest run` — supertest hits `createApp()` with the DB forced offline.
-- **Style** — ESLint (typescript-eslint) + Prettier; `husky` pre-commit runs
-  `lint-staged` (`core.hooksPath` → `backend/.husky`, set by `npm install`).
-
-## Environment
-
-See `.env.example`. Highlights: `DATABASE_URL` (Supabase session-pooler
-URI), `FIREBASE_PROJECT_ID`, `CORS_ORIGIN`, `PORT`, `FRONTEND_DIST`.
-Full database guide: [`DATABASE.md`](DATABASE.md).
-
-Without a database the ticket/review endpoints fall back to in-memory
-stores, so the API still boots.
+See [implementation status](../docs/prisma-implementation-status.md) for outstanding work. Never treat a successful build as production acceptance.

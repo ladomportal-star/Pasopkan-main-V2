@@ -1,45 +1,19 @@
 # Pasopkan frontend
 
-React 19 + Vite + Tailwind CSS v4 SPA. Talks to the backend API over
-HTTP; the dev server proxies `/api/*` to `http://localhost:3000`.
+React 19 + Vite + Tailwind CSS v4. Business data uses the backend /api endpoints. Supabase Auth handles Google sign-in.
 
-```bash
-npm install
-npm run dev        # http://localhost:5173  (no .env needed)
-```
+## Setup
 
-## Scripts
+Run npm ci, copy .env.example to .env, and configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY for the same project as the backend. Only public credentials belong in frontend configuration.
 
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Vite dev server on port 5173 |
-| `npm run build` | Production build to `dist/` |
-| `npm run preview` | Preview the production build |
-| `npm run lint` | Type-check (`tsc --noEmit`) |
+Run npm run dev. Vite proxies /api to localhost:3000; VITE_API_PROXY_TARGET overrides that development target. Configure production routing separately.
 
-## Layout
+## Commands
 
-```
-index.html            entry HTML → /src/main.tsx
-vite.config.ts        build + dev proxy (/api → :3000)
-public/               static files served as-is (bank logos, …)
-src/
-├── main.tsx          React entry
-├── App.tsx           router + shell
-├── index.css         Tailwind + globals
-├── assets/           images imported from code
-├── components/       reusable UI
-├── pages/            route views
-├── context/          AuthContext · LanguageContext · ThemeContext
-├── lib/              firebase client, stores, helpers
-├── data/             static / seed data
-├── utils/            small pure helpers
-├── config/           firebase-applet-config.json (public client keys)
-└── types/            shared TypeScript types (index.ts)
-```
+- npm run lint: TypeScript checking.
+- npm run build: production output in dist.
+- npm run preview: local build preview.
 
-## Environment
+## Integration status
 
-No `.env` is required — every option has a default. Create `frontend/.env`
-only to override one (documented at the top of `vite.config.ts`):
-`VITE_API_PROXY_TARGET`, `GEMINI_API_KEY`, `DISABLE_HMR`.
+Phone login and paid checkout are disabled pending verified backend provider adapters. Never embed gateway credentials or Supabase service-role keys in browser code. Admin review UI and Supabase Storage form integration still require work. See [implementation status](../docs/prisma-implementation-status.md).

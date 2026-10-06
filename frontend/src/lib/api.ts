@@ -21,7 +21,7 @@ interface RequestOptions {
 /** Shape of the `users` row the backend returns from `/account/sync`. */
 export interface BackendUser {
   id: string;
-  authUid: string;
+  authId: string;
   email: string;
   firstName: string | null;
   lastName: string | null;

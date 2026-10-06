@@ -4,7 +4,7 @@ const tier = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
   priceKip: z.coerce.number().int().nonnegative().default(0),
-  quantityTotal: z.coerce.number().int().positive().nullish(),
+  quantityTotal: z.coerce.number().int().nonnegative().max(2147483647).nullish(),
   perOrderLimit: z.coerce.number().int().positive().nullish(),
   sortOrder: z.coerce.number().int().default(0),
 });
@@ -29,10 +29,11 @@ export const createEventBody = z.object({
   legacyId: z.string().optional(),
   slug: z.string().optional(),
   title: z.string().min(1),
+  rejectionReason: z.string().trim().min(1).max(2000).optional(),
   description: z.string().optional(),
   category: z.enum(["Sports", "Workshop", "Festival", "Voucher", "Other"]).optional(),
   eventType: z.string().optional(),
-  status: z.enum(["draft", "published", "sold_out", "cancelled", "completed"]).default("draft"),
+  status: z.enum(["draft", "pending_review", "rejected", "published", "sold_out", "cancelled", "completed"]).default("draft"),
 
   dateType: z.enum(["fixed", "flexible", "booking"]).default("fixed"),
   startDate: z.string().nullish(),
@@ -89,7 +90,7 @@ export const updateEventBody = createEventBody.partial().extend({
 export const eventIdParam = z.object({ id: z.string().min(1) });
 
 export const listEventsQuery = z.object({
-  status: z.enum(["draft", "published", "sold_out", "cancelled", "completed"]).optional(),
+  status: z.enum(["draft", "pending_review", "rejected", "published", "sold_out", "cancelled", "completed"]).optional(),
   mine: z
     .enum(["true", "false"])
     .transform((v) => v === "true")

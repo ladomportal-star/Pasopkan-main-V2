@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.ts";
 import { db } from "../src/config/database.ts";
-import { users } from "../src/models/schema.ts";
 import { createNotification } from "../src/services/notification.service.ts";
 import { as } from "./helpers/auth.ts";
 import { createEvent } from "./helpers/seed.ts";
@@ -114,7 +113,7 @@ describe("notifications (database-backed, per user)", () => {
     const buy = await request(app)
       .post("/api/tickets")
       .set(await as("guest-buyer"))
-      .send({ eventId: event.id, tierId: "Free", quantity: 2 });
+      .send({ eventId: event.id, tierId: event.tiers.find(t => t.name === "Free")!.id, quantity: 2 });
     expect(buy.status).toBe(200);
 
     const buyer = (await inbox("guest-buyer")).body.notifications;
@@ -141,9 +140,7 @@ describe("notifications (database-backed, per user)", () => {
       ).status,
     ).toBe(403);
 
-    await db
-      .insert(users)
-      .values({ authUid: "the-admin", email: "admin@test.local", role: "admin" });
+    await db.user.create({ data: { authId: "the-admin", email: "admin@test.local", role: "admin" } });
 
     const bad = await request(app)
       .post("/api/notifications")

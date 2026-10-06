@@ -11,14 +11,14 @@ async function ticketCode(tier: "Free" | "General") {
   const res = await request(app)
     .post("/api/tickets")
     .set(await as("attendee"))
-    .send({ eventId: event.id, tierId: tier, quantity: 1 });
+    .send({ eventId: event.id, tierId: event.tiers.find(t => t.name === tier)!.id, quantity: 1 });
   return { event, code: res.body.items[0].ticketCode as string };
 }
 
 const scan = async (body: Record<string, unknown>) =>
   request(app)
     .post("/api/checkins")
-    .set(await as("staff-1"))
+    .set(await as("gate-host"))
     .send(body);
 
 describe("check-ins", () => {
@@ -33,7 +33,7 @@ describe("check-ins", () => {
     const first = await scan({ ticketCode: code, eventId: event.id });
     expect(first.status).toBe(201);
     expect(first.body.status).toBe("checked_in");
-    expect(first.body.checkIn.checkedInBy).toBe("staff-1@test.local");
+    expect(first.body.checkIn.checkedInBy).toBe("gate-host@test.local");
 
     const again = await scan({ ticketCode: code, eventId: event.id });
     expect(again.status).toBe(200);
@@ -41,7 +41,7 @@ describe("check-ins", () => {
 
     const list = await request(app)
       .get(`/api/checkins?eventId=${event.id}`)
-      .set(await as("staff-1"));
+      .set(await as("gate-host"));
     expect(list.body.checkIns).toHaveLength(1);
   });
 
@@ -63,12 +63,12 @@ describe("check-ins", () => {
 
     const miss = await request(app)
       .get("/api/checkins/lookup/NOT-A-REAL-CODE")
-      .set(await as("staff-1"));
+      .set(await as("gate-host"));
     expect(miss.status).toBe(404);
 
     const before = await request(app)
       .get(`/api/checkins/lookup/${code}`)
-      .set(await as("staff-1"));
+      .set(await as("gate-host"));
     expect(before.status).toBe(200);
     expect(before.body.ticket.ticketCode).toBe(code);
     expect(before.body.ticket.alreadyCheckedIn).toBe(false);
@@ -77,7 +77,7 @@ describe("check-ins", () => {
 
     const after = await request(app)
       .get(`/api/checkins/lookup/${code}`)
-      .set(await as("staff-1"));
+      .set(await as("gate-host"));
     expect(after.body.ticket.alreadyCheckedIn).toBe(true);
   });
 });

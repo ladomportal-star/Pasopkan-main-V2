@@ -29,7 +29,6 @@ interface AuthContextType {
   isAuthenticated: boolean;
   loading: boolean;
   syncProfileToSupabase: (profileData: any) => Promise<void>;
-  syncProfileToFirestore: (profileData: any) => Promise<void>; // kept for compatibility
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -214,7 +213,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: !!user,
       loading,
       syncProfileToSupabase,
-      syncProfileToFirestore: syncProfileToSupabase // Compatibility alias
     }}>
       {loading ? (
         <div className="min-h-screen bg-white flex flex-col items-center justify-center">

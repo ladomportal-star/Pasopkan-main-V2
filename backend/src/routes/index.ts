@@ -8,6 +8,8 @@ import ticketRoutes from "./ticket.routes.ts";
 import checkinRoutes from "./checkin.routes.ts";
 import otpRoutes from "./otp.routes.ts";
 import notificationRoutes from "./notification.routes.ts";
+import moderationRoutes from "./moderation.routes.ts";
+import mediaRoutes from "./media.routes.ts";
 
 const apiRouter = Router();
 
@@ -20,5 +22,7 @@ apiRouter.use(ticketRoutes);
 apiRouter.use(checkinRoutes);
 apiRouter.use(otpRoutes);
 apiRouter.use(notificationRoutes);
+apiRouter.use(moderationRoutes);
+apiRouter.use(mediaRoutes);
 
 export default apiRouter;

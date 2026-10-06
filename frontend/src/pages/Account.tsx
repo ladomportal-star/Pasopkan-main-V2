@@ -598,7 +598,7 @@ export default function Account() {
   };
 
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { lang, toggleLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const t = translations[lang] as unknown as Record<string, string>;
@@ -1321,6 +1321,10 @@ export default function Account() {
         description="Manage your Pasopkan profile, organizer settings, notifications, and event tickets."
         noindex={true}
       />
+      <nav aria-label="Approval workflows" className="max-w-4xl mx-auto flex gap-4 py-4">
+        <Link to="/organizer" className="underline">ຜູ້ຈັດງານ / Organizer applications</Link>
+        {user?.role === 'admin' && <Link to="/admin" className="underline">Admin review</Link>}
+      </nav>
       <div className="max-w-4xl mx-auto pt-1 sm:pt-2">
         <div className="flex items-center justify-between mb-6 sm:mb-8">
           <h1 className={`text-2xl sm:text-3xl font-bold transition-colors ${

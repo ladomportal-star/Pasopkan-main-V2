@@ -164,13 +164,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Skip API, Supabase, and Firestore live data endpoints from strict caching
+  // Skip API and Supabase live data endpoints from strict caching
   if (
     url.pathname.startsWith('/api/') ||
     url.hostname.includes('supabase.co') ||
     url.hostname.includes('googleapis.com') ||
-    url.hostname.includes('firestore.googleapis.com') ||
-    url.hostname.includes('firebaseio.com') ||
     url.hostname.includes('identitytoolkit')
   ) {
     return;

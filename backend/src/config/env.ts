@@ -7,7 +7,8 @@ import { z } from "zod";
 // Import `env` from here instead of touching `process.env` directly.
 // Loaded by explicit path (not plain `dotenv/config`) so Backend/.env is
 // found regardless of the process's cwd.
-const backendDir = path.resolve(fileURLToPath(new URL(".", import.meta.url)), "../..");
+const moduleDir = fileURLToPath(new URL(".", import.meta.url));
+const backendDir = path.resolve(moduleDir, path.basename(moduleDir.replace(/[\\/]$/, "")) === "dist" ? ".." : "../..");
 dotenv.config({ path: path.join(backendDir, ".env") });
 
 const list = (v?: string) =>
@@ -34,17 +35,9 @@ const schema = z.object({
   // Identity provider: the Supabase project the frontend signs users in with.
   // Access tokens are verified against its public JWKS (no shared secret).
   SUPABASE_URL: z.string().trim().optional().default(""),
-  // Anon key: public, safe to expose (same value the frontend ships). Needed
-  // server-side only to mint a phone-login session (see phoneAuth.service.ts).
-  SUPABASE_ANON_KEY: z.string().trim().optional().default(""),
   // Service role key: full admin access, bypasses RLS. SECRET — never expose
-  // to the frontend or commit it. Used only to create/update phone-login users.
+  // to the frontend or commit it. Used by the media storage service.
   SUPABASE_SERVICE_ROLE_KEY: z.string().trim().optional().default(""),
-
-  // OTP (api.otp.dev) — credentials live in the environment, never in source.
-  OTP_API_KEY: z.string().trim().optional().default(""),
-  OTP_SENDER_ID: z.string().trim().optional().default(""),
-  OTP_TEMPLATE_ID: z.string().trim().optional().default(""),
 
   FRONTEND_DIST: z.string().optional().default(""),
 
@@ -85,9 +78,7 @@ export const env = {
   },
 
   supabaseUrl: e.SUPABASE_URL.replace(/\/+$/, ""),
-  supabaseAnonKey: e.SUPABASE_ANON_KEY,
   supabaseServiceRoleKey: e.SUPABASE_SERVICE_ROLE_KEY,
-  otp: { apiKey: e.OTP_API_KEY, senderId: e.OTP_SENDER_ID, templateId: e.OTP_TEMPLATE_ID },
   frontendDist: e.FRONTEND_DIST,
 
   rateLimit: { windowMs: e.RATE_LIMIT_WINDOW_MS, max: e.RATE_LIMIT_MAX },
@@ -108,12 +99,9 @@ export function checkEnv(warn: (msg: string) => void) {
   if (!env.supabaseUrl) {
     warn("SUPABASE_URL not set - every authenticated endpoint will return 503.");
   }
-  if (!env.otp.apiKey || !env.otp.senderId || !env.otp.templateId) {
-    warn("OTP_API_KEY / OTP_SENDER_ID / OTP_TEMPLATE_ID not set - /api/otp/* will return 503.");
-  }
-  if (!env.supabaseAnonKey || !env.supabaseServiceRoleKey) {
+  if (!env.supabaseServiceRoleKey) {
     warn(
-      "SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY not set - phone login will verify the OTP but fail to sign the user in.",
+      "SUPABASE_SERVICE_ROLE_KEY not set - media storage endpoints will return 503.",
     );
   }
   if (env.isProd && env.corsOrigins.length === 0) {

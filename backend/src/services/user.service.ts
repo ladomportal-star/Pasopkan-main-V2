@@ -1,62 +1,20 @@
-import { eq } from "drizzle-orm";
 import { db } from "../config/database.ts";
-import { users } from "../models/schema.ts";
-
+import type { Prisma } from "../lib/prisma.ts";
+import { assertMediaReferences } from "./media.service.ts";
 export interface ProfileInput {
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
-  gender?: "male" | "female" | "other";
-  dateOfBirth?: string;
-  avatarUrl?: string;
+  email?: string; firstName?: string; lastName?: string; phone?: string;
+  gender?: "male" | "female" | "other"; dateOfBirth?: string; avatarUrl?: string;
 }
-
-/** Ensure a `users` row exists for this identity (no profile fields touched beyond email). */
-export async function getOrCreateUser(uid: string, email?: string) {
-  return upsertUserProfile(uid, { email });
-}
-
-// Only fields the caller actually supplied are written, so a partial sync never wipes stored data.
+export const getOrCreateUser = (uid: string, email?: string) => upsertUserProfile(uid, { email });
 export async function upsertUserProfile(uid: string, profile: ProfileInput) {
-  const patch = {
-    ...(profile.email && { email: profile.email }),
-    ...(profile.firstName !== undefined && { firstName: profile.firstName }),
-    ...(profile.lastName !== undefined && { lastName: profile.lastName }),
-    ...(profile.phone !== undefined && { phone: profile.phone }),
-    ...(profile.gender !== undefined && { gender: profile.gender }),
-    ...(profile.dateOfBirth !== undefined && { dateOfBirth: profile.dateOfBirth }),
-    ...(profile.avatarUrl !== undefined && { avatarUrl: profile.avatarUrl }),
-  };
-
-  const [row] = await db
-    .insert(users)
-    .values({ authUid: uid, email: profile.email ?? "", ...patch })
-    .onConflictDoUpdate({
-      target: users.authUid,
-      set: { ...patch, updatedAt: new Date() },
-    })
-    .returning();
-
-  return row;
+  assertMediaReferences(profile.avatarUrl, uid);
+  const { dateOfBirth, ...fields } = profile;
+  const data = { ...fields, ...(dateOfBirth !== undefined ? { dateOfBirth: new Date(dateOfBirth) } : {}) };
+  return db.user.upsert({ where: { authId: uid }, create: { authId: uid, ...data }, update: data });
 }
-
-/** The Supabase auth_uid already on file for this phone number, if any. */
 export async function getAuthUidByPhone(phone: string) {
-  const [row] = await db
-    .select({ authUid: users.authUid })
-    .from(users)
-    .where(eq(users.phone, phone))
-    .limit(1);
-  return row?.authUid;
+  return (await db.user.findUnique({ where: { phone } }))?.authId;
 }
-
-/** The user's application role ("user" | "organizer" | "admin"); "user" if unknown. */
-export async function getUserRole(uid: string, exec: Pick<typeof db, "select"> = db) {
-  const [row] = await exec
-    .select({ role: users.role })
-    .from(users)
-    .where(eq(users.authUid, uid))
-    .limit(1);
-  return row?.role ?? "user";
+export async function getUserRole(uid: string, exec: Prisma.TransactionClient = db) {
+  return (await exec.user.findUnique({ where: { authId: uid }, select: { role: true } }))?.role ?? "user";
 }

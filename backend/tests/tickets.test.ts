@@ -1,9 +1,7 @@
 import { describe, it, expect } from "vitest";
 import request from "supertest";
-import { eq, sql } from "drizzle-orm";
 import { createApp } from "../src/app.ts";
 import { db } from "../src/config/database.ts";
-import { orders, ticketTiers } from "../src/models/schema.ts";
 import { releaseExpiredOrders } from "../src/services/ticket.service.ts";
 import { as } from "./helpers/auth.ts";
 import { createEvent } from "./helpers/seed.ts";
@@ -56,9 +54,9 @@ describe("tickets", () => {
 
   it("leaves a paid order pending until the gateway confirms; free orders are confirmed at once", async () => {
     const event = await createEvent(app, await as("org"));
-    const paid = await buy("b3", { eventId: event.id, tierId: "General", quantity: 1 });
+    const paid = await buy("b3", { eventId: event.id, tierId: event.tiers.find(t => t.name === "General")!.id, quantity: 1 });
     expect(paid.body.order.status).toBe("pending");
-    const free = await buy("b3", { eventId: event.id, tierId: "Free", quantity: 2 });
+    const free = await buy("b3", { eventId: event.id, tierId: event.tiers.find(t => t.name === "Free")!.id, quantity: 2 });
     expect(free.body.order.status).toBe("confirmed");
     expect(free.body.order.totalKip).toBe(0);
   });
@@ -74,7 +72,7 @@ describe("tickets", () => {
       buy("r3", { eventId: event.id, tierId: tier, quantity: 1 }),
     ]);
     expect(results.map((r) => r.status).sort()).toEqual([200, 200, 409]);
-    const [row] = await db.select().from(ticketTiers).where(eq(ticketTiers.id, tier));
+    const row = await db.ticketTier.findUniqueOrThrow({ where: { id: tier } });
     expect(row.quantitySold).toBe(2);
   });
 
@@ -89,7 +87,7 @@ describe("tickets", () => {
 
   it("lists only the caller's own orders", async () => {
     const event = await createEvent(app, await as("org"));
-    await buy("owner-of-order", { eventId: event.id, tierId: "Free", quantity: 1 });
+    await buy("owner-of-order", { eventId: event.id, tierId: event.tiers.find(t => t.name === "Free")!.id, quantity: 1 });
     const mine = await request(app)
       .get("/api/tickets")
       .set(await as("owner-of-order"));
@@ -110,11 +108,8 @@ describe("tickets", () => {
     expect(first.status).toBe(200);
     expect((await buy("h2", { eventId: event.id, tierId: tier, quantity: 1 })).status).toBe(409);
 
-    await db
-      .update(orders)
-      .set({ createdAt: sql`now() - interval '2 hours'` })
-      .where(eq(orders.id, first.body.order.id));
-    expect(await releaseExpiredOrders(30)).toBe(1);
+    await db.$executeRaw`UPDATE "Order" SET "expiresAt" = now() - interval '1 second' WHERE id = ${first.body.order.id}::uuid`;
+    expect(await releaseExpiredOrders()).toBe(1);
 
     expect((await buy("h2", { eventId: event.id, tierId: tier, quantity: 1 })).status).toBe(200);
   });

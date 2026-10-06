@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requireAuth } from "../middlewares/auth.middleware.ts";
 import { validate } from "../middlewares/validate.middleware.ts";
 import { transactionIdParam } from "../validators/payment.validator.ts";
 import { receiveWebhook, getPaymentStatus } from "../controllers/payment.controller.ts";
@@ -9,6 +10,7 @@ const router = Router();
 router.post(["/webhook/payment", "/payment/webhook"], receiveWebhook);
 router.get(
   "/payment/status/:transactionId",
+  requireAuth,
   validate({ params: transactionIdParam }),
   getPaymentStatus,
 );
