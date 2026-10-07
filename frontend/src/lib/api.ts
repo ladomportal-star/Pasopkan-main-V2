@@ -113,6 +113,20 @@ export const api = {
     opts?: RequestOptions,
   ) => request<{ success: true; user: BackendUser }>('POST', '/account/sync', profile, opts),
 
+  sendPhoneOtp: (phone: string, captchaToken?: string, opts?: RequestOptions) =>
+    request<{ success: true; cooldownSeconds: number }>(
+      'POST',
+      '/otp/send',
+      { phone, captchaToken },
+      opts,
+    ),
+
+  verifyPhoneOtp: (phone: string, code: string, opts?: RequestOptions) =>
+    request<{
+      success: true;
+      session: { accessToken: string; refreshToken: string; expiresIn: number };
+    }>('POST', '/otp/verify', { phone, code }, opts),
+
   listEvents: (query?: { mine?: boolean; status?: string; limit?: number }, opts?: RequestOptions) => {
     const params = new URLSearchParams();
     if (query?.mine) params.set('mine', 'true');

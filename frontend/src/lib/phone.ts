@@ -1,7 +1,14 @@
-/** Normalizes a Lao phone number's digits to the canonical 85620XXXXXXXX form the backend expects. */
-export function normalizeLaoPhone(digits: string): string {
-  if (digits.startsWith('856020')) return '85620' + digits.substring(6);
-  if (digits.startsWith('020')) return '85620' + digits.substring(3);
-  if (digits.startsWith('20')) return '85620' + digits.substring(2);
-  return digits;
+/** Normalizes a Lao mobile number to E.164 (+85620XXXXXXXX). */
+export function normalizeLaoPhone(input: string): string {
+  const digits = input.replace(/\D/g, '');
+  if (/^020\d{8}$/.test(digits)) return `+856${digits.slice(1)}`;
+  if (/^20\d{8}$/.test(digits)) return `+856${digits}`;
+  if (/^85620\d{8}$/.test(digits)) return `+${digits}`;
+  return input.trim();
+}
+
+export const isValidLaoMobilePhone = (phone: string) => /^\+85620\d{8}$/.test(phone);
+
+export function displayLaoPhone(phone: string): string {
+  return phone.replace(/^(?:\+856|856)?20(\d{4})(\d{4})$/, '020 $1 $2');
 }

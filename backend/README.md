@@ -31,8 +31,11 @@ Run `npm ci`, copy .env.example to .env and configure DATABASE_URL and SUPABASE_
 
 Business mutations require verified Supabase identity; checkout rejects anonymous sessions. Approved organizers can submit events; administrators publish them. Cancellation and refund approval are audited. Refund approval does not execute a remote transfer.
 
-Google login is enabled on the frontend. Phone OTP endpoints return 503 until a provider exists. Payment webhook processing is unavailable until the provider contract is implemented and verified. Payment status is authenticated and owner-scoped.
+Google and Lao phone OTP login are supported through Supabase Auth. The browser calls the backend OTP endpoints; configure `SUPABASE_PUBLISHABLE_KEY`, enable the Supabase Phone provider, and configure either a supported SMS provider or a Send SMS Hook for the regional SMS API. Payment webhook processing is unavailable until the provider contract is implemented and verified. Payment status is authenticated and owner-scoped.
 
 Media endpoints upload images to Supabase Storage and resolve stored references. Service-role credentials stay on the backend. Frontend media wiring and storage provisioning remain release blockers.
 
 See [implementation status](../docs/prisma-implementation-status.md) for outstanding work. Never treat a successful build as production acceptance.
+
+Phone authentication setup and its live acceptance checklist are documented in
+[phone-auth-rollout.md](../docs/phone-auth-rollout.md).

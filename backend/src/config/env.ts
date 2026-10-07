@@ -38,6 +38,9 @@ const schema = z.object({
   // Identity provider: the Supabase project the frontend signs users in with.
   // Access tokens are verified against its public JWKS (no shared secret).
   SUPABASE_URL: z.string().trim().optional().default(""),
+  // Least-privilege key used for public Auth operations proxied by this API.
+  // Accepts either the current sb_publishable_* key or the legacy anon JWT.
+  SUPABASE_PUBLISHABLE_KEY: z.string().trim().optional().default(""),
   // Service role key: full admin access, bypasses RLS. SECRET — never expose
   // to the frontend or commit it. Used by the media storage service.
   SUPABASE_SERVICE_ROLE_KEY: z.string().trim().optional().default(""),
@@ -81,6 +84,7 @@ export const env = {
   },
 
   supabaseUrl: e.SUPABASE_URL.replace(/\/+$/, ""),
+  supabasePublishableKey: e.SUPABASE_PUBLISHABLE_KEY,
   supabaseServiceRoleKey: e.SUPABASE_SERVICE_ROLE_KEY,
   frontendDist: e.FRONTEND_DIST,
 
@@ -104,6 +108,9 @@ export function checkEnv(warn: (msg: string) => void) {
   }
   if (!env.supabaseServiceRoleKey) {
     warn("SUPABASE_SERVICE_ROLE_KEY not set - media storage endpoints will return 503.");
+  }
+  if (!env.supabasePublishableKey) {
+    warn("SUPABASE_PUBLISHABLE_KEY not set - phone OTP endpoints will return 503.");
   }
   if (env.isProd && env.corsOrigins.length === 0) {
     warn("CORS_ORIGIN not set in production - all cross-origin browser requests will be blocked.");

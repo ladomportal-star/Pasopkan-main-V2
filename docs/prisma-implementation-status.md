@@ -24,7 +24,7 @@ An embedded gateway credential existed in the previous frontend source. If it wa
 - Frontend image fields now upload through the backend and keep canonical storage references separate from display URLs. Storage provisioning SQL and a live acceptance checklist are in [storage-rollout.md](storage-rollout.md). Applying that SQL to an authorized project, legacy media transfer and real browser validation remain outstanding.
 - Organizer application and administrator review screens are now API-backed at /organizer and /admin, linked from Account. Event rejection reasons and resubmission are supported. Browser end-to-end validation and broader legacy dashboard replacement remain outstanding.
 - Implement and test the provider-neutral payment execution worker, authenticated webhook verification, idempotent processing and reconciliation against actual Phajay documentation. Refund approval currently records approval only; it does not transfer money.
-- Configure the future SMS provider; phone authentication remains disabled.
+- Phone OTP API and UI are implemented through Supabase Auth with per-route rate limits. Live SMS remains blocked until the operator enables the Supabase Phone provider and configures either its SMS provider or a Send SMS Hook for the regional provider API.
 - Exercise refund amount/concurrency scenarios and full browser end-to-end flows. Current passing tests are not evidence of a live gateway integration or production readiness.
 - Investigate PostgreSQL client concurrent-query deprecation warnings and frontend large-bundle warnings.
 
