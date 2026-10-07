@@ -5,5 +5,10 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: { path: "prisma/migrations" },
   // A loopback placeholder permits offline generation. Deploy requires an explicit URL.
-  datasource: { url: process.env.DIRECT_DATABASE_URL || process.env.DATABASE_URL || "postgresql://localhost/pasopkan_unconfigured" },
+  datasource: {
+    url:
+      process.env.DIRECT_DATABASE_URL ||
+      process.env.DATABASE_URL ||
+      "postgresql://localhost/pasopkan_unconfigured",
+  },
 });

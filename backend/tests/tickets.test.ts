@@ -54,9 +54,17 @@ describe("tickets", () => {
 
   it("leaves a paid order pending until the gateway confirms; free orders are confirmed at once", async () => {
     const event = await createEvent(app, await as("org"));
-    const paid = await buy("b3", { eventId: event.id, tierId: event.tiers.find(t => t.name === "General")!.id, quantity: 1 });
+    const paid = await buy("b3", {
+      eventId: event.id,
+      tierId: event.tiers.find((t) => t.name === "General")!.id,
+      quantity: 1,
+    });
     expect(paid.body.order.status).toBe("pending");
-    const free = await buy("b3", { eventId: event.id, tierId: event.tiers.find(t => t.name === "Free")!.id, quantity: 2 });
+    const free = await buy("b3", {
+      eventId: event.id,
+      tierId: event.tiers.find((t) => t.name === "Free")!.id,
+      quantity: 2,
+    });
     expect(free.body.order.status).toBe("confirmed");
     expect(free.body.order.totalKip).toBe(0);
   });
@@ -87,7 +95,11 @@ describe("tickets", () => {
 
   it("lists only the caller's own orders", async () => {
     const event = await createEvent(app, await as("org"));
-    await buy("owner-of-order", { eventId: event.id, tierId: event.tiers.find(t => t.name === "Free")!.id, quantity: 1 });
+    await buy("owner-of-order", {
+      eventId: event.id,
+      tierId: event.tiers.find((t) => t.name === "Free")!.id,
+      quantity: 1,
+    });
     const mine = await request(app)
       .get("/api/tickets")
       .set(await as("owner-of-order"));

@@ -2,6 +2,7 @@
 // Helpers are non-throwing by default: failures resolve to `{ ok: false, ... }`.
 // Pass `{ throwOnError: true }` to get an exception instead.
 import { safeStorage } from './storage';
+import { prepareMedia, resolveMedia } from './media';
 
 const BASE = '/api';
 
@@ -29,6 +30,7 @@ export interface BackendUser {
   gender: 'male' | 'female' | 'other' | null;
   dateOfBirth: string | null;
   avatarUrl: string | null;
+  avatarUrlDisplay?: string | null;
   role: 'user' | 'organizer' | 'admin';
   createdAt: string;
   updatedAt: string;
@@ -49,10 +51,16 @@ async function request<T>(
   if (token) headers.Authorization = `Bearer ${token}`;
 
   try {
+    const mediaRequest = path.startsWith('/media');
+    const payload = mediaRequest ? body : await prepareMedia(body, async (dataUrl, visibility) => {
+      const result = await request<{ reference: string }>('POST', '/media', { dataUrl, visibility }, { ...opts, throwOnError: true });
+      if (!result.data?.reference) throw new Error('Image upload returned no reference');
+      return result.data.reference;
+    });
     const res = await fetch(`${BASE}${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: payload === undefined ? undefined : JSON.stringify(payload),
       signal: opts.signal,
     });
 
@@ -64,7 +72,12 @@ async function request<T>(
       if (opts.throwOnError) throw new Error(error);
       return { ok: false, status: res.status, data, error };
     }
-    return { ok: true, status: res.status, data };
+    const resolved = mediaRequest ? data : await resolveMedia(data, async reference => {
+      const result = await request<{ url: string }>('GET', `/media/url?reference=${encodeURIComponent(reference)}`, undefined, { ...opts, throwOnError: true });
+      if (!result.data?.url) throw new Error('Image unavailable');
+      return result.data.url;
+    });
+    return { ok: true, status: res.status, data: resolved as T | null };
   } catch (err) {
     if (opts.throwOnError) throw err;
     return {

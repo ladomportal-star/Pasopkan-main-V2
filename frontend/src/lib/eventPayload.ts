@@ -25,6 +25,7 @@ const str = (v: unknown): string | undefined => {
 type FeEvent = any;
 
 export function toEventPayload(e: FeEvent): Record<string, unknown> {
+  const canonicalImage = (url: string) => e.mediaReferences?.[url] ?? url;
   const dateType = ["fixed", "flexible", "booking"].includes(e.dateType) ? e.dateType : "fixed";
 
   return {
@@ -49,12 +50,12 @@ export function toEventPayload(e: FeEvent): Record<string, unknown> {
     longitude: e.longitude === "" || e.longitude == null ? undefined : Number(e.longitude),
     googleMapUrl: str(e.googleMapUrl) ?? str(e.googleMapsLink),
 
-    coverImageUrl: str(e.image),
-    galleryUrls: Array.isArray(e.exampleImages) ? e.exampleImages : undefined,
+    coverImageUrl: str(canonicalImage(e.image)),
+    galleryUrls: Array.isArray(e.exampleImages) ? e.exampleImages.map(canonicalImage) : undefined,
     languages: Array.isArray(e.languages) ? e.languages : undefined,
 
     hasSeating: !!e.hasSeating,
-    zoneImageUrl: str(e.zoneImage),
+    zoneImageUrl: str(canonicalImage(e.zoneImage)),
     allowReviews: e.allowReviews !== false,
     allowRefunds: !!e.allowRefunds,
     showRemainingTickets: e.showRemainingTickets !== false,
@@ -66,7 +67,7 @@ export function toEventPayload(e: FeEvent): Record<string, unknown> {
           description: str(e.organizerInfo),
           contactEmail: str(e.organizerEmail),
           contactPhone: str(e.organizerPhone) ?? str(e.organizerContact),
-          logoUrl: str(e.organizerLogo),
+          logoUrl: str(canonicalImage(e.organizerLogo)),
         }
       : undefined,
 
@@ -104,6 +105,13 @@ type BackendEvent = any;
 
 /** Backend `events` row (+ nested tiers/dates/coupons/organizer) -> the page-facing event shape. */
 export function fromBackendEvent(e: BackendEvent): FeEvent {
+  const mediaReferences: Record<string, string> = {};
+  const remember = (ref: unknown, display: unknown) => {
+    if (typeof ref === 'string' && ref.startsWith('storage://') && typeof display === 'string' && display) mediaReferences[display] = ref;
+  };
+  for (const key of ['coverImageUrl', 'zoneImageUrl']) remember(e[key], e[key + 'Display']);
+  (e.galleryUrls ?? []).forEach((ref: string, i: number) => remember(ref, e.galleryUrlsDisplay?.[i]));
+  remember(e.organizer?.logoUrl, e.organizer?.logoUrlDisplay);
   const availableDates = (e.dates ?? []).map((d: BackendEvent) => ({
     date: d.date,
     startTime: d.startTime ?? "",
@@ -113,6 +121,7 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
 
   return {
     id: e.id,
+    mediaReferences,
     legacyId: e.legacyId,
     slug: e.slug,
     title: e.title,
@@ -146,12 +155,12 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
     longitude: e.longitude ?? undefined,
     googleMapUrl: e.googleMapUrl,
 
-    image: e.coverImageUrl ?? "",
-    exampleImages: e.galleryUrls ?? [],
+    image: e.coverImageUrlDisplay ?? e.coverImageUrl ?? "",
+    exampleImages: e.galleryUrlsDisplay ?? e.galleryUrls ?? [],
     languages: e.languages ?? ["Lao", "English"],
 
     hasSeating: !!e.hasSeating,
-    zoneImage: e.zoneImageUrl,
+    zoneImage: e.zoneImageUrlDisplay ?? e.zoneImageUrl,
     allowReviews: e.allowReviews !== false,
     allowRefunds: !!e.allowRefunds,
     showRemainingTickets: e.showRemainingTickets !== false,
@@ -162,7 +171,7 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
     organizerEmail: e.organizer?.contactEmail,
     organizerPhone: e.organizer?.contactPhone,
     organizerContact: e.organizer?.contactPhone,
-    organizerLogo: e.organizer?.logoUrl,
+    organizerLogo: e.organizer?.logoUrlDisplay ?? e.organizer?.logoUrl,
     organizerId: e.organizerId,
 
     ticketTiers: (e.tiers ?? []).map((t: BackendEvent) => ({

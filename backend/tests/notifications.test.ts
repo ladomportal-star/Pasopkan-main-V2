@@ -113,7 +113,11 @@ describe("notifications (database-backed, per user)", () => {
     const buy = await request(app)
       .post("/api/tickets")
       .set(await as("guest-buyer"))
-      .send({ eventId: event.id, tierId: event.tiers.find(t => t.name === "Free")!.id, quantity: 2 });
+      .send({
+        eventId: event.id,
+        tierId: event.tiers.find((t) => t.name === "Free")!.id,
+        quantity: 2,
+      });
     expect(buy.status).toBe(200);
 
     const buyer = (await inbox("guest-buyer")).body.notifications;
@@ -140,7 +144,9 @@ describe("notifications (database-backed, per user)", () => {
       ).status,
     ).toBe(403);
 
-    await db.user.create({ data: { authId: "the-admin", email: "admin@test.local", role: "admin" } });
+    await db.user.create({
+      data: { authId: "the-admin", email: "admin@test.local", role: "admin" },
+    });
 
     const bad = await request(app)
       .post("/api/notifications")

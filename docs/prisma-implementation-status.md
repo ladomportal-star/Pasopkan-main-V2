@@ -6,7 +6,7 @@ This is an implementation checkpoint, not production deployment approval. No app
 
 - Prisma 7.10.0 client, PostgreSQL adapter and initial relational migration.
 - Backend type-check, ESLint and ESM production build.
-- Isolated PostgreSQL suite: 3 schema/constraint tests and 47 API tests passed.
+- Isolated PostgreSQL suite: 3 schema/constraint tests and 53 API/flow tests passed.
 - Organizer approval before event creation; submitted events require administrator publication.
 - Published event edits by organizers return to review and are audited.
 - Administrator-only cancellation is idempotent; closed events cannot be reopened through ordinary updates.
@@ -21,7 +21,7 @@ An embedded gateway credential existed in the previous frontend source. If it wa
 
 ## Remaining before production
 
-- Wire media upload/reference resolution into frontend forms; provision public listing and private media buckets with restrictive storage policies. The new backend media endpoints alone do not complete this workflow.
+- Frontend image fields now upload through the backend and keep canonical storage references separate from display URLs. Storage provisioning SQL and a live acceptance checklist are in [storage-rollout.md](storage-rollout.md). Applying that SQL to an authorized project, legacy media transfer and real browser validation remain outstanding.
 - Organizer application and administrator review screens are now API-backed at /organizer and /admin, linked from Account. Event rejection reasons and resubmission are supported. Browser end-to-end validation and broader legacy dashboard replacement remain outstanding.
 - Implement and test the provider-neutral payment execution worker, authenticated webhook verification, idempotent processing and reconciliation against actual Phajay documentation. Refund approval currently records approval only; it does not transfer money.
 - Configure the future SMS provider; phone authentication remains disabled.

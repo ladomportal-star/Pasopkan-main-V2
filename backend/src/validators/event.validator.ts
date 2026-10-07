@@ -33,7 +33,17 @@ export const createEventBody = z.object({
   description: z.string().optional(),
   category: z.enum(["Sports", "Workshop", "Festival", "Voucher", "Other"]).optional(),
   eventType: z.string().optional(),
-  status: z.enum(["draft", "pending_review", "rejected", "published", "sold_out", "cancelled", "completed"]).default("draft"),
+  status: z
+    .enum([
+      "draft",
+      "pending_review",
+      "rejected",
+      "published",
+      "sold_out",
+      "cancelled",
+      "completed",
+    ])
+    .default("draft"),
 
   dateType: z.enum(["fixed", "flexible", "booking"]).default("fixed"),
   startDate: z.string().nullish(),
@@ -90,7 +100,17 @@ export const updateEventBody = createEventBody.partial().extend({
 export const eventIdParam = z.object({ id: z.string().min(1) });
 
 export const listEventsQuery = z.object({
-  status: z.enum(["draft", "pending_review", "rejected", "published", "sold_out", "cancelled", "completed"]).optional(),
+  status: z
+    .enum([
+      "draft",
+      "pending_review",
+      "rejected",
+      "published",
+      "sold_out",
+      "cancelled",
+      "completed",
+    ])
+    .optional(),
   mine: z
     .enum(["true", "false"])
     .transform((v) => v === "true")

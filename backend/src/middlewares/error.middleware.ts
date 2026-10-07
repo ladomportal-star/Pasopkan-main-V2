@@ -26,7 +26,8 @@ export function notFound(_req: Request, res: Response) {
 /** Central error handler — keep it last in the middleware chain. */
 export function errorHandler(err: any, _req: Request, res: Response, _next: NextFunction) {
   if (err?.code === "P2002") return res.status(409).json({ error: "Record already exists" });
-  if (err?.code === "P2003") return res.status(409).json({ error: "Record is referenced or related record is missing" });
+  if (err?.code === "P2003")
+    return res.status(409).json({ error: "Record is referenced or related record is missing" });
   if (err?.code === "P2025") return res.status(404).json({ error: "Record not found" });
   if (isDatabaseUnavailable(err)) {
     logger.error("[error] database unavailable:", err?.message);

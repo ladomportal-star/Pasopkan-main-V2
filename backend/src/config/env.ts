@@ -8,7 +8,10 @@ import { z } from "zod";
 // Loaded by explicit path (not plain `dotenv/config`) so Backend/.env is
 // found regardless of the process's cwd.
 const moduleDir = fileURLToPath(new URL(".", import.meta.url));
-const backendDir = path.resolve(moduleDir, path.basename(moduleDir.replace(/[\\/]$/, "")) === "dist" ? ".." : "../..");
+const backendDir = path.resolve(
+  moduleDir,
+  path.basename(moduleDir.replace(/[\\/]$/, "")) === "dist" ? ".." : "../..",
+);
 dotenv.config({ path: path.join(backendDir, ".env") });
 
 const list = (v?: string) =>
@@ -100,9 +103,7 @@ export function checkEnv(warn: (msg: string) => void) {
     warn("SUPABASE_URL not set - every authenticated endpoint will return 503.");
   }
   if (!env.supabaseServiceRoleKey) {
-    warn(
-      "SUPABASE_SERVICE_ROLE_KEY not set - media storage endpoints will return 503.",
-    );
+    warn("SUPABASE_SERVICE_ROLE_KEY not set - media storage endpoints will return 503.");
   }
   if (env.isProd && env.corsOrigins.length === 0) {
     warn("CORS_ORIGIN not set in production - all cross-origin browser requests will be blocked.");

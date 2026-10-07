@@ -6,17 +6,17 @@ Express + TypeScript API using Prisma and PostgreSQL. Supabase JWTs are verified
 
 Run `npm ci`, copy .env.example to .env and configure DATABASE_URL and SUPABASE_URL. Follow [DATABASE.md](DATABASE.md) before applying migrations. Generate the client with `npm run db:generate`, then run `npm run dev`.
 
-| Command | Purpose |
-| --- | --- |
-| npm run typecheck | TypeScript checking |
-| npm run lint | ESLint |
-| npm test | Temporary local PostgreSQL cluster and API/constraint tests |
-| npm run build | Generate Prisma client and bundle dist/server.js |
-| npm start | Start production ESM build |
-| npm run db:generate | Generate Prisma client, NOT a SQL migration |
-| npm run db:validate | Validate Prisma schema |
-| npm run db:migrate | Deploy committed SQL migrations |
-| npm run db:studio | Open Prisma Studio |
+| Command             | Purpose                                                     |
+| ------------------- | ----------------------------------------------------------- |
+| npm run typecheck   | TypeScript checking                                         |
+| npm run lint        | ESLint                                                      |
+| npm test            | Temporary local PostgreSQL cluster and API/constraint tests |
+| npm run build       | Generate Prisma client and bundle dist/server.js            |
+| npm start           | Start production ESM build                                  |
+| npm run db:generate | Generate Prisma client, NOT a SQL migration                 |
+| npm run db:validate | Validate Prisma schema                                      |
+| npm run db:migrate  | Deploy committed SQL migrations                             |
+| npm run db:studio   | Open Prisma Studio                                          |
 
 ## Structure
 

@@ -6,5 +6,11 @@ import { listTickets, createTicket } from "../controllers/ticket.controller.ts";
 
 const router = Router();
 router.get("/tickets", requireAuth, listTickets);
-router.post("/tickets", requireAuth, requireRegisteredUser, validate({ body: createTicketBody }), createTicket);
+router.post(
+  "/tickets",
+  requireAuth,
+  requireRegisteredUser,
+  validate({ body: createTicketBody }),
+  createTicket,
+);
 export default router;

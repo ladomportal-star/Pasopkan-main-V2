@@ -14,6 +14,7 @@ export type AppUser = User & {
   gender?: 'male' | 'female' | 'other';
   dateOfBirth?: string;
   avatar?: string;
+  avatarReference?: string;
   role?: string;
   displayName?: string;
   photoURL?: string; // mapping for compatibility with older code
@@ -38,6 +39,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(safeStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  // Private avatar links expire after five minutes; refresh only their display URL.
+  useEffect(() => {
+    const reference = user?.avatarReference;
+    if (!token || !reference?.startsWith('storage://')) return;
+    let active = true;
+    const refresh = async () => {
+      const result = await api.get<{ url: string }>(`/media/url?reference=${encodeURIComponent(reference)}`, { token });
+      if (active && result.ok && result.data) {
+        const url = result.data.url;
+        setUser(previous => previous?.avatarReference === reference ? { ...previous, avatar: url, photoURL: url } : previous);
+      }
+    };
+    const timer = window.setInterval(refresh, 4 * 60 * 1000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [token, user?.avatarReference]);
 
   useEffect(() => {
     // Check active sessions and sets the user
@@ -79,10 +96,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       phone: backendUser.phone ?? undefined,
       gender: backendUser.gender ?? undefined,
       dateOfBirth: backendUser.dateOfBirth ?? undefined,
-      avatar: backendUser.avatarUrl ?? undefined,
+      avatar: backendUser.avatarUrlDisplay ?? backendUser.avatarUrl ?? undefined,
+      avatarReference: backendUser.avatarUrl ?? undefined,
       role: backendUser.role,
       displayName: name || supabaseUser.email,
-      photoURL: backendUser.avatarUrl ?? undefined,
+      photoURL: backendUser.avatarUrlDisplay ?? backendUser.avatarUrl ?? undefined,
     };
   };
 
@@ -98,7 +116,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           firstName: firstName || undefined,
           lastName: rest.length > 0 ? rest.join(' ') : undefined,
           phone: supabaseUser.phone || undefined,
-          avatarUrl: supabaseUser.user_metadata?.avatar_url || undefined,
         },
         { token: accessToken, throwOnError: true },
       );
@@ -180,6 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       : undefined;
 
     try {
+      const requestedAvatar = profileData.profilePic ?? profileData.avatarUrl ?? user.avatar;
       const { data, error } = await api.syncAccount(
         {
           email: user.email ?? '',
@@ -188,7 +206,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           phone: profileData.phone ?? user.phone,
           gender: gender ?? user.gender,
           dateOfBirth: profileData.dateOfBirth || profileData.dob || user.dateOfBirth,
-          avatarUrl: profileData.profilePic ?? profileData.avatarUrl ?? user.avatar,
+          avatarUrl: requestedAvatar === user.avatar ? user.avatarReference : requestedAvatar,
         },
         { token, throwOnError: true },
       );
@@ -199,6 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
     } catch (e) {
       console.error('Failed to sync profile with backend', e);
+      throw e;
     }
   };
 

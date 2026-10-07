@@ -24,7 +24,7 @@ const server = app.listen(env.port, env.host, async () => {
       logger.error(`[Database] connection failed: ${message}`);
     }
   } else {
-    database = { ok: false, detail: "not configured - running without a database" };
+    database = { ok: false, detail: "database connection unavailable" };
   }
 
   printStartupBanner({

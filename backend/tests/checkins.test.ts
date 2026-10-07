@@ -11,7 +11,7 @@ async function ticketCode(tier: "Free" | "General") {
   const res = await request(app)
     .post("/api/tickets")
     .set(await as("attendee"))
-    .send({ eventId: event.id, tierId: event.tiers.find(t => t.name === tier)!.id, quantity: 1 });
+    .send({ eventId: event.id, tierId: event.tiers.find((t) => t.name === tier)!.id, quantity: 1 });
   return { event, code: res.body.items[0].ticketCode as string };
 }
 
