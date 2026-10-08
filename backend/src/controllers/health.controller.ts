@@ -1,5 +1,4 @@
 import type { Request, Response } from "express";
-import { ok } from "../utils/response.util.ts";
 import { pool } from "../config/database.ts";
 
 export async function getHealth(_req: Request, res: Response) {
@@ -10,11 +9,13 @@ export async function getHealth(_req: Request, res: Response) {
     await pool.query("select 1");
     database = "connected";
   } catch {
-    // swallow — reported via the `database` field below, health check itself never throws
+    // Report the dependency failure as an unavailable deployment. Railway only
+    // promotes instances whose health check returns a successful status code.
   }
 
-  ok(res, {
-    status: "ok",
+  const isReady = database === "connected";
+  res.status(isReady ? 200 : 503).json({
+    status: isReady ? "ok" : "unavailable",
     app: "Pasopkan API",
     database,
     databaseLatencyMs: Date.now() - startedAt,

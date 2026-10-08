@@ -6,10 +6,12 @@ import { defineConfig } from 'vite';
 /**
  * Standalone Vite SPA on port 5173. The Backend runs as its own process on
  * port 3000 (see ../Backend); the dev server proxies `/api/*` to it so
- * `fetch('/api/...')` (src/lib/api.ts) needs no CORS config.
+ * src/lib/api.ts uses this proxy when VITE_API_URL is empty. Production must
+ * set VITE_API_URL to the Railway origin (for example https://api.pasopkan.la).
  * `DISABLE_HMR=true` turns off Hot Module Replacement (e.g. sandboxed editors).
  * `VITE_API_PROXY_TARGET` overrides the proxy target (default http://localhost:3000).
- * Client env vars (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) live in frontend/.env.
+ * Client env vars (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_API_URL)
+ * live in frontend/.env.
  */
 export default defineConfig({
   plugins: [react(), tailwindcss()],

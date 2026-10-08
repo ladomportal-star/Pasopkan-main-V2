@@ -25,7 +25,7 @@ Business data flows through the backend API and Prisma. Supabase Auth provides i
 Backend: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
 Frontend: `npm run lint`, `npm run build`.
 
-The backend build produces dist/server.js; start it with `npm start`. Configure CORS_ORIGIN explicitly in production. Frontend builds into dist; production hosting must route /api to the backend.
+The backend build produces dist/server.js; start it with `npm start`. Configure CORS_ORIGIN explicitly in production. Frontend builds into dist and uses `VITE_API_URL` to call the separately deployed backend. See [the production deployment guide](docs/production-deployment.md) for the Vercel, Railway, DNS and Supabase settings.
 
 ## Release status
 
