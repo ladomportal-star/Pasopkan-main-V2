@@ -41,6 +41,8 @@ const schema = z.object({
   // Least-privilege key used for public Auth operations proxied by this API.
   // Accepts either the current sb_publishable_* key or the legacy anon JWT.
   SUPABASE_PUBLISHABLE_KEY: z.string().trim().optional().default(""),
+  // Existing deployments may still use the legacy variable name.
+  SUPABASE_ANON_KEY: z.string().trim().optional().default(""),
   // Service role key: full admin access, bypasses RLS. SECRET — never expose
   // to the frontend or commit it. Used by the media storage service.
   SUPABASE_SERVICE_ROLE_KEY: z.string().trim().optional().default(""),
@@ -84,7 +86,7 @@ export const env = {
   },
 
   supabaseUrl: e.SUPABASE_URL.replace(/\/+$/, ""),
-  supabasePublishableKey: e.SUPABASE_PUBLISHABLE_KEY,
+  supabasePublishableKey: e.SUPABASE_PUBLISHABLE_KEY || e.SUPABASE_ANON_KEY,
   supabaseServiceRoleKey: e.SUPABASE_SERVICE_ROLE_KEY,
   frontendDist: e.FRONTEND_DIST,
 
