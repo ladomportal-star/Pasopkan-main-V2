@@ -4,11 +4,11 @@ The canonical schema is prisma/schema.prisma. Committed SQL migrations live in p
 
 ## Safety boundary
 
-The initial migration is intended for a NEW empty database. It is not an in-place conversion of an existing populated database. Do not reset, drop or overwrite the existing application database. Backups, legacy data conversion and live deployment require a separately reviewed rollout.
+The initial migration was applied to the selected Supabase project after a collision check and baselined in Prisma history. The 11 empty legacy Drizzle tables were removed by the guarded follow-up migration; it refuses to remove a non-empty table. Neither migration converts populated legacy data. Do not reset or overwrite the application database. Any future legacy data conversion requires a separately reviewed rollout.
 
 ## Connections and migration
 
-Set DATABASE_URL for application connections. Set DIRECT_DATABASE_URL for migration connections when a separate direct endpoint is needed. Both must target the intended new database. Prisma CLI uses DIRECT_DATABASE_URL when supplied, otherwise DATABASE_URL. Discrete SQL_* settings are application-only and do not configure Prisma CLI.
+Set DATABASE_URL for application connections. Set DIRECT_DATABASE_URL for migration connections when a separate direct endpoint is needed. Both must target the intended database. Prisma CLI uses DIRECT_DATABASE_URL when supplied, otherwise DATABASE_URL. Discrete SQL_* settings are application-only and do not configure Prisma CLI.
 
 From backend:
 
@@ -41,4 +41,4 @@ Do not run test:watch against a live database. Watch mode requires the isolated 
 
 Supabase Storage is separate from the application schema. Provision listing-media for public listing images and private-media for private images. Review storage policies so clients cannot overwrite or enumerate other users' private objects. The backend uses a service-role credential to upload and sign authorized private references.
 
-Storage bucket provisioning and frontend upload/reference resolution are not completed by applying the Prisma migration. See [remaining rollout work](../docs/prisma-implementation-status.md).
+The selected Supabase project's buckets and backend-only object policy were provisioned separately from Prisma. Live upload and cross-account verification remain; see [remaining rollout work](../docs/prisma-implementation-status.md).
