@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { pool } from "../config/database.ts";
+import { db, pool } from "../config/database.ts";
 
 export async function getHealth(_req: Request, res: Response) {
   const startedAt = Date.now();
@@ -7,6 +7,9 @@ export async function getHealth(_req: Request, res: Response) {
 
   try {
     await pool.query("select 1");
+    // A live connection alone is insufficient when the initial Prisma
+    // migration has not been applied to the target database.
+    await db.user.findFirst({ select: { id: true } });
     database = "connected";
   } catch {
     // Report the dependency failure as an unavailable deployment. Railway only

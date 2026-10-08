@@ -1,5 +1,4 @@
-import OtpInput from '../components/OtpInput';
-import { DateInputDDMMYYYY } from '../components/DateInputDDMMYYYY';
+import { DateInputDDMMYYYY } from "../components/DateInputDDMMYYYY";
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
@@ -16,16 +15,8 @@ import {
   Calendar,
   Clock,
   CreditCard,
-  ShieldCheck,
-  AlertCircle,
-  RefreshCw,
 } from "lucide-react";
-import {
-  LaoEvent,
-  TicketTier,
-  SeatingZone,
-  Coupon,
-} from "../data/events";
+import { LaoEvent, TicketTier, SeatingZone, Coupon } from "../data/events";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
 import { QRCodeSVG } from "qrcode.react";
@@ -327,36 +318,6 @@ export default function Checkout() {
     return (tier?.price || 0) * (quantity || 1);
   }, [zone, selectedTiersList, tier, quantity]);
 
-
-
-  // Checkout OTP State
-  const [showCheckoutOtpModal, setShowCheckoutOtpModal] = useState(false);
-  const [checkoutOtpCode, setCheckoutOtpCode] = useState("");
-  const [checkoutOtpError, setCheckoutOtpError] = useState("");
-  const [checkoutOtpCountdown, setCheckoutOtpCountdown] = useState(60);
-  const [isVerifyingCheckoutOtp, setIsVerifyingCheckoutOtp] = useState(false);
-  const expectedCheckoutOtp = "123456";
-  
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (showCheckoutOtpModal && checkoutOtpCountdown > 0) {
-      timer = setTimeout(() => setCheckoutOtpCountdown(checkoutOtpCountdown - 1), 1000);
-    }
-    return () => clearTimeout(timer);
-  }, [showCheckoutOtpModal, checkoutOtpCountdown]);
-
-  const handleResendCheckoutOtp = () => {
-    setCheckoutOtpCountdown(60);
-    setCheckoutOtpError('');
-  };
-  
-  const handleInitiateCheckout = () => {
-    if (!validateContactDetails()) return;
-    if (total > 0 && !selectedBank) return;
-    setShowCheckoutOtpModal(true);
-    setCheckoutOtpCountdown(60);
-  };
-
   const [step, setStep] = useState<"details" | "payment" | "qr" | "success">(
     "details",
   );
@@ -525,27 +486,33 @@ export default function Checkout() {
       const owner = ticketOwners[i];
       const phone = owner.phone.trim();
       const email = owner.email.trim();
-      
-      const phoneRegex = /^\+?[0-9]{7,15}$/; 
+
+      const phoneRegex = /^\+?[0-9]{7,15}$/;
       if (phone.includes(" ") || !phoneRegex.test(phone)) {
-        alert(lang === "lo" ? `ກະລຸນາປ້ອນເບີໂທລະສັບໃຫ້ຖືກຕ້ອງ ສຳລັບຜູ້ເຂົ້າຮ່ວມທີ ${i + 1} (ຫ້າມຍະຫວ່າງ).` : `Please enter a valid phone number for Guest ${i + 1} without spaces.`);
+        alert(
+          lang === "lo"
+            ? `ກະລຸນາປ້ອນເບີໂທລະສັບໃຫ້ຖືກຕ້ອງ ສຳລັບຜູ້ເຂົ້າຮ່ວມທີ ${i + 1} (ຫ້າມຍະຫວ່າງ).`
+            : `Please enter a valid phone number for Guest ${i + 1} without spaces.`,
+        );
         return false;
       }
-      
+
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (email.includes(" ") || !emailRegex.test(email)) {
-        alert(lang === "lo" ? `ກະລຸນາປ້ອນອີເມວໃຫ້ຖືກຕ້ອງ ສຳລັບຜູ້ເຂົ້າຮ່ວມທີ ${i + 1} (ຫ້າມຍະຫວ່າງ).` : `Please enter a valid email for Guest ${i + 1} without spaces.`);
+        alert(
+          lang === "lo"
+            ? `ກະລຸນາປ້ອນອີເມວໃຫ້ຖືກຕ້ອງ ສຳລັບຜູ້ເຂົ້າຮ່ວມທີ ${i + 1} (ຫ້າມຍະຫວ່າງ).`
+            : `Please enter a valid email for Guest ${i + 1} without spaces.`,
+        );
         return false;
       }
     }
     return true;
   };
 
-  // One `POST /api/tickets` call per tier (backend models one order = one
-  // tier type), so a mixed-tier cart becomes multiple orders sharing the
-  // same payment txn id. Returns false if any fail — stock can legitimately
-  // run out between viewing the event and paying for it.
-  const createRealOrder = async (paymentTxnId?: string): Promise<boolean> => {
+  // One `POST /api/tickets` call per tier. The backend verifies that each
+  // requested tier is actually free before it reserves stock or issues tickets.
+  const createRealOrder = async (): Promise<boolean> => {
     if (!event) return false;
     const { ticketOwners: owners } = latestFormRef.current;
     const groups =
@@ -555,16 +522,26 @@ export default function Checkout() {
           ? [{ tier, quantity: quantity || 1 }]
           : [];
     if (groups.length === 0) return false;
+    if (groups.some((group) => Number(group.tier.price) > 0)) {
+      alert(
+        lang === "lo"
+          ? "ການຊຳລະເງິນຍັງບໍ່ເປີດໃຊ້ສຳລັບປີ້ນີ້."
+          : "Payments are not available for these tickets yet.",
+      );
+      return false;
+    }
 
     let offset = 0;
     for (const group of groups) {
-      const attendees = owners.slice(offset, offset + group.quantity).map((o) => ({
-        firstName: o.firstName.trim() || undefined,
-        lastName: o.lastName.trim() || undefined,
-        email: o.email.trim() || undefined,
-        phone: o.phone.trim() || undefined,
-        customAnswers: o.customAnswers,
-      }));
+      const attendees = owners
+        .slice(offset, offset + group.quantity)
+        .map((o) => ({
+          firstName: o.firstName.trim() || undefined,
+          lastName: o.lastName.trim() || undefined,
+          email: o.email.trim() || undefined,
+          phone: o.phone.trim() || undefined,
+          customAnswers: o.customAnswers,
+        }));
       offset += group.quantity;
 
       const res = await api.createOrder({
@@ -574,7 +551,7 @@ export default function Checkout() {
         quantity: group.quantity,
         selectedDate: state.selectedDate || event.date,
         selectedTime: state.selectedTime || event.time,
-        paymentTxnId,
+        freeOnly: true,
         attendees,
       });
       if (!res.ok) {
@@ -583,6 +560,19 @@ export default function Checkout() {
             (lang === "lo"
               ? "ບໍ່ສາມາດສ້າງປີ້ໄດ້. ກະລຸນາລອງໃໝ່."
               : "Could not create your ticket order. Please try again."),
+        );
+        return false;
+      }
+      // The backend owns the price. A client-side coupon must never make a
+      // paid tier look like a confirmed free ticket.
+      if (
+        res.data?.order?.status !== "confirmed" ||
+        res.data.order.totalKip !== 0
+      ) {
+        alert(
+          lang === "lo"
+            ? "ປີ້ນີ້ຕ້ອງຊຳລະເງິນ ແຕ່ລະບົບຊຳລະເງິນຍັງບໍ່ພ້ອມ."
+            : "This ticket requires payment, but the payment service is not available yet.",
         );
         return false;
       }
@@ -616,19 +606,20 @@ export default function Checkout() {
     }, 3000);
   };
 
-  const handleBankSelection = async () => {
+  const handleInitiateCheckout = () => {
     if (!validateContactDetails()) return;
-    // Paid checkout stays disabled until the backend provider adapter is verified.
-    alert(lang === "lo"
-      ? "ການຊຳລະເງິນຍັງບໍ່ເປີດໃຊ້. ກະລຸນາລອງໃໝ່ພາຍຫຼັງ."
-      : "Paid checkout is not available yet. Please try again later.");
+    if (total === 0) {
+      void handleFreeCheckout();
+    }
   };
 
   useEffect(() => {
     if (step === "success" && event?.id) {
       // 1. Local storage tracking
       try {
-        const purchased = safeStorage.getItem("pasopkan_purchased_event_ids") || localStorage.getItem("pasopkan_purchased_event_ids");
+        const purchased =
+          safeStorage.getItem("pasopkan_purchased_event_ids") ||
+          localStorage.getItem("pasopkan_purchased_event_ids");
         const list = purchased ? JSON.parse(purchased) : [];
         if (!list.includes(event.id)) {
           list.push(event.id);
@@ -639,7 +630,9 @@ export default function Checkout() {
         }
 
         // Also save to user tickets for the Dashboard
-        const existingTicketsRaw = safeStorage.getItem("pasopkan_user_tickets") || localStorage.getItem("pasopkan_user_tickets");
+        const existingTicketsRaw =
+          safeStorage.getItem("pasopkan_user_tickets") ||
+          localStorage.getItem("pasopkan_user_tickets");
         let userTickets = [];
         try {
           if (existingTicketsRaw) userTickets = JSON.parse(existingTicketsRaw);
@@ -1085,8 +1078,9 @@ export default function Checkout() {
                               placeholder={lang === "en" ? "Doe" : "ນາມສະກຸນ"}
                               className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
                             />
-                          </div>                        </div>
-                        
+                          </div>{" "}
+                        </div>
+
                         <div className="grid grid-cols-2 gap-2.5">
                           <div>
                             <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-0.5">
@@ -1103,26 +1097,33 @@ export default function Checkout() {
                               }
                               className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
                             >
-                              <option value="" disabled>{lang === 'lo' ? 'ເລືອກເພດ' : 'Select Gender'}</option>
-                              <option value="Man">{lang === 'lo' ? 'ຊາຍ (Man)' : 'Man'}</option>
-                              <option value="Women">{lang === 'lo' ? 'ຍິງ (Women)' : 'Women'}</option>
-                              <option value="Other">{lang === 'lo' ? 'ອື່ນໆ (Other)' : 'Other'}</option>
+                              <option value="" disabled>
+                                {lang === "lo" ? "ເລືອກເພດ" : "Select Gender"}
+                              </option>
+                              <option value="Man">
+                                {lang === "lo" ? "ຊາຍ (Man)" : "Man"}
+                              </option>
+                              <option value="Women">
+                                {lang === "lo" ? "ຍິງ (Women)" : "Women"}
+                              </option>
+                              <option value="Other">
+                                {lang === "lo" ? "ອື່ນໆ (Other)" : "Other"}
+                              </option>
                             </select>
                           </div>
                           <div>
                             <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 pl-0.5">
                               {t.dob}
                             </label>
-                            <div className="relative w-full" onClick={(e) => e.stopPropagation()}>
+                            <div
+                              className="relative w-full"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <DateInputDDMMYYYY
                                 key={`dob-input-${idx}`}
                                 value={owner.dob || ""}
                                 onChange={(val) =>
-                                  handleTicketOwnerChange(
-                                    idx,
-                                    "dob",
-                                    val,
-                                  )
+                                  handleTicketOwnerChange(idx, "dob", val)
                                 }
                                 placeholder="DD/MM/YYYY"
                                 lang={lang}
@@ -1428,7 +1429,7 @@ export default function Checkout() {
                 )}
 
                 <button
-                  disabled={!isDetailsValid || (total > 0 && !selectedBank) || isProcessing}
+                  disabled={!isDetailsValid || total > 0 || isProcessing}
                   onClick={handleInitiateCheckout}
                   className="w-full py-3 bg-adv-orange text-white rounded-xl font-bold text-sm sm:text-base hover:bg-orange-600 transition-all flex items-center justify-center gap-2 shadow-md shadow-orange-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -1437,9 +1438,16 @@ export default function Checkout() {
                   ) : total === 0 ? (
                     t.book || "Book"
                   ) : (
-                    t.checkout
+                    lang === "lo" ? "ຍັງບໍ່ເປີດຮັບຊຳລະເງິນ" : "Payments unavailable"
                   )}
                 </button>
+                {total > 0 && (
+                  <p className="mt-2 text-center text-xs text-amber-700">
+                    {lang === "lo"
+                      ? "ປີ້ຈ່າຍເງິນຈະເປີດເມື່ອລະບົບຊຳລະເງິນພ້ອມ."
+                      : "Paid tickets will be available when payment setup is complete."}
+                  </p>
+                )}
               </div>
             </>
           ) : (
@@ -1597,128 +1605,6 @@ export default function Checkout() {
           )}
         </div>
       </div>
-
-      {/* Checkout OTP Modal */}
-      <AnimatePresence>
-        {showCheckoutOtpModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[300] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
-            onClick={() => setShowCheckoutOtpModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="max-w-md w-full bg-white rounded-2xl p-5 sm:p-7 shadow-2xl border border-gray-100 text-adv-slate"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="w-12 h-12 rounded-2xl bg-orange-50 text-adv-orange flex items-center justify-center mx-auto mb-3 border border-orange-100">
-                <ShieldCheck className="w-6 h-6" />
-              </div>
-              <h3 className="text-base sm:text-lg font-black text-center mb-1">
-                {lang === 'lo' ? 'ຢືນຢັນການຊຳລະເງິນ' : 'Verify Transaction'}
-              </h3>
-              <p className="text-[11px] sm:text-xs text-gray-400 font-medium text-center mb-4 leading-relaxed">
-                {lang === 'lo'
-                  ? 'ກະລຸນາປ້ອນລະຫັດ OTP 6 ຫຼັກ ເພື່ອຢືນຢັນການສັ່ງຊື້ປີ້'
-                  : 'Enter the 6-digit OTP code to securely authorize this ticket purchase.'}
-              </p>
-
-              <div className="mb-4">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block text-center mb-2">
-                  {lang === 'lo' ? 'ລະຫັດ OTP 6 ຫຼັກ' : '6-Digit OTP Code'}
-                </label>
-                <OtpInput
-                  length={6}
-                  autoFocus={true}
-                  value={checkoutOtpCode}
-                  onChange={(val) => {
-                    setCheckoutOtpCode(val);
-                    setCheckoutOtpError('');
-                  }}
-                  error={!!checkoutOtpError}
-                />
-                {checkoutOtpError && (
-                  <p className="text-red-500 text-[11px] font-bold text-center mt-2 flex items-center justify-center gap-1">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    <span>{checkoutOtpError}</span>
-                  </p>
-                )}
-                
-                {/* Resend OTP */}
-                <div className="mt-4 flex flex-col items-center">
-                  {checkoutOtpCountdown > 0 ? (
-                    <span className="text-[11px] font-bold text-gray-400 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      {lang === 'lo' ? `ສົ່ງໃໝ່ໃນ ${checkoutOtpCountdown} ວິນາທີ` : `Resend in ${checkoutOtpCountdown}s`}
-                    </span>
-                  ) : (
-                    <button
-                      onClick={handleResendCheckoutOtp}
-                      className="text-[11px] font-bold text-adv-orange hover:underline flex items-center gap-1"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      {lang === 'lo' ? 'ສົ່ງລະຫັດໃໝ່' : 'Resend OTP Code'}
-                    </button>
-                  )}
-                </div>
-
-                {/* Demo Helper Pill */}
-                <div className="mt-5 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCheckoutOtpCode(expectedCheckoutOtp);
-                      setCheckoutOtpError('');
-                    }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-full text-[10px] font-bold transition-colors"
-                  >
-                    Demo OTP: {expectedCheckoutOtp}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setShowCheckoutOtpModal(false)}
-                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-xl text-xs font-black uppercase tracking-wider transition-colors"
-                >
-                  {lang === 'lo' ? 'ຍົກເລີກ' : 'Cancel'}
-                </button>
-                <button
-                  onClick={async () => {
-                    if (checkoutOtpCode !== expectedCheckoutOtp && checkoutOtpCode !== "123456") {
-                      setCheckoutOtpError(lang === 'lo' ? 'ລະຫັດ OTP ບໍ່ຖືກຕ້ອງ' : 'Invalid OTP code');
-                      return;
-                    }
-                    setIsVerifyingCheckoutOtp(true);
-                    await new Promise(r => setTimeout(r, 1000));
-                    setIsVerifyingCheckoutOtp(false);
-                    setShowCheckoutOtpModal(false);
-                    if (total === 0) {
-                      handleFreeCheckout();
-                    } else {
-                      handleBankSelection();
-                    }
-                  }}
-                  disabled={checkoutOtpCode.length < 6 || isVerifyingCheckoutOtp}
-                  className="flex-1 py-3 bg-adv-orange hover:bg-orange-600 disabled:bg-orange-300 disabled:cursor-not-allowed text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors flex justify-center items-center gap-2"
-                >
-                  {isVerifyingCheckoutOtp ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    lang === 'lo' ? 'ຢືນຢັນ' : 'Verify & Proceed'
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
     </motion.div>
   );
 }

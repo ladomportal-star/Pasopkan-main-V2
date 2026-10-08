@@ -69,6 +69,21 @@ describe("tickets", () => {
     expect(free.body.order.totalKip).toBe(0);
   });
 
+  it("rejects a paid tier requested as free before reserving stock", async () => {
+    const event = await createEvent(app, await as("org"));
+    const paidTier = event.tiers.find((t) => t.name === "General")!;
+    const result = await buy("free-only-buyer", {
+      eventId: event.id,
+      tierId: paidTier.id,
+      quantity: 1,
+      freeOnly: true,
+    });
+    expect(result.status).toBe(409);
+    expect(await db.order.count({ where: { eventId: event.id } })).toBe(0);
+    const tier = await db.ticketTier.findUniqueOrThrow({ where: { id: paidTier.id } });
+    expect(tier.quantitySold).toBe(0);
+  });
+
   it("enforces stock atomically: the last ticket cannot be sold twice", async () => {
     const event = await createEvent(app, await as("org"), {
       tiers: [{ name: "Scarce", priceKip: 50000, quantityTotal: 2 }],

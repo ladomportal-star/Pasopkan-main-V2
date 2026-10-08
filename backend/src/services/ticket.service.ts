@@ -13,6 +13,7 @@ export interface CreateOrderInput {
   selectedDate?: string;
   selectedTime?: string;
   paymentTxnId?: string;
+  freeOnly?: boolean;
   attendees?: Array<{
     firstName?: string;
     lastName?: string;
@@ -62,6 +63,8 @@ export async function createOrder(input: CreateOrderInput) {
     const total = tier.priceKip * qty;
     if (!Number.isSafeInteger(total) || total > 2147483647)
       throw new HttpError(422, "Order amount exceeds supported limit");
+    if (input.freeOnly && total !== 0)
+      throw new HttpError(409, "This ticket requires a payment provider");
     const changed =
       await tx.$executeRaw`UPDATE "TicketTier" SET "quantitySold" = "quantitySold" + ${qty} WHERE id = ${tier.id}::uuid AND ("quantityTotal" IS NULL OR "quantitySold" + ${qty} <= "quantityTotal")`;
     if (!changed) throw new HttpError(409, "Not enough tickets left");

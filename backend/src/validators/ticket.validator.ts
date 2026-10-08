@@ -17,6 +17,7 @@ export const createTicketBody = z.object({
   selectedDate: z.string().optional(),
   selectedTime: z.string().optional(),
   paymentTxnId: z.string().min(1).optional(),
+  freeOnly: z.boolean().optional(),
   /** One entry per ticket (i.e. per unit of `quantity`), in order. Optional. */
   attendees: z.array(attendee).max(50).optional(),
 });

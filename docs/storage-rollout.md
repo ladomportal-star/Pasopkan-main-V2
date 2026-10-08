@@ -6,15 +6,18 @@ The frontend API client uploads PNG/JPEG/WebP data URLs in known image fields th
 
 Backend validation checks image size/type signatures, reference ownership and bucket visibility. Private URL resolution is owner-only. No storage service-role key is exposed to the browser. Image header checks do not replace malware scanning or full image decoding; add those before accepting untrusted document formats.
 
-## Operator steps — not performed automatically
+## Selected-project status (2026-10-08)
 
-1. Choose the intended test Supabase project, configure matching backend SUPABASE_URL and service-role secret securely, and verify a real Google session.
-2. Review backend/supabase/storage.sql and the project's existing storage policies. Run it against that project only. It provisions the two buckets and blocks browser object operations in them; the backend service role performs uploads/signing. It refuses to silently change conflicting bucket visibility.
-3. Confirm bucket size/type restrictions in the dashboard, especially if the buckets already existed.
-4. Upload a profile image and event cover/gallery image through the real forms. Reload and edit without replacing the image; verify database values remain storage:// references.
-5. Test with a second account: foreign private references and direct object reads/writes must fail. Confirm public listing downloads work without a session.
-6. Wait beyond five minutes and confirm avatar URL refresh. Confirm failed uploads surface an error and do not report a saved profile.
-7. Inventory legacy media separately before any transfer. No existing cloud bucket/data is deleted and no legacy image migration has been executed.
+The reviewed `backend/supabase/storage.sql` was applied to the selected Supabase project. Read-back confirmed `listing-media` is public, `private-media` is private, and `pasopkan_backend_media_only` protects object operations. The live browser and cross-account checks below are still required.
+
+## Remaining operator verification
+
+1. Configure matching production backend Supabase variables securely and verify a real Google session.
+2. Confirm bucket size/type restrictions in the dashboard.
+3. Upload a profile image and event cover/gallery image through the real forms. Reload and edit without replacing the image; verify database values remain storage:// references.
+4. Test with a second account: foreign private references and direct object reads/writes must fail. Confirm public listing downloads work without a session.
+5. Wait beyond five minutes and confirm avatar URL refresh. Confirm failed uploads surface an error and do not report a saved profile.
+6. Inventory legacy media separately before any transfer. No existing cloud bucket/data is deleted and no legacy image migration has been executed.
 
 An upload can succeed before its parent form save fails. These orphan objects need a future age-based cleanup job that checks database references before deletion. Do not delete objects merely because one save request failed.
 
@@ -22,4 +25,4 @@ Public listing images are deliberately public; never put identity documents ther
 
 ## Verification boundaries
 
-Local tests verify field selection, upload failure propagation, ownership/visibility rejection and event reference round trips. They do not prove that a live Supabase project has been configured correctly. Browser end-to-end and cross-account live Storage acceptance remain required before deployment.
+Local tests verify field selection, upload failure propagation, ownership/visibility rejection and event reference round trips. SQL read-back proves bucket/policy provisioning, but does not prove successful browser uploads or cross-account isolation. Browser end-to-end and cross-account live Storage acceptance remain required before deployment.
