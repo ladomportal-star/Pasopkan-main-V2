@@ -27,9 +27,7 @@ import { useLanguage } from '../context/LanguageContext';
 import LandscapeEventCard from '../components/LandscapeEventCard';
 import { api } from '../lib/api';
 import { fromBackendEvent } from '../lib/eventPayload';
-import { getHomeHeroSettings, HomeHeroSettings, DEFAULT_HOME_HERO_SETTINGS } from '../lib/siteSettings';
 import SEO from '../components/SEO';
-import HomeBlogSection from '../components/HomeBlogSection';
 
 const translations = {
   en: {
@@ -361,11 +359,18 @@ const PopularEventsRow: React.FC<{
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [fetchedEvents, setFetchedEvents] = useState<LaoEvent[]>([]);
+  const [eventsError, setEventsError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const { lang } = useLanguage();
   const t = translations[lang];
 
-  const [heroSettings, setHeroSettings] = useState<HomeHeroSettings>(DEFAULT_HOME_HERO_SETTINGS);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [failedHeroImage, setFailedHeroImage] = useState<string | null>(null);
+  // The homepage must never advertise sample events or browser-local content.
+  const heroSlides = React.useMemo(
+    () => fetchedEvents.filter(event => event.image && !event.image.startsWith('storage://')).slice(0, 5),
+    [fetchedEvents],
+  );
 
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [touchEndX, setTouchEndX] = useState<number | null>(null);
@@ -392,62 +397,27 @@ export default function Home() {
     const distance = touchStartX - touchEndX;
     const minSwipeDistance = 35;
     
-    // heroSlides isn't defined here yet, but we can compute it inside the effect or use a functional update
+    if (heroSlides.length <= 1) return;
     if (distance > minSwipeDistance) {
-      setCurrentImageIndex((prev) => (prev + 1) % Math.max(1, (heroSettings.slides?.length || DEFAULT_HOME_HERO_SETTINGS.slides.length)));
+      setCurrentImageIndex((prev) => (prev + 1) % heroSlides.length);
     } else if (distance < -minSwipeDistance) {
-      setCurrentImageIndex((prev) => {
-        const len = Math.max(1, (heroSettings.slides?.length || DEFAULT_HOME_HERO_SETTINGS.slides.length));
-        return prev === 0 ? len - 1 : prev - 1;
-      });
+      setCurrentImageIndex((prev) => prev === 0 ? heroSlides.length - 1 : prev - 1);
     }
     setTouchStartX(null);
     setTouchEndX(null);
   };
 
-  // Fetch dynamic hero settings from site settings
-  useEffect(() => {
-    let isMounted = true;
-    getHomeHeroSettings()
-      .then((settings) => {
-        if (isMounted && settings && settings.slides && settings.slides.length > 0) {
-          setHeroSettings(settings);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to load dynamic hero settings:', err);
-      });
-
-    const handleUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<HomeHeroSettings>;
-      if (customEvent.detail?.slides?.length) {
-        setHeroSettings(customEvent.detail);
-      }
-    };
-
-    window.addEventListener('pasopkan_home_hero_updated', handleUpdate);
-
-    return () => {
-      isMounted = false;
-      window.removeEventListener('pasopkan_home_hero_updated', handleUpdate);
-    };
-  }, []);
-
-  const heroSlides = heroSettings.slides && heroSettings.slides.length > 0
-    ? heroSettings.slides
-    : DEFAULT_HOME_HERO_SETTINGS.slides;
-
-  // Preload appropriately sized images
+  // Preload only published events returned by the backend.
   useEffect(() => {
     const isMobile = window.innerWidth <= 768;
     const width = isMobile ? '600' : '2070';
     heroSlides.forEach((slide) => {
-      if (slide.imageUrl) {
+      if (slide.image) {
         const img = new Image();
-        if (slide.imageUrl.includes('images.unsplash.com')) {
-          img.src = `${slide.imageUrl}&w=${width}`;
+        if (slide.image.includes('images.unsplash.com')) {
+          img.src = `${slide.image}&w=${width}`;
         } else {
-          img.src = slide.imageUrl;
+          img.src = slide.image;
         }
       }
     });
@@ -456,18 +426,24 @@ export default function Home() {
   // Image slider timer based on configurable slideIntervalSeconds
   useEffect(() => {
     if (heroSlides.length <= 1) return;
-    const intervalMs = (heroSettings.slideIntervalSeconds || 5) * 1000;
     const timer = setInterval(() => {
       setCurrentImageIndex((prev) => (prev + 1) % heroSlides.length);
-    }, intervalMs);
+    }, 5000);
     return () => clearInterval(timer);
-  }, [heroSlides.length, heroSettings.slideIntervalSeconds]);
+  }, [heroSlides.length]);
 
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
+    setEventsError(false);
     api.listEvents().then((res) => {
       if (cancelled) return;
+      if (!res.ok) {
+        setFetchedEvents([]);
+        setEventsError(true);
+        setIsLoading(false);
+        return;
+      }
       const allEvents: LaoEvent[] = (res.data?.events ?? []).map(fromBackendEvent);
 
       // Filter out events that are expired or already in the past
@@ -488,7 +464,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [retryCount]);
 
   // Top 5 Popular Events sorted by tickets sold the most
   const popularEvents = React.useMemo(() => {
@@ -512,8 +488,8 @@ export default function Home() {
 
   const categories = ['Workshop', 'Sports', 'Festival', 'Voucher'];
 
-  const currentSlide = heroSlides[currentImageIndex] || heroSlides[0];
-  const isUnsplash = currentSlide?.imageUrl?.includes('images.unsplash.com');
+  const currentSlide = heroSlides[currentImageIndex % heroSlides.length];
+  const isUnsplash = currentSlide?.image?.includes('images.unsplash.com');
 
   return (
     <div className="min-h-screen bg-white">
@@ -535,28 +511,49 @@ export default function Home() {
             if (touchStartX !== null) handleTouchEnd();
           }}
         >
-          <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-800 to-orange-900 pointer-events-none">
             <AnimatePresence mode="wait">
-              <motion.img 
-                key={currentSlide?.id || currentSlide?.imageUrl || currentImageIndex}
-                src={isUnsplash ? `${currentSlide.imageUrl}&w=1200` : currentSlide.imageUrl}
-                srcSet={isUnsplash ? `${currentSlide.imageUrl}&w=600 600w, 
-                         ${currentSlide.imageUrl}&w=1200 1200w, 
-                         ${currentSlide.imageUrl}&w=2070 2000w` : undefined}
+              {currentSlide && failedHeroImage !== currentSlide.image && <motion.img
+                key={currentSlide.id}
+                src={isUnsplash ? `${currentSlide.image}&w=1200` : currentSlide.image}
+                srcSet={isUnsplash ? `${currentSlide.image}&w=600 600w,
+                         ${currentSlide.image}&w=1200 1200w,
+                         ${currentSlide.image}&w=2070 2000w` : undefined}
                 sizes="(max-width: 768px) 600px, (max-width: 1200px) 1200px, 100vw"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3, ease: "linear" }}
                 className="absolute inset-0 w-full h-full object-cover"
-                alt={currentSlide?.title_en || 'Hero Background'}
+                alt={currentSlide.title}
+                onError={() => setFailedHeroImage(currentSlide.image)}
                 fetchPriority="high"
-              />
+              />}
             </AnimatePresence>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10" />
           </div>
 
+          <div className="relative z-10 px-6 text-center text-white pointer-events-none">
+            {currentSlide ? (
+              <h1 className="font-display text-2xl sm:text-4xl lg:text-5xl font-black drop-shadow-lg">{currentSlide.title}</h1>
+            ) : (
+              <>
+                <Compass className="mx-auto mb-4 h-10 w-10 text-orange-300" />
+                <h1 className="font-display text-2xl sm:text-4xl lg:text-5xl font-black">{t.mainTitle}</h1>
+                <p className="mt-3 text-sm sm:text-lg text-white/80">
+                  {isLoading ? (lang === 'lo' ? 'ກຳລັງໂຫຼດກິດຈະກຳ...' : 'Loading events...')
+                    : eventsError ? (lang === 'lo' ? 'ບໍ່ສາມາດໂຫຼດກິດຈະກຳໄດ້' : 'Events are temporarily unavailable')
+                    : (lang === 'lo' ? 'ຍັງບໍ່ມີກິດຈະກຳທີ່ເປີດໃຫ້ຈອງ' : 'No published events yet')}
+                </p>
+              </>
+            )}
+          </div>
+          {eventsError && <button type="button" onClick={() => setRetryCount(value => value + 1)} className="relative z-20 mt-5 rounded-full bg-white px-5 py-2 text-sm font-bold text-slate-900 hover:bg-orange-50">
+            {lang === 'lo' ? 'ລອງໃໝ່' : 'Try again'}
+          </button>}
+
           {/* Carousel Pagination Dots inside image */}
-          <div 
+          {heroSlides.length > 1 && <div
             className="absolute bottom-2.5 sm:bottom-4 left-0 right-0 z-20 flex items-center justify-center pointer-events-auto"
             onClick={(e) => e.stopPropagation()}
           >
@@ -577,7 +574,7 @@ export default function Home() {
                 />
               ))}
             </div>
-          </div>
+          </div>}
         </section>
       </div>
 
@@ -660,8 +657,6 @@ export default function Home() {
         </div>
       </section>
       
-      {/* Blog & Event Stories Section under every section category */}
-      <HomeBlogSection />
     </div>
   );
 }
