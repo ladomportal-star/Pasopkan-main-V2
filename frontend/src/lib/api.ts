@@ -141,7 +141,7 @@ export const api = {
 
   syncAccount: (
     profile: {
-      email: string;
+      email?: string;
       firstName?: string;
       lastName?: string;
       phone?: string;

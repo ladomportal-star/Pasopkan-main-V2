@@ -199,7 +199,7 @@ export default function Login({
 
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
         <div className="absolute -left-28 -top-36 h-96 w-96 rounded-full bg-orange-400/20 blur-3xl" />
-        <div className="absolute -bottom-44 right-[-7rem] h-[30rem] w-[30rem] rounded-full bg-emerald-300/20 blur-3xl" />
+        <div className="absolute -bottom-44 -right-28 h-120 w-120 rounded-full bg-emerald-300/20 blur-3xl" />
         <div className="absolute inset-0 opacity-[0.035] texture-bg" />
       </div>
 
@@ -290,7 +290,7 @@ export default function Login({
           initial={{ opacity: 0, y: 22, scale: 0.985 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.55, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-          className={`mx-auto w-full max-w-[31rem] overflow-hidden rounded-[2rem] border p-6 shadow-2xl sm:p-9 ${
+          className={`mx-auto w-full max-w-124 overflow-hidden rounded-4xl border p-6 shadow-2xl sm:p-9 ${
             dark
               ? "border-white/10 bg-zinc-900/85 shadow-black/30 backdrop-blur-xl"
               : "border-white/90 bg-white/90 shadow-orange-950/10 backdrop-blur-xl"
@@ -307,7 +307,7 @@ export default function Login({
           </div>
 
           <div className="flex items-center justify-between">
-            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/25">
+            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-linear-to-br from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/25">
               <ShieldCheck className="h-5 w-5" />
             </div>
             {/* <span
@@ -322,7 +322,7 @@ export default function Login({
           </div>
 
           <h2
-            className={`mt-7 text-3xl font-black tracking-[-0.035em] sm:text-4xl ${dark ? "!text-white" : "!text-slate-950"}`}
+            className={`mt-7 text-3xl font-black tracking-[-0.035em] sm:text-4xl ${dark ? "text-white!" : "text-slate-950!"}`}
           >
             {copy.title}
           </h2>
@@ -430,7 +430,7 @@ export default function Login({
               <button
                 type="submit"
                 disabled={busy || !phone.trim()}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 px-5 py-4 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-orange-500 to-orange-600 px-5 py-4 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <KeyRound className="h-5 w-5" />}
                 {busy
@@ -470,7 +470,7 @@ export default function Login({
               <button
                 type="submit"
                 disabled={busy || otp.length !== 6}
-                className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 px-5 py-4 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-orange-500 to-orange-600 px-5 py-4 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShieldCheck className="h-5 w-5" />}
                 {busy

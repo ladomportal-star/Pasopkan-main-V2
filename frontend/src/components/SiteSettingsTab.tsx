@@ -2823,6 +2823,12 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
         {/* PRIVACY POLICY FORM */}
         {activeSubTab === 'privacy' && privacyForm && (
           <form onSubmit={handleSavePrivacy} className="space-y-6">
+            <p role="status" className="rounded-xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-900">
+              {lang === 'en'
+                ? 'The public Privacy Policy is version-controlled. This preview is read-only; edit DEFAULT_PRIVACY_SETTINGS in the frontend code and redeploy to publish changes.'
+                : 'ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວສາທາລະນະຖືກຈັດການໃນ code. ໜ້ານີ້ອ່ານໄດ້ຢ່າງດຽວ; ແກ້ DEFAULT_PRIVACY_SETTINGS ແລ້ວ deploy ໃໝ່ເພື່ອເຜີຍແຜ່.'}
+            </p>
+            <fieldset disabled className="space-y-6">
             <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 space-y-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -2954,6 +2960,7 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                 {lang === 'en' ? 'Save Privacy Policy' : 'ບັນທຶກນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ'}
               </button>
             </div>
+            </fieldset>
           </form>
         )}
       </div>
