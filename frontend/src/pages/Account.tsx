@@ -632,7 +632,7 @@ export default function Account() {
               setShowProfilePicSuccess(true);
               setTimeout(() => setShowProfilePicSuccess(false), 5000);
             })
-            .catch((error) => {
+            .catch((error: unknown) => {
               addToast(error instanceof Error ? error.message : "Could not save profile photo", "error");
             });
         };
@@ -712,7 +712,7 @@ export default function Account() {
               setActiveTab("profile");
               window.scrollTo(0, 0);
             }}
-            className={`flex-1 min-w-[90px] sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
+            className={`flex-1 min-w-22.5 sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
               activeTab === "profile"
                 ? theme === "dark"
                   ? "bg-zinc-800 text-white border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange"
@@ -727,7 +727,7 @@ export default function Account() {
               setActiveTab("my-event");
               window.scrollTo(0, 0);
             }}
-            className={`flex-1 min-w-[90px] sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
+            className={`flex-1 min-w-22.5 sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
               activeTab === "my-event"
                 ? theme === "dark"
                   ? "bg-zinc-800 text-white border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange"
@@ -742,7 +742,7 @@ export default function Account() {
               setActiveTab("payouts");
               window.scrollTo(0, 0);
             }}
-            className={`flex-1 min-w-[90px] sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
+            className={`flex-1 min-w-22.5 sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
               activeTab === "payouts"
                 ? theme === "dark"
                   ? "bg-zinc-800 text-white border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange"
@@ -834,7 +834,7 @@ export default function Account() {
                     >
                       {item.label}
                     </span>
-                    <span className="block text-xs text-gray-400 font-medium truncate max-w-[200px] xs:max-w-[280px] sm:max-w-none">
+                    <span className="block text-xs text-gray-400 font-medium truncate max-w-50 xs:max-w-[280px] sm:max-w-none">
                       {item.desc}
                     </span>
                   </div>
@@ -1050,7 +1050,7 @@ export default function Account() {
               <div className="w-full">
                 <button
                   onClick={() => setShowScanner(true)}
-                  className="w-full flex items-center justify-center gap-3 p-4 sm:p-5 rounded-2xl sm:rounded-[1.5rem] bg-adv-slate dark:bg-white text-white dark:text-adv-slate font-bold hover:opacity-95 transition-all shadow-md active:scale-[0.98] transform cursor-pointer"
+                  className="w-full flex items-center justify-center gap-3 p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-adv-slate dark:bg-white text-white dark:text-adv-slate font-bold hover:opacity-95 transition-all shadow-md active:scale-[0.98] transform cursor-pointer"
                 >
                   <Camera className="w-5 h-5 text-adv-orange animate-pulse" />
                   <span className="text-sm sm:text-base">{t.scanQr}</span>
@@ -1108,7 +1108,7 @@ export default function Account() {
                             "/src/assets/images/seating_map_layout_1782798956470.jpg"
                           }
                           alt="Seating Map Layout"
-                          className="w-full h-auto max-h-[240px] sm:max-h-[320px] object-contain rounded-xl"
+                          className="w-full h-auto max-h-60 sm:max-h-80 object-contain rounded-xl"
                           referrerPolicy="no-referrer"
                         />
 
@@ -1152,7 +1152,7 @@ export default function Account() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 lg:p-8 overflow-y-auto"
+            className="fixed inset-0 z-100 flex items-center justify-center p-3.5 sm:p-6 lg:p-8 overflow-y-auto"
           >
             {/* Backdrop */}
             <motion.div
@@ -1249,7 +1249,7 @@ export default function Account() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
+            className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
@@ -1263,7 +1263,7 @@ export default function Account() {
               onClick={(e) => e.stopPropagation()}
             >
               <div
-                className={`flex items-center justify-between p-6 border-b flex-shrink-0 transition-colors ${
+                className={`flex items-center justify-between p-6 border-b shrink-0 transition-colors ${
                   theme === "dark" ? "border-zinc-800" : "border-gray-50"
                 }`}
               >
@@ -1371,7 +1371,7 @@ export default function Account() {
                       <p className="text-gray-400 mb-6 font-bold text-xs leading-relaxed max-w-xs">
                         {scannerError}
                       </p>
-                      <div className="flex flex-col gap-2 w-full max-w-[240px]">
+                      <div className="flex flex-col gap-2 w-full max-w-60">
                         <button
                           onClick={() => setScannerError(null)}
                           className={`px-6 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest border transition-colors ${
@@ -1409,7 +1409,7 @@ export default function Account() {
                           className={`flex items-center gap-2 pb-2.5 border-b ${theme === "dark" ? "border-zinc-800" : "border-gray-100"}`}
                         >
                           <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
                               scanResult.alreadyScanned
                                 ? "bg-amber-500/10 text-amber-500"
                                 : theme === "dark"
@@ -1524,7 +1524,7 @@ export default function Account() {
                       </div>
 
                       <div
-                        className={`mt-4 flex gap-2 flex-shrink-0 pt-3 border-t ${theme === "dark" ? "border-zinc-800" : "border-gray-100"}`}
+                        className={`mt-4 flex gap-2 shrink-0 pt-3 border-t ${theme === "dark" ? "border-zinc-800" : "border-gray-100"}`}
                       >
                         <button
                           onClick={() => setScanResult(null)}
@@ -1539,7 +1539,7 @@ export default function Account() {
                         <button
                           onClick={handleConfirmEntry}
                           disabled={isConfirmingEntry || scanResult.alreadyScanned}
-                          className="flex-[2] py-2.5 rounded-xl bg-adv-orange text-white font-black hover:opacity-95 transition-all text-[10px] uppercase tracking-widest shadow-md"
+                          className="flex-2 py-2.5 rounded-xl bg-adv-orange text-white font-black hover:opacity-95 transition-all text-[10px] uppercase tracking-widest shadow-md"
                         >
                           {isConfirmingEntry ? (lang === "lo" ? "ກຳລັງກວດ..." : "Checking...") : t.confirmEntry}
                         </button>
@@ -1592,7 +1592,7 @@ export default function Account() {
         )}
       </AnimatePresence>
       {/* Toast Container with 5-Second Auto-Dismiss Indicator */}
-      <div className="fixed bottom-24 sm:bottom-12 right-1/2 translate-x-1/2 z-[300] flex flex-col gap-3 w-full max-w-sm px-6 pointer-events-none">
+      <div className="fixed bottom-24 sm:bottom-12 right-1/2 translate-x-1/2 z-300 flex flex-col gap-3 w-full max-w-sm px-6 pointer-events-none">
         <AnimatePresence>
           {toastQueue.map((toast) => (
             <motion.div
@@ -1600,7 +1600,7 @@ export default function Account() {
               initial={{ opacity: 0, y: 20, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-              className="p-4 sm:p-5 rounded-2xl sm:rounded-[1.5rem] shadow-2xl flex items-center gap-3.5 border relative overflow-hidden pointer-events-auto bg-white border-gray-200 text-black"
+              className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-2xl flex items-center gap-3.5 border relative overflow-hidden pointer-events-auto bg-white border-gray-200 text-black"
             >
               <span className="font-bold text-xs sm:text-sm flex-1 leading-snug text-black">
                 {toast.text}
@@ -1622,12 +1622,12 @@ export default function Account() {
       {/* Success Toast (Old simple one, keeping it for profile pic but updated style) */}
       <AnimatePresence>
         {showProfilePicSuccess && (
-          <div className="fixed bottom-24 sm:bottom-12 right-1/2 translate-x-1/2 z-[300] flex flex-col gap-3 w-full max-w-sm px-6 pointer-events-none">
+          <div className="fixed bottom-24 sm:bottom-12 right-1/2 translate-x-1/2 z-300 flex flex-col gap-3 w-full max-w-sm px-6 pointer-events-none">
             <motion.div
               initial={{ opacity: 0, y: 20, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-              className="p-4 sm:p-5 rounded-2xl sm:rounded-[1.5rem] shadow-2xl flex items-center gap-3.5 border relative overflow-hidden pointer-events-auto bg-white border-gray-200 text-black"
+              className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-2xl flex items-center gap-3.5 border relative overflow-hidden pointer-events-auto bg-white border-gray-200 text-black"
             >
               <span className="font-bold text-xs sm:text-sm flex-1 leading-snug text-black">
                 {t.profileUpdated}
