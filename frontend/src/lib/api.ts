@@ -284,8 +284,8 @@ export const api = {
         eventTitle: string | null;
         orderCreatedAt: string | null;
         tierName: string;
-        seatLabel: string | null;
-        zoneName: string | null;
+        seatLabel?: string | null;
+        zoneName?: string | null;
         unitPriceKip: number;
         attendeeName: string | null;
         attendeeEmail: string | null;

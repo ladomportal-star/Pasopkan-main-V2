@@ -215,7 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const requestedAvatar = profileData.profilePic ?? profileData.avatarUrl ?? user.avatar;
       const { data, error } = await api.syncAccount(
         {
-          email: user.email ?? '',
+          email: user.email || undefined,
           firstName: profileData.firstName ?? user.firstName,
           lastName: profileData.lastName ?? user.lastName,
           phone: profileData.phone ?? user.phone,
