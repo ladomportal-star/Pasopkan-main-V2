@@ -34,11 +34,11 @@ export default function Privacy() {
       >
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate("/")}
           className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-orange-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-500"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          {isLao ? "ກັບຄືນ" : "Back"}
+          {isLao ? "ກັບຄືນ" : "Back to Home"}
         </button>
 
         <header className="mb-8 border-b border-gray-200 pb-6 dark:border-zinc-700">
