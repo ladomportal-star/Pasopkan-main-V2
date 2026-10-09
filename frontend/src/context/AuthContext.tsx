@@ -34,6 +34,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// A URL ending in /# has an empty location.hash, so checking hash === '#'
+// never matches. Only remove the empty fragment after Supabase has read the
+// OAuth callback; preserve meaningful anchors and auth parameters.
+function removeEmptyOAuthFragment() {
+  if (window.location.href.endsWith('#')) {
+    window.history.replaceState(
+      window.history.state,
+      '',
+      window.location.pathname + window.location.search,
+    );
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [token, setToken] = useState<string | null>(safeStorage.getItem('token'));
@@ -66,6 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setLoading(false);
       }
+      removeEmptyOAuthFragment();
     });
 
     // Listen for changes on auth state (sign in, sign out, etc.)
@@ -73,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session) {
         setToken(session.access_token);
         safeStorage.setItem('token', session.access_token);
+        removeEmptyOAuthFragment();
         await fetchAndSetUserProfile(session.user, session.access_token);
       } else {
         setToken(null);
@@ -125,11 +140,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Error syncing user profile with backend:', e);
       setUser(supabaseUser); // fallback: signed in, but role/profile unknown
     } finally {
-      // Supabase may leave an empty fragment after consuming the OAuth callback.
-      // Keep real anchors such as #blog-* intact.
-      if (window.location.hash === '#') {
-        window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search);
-      }
       setLoading(false);
     }
   };
