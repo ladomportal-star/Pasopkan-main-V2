@@ -94,7 +94,11 @@ const LazyScanner = React.lazy(
             </div>
           ),
         };
-      }) as Promise<{ default: React.ComponentType<any> }>,
+      }) as Promise<{
+        default: React.ComponentType<
+          React.ComponentProps<typeof import("@yudiel/react-qr-scanner").Scanner>
+        >;
+      }>,
 );
 
 const translations = {
