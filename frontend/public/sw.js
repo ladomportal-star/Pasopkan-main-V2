@@ -4,7 +4,8 @@
  * runtime image and font caching, and offline fallback responses.
  */
 
-const CACHE_VERSION = 'v1';
+// Bump when cache behavior changes so old, incorrectly cached module responses are removed.
+const CACHE_VERSION = 'v2';
 const STATIC_CACHE_NAME = `pasopkan-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE_NAME = `pasopkan-runtime-${CACHE_VERSION}`;
 const IMAGE_CACHE_NAME = `pasopkan-images-${CACHE_VERSION}`;
@@ -154,7 +155,23 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event: Network-First for Navigation, Stale-While-Revalidate for Assets, Cache-First for Images
+// HTML must never be stored or returned as a JS/CSS asset. A missing hashed Vite
+// file can otherwise be rewritten to index.html and poison the runtime cache.
+function isValidStaticResponse(request, response) {
+  if (!response || !response.ok) return false;
+
+  const pathname = new URL(request.url).pathname;
+  const contentType = (response.headers.get('content-type') || '').toLowerCase();
+  if (request.destination === 'script' || /\.m?js$/i.test(pathname)) {
+    return /javascript|ecmascript/.test(contentType);
+  }
+  if (request.destination === 'style' || /\.css$/i.test(pathname)) {
+    return contentType.includes('text/css');
+  }
+  return !contentType.includes('text/html');
+}
+
+// Fetch Event: Network-First for Navigation, Cache-First for Images and valid Static Assets
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -253,26 +270,27 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Static JS, CSS, Fonts, Manifest: Stale-While-Revalidate
+  // 3. Static JS, CSS, Fonts, Manifest: use only cached responses with the
+  // correct MIME type. Do not let the SPA HTML fallback masquerade as a module.
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      const fetchPromise = fetch(request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.ok) {
-            const clone = networkResponse.clone();
-            caches.open(RUNTIME_CACHE_NAME).then((cache) => {
-              cache.put(request, clone);
-            });
-          }
-          return networkResponse;
-        })
-        .catch((err) => {
-          // Network failed
-          return cachedResponse;
-        });
+    (async () => {
+      const cache = await caches.open(RUNTIME_CACHE_NAME);
+      const cachedResponse = await cache.match(request);
+      if (isValidStaticResponse(request, cachedResponse)) {
+        return cachedResponse;
+      }
 
-      return cachedResponse || fetchPromise;
-    })
+      try {
+        const networkResponse = await fetch(request);
+        if (isValidStaticResponse(request, networkResponse)) {
+          await cache.put(request, networkResponse.clone());
+        }
+        return networkResponse;
+      } catch (error) {
+        // No valid offline copy exists; fail the request rather than returning HTML.
+        return Response.error();
+      }
+    })()
   );
 });
 
