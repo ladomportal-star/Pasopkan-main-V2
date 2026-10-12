@@ -6,7 +6,10 @@ async function staffFor(tx: Prisma.TransactionClient, eventId: string, uid: stri
   const actor = await tx.user.findUnique({ where: { authId: uid } });
   const event = await tx.event.findUnique({ where: { id: eventId }, include: { organizer: true } });
   if (!actor || !event) throw new HttpError(403, "Not authorized to scan this event");
-  if (actor.role !== "admin" && event.organizer.userId !== actor.id) {
+  if (
+    actor.role !== "admin" &&
+    (actor.role !== "organizer" || event.organizer.userId !== actor.id)
+  ) {
     const assignment = await tx.eventStaff.findUnique({
       where: { eventId_userId: { eventId, userId: actor.id } },
     });

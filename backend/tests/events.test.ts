@@ -91,4 +91,85 @@ describe("events", () => {
       .send({ title: "x" });
     expect(res.status).toBe(404);
   });
+
+  it("lets an admin without an application create, review and edit events", async () => {
+    const admin = await as("admin-without-organizer");
+    const adminUser = await db.user.create({
+      data: {
+        authId: "admin-without-organizer",
+        email: "admin-without-organizer@test.local",
+        role: "admin",
+      },
+    });
+    const created = await request(app)
+      .post("/api/events")
+      .set(admin)
+      .send({
+        title: "Platform event",
+        status: "pending_review",
+        tiers: [{ name: "Free", priceKip: 0, quantityTotal: 10 }],
+      });
+    expect(created.status).toBe(201);
+    expect(created.body.event.status).toBe("pending_review");
+    expect(created.body.event.organizer.userId).toBe(adminUser.id);
+    expect((await db.user.findUnique({ where: { id: adminUser.id } }))?.role).toBe("admin");
+    expect(await db.organizerApplication.count({ where: { userId: adminUser.id } })).toBe(0);
+    const published = await request(app)
+      .put(`/api/events/${created.body.event.id}`)
+      .set(admin)
+      .send({ status: "published" });
+    expect(published.status).toBe(200);
+    expect(published.body.event.reviewedByUserId).toBe(adminUser.id);
+    expect(
+      await db.auditLog.count({
+        where: { actorId: adminUser.id, action: "event.status", entityId: created.body.event.id },
+      }),
+    ).toBe(1);
+
+    const owned = await createEvent(app, await as("other-organizer"), {
+      title: "Another host's show",
+    });
+    const list = await request(app).get("/api/admin/events?limit=1").set(admin);
+    expect(list.status).toBe(200);
+    expect(list.body.events).toHaveLength(1);
+    expect(list.body.nextCursor).toBeTruthy();
+    const secondPage = await request(app)
+      .get(`/api/admin/events?limit=1&cursor=${list.body.nextCursor}`)
+      .set(admin);
+    expect(secondPage.status).toBe(200);
+    expect(secondPage.body.events[0].id).not.toBe(list.body.events[0].id);
+    const all = await request(app).get("/api/admin/events?limit=100").set(admin);
+    expect(all.body.events.map((event: { id: string }) => event.id)).toContain(owned.id);
+    const edited = await request(app)
+      .put(`/api/events/${owned.id}`)
+      .set(admin)
+      .send({ title: "Updated by admin" });
+    expect(edited.status).toBe(200);
+    expect(edited.body.event.title).toBe("Updated by admin");
+  });
+
+  it("does not let a regular user inherit organizer privileges from an old profile", async () => {
+    const owner = await as("former-organizer");
+    const event = await createEvent(app, owner, { status: "draft" });
+    await db.user.update({ where: { authId: "former-organizer" }, data: { role: "user" } });
+    expect(
+      (await request(app).post("/api/events").set(owner).send({ title: "Unauthorized" })).status,
+    ).toBe(403);
+    expect(
+      (await request(app).put(`/api/events/${event.id}`).set(owner).send({ title: "Unauthorized" }))
+        .status,
+    ).toBe(403);
+    expect((await request(app).get(`/api/events/${event.id}`).set(owner)).status).toBe(404);
+    expect((await request(app).get("/api/events?mine=true").set(owner)).body.events).toHaveLength(
+      0,
+    );
+    expect(
+      (
+        await request(app)
+          .post(`/api/events/${event.id}/staff`)
+          .set(owner)
+          .send({ email: "somebody@test.local" })
+      ).status,
+    ).toBe(403);
+  });
 });

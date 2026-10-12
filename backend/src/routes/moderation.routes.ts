@@ -15,16 +15,33 @@ import {
 } from "../services/moderation.service.ts";
 const router = Router();
 const id = z.object({ id: z.string().uuid() });
-router.get("/admin/events", requireAuth, requireAdmin, async (_req, res) => {
-  res.json({
-    events: await db.event.findMany({
-      where: { status: "pending_review" },
-      include: { organizer: true, tiers: true },
-      orderBy: { updatedAt: "asc" },
-      take: 100,
+router.get(
+  "/admin/events",
+  requireAuth,
+  requireAdmin,
+  validate({
+    query: z.object({
+      cursor: z.string().uuid().optional(),
+      limit: z.coerce.number().int().min(1).max(100).default(50),
     }),
-  });
-});
+  }),
+  async (req, res) => {
+    const limit = Number(req.query.limit);
+    const cursor = req.query.cursor as string | undefined;
+    const rows = await db.event.findMany({
+      include: { organizer: true, tiers: true },
+      orderBy: { id: "desc" },
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+    const more = rows.length > limit;
+    const events = rows.slice(0, limit);
+    res.json({
+      events,
+      nextCursor: more ? events.at(-1)?.id : null,
+    });
+  },
+);
 router.post(
   "/organizer-applications",
   requireAuth,

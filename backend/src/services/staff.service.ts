@@ -8,7 +8,10 @@ async function managerFor(tx: Prisma.TransactionClient, eventId: string, uid: st
     tx.event.findUnique({ where: { id: eventId }, include: { organizer: true } }),
   ]);
   if (!event) throw new HttpError(404, "Event not found");
-  if (!actor || (actor.role !== "admin" && event.organizer.userId !== actor.id))
+  if (
+    !actor ||
+    (actor.role !== "admin" && (actor.role !== "organizer" || event.organizer.userId !== actor.id))
+  )
     throw new HttpError(403, "Only this event's organizer or an admin may manage staff");
   return actor;
 }
@@ -102,7 +105,7 @@ export async function listScannerEvents(uid: string) {
         ? {}
         : {
             OR: [
-              { organizer: { userId: actor.id } },
+              ...(actor.role === "organizer" ? [{ organizer: { userId: actor.id } }] : []),
               { staffAssignments: { some: { userId: actor.id, revokedAt: null } } },
             ],
           },

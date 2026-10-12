@@ -1,5 +1,12 @@
 # Prisma implementation status — 2026-10-08
 
+## 2026-10-12: Admin/Organizer permissions and cross-role verification
+
+- Admin can create an event without applying as Organizer. The required event owner record is created transactionally while the account keeps its `admin` role. Admin and Organizer both follow the draft → review → publish workflow.
+- The Admin center now lists events in all statuses with pagination, supports basic creation and editing, and exposes assign/revoke Staff for every event. The Organizer center retains Staff management for owned events only.
+- Role checks reject a former organizer whose account has been demoted, even when its historical Organizer row remains. API tests cover Admin creation/review/edit, Staff event A versus B, ordinary user denial, unpaid/refunded tickets, repeated scans, Admin Staff assignment and revocation.
+- Local tests and builds are implementation evidence, not proof of a live deployment. Paid gateway and SMS-provider readiness remain separate work.
+
 ## 2026-10-12: Event-scoped Staff and scanner checkpoint
 
 - `EventStaff` migration and owner/admin assignment API now scope scanner permission to one event. Assignment and revocation are audited. Invitations match only the Supabase-token-derived `authEmail`, not an editable profile email.

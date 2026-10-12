@@ -48,11 +48,22 @@ export async function createEvent(body: CreateEventBody, uid: string) {
   );
   return db.$transaction(async (tx) => {
     const user = await tx.user.findUnique({ where: { authId: uid }, include: { organizer: true } });
-    if (!user?.organizer) throw new HttpError(403, "An approved organizer profile is required");
+    if (!user) throw new HttpError(403, "A registered account is required");
+    if (user.role !== "admin" && (user.role !== "organizer" || !user.organizer))
+      throw new HttpError(403, "An approved organizer profile is required");
     if (!["draft", "pending_review"].includes(body.status ?? "draft"))
       throw new HttpError(403, "Submit the event for admin review before publication");
+    // An event always has an organizer for ownership and accounting. Admins do not
+    // need to apply for that role; provision their owner record without changing role.
+    const organizer =
+      user.organizer ??
+      (await tx.organizer.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, name: "Pasopkan Admin" },
+        update: {},
+      }));
     const event = await tx.event.create({
-      data: { ...columns(body), title: body.title, organizerId: user.organizer.id },
+      data: { ...columns(body), title: body.title, organizerId: organizer.id },
     });
     await children(tx, event.id, body);
     return tx.event.findUnique({ where: { id: event.id }, include });
@@ -73,7 +84,11 @@ export async function updateEvent(ref: string, patch: UpdateEventBody, uid: stri
     if (!locked) return null;
     event.status = locked.status as typeof event.status;
     const actor = await tx.user.findUnique({ where: { authId: uid } });
-    if (!actor || (actor.role !== "admin" && event.organizer.userId !== actor.id))
+    if (
+      !actor ||
+      (actor.role !== "admin" &&
+        (actor.role !== "organizer" || event.organizer.userId !== actor.id))
+    )
       throw new HttpError(403, "You do not have permission to modify this event");
     if (["cancelled", "completed"].includes(event.status))
       throw new HttpError(409, "Closed events cannot be modified or reopened");
@@ -131,6 +146,13 @@ export async function listEvents(query: {
   limit: number;
 }) {
   if (query.mine && !query.viewerUid) throw new HttpError(401, "Sign in to list your events");
+  if (query.mine) {
+    const viewer = await db.user.findUnique({
+      where: { authId: query.viewerUid! },
+      select: { role: true },
+    });
+    if (viewer?.role !== "organizer" && viewer?.role !== "admin") return [];
+  }
   const where: Prisma.EventWhereInput = query.mine
     ? { organizer: { user: { authId: query.viewerUid } } }
     : { status: { in: [...publicStates] } };
@@ -146,7 +168,12 @@ export async function getEvent(ref: string, uid?: string) {
   if (!event) return null;
   if (!(publicStates as readonly string[]).includes(event.status)) {
     const actor = uid ? await db.user.findUnique({ where: { authId: uid } }) : null;
-    if (!actor || (actor.role !== "admin" && event.organizer.userId !== actor.id)) return null;
+    if (
+      !actor ||
+      (actor.role !== "admin" &&
+        (actor.role !== "organizer" || event.organizer.userId !== actor.id))
+    )
+      return null;
   }
   return event;
 }

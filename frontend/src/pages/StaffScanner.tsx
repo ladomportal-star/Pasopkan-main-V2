@@ -91,7 +91,6 @@ export default function StaffScanner() {
       setTicket(found);
       setCode(found.ticketCode);
       setCameraOpen(false);
-      if (found.alreadyCheckedIn) setMessage('ປີ້ນີ້ເຊັກອິນແລ້ວ / Already checked in');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ticket lookup failed');
     } finally {
@@ -175,7 +174,7 @@ export default function StaffScanner() {
 
           <section className="rounded-2xl border bg-white p-5 space-y-4">
             <h2 className="flex items-center gap-2 text-lg font-bold"><Ticket className="text-orange-600" /> ຜົນກວດປີ້ / Ticket result</h2>
-            {message && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-emerald-800"><CheckCircle2 className="inline mr-2" size={18} />{message}</p>}
+            {message && <p role="status" className={`rounded-xl p-3 ${ticket?.alreadyCheckedIn && message.includes('Already checked in') ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-800'}`}><CheckCircle2 className="inline mr-2" size={18} />{message}</p>}
             {!ticket && <p className="text-slate-500">ສະແກນ QR ຫຼື ປ້ອນລະຫັດປີ້ເພື່ອກວດສອບ.</p>}
             {ticket && <div className="space-y-3 text-sm">
               <p className="break-all font-mono text-slate-500">{ticket.ticketCode}</p>
@@ -183,7 +182,9 @@ export default function StaffScanner() {
               <p>{ticket.tierName} · {ticket.unitPriceKip.toLocaleString()} LAK</p>
               <p>Order: <strong>{ticket.orderStatus}</strong> · Ticket: <strong>{ticket.itemStatus}</strong></p>
               {ticket.alreadyCheckedIn && <p className="text-amber-700 font-semibold">ເຊັກອິນແລ້ວ {ticket.checkedInAt ? new Date(ticket.checkedInAt).toLocaleString() : ''}</p>}
-              {ticket.orderStatus !== 'confirmed' && <p className="text-red-700">ຍັງບໍ່ໄດ້ຢືນຢັນການຊຳລະເງິນ.</p>}
+              {ticket.orderStatus !== 'confirmed' && <p className="text-red-700">{ticket.orderStatus === 'refunded' ? 'ອໍເດີຖືກຄືນເງິນແລ້ວ / Order refunded' : 'ຍັງບໍ່ໄດ້ຢືນຢັນການຊຳລະເງິນ / Payment not confirmed'}</p>}
+              {ticket.itemStatus === 'refunded' && <p className="text-red-700">ປີ້ຖືກຄືນເງິນແລ້ວ / Ticket refunded</p>}
+              {ticket.itemStatus === 'void' && <p className="text-red-700">ປີ້ຖືກຍົກເລີກ / Ticket void</p>}
               <button type="button" disabled={!ticketIsValid || busy} onClick={() => void confirmCheckIn()} className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-white font-bold disabled:cursor-not-allowed disabled:opacity-50">
                 {busy ? 'ກຳລັງຢືນຢັນ…' : 'ຢືນຢັນເຂົ້າງານ / Confirm check-in'}
               </button>
