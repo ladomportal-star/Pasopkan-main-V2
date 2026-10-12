@@ -55,6 +55,33 @@ export interface BackendUser {
   updatedAt: string;
 }
 
+export interface ScannerEvent {
+  id: string;
+  title: string;
+  status: string;
+  startDate: string | null;
+  venueName: string | null;
+}
+
+export interface BackendCheckIn {
+  id: string;
+  ticketCode: string;
+  eventId: string;
+  attendeeName: string | null;
+  ticketType: string;
+  checkedInAt: string;
+  checkedInBy: string;
+  gate: string | null;
+}
+
+export interface EventStaffAssignment {
+  id: string;
+  eventId: string;
+  userId: string;
+  assignedAt: string;
+  user: { id: string; authEmail: string | null; firstName: string | null; lastName: string | null };
+}
+
 function authToken(explicit?: string | null): string | null {
   return explicit ?? safeStorage.getItem("token") ?? null;
 }
@@ -258,7 +285,7 @@ export const api = {
     },
     opts?: RequestOptions,
   ) =>
-    request<{ status: "checked_in" | "already_checked_in" }>(
+    request<{ status: "checked_in" | "already_checked_in"; checkIn: BackendCheckIn }>(
       "POST",
       "/checkins",
       scan,
@@ -266,12 +293,24 @@ export const api = {
     ),
 
   listCheckins: (eventId: string, opts?: RequestOptions) =>
-    request<{ checkIns: unknown[] }>(
+    request<{ checkIns: BackendCheckIn[] }>(
       "GET",
       `/checkins?eventId=${encodeURIComponent(eventId)}`,
       undefined,
       opts,
     ),
+
+  listScannerEvents: (opts?: RequestOptions) =>
+    request<{ events: ScannerEvent[] }>("GET", "/checkins/events", undefined, opts),
+
+  listEventStaff: (eventId: string, opts?: RequestOptions) =>
+    request<{ staff: EventStaffAssignment[] }>("GET", `/events/${encodeURIComponent(eventId)}/staff`, undefined, opts),
+
+  assignEventStaff: (eventId: string, email: string, opts?: RequestOptions) =>
+    request<{ staff: EventStaffAssignment }>("POST", `/events/${encodeURIComponent(eventId)}/staff`, { email }, opts),
+
+  revokeEventStaff: (eventId: string, userId: string, opts?: RequestOptions) =>
+    request<{ staff: EventStaffAssignment }>("DELETE", `/events/${encodeURIComponent(eventId)}/staff/${encodeURIComponent(userId)}`, undefined, opts),
 
   /** Preview a scanned ticket code against the real order — does NOT check it in. */
   lookupTicket: (code: string, opts?: RequestOptions) =>

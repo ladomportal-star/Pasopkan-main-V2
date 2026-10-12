@@ -37,5 +37,8 @@ Media endpoints upload images to Supabase Storage and resolve stored references.
 
 See [implementation status](../docs/prisma-implementation-status.md) for outstanding work. Never treat a successful build as production acceptance.
 
+Event-scoped Staff assignments and gate authorization are documented in
+[access-control.md](../docs/access-control.md).
+
 Phone authentication setup and its live acceptance checklist are documented in
 [phone-auth-rollout.md](../docs/phone-auth-rollout.md).

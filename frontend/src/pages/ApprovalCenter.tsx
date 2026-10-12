@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
+import EventStaffManager from '../components/EventStaffManager';
 
 type Application = { id: string; name: string; status: string; rejectionReason?: string };
 type Event = { id: string; title: string; status: string; rejectionReason?: string };
@@ -71,6 +72,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
           <button disabled={busy} className="border p-2 mr-2" onClick={() => act(`/events/${e.id}`, { status: 'published' }, true)}>Publish</button>
           <button disabled={busy || !reasons[e.id]?.trim()} className="border p-2" onClick={() => act(`/events/${e.id}`, { status: 'rejected', rejectionReason: reasons[e.id] }, true)}>Reject</button></>
           : ['draft', 'rejected'].includes(e.status) && <button disabled={busy} className="border p-2" onClick={() => act(`/events/${e.id}`, { status: 'pending_review' }, true)}>Submit for review</button>}
+        <EventStaffManager eventId={e.id} token={token} />
       </article>)}
     </section>
     {admin && <section className="space-y-3"><h2 className="text-xl font-bold">Refunds / ຄືນເງິນ</h2>

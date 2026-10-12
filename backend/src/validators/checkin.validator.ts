@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 export const createCheckinBody = z.object({
-  ticketCode: z.string().min(1),
-  eventId: z.union([z.string(), z.number()]).transform(String),
+  ticketCode: z.string().trim().min(1).max(200),
+  eventId: z.string().uuid(),
   attendeeName: z.string().optional(),
   ticketType: z.string().optional(),
   seatLabel: z.string().optional(),
@@ -11,7 +11,7 @@ export const createCheckinBody = z.object({
 });
 
 export const listCheckinsQuery = z.object({
-  eventId: z.string().min(1),
+  eventId: z.string().uuid(),
 });
 
 export type CreateCheckinBody = z.infer<typeof createCheckinBody>;

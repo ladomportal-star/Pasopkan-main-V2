@@ -5,8 +5,14 @@ import type { Prisma } from "../lib/prisma.ts";
 async function staffFor(tx: Prisma.TransactionClient, eventId: string, uid: string) {
   const actor = await tx.user.findUnique({ where: { authId: uid } });
   const event = await tx.event.findUnique({ where: { id: eventId }, include: { organizer: true } });
-  if (!actor || !event || (actor.role !== "admin" && event.organizer.userId !== actor.id))
-    throw new HttpError(403, "Only the event organizer or an admin may scan tickets");
+  if (!actor || !event) throw new HttpError(403, "Not authorized to scan this event");
+  if (actor.role !== "admin" && event.organizer.userId !== actor.id) {
+    const assignment = await tx.eventStaff.findUnique({
+      where: { eventId_userId: { eventId, userId: actor.id } },
+    });
+    if (!assignment || assignment.revokedAt)
+      throw new HttpError(403, "Not assigned as staff for this event");
+  }
   return actor;
 }
 const include = { order: true, checkIn: { include: { staff: true } } } as const;
@@ -23,29 +29,32 @@ function checkinApi(row: any, item: any) {
 }
 export async function scanTicket(body: CreateCheckinBody, uid: string) {
   return db.$transaction(async (tx) => {
+    // Authorize the requested event before revealing anything about a ticket code.
+    const staff = await staffFor(tx, body.eventId, uid);
     const item = await tx.orderItem.findUnique({ where: { ticketCode: body.ticketCode }, include });
     if (!item) throw new HttpError(404, "Ticket not found");
     if (body.eventId !== item.order.eventId)
       throw new HttpError(409, "Ticket belongs to another event");
-    const staff = await staffFor(tx, item.order.eventId, uid);
-    if (item.order.status !== "confirmed")
-      throw new HttpError(409, "This ticket has not been paid for");
-    if (item.status === "void" || item.status === "refunded")
-      throw new HttpError(409, "Ticket is not valid");
-    // Lock the ticket before deciding whether this is a repeat scan.
+    // Lock and re-read before deciding; payment/refund may have changed its state.
     await tx.$queryRaw`SELECT id FROM "OrderItem" WHERE id = ${item.id}::uuid FOR UPDATE`;
+    const current = await tx.orderItem.findUniqueOrThrow({ where: { id: item.id }, include });
+    if (current.order.status !== "confirmed")
+      throw new HttpError(409, "This ticket has not been paid for");
+    if (current.status === "void" || current.status === "refunded" || current.status === "pending")
+      throw new HttpError(409, "Ticket is not valid");
     const existing = await tx.checkIn.findUnique({
       where: { orderItemId: item.id },
       include: { staff: true },
     });
     if (existing)
-      return { status: "already_checked_in" as const, checkIn: checkinApi(existing, item) };
+      return { status: "already_checked_in" as const, checkIn: checkinApi(existing, current) };
+    if (current.status !== "valid") throw new HttpError(409, "Ticket has already been used");
     const row = await tx.checkIn.create({
       data: { orderItemId: item.id, checkedInByUserId: staff.id, gate: body.gate, note: body.note },
       include: { staff: true },
     });
     await tx.orderItem.update({ where: { id: item.id }, data: { status: "checked_in" } });
-    return { status: "checked_in" as const, checkIn: checkinApi(row, item) };
+    return { status: "checked_in" as const, checkIn: checkinApi(row, current) };
   });
 }
 export async function listCheckins(eventId: string, uid: string) {

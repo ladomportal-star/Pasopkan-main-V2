@@ -102,3 +102,26 @@ test("audit records cannot be updated or deleted", async () => {
   await assert.rejects(db.auditLog.update({ where: { id: log.id }, data: { action: "tampered" } }));
   await assert.rejects(db.auditLog.delete({ where: { id: log.id } }));
 });
+
+test("event staff assignments are unique per event and protected by RLS", async () => {
+  const owner = await db.user.create({
+    data: { authId: "staff-schema-owner", email: "owner@test.local" },
+  });
+  const staff = await db.user.create({
+    data: { authId: "staff-schema-member", email: "member@test.local" },
+  });
+  const organizer = await db.organizer.create({ data: { userId: owner.id, name: "Gate host" } });
+  const event = await db.event.create({ data: { title: "Gate show", organizerId: organizer.id } });
+  await db.eventStaff.create({
+    data: { eventId: event.id, userId: staff.id, assignedByUserId: owner.id },
+  });
+  await assert.rejects(
+    db.eventStaff.create({
+      data: { eventId: event.id, userId: staff.id, assignedByUserId: owner.id },
+    }),
+  );
+  const result = await db.$queryRaw<
+    Array<{ relrowsecurity: boolean }>
+  >`SELECT relrowsecurity FROM pg_class WHERE relname = 'EventStaff'`;
+  assert.equal(result[0]?.relrowsecurity, true);
+});

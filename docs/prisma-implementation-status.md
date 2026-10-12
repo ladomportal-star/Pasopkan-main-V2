@@ -1,5 +1,12 @@
 # Prisma implementation status — 2026-10-08
 
+## 2026-10-12: Event-scoped Staff and scanner checkpoint
+
+- `EventStaff` migration and owner/admin assignment API now scope scanner permission to one event. Assignment and revocation are audited. Invitations match only the Supabase-token-derived `authEmail`, not an editable profile email.
+- Staff Scanner now loads authorized events and check-ins from the backend, removes demo scan buttons and local check-in persistence, and reports success only after the API confirms a scan.
+- Local backend schema and API suite: 4 schema tests and 60 API/flow tests passed. Backend typecheck, lint, production build and frontend typecheck/build passed. This is not live production acceptance; Railway must apply the migration before Vercel serves the new scanner.
+- The role model and known limitations are documented in [access-control.md](access-control.md).
+
 This is an implementation checkpoint, not production deployment approval. The existing Supabase project now has the initial Prisma schema; no legacy table was reset or deleted and no provider payment was initiated.
 
 ## Verified locally

@@ -3,6 +3,7 @@ import request from "supertest";
 import { createApp } from "../src/app.ts";
 import { as } from "./helpers/auth.ts";
 import { createEvent } from "./helpers/seed.ts";
+import { db } from "../src/config/database.ts";
 
 const app = createApp();
 
@@ -79,5 +80,94 @@ describe("check-ins", () => {
       .get(`/api/checkins/lookup/${code}`)
       .set(await as("gate-host"));
     expect(after.body.ticket.alreadyCheckedIn).toBe(true);
+  });
+
+  it("allows assigned staff only for their event and revokes access immediately", async () => {
+    const { event, code } = await ticketCode("Free");
+    const otherEvent = await createEvent(app, await as("gate-host"));
+    const staffAuth = await as("assigned-gate-staff");
+    const profile = await request(app)
+      .post("/api/account/sync")
+      .set(staffAuth)
+      .send({ email: "assigned-gate-staff@test.local" });
+    expect(profile.status).toBe(200);
+    const staffId = profile.body.user.id as string;
+
+    // Profile email is editable, but cannot be used to claim another person's staff invite.
+    const impersonator = await request(app)
+      .post("/api/account/sync")
+      .set(await as("email-impersonator"))
+      .send({ email: "assigned-gate-staff@test.local" });
+    expect(impersonator.status).toBe(200);
+    expect(impersonator.body.user.authEmail).toBe("email-impersonator@test.local");
+
+    const before = await request(app).get("/api/checkins/events").set(staffAuth);
+    expect(before.status).toBe(200);
+    expect(before.body.events.some((row: { id: string }) => row.id === event.id)).toBe(false);
+    expect((await request(app).get(`/api/checkins/lookup/${code}`).set(staffAuth)).status).toBe(
+      403,
+    );
+    expect(
+      (
+        await request(app)
+          .post(`/api/events/${event.id}/staff`)
+          .set(staffAuth)
+          .send({ email: "assigned-gate-staff@test.local" })
+      ).status,
+    ).toBe(403);
+
+    const assigned = await request(app)
+      .post(`/api/events/${event.id}/staff`)
+      .set(await as("gate-host"))
+      .send({ email: "assigned-gate-staff@test.local" });
+    expect(assigned.status).toBe(201);
+    expect(assigned.body.staff.userId).toBe(staffId);
+    expect(
+      (await request(app).get("/api/checkins/events").set(staffAuth)).body.events.some(
+        (row: { id: string }) => row.id === event.id,
+      ),
+    ).toBe(true);
+    expect((await request(app).get(`/api/checkins/lookup/${code}`).set(staffAuth)).status).toBe(
+      200,
+    );
+    expect(
+      (await request(app).get(`/api/checkins?eventId=${otherEvent.id}`).set(staffAuth)).status,
+    ).toBe(403);
+    expect(
+      (
+        await request(app)
+          .post("/api/checkins")
+          .set(staffAuth)
+          .send({ ticketCode: code, eventId: otherEvent.id })
+      ).status,
+    ).toBe(403);
+
+    const scanned = await request(app)
+      .post("/api/checkins")
+      .set(staffAuth)
+      .send({ ticketCode: code, eventId: event.id });
+    expect(scanned.status).toBe(201);
+    expect(scanned.body.checkIn.checkedInBy).toBe("assigned-gate-staff@test.local");
+
+    const revoked = await request(app)
+      .delete(`/api/events/${event.id}/staff/${staffId}`)
+      .set(await as("gate-host"));
+    expect(revoked.status).toBe(200);
+    expect((await request(app).get(`/api/checkins/lookup/${code}`).set(staffAuth)).status).toBe(
+      403,
+    );
+    expect(
+      (
+        await request(app)
+          .post("/api/checkins")
+          .set(staffAuth)
+          .send({ ticketCode: code, eventId: event.id })
+      ).status,
+    ).toBe(403);
+    expect(
+      await db.auditLog.count({
+        where: { entityType: "EventStaff", entityId: assigned.body.staff.id },
+      }),
+    ).toBe(2);
   });
 });

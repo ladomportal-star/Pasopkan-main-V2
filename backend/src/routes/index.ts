@@ -10,6 +10,7 @@ import otpRoutes from "./otp.routes.ts";
 import notificationRoutes from "./notification.routes.ts";
 import moderationRoutes from "./moderation.routes.ts";
 import mediaRoutes from "./media.routes.ts";
+import staffRoutes from "./staff.routes.ts";
 
 const apiRouter = Router();
 
@@ -24,5 +25,6 @@ apiRouter.use(otpRoutes);
 apiRouter.use(notificationRoutes);
 apiRouter.use(moderationRoutes);
 apiRouter.use(mediaRoutes);
+apiRouter.use(staffRoutes);
 
 export default apiRouter;

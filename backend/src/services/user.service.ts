@@ -10,12 +10,18 @@ export interface ProfileInput {
   dateOfBirth?: string;
   avatarUrl?: string;
 }
-export const getOrCreateUser = (uid: string, email?: string) => upsertUserProfile(uid, { email });
-export async function upsertUserProfile(uid: string, profile: ProfileInput) {
+export const getOrCreateUser = (uid: string, email?: string) =>
+  upsertUserProfile(uid, { email }, email);
+export async function upsertUserProfile(
+  uid: string,
+  profile: ProfileInput,
+  verifiedAuthEmail?: string,
+) {
   assertMediaReferences(profile.avatarUrl, uid, "private");
   const { dateOfBirth, ...fields } = profile;
   const data = {
     ...fields,
+    ...(verifiedAuthEmail ? { authEmail: verifiedAuthEmail.trim().toLowerCase() } : {}),
     ...(dateOfBirth !== undefined ? { dateOfBirth: new Date(dateOfBirth) } : {}),
   };
   return db.user.upsert({ where: { authId: uid }, create: { authId: uid, ...data }, update: data });

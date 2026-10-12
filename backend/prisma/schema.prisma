@@ -59,6 +59,7 @@ model User {
   id String @id @default(uuid()) @db.Uuid
   authId String @unique
   email String @default("")
+  authEmail String?
   firstName String?
   lastName String?
   phone String? @unique
@@ -77,6 +78,9 @@ model User {
   audits AuditLog[]
   refundReviews Refund[]
   checkIns CheckIn[]
+  staffAssignments EventStaff[] @relation("AssignedStaff")
+  staffGrants EventStaff[] @relation("StaffGrantor")
+  @@index([authEmail])
 }
 
 model OrganizerApplication {
@@ -154,6 +158,7 @@ model Event {
   dates EventDate[]
   coupons Coupon[]
   orders Order[]
+  staffAssignments EventStaff[]
   @@index([status, createdAt])
   @@index([organizerId])
 }
@@ -259,6 +264,22 @@ model CheckIn {
   checkedInAt DateTime @default(now()) @db.Timestamptz(3)
   gate String?
   note String?
+}
+// Staff permission belongs to one event, not to every event on the platform.
+// A revoked assignment is retained for accountability and can be reactivated.
+model EventStaff {
+  id String @id @default(uuid()) @db.Uuid
+  eventId String @db.Uuid
+  event Event @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  userId String @db.Uuid
+  user User @relation("AssignedStaff", fields: [userId], references: [id], onDelete: Restrict)
+  assignedByUserId String @db.Uuid
+  assignedBy User @relation("StaffGrantor", fields: [assignedByUserId], references: [id], onDelete: Restrict)
+  assignedAt DateTime @default(now()) @db.Timestamptz(3)
+  revokedAt DateTime? @db.Timestamptz(3)
+  @@unique([eventId, userId])
+  @@index([userId, revokedAt])
+  @@index([eventId, revokedAt])
 }
 model Payment {
   id String @id @default(uuid()) @db.Uuid
