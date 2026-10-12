@@ -26,7 +26,6 @@ import Security from './pages/Security';
 import UpdatePassword from './pages/UpdatePassword';
 import PaymentMethods from './pages/PaymentMethods';
 import Help from './pages/Help';
-import CreateEvent from './pages/CreateEvent';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import PastEvents from './pages/PastEvents';
@@ -36,6 +35,7 @@ import About from './pages/About';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import ApprovalCenter from './pages/ApprovalCenter';
+import OrganizerEntry from './pages/OrganizerEntry';
 import StaffScanner from './pages/StaffScanner';
 
 // A wrapper to animate individual standalone pages
@@ -103,7 +103,7 @@ function AnimatedRoutes() {
         
         {/* Standalone Pages */}
         <Route path="/admin" element={<PageTransition><ApprovalCenter admin /></PageTransition>} />
-        <Route path="/create" element={<PageTransition><CreateEvent /></PageTransition>} />
+        <Route path="/create" element={<PageTransition><OrganizerEntry /></PageTransition>} />
         <Route path="/staff-scanner" element={<PageTransition><StaffScanner /></PageTransition>} />
         <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
         <Route path="/register" element={<PageTransition><Register /></PageTransition>} />

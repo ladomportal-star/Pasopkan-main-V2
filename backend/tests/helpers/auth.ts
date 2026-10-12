@@ -1,4 +1,5 @@
 import http from "node:http";
+import { createHash } from "node:crypto";
 import { exportJWK, generateKeyPair, SignJWT, type JWK } from "jose";
 
 /**
@@ -19,6 +20,24 @@ export async function startAuthServer() {
     if (req.url === "/auth/v1/.well-known/jwks.json") {
       res.setHeader("content-type", "application/json");
       res.end(JSON.stringify({ keys: [jwk] }));
+    } else if (req.url?.startsWith("/auth/v1/admin/users/")) {
+      const uid = decodeURIComponent(req.url.slice("/auth/v1/admin/users/".length));
+      const digits = createHash("sha256").update(uid).digest().readUInt32BE() % 100_000_000;
+      const verified = !uid.startsWith("unverified-");
+      res.setHeader("content-type", "application/json");
+      res.end(
+        JSON.stringify({
+          id: uid,
+          aud: "authenticated",
+          role: "authenticated",
+          email: `${uid}@test.local`,
+          phone: verified ? `+85620${String(digits).padStart(8, "0")}` : "",
+          phone_confirmed_at: verified ? new Date().toISOString() : null,
+          created_at: new Date().toISOString(),
+          app_metadata: {},
+          user_metadata: {},
+        }),
+      );
     } else {
       res.statusCode = 404;
       res.end();
@@ -28,6 +47,7 @@ export async function startAuthServer() {
   const { port } = server.address() as { port: number };
   baseUrl = `http://127.0.0.1:${port}`;
   process.env.SUPABASE_URL = baseUrl;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role";
   return server;
 }
 

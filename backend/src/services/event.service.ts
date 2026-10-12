@@ -2,6 +2,7 @@ import { db } from "../config/database.ts";
 import type { Prisma } from "../lib/prisma.ts";
 import { assertMediaReferences } from "./media.service.ts";
 import { HttpError } from "../middlewares/error.middleware.ts";
+import { requireVerifiedPhone } from "./verified-phone.service.ts";
 import type { CreateEventBody, UpdateEventBody } from "../validators/event.validator.ts";
 const include = { tiers: true, dates: true, coupons: true, organizer: true } as const;
 const publicStates = ["published", "sold_out", "completed"] as const;
@@ -46,6 +47,8 @@ export async function createEvent(body: CreateEventBody, uid: string) {
     uid,
     "public",
   );
+  const role = await db.user.findUnique({ where: { authId: uid }, select: { role: true } });
+  if (role?.role === "organizer") await requireVerifiedPhone(uid);
   return db.$transaction(async (tx) => {
     const user = await tx.user.findUnique({ where: { authId: uid }, include: { organizer: true } });
     if (!user) throw new HttpError(403, "A registered account is required");

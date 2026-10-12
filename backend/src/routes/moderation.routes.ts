@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { db } from "../config/database.ts";
+import { getVerifiedPhone } from "../services/verified-phone.service.ts";
 import {
   requireAuth,
   requireRegisteredUser,
@@ -15,6 +16,22 @@ import {
 } from "../services/moderation.service.ts";
 const router = Router();
 const id = z.object({ id: z.string().uuid() });
+router.get("/organizer/eligibility", requireAuth, requireRegisteredUser, async (req, res) => {
+  const user = await db.user.findUnique({
+    where: { authId: req.user!.uid },
+    include: { organizer: true },
+  });
+  const phone = user?.role === "admin" ? null : await getVerifiedPhone(req.user!.uid);
+  res.setHeader("Cache-Control", "no-store");
+  res.json({
+    role: user?.role ?? "user",
+    phoneVerified: Boolean(phone),
+    phone,
+    canCreateEvent:
+      user?.role === "admin" ||
+      (user?.role === "organizer" && Boolean(user.organizer) && Boolean(phone)),
+  });
+});
 router.get(
   "/admin/events",
   requireAuth,

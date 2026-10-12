@@ -1,12 +1,19 @@
 import { db } from "../config/database.ts";
 import { HttpError } from "../middlewares/error.middleware.ts";
 import { getOrCreateUser } from "./user.service.ts";
+import { requireVerifiedPhone } from "./verified-phone.service.ts";
 
 export async function applyAsOrganizer(uid: string, name: string, description?: string) {
+  const phone = await requireVerifiedPhone(uid);
   const user = await getOrCreateUser(uid);
   if (await db.organizer.findUnique({ where: { userId: user.id } }))
     throw new HttpError(409, "Already an organizer");
-  return db.organizerApplication.create({ data: { userId: user.id, name, description } });
+  if (await db.organizerApplication.count({ where: { userId: user.id, status: "pending" } }))
+    throw new HttpError(409, "Organizer application is already pending");
+  return db.$transaction(async (tx) => {
+    await tx.user.update({ where: { id: user.id }, data: { phone } });
+    return tx.organizerApplication.create({ data: { userId: user.id, name, description } });
+  });
 }
 
 export async function reviewOrganizer(uid: string, id: string, approve: boolean, reason?: string) {

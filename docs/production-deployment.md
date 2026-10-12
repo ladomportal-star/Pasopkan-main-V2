@@ -101,6 +101,24 @@ https://<project-ref>.supabase.co/auth/v1/callback
 The Google consent-screen application name, logo and authorized domain are
 managed in Google Cloud, not in frontend code.
 
+### Organizer phone verification
+
+The Create Event button opens `/create`. A signed-in user must link a Lao
+mobile number (`+85620XXXXXXXX`) to the **same Supabase Auth account**, verify
+the `phone_change` SMS OTP, submit an Organizer application, and wait for Admin
+approval. Only then does the event editor open. The backend reads the confirmed
+phone from Supabase Auth with `SUPABASE_SERVICE_ROLE_KEY`; a phone typed into an
+editable profile does not count. Admins retain their separate event-creation
+bypass, as documented in the role model.
+
+In the Supabase dashboard, open Authentication → Sign In / Providers → Phone.
+Enable the Phone provider and configure a supported SMS provider or Send SMS
+Hook with production credentials. Configure sender/coverage for Lao numbers,
+review OTP rate limits and delivery costs, then test with a real phone. On
+2026-10-12 the current project showed Phone **disabled** and the selected
+Twilio credential fields **blank**; the new flow will fail closed until SMS
+delivery is configured. Do not enter credentials in Git or browser build vars.
+
 ## 5. Production smoke test
 
 Run these checks after DNS and TLS are active:
@@ -116,6 +134,10 @@ Run these checks after DNS and TLS are active:
    a Vercel 404.
 5. Test account sync, event listing, media upload/read, order reservation and
    admin approval with a staging account before enabling real payments.
+6. With a staging Google account, click Create Event, enter a Lao phone, send
+   and verify a real OTP, submit an Organizer application, approve it as Admin,
+   and confirm the event editor opens. Also verify an unconfirmed phone or
+   unapproved account receives HTTP 403 when posting to `/api/events`.
 
 If the health endpoint returns 503, inspect Railway logs and database URLs. If
 the browser reports CORS errors, compare its exact origin (scheme + host) with

@@ -23,8 +23,6 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
   const [eventStatus, setEventStatus] = useState<'draft' | 'pending_review'>('draft');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [refunds, setRefunds] = useState<Refund[]>([]);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -96,12 +94,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
     {error && <p role="alert" className="text-red-700">{error}</p>}
     {message && <p role="status" className="text-green-700">{message}</p>}
     <button disabled={busy} onClick={() => refresh().catch(e => setError(e.message))} className="underline">Refresh / ໂຫຼດໃໝ່</button>
-    {!admin && <form className="border rounded-xl p-4 space-y-3" onSubmit={e => { e.preventDefault(); void act('/organizer-applications', { name, description }); }}>
-      <h2 className="font-bold">ສະໝັກເປັນຜູ້ຈັດງານ / Apply</h2>
-      <label className="block">Name<input required maxLength={200} value={name} onChange={e => setName(e.target.value)} className="border rounded p-2 w-full" /></label>
-      <label className="block">Description<textarea maxLength={5000} value={description} onChange={e => setDescription(e.target.value)} className="border rounded p-2 w-full" /></label>
-      <button disabled={busy || applications.some(a => ['pending', 'approved'].includes(a.status))} className="border rounded p-2 disabled:opacity-40">Submit / ສົ່ງຄຳຂໍ</button>
-    </form>}
+    {!admin && <p className="rounded-xl border bg-white p-4">ການສະໝັກ Organizer ຕ້ອງຢືນຢັນເບີໂທດ້ວຍ OTP ກ່ອນ. <Link to="/create" className="text-orange-700 underline">ຢືນຢັນເບີໂທ / Apply</Link></p>}
     <section className="space-y-3"><h2 className="text-xl font-bold">Applications / ຄຳຂໍ</h2>
       {!applications.length && <p>No applications / ບໍ່ມີຄຳຂໍ</p>}
       {applications.map(a => <article key={a.id} className="border rounded-xl p-4 space-y-2"><h3>{a.name}</h3><p>{a.status} {a.rejectionReason}</p>

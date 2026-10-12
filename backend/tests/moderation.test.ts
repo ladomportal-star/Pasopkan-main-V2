@@ -16,6 +16,26 @@ async function admin() {
 }
 
 describe("admin moderation boundaries", () => {
+  it("requires a confirmed Auth phone before applying or creating organizer events", async () => {
+    const uid = "unverified-organizer";
+    const headers = await as(uid);
+    const user = await db.user.create({
+      data: { authId: uid, phone: "+8562012345678", role: "organizer" },
+    });
+    await db.organizer.create({ data: { userId: user.id, name: "Unverified host" } });
+
+    const eligibility = await request(app).get("/api/organizer/eligibility").set(headers);
+    expect(eligibility.status).toBe(200);
+    expect(eligibility.body).toMatchObject({ phoneVerified: false, canCreateEvent: false });
+    expect(
+      (await request(app).post("/api/organizer-applications").set(headers).send({ name: "Host" }))
+        .status,
+    ).toBe(403);
+    expect(
+      (await request(app).post("/api/events").set(headers).send({ title: "No OTP" })).status,
+    ).toBe(403);
+  });
+
   it("records rejection reasons and allows resubmission", async () => {
     const owner = await as("rejected-host");
     const event = await createEvent(app, owner, { status: "pending_review" });
@@ -55,6 +75,9 @@ describe("admin moderation boundaries", () => {
       .set(headers)
       .send({ name: "New host" });
     expect(application.status).toBe(201);
+    expect((await db.user.findUnique({ where: { authId: "new-applicant" } }))?.phone).toMatch(
+      /^\+85620\d{8}$/,
+    );
     const path = `/api/admin/organizer-applications/${application.body.application.id}/review`;
     expect((await request(app).post(path).set(headers).send({ approve: true })).status).toBe(403);
     expect(
