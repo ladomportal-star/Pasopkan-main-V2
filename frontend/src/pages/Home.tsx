@@ -32,7 +32,6 @@ import SEO from '../components/SEO';
 const translations = {
   en: {
     heroSub: 'Discover Great Experiences',
-    mainTitle: 'Your Next Adventure Awaits',
     cta: 'Book Now',
     sectionTitle: 'Popular Destinations',
     feedSub: 'Curated just for you',
@@ -48,7 +47,6 @@ const translations = {
   },
   lo: {
     heroSub: 'ຄົ້ນພົບປະສົບການທີ່ດີເລີດ',
-    mainTitle: 'ປະສົບການໃໝ່ໆລໍຖ້າທ່ານຢູ່',
     cta: 'ຈອງດຽວນີ້',
     sectionTitle: 'ສະຖານທີ່ຍອດນິຍົມ',
     feedSub: 'ຄັດສັນມາເພື່ອທ່ານໂດຍສະເພາະ',
@@ -533,21 +531,15 @@ export default function Home() {
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10" />
           </div>
 
-          <div className="relative z-10 px-6 text-center text-white pointer-events-none">
-            {currentSlide ? (
-              <h1 className="font-display text-2xl sm:text-4xl lg:text-5xl font-black drop-shadow-lg">{currentSlide.title}</h1>
-            ) : (
-              <>
-                <Compass className="mx-auto mb-4 h-10 w-10 text-orange-300" />
-                <h1 className="font-display text-2xl sm:text-4xl lg:text-5xl font-black">{t.mainTitle}</h1>
-                <p className="mt-3 text-sm sm:text-lg text-white/80">
-                  {isLoading ? (lang === 'lo' ? 'ກຳລັງໂຫຼດກິດຈະກຳ...' : 'Loading events...')
-                    : eventsError ? (lang === 'lo' ? 'ບໍ່ສາມາດໂຫຼດກິດຈະກຳໄດ້' : 'Events are temporarily unavailable')
-                    : (lang === 'lo' ? 'ຍັງບໍ່ມີກິດຈະກຳທີ່ເປີດໃຫ້ຈອງ' : 'No published events yet')}
-                </p>
-              </>
-            )}
-          </div>
+          <h1 className="sr-only">{currentSlide?.title ?? 'Pasopkan'}</h1>
+          {!currentSlide && <div className="relative z-10 px-6 text-center text-white pointer-events-none">
+            <Compass className="mx-auto mb-4 h-10 w-10 text-orange-300" />
+            <p className="text-sm sm:text-lg text-white/80">
+              {isLoading ? (lang === 'lo' ? 'ກຳລັງໂຫຼດກິດຈະກຳ...' : 'Loading events...')
+                : eventsError ? (lang === 'lo' ? 'ບໍ່ສາມາດໂຫຼດກິດຈະກຳໄດ້' : 'Events are temporarily unavailable')
+                : (lang === 'lo' ? 'ຍັງບໍ່ມີກິດຈະກຳທີ່ເປີດໃຫ້ຈອງ' : 'No published events yet')}
+            </p>
+          </div>}
           {eventsError && <button type="button" onClick={() => setRetryCount(value => value + 1)} className="relative z-20 mt-5 rounded-full bg-white px-5 py-2 text-sm font-bold text-slate-900 hover:bg-orange-50">
             {lang === 'lo' ? 'ລອງໃໝ່' : 'Try again'}
           </button>}
