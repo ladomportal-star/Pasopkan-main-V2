@@ -35,7 +35,7 @@ import About from './pages/About';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import ApprovalCenter from './pages/ApprovalCenter';
-import OrganizerEntry from './pages/OrganizerEntry';
+import { OrganizerCreateGate } from './components/OrganizerPhoneModal';
 import StaffScanner from './pages/StaffScanner';
 
 // A wrapper to animate individual standalone pages
@@ -103,7 +103,7 @@ function AnimatedRoutes() {
         
         {/* Standalone Pages */}
         <Route path="/admin" element={<PageTransition><ApprovalCenter admin /></PageTransition>} />
-        <Route path="/create" element={<PageTransition><OrganizerEntry /></PageTransition>} />
+        <Route path="/create" element={<PageTransition><OrganizerCreateGate /></PageTransition>} />
         <Route path="/staff-scanner" element={<PageTransition><StaffScanner /></PageTransition>} />
         <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
         <Route path="/register" element={<PageTransition><Register /></PageTransition>} />

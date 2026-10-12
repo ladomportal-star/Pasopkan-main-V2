@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
@@ -9,23 +9,70 @@ import { isValidLaoMobilePhone, normalizeLaoPhone } from "../lib/phone";
 import { supabase } from "../lib/supabase";
 import OtpInput from "./OtpInput";
 
-type Eligibility = { phoneVerified: boolean; canCreateEvent: boolean };
+type Eligibility = {
+  role: "user" | "organizer" | "admin";
+  phoneVerified: boolean;
+  phone: string | null;
+  canCreateEvent: boolean;
+};
+type Application = {
+  id: string;
+  status: string;
+  rejectionReason?: string | null;
+};
+
+const CreateEvent = lazy(() => import("../pages/CreateEvent"));
 
 /** Verify a phone on the signed-in identity before continuing to Organizer approval. */
 export default function OrganizerPhoneModal({
   onClose,
+  onEligible,
 }: {
   onClose: () => void;
+  onEligible?: () => void;
 }) {
   const { user, token } = useAuth();
   const navigate = useNavigate();
   const [checking, setChecking] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [eligibility, setEligibility] = useState<Eligibility | null>(null);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [phone, setPhone] = useState("");
   const [sentPhone, setSentPhone] = useState("");
   const [code, setCode] = useState("");
   const [cooldown, setCooldown] = useState(0);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+
+  const continueToEvent = useCallback(() => {
+    if (onEligible) onEligible();
+    else {
+      onClose();
+      navigate("/create");
+    }
+  }, [navigate, onClose, onEligible]);
+
+  const refresh = useCallback(async () => {
+    if (!token) throw new Error("Sign in before creating an event");
+    const { data: sessionData } = await supabase.auth.getSession();
+    const opts = {
+      token: sessionData.session?.access_token ?? token,
+      throwOnError: true,
+    };
+    const [access, ownApplications] = await Promise.all([
+      api.get<Eligibility>("/organizer/eligibility", opts),
+      api.get<{ applications: Application[] }>(
+        "/organizer-applications/mine",
+        opts,
+      ),
+    ]);
+    if (!access.data) throw new Error("Could not check organizer status");
+    setEligibility(access.data);
+    setApplications(ownApplications.data?.applications ?? []);
+    if (access.data.canCreateEvent) continueToEvent();
+    return access.data;
+  }, [token, continueToEvent]);
 
   useEffect(() => {
     const onEscape = (event: KeyboardEvent) => {
@@ -45,31 +92,27 @@ export default function OrganizerPhoneModal({
   }, [cooldown]);
 
   useEffect(() => {
-    if (!token || !user) return;
+    if (!token || !user) {
+      setChecking(false);
+      return;
+    }
     let active = true;
-    api
-      .get<Eligibility>("/organizer/eligibility", { token, throwOnError: true })
-      .then((result) => {
-        if (!active) return;
-        if (result.data?.phoneVerified || result.data?.canCreateEvent) {
-          onClose();
-          navigate("/create");
-        } else {
-          setChecking(false);
-        }
-      })
+    refresh()
       .catch((err) => {
-        if (active) {
+        if (active)
           setError(
-            err instanceof Error ? err.message : "Could not check phone status",
+            err instanceof Error
+              ? err.message
+              : "Could not check organizer status",
           );
-          setChecking(false);
-        }
+      })
+      .finally(() => {
+        if (active) setChecking(false);
       });
     return () => {
       active = false;
     };
-  }, [token, user?.id, navigate, onClose]);
+  }, [token, user?.id, refresh]);
 
   async function sendCode(event?: FormEvent) {
     event?.preventDefault();
@@ -121,21 +164,40 @@ export default function OrganizerPhoneModal({
           "Phone was not verified on this account. Please contact support.",
         );
       }
-      const { data: sessionData } = await supabase.auth.getSession();
-      const eligibility = await api.get<Eligibility>("/organizer/eligibility", {
-        token: sessionData.session?.access_token ?? token,
-        throwOnError: true,
-      });
-      if (!eligibility.data?.phoneVerified)
+      const updated = await refresh();
+      if (!updated.phoneVerified)
         throw new Error("Phone confirmation is still pending. Please retry.");
-      onClose();
-      navigate("/create");
+      setCode("");
+      setSentPhone("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "OTP verification failed");
     } finally {
       setBusy(false);
     }
   }
+
+  async function apply(event: FormEvent) {
+    event.preventDefault();
+    if (busy || !eligibility?.phoneVerified || !token) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api.post(
+        "/organizer-applications",
+        { name: name.trim(), description: description.trim() },
+        { token, throwOnError: true },
+      );
+      await refresh();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not submit application",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const latest = applications[0];
 
   return (
     <motion.div
@@ -170,12 +232,18 @@ export default function OrganizerPhoneModal({
           id="organizer-phone-title"
           className="text-center text-xl font-bold"
         >
-          {sentPhone ? "ຢືນຢັນລະຫັດ OTP" : "ຢືນຢັນເບີໂທກ່ອນສ້າງກິດຈະກຳ"}
+          {eligibility?.phoneVerified
+            ? "ສະໝັກເປັນ Organizer"
+            : sentPhone
+              ? "ຢືນຢັນລະຫັດ OTP"
+              : "ຢືນຢັນເບີໂທກ່ອນສ້າງກິດຈະກຳ"}
         </h2>
         <p className="mt-2 text-center text-sm leading-6 text-slate-500">
-          {sentPhone
-            ? `ປ້ອນລະຫັດ 6 ຫຼັກທີ່ສົ່ງໄປຫາ ${sentPhone}`
-            : "ໃສ່ເບີມືຖືລາວຂອງທ່ານ ເພື່ອຮັບລະຫັດ OTP ຈິງທາງ SMS"}
+          {eligibility?.phoneVerified
+            ? `ເບີໂທຢືນຢັນແລ້ວ: ${eligibility.phone ?? ""}. ຂັ້ນຕໍ່ໄປແມ່ນໃຫ້ Admin ອະນຸມັດ.`
+            : sentPhone
+              ? `ປ້ອນລະຫັດ 6 ຫຼັກທີ່ສົ່ງໄປຫາ ${sentPhone}`
+              : "ໃສ່ເບີມືຖືລາວຂອງທ່ານ ເພື່ອຮັບລະຫັດ OTP ຈິງທາງ SMS"}
         </p>
         {error && (
           <p
@@ -191,6 +259,89 @@ export default function OrganizerPhoneModal({
             aria-label="Checking phone status"
           >
             <Loader2 className="animate-spin text-orange-600" />
+          </div>
+        ) : !user || !token ? (
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              navigate("/login");
+            }}
+            className="mt-7 w-full rounded-xl bg-orange-600 px-4 py-3 font-semibold text-white"
+          >
+            ເຂົ້າລະບົບກ່ອນ / Sign in
+          </button>
+        ) : !eligibility ? (
+          <button
+            type="button"
+            onClick={() => {
+              setChecking(true);
+              setError("");
+              void refresh()
+                .catch((err) => setError(String(err)))
+                .finally(() => setChecking(false));
+            }}
+            className="mt-7 w-full rounded-xl bg-slate-900 px-4 py-3 font-semibold text-white"
+          >
+            ລອງໃໝ່ / Retry
+          </button>
+        ) : eligibility.phoneVerified ? (
+          <div className="mt-7 space-y-4">
+            {latest?.status === "pending" ? (
+              <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
+                ຄຳຂໍ Organizer ກຳລັງລໍ Admin ອະນຸມັດ. ຍັງສ້າງ Event ບໍ່ໄດ້.
+              </p>
+            ) : (
+              <form
+                onSubmit={(event) => void apply(event)}
+                className="space-y-4"
+              >
+                {latest?.status === "rejected" && (
+                  <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
+                    ຄຳຂໍເກົ່າຖືກປະຕິເສດ: {latest.rejectionReason}
+                  </p>
+                )}
+                <label className="block text-sm font-semibold text-slate-700">
+                  ຊື່ຜູ້ຈັດງານ / Organizer name
+                  <input
+                    required
+                    maxLength={200}
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 font-normal outline-none focus:border-orange-500"
+                  />
+                </label>
+                <label className="block text-sm font-semibold text-slate-700">
+                  ລາຍລະອຽດ / Description
+                  <textarea
+                    maxLength={5000}
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 font-normal outline-none focus:border-orange-500"
+                  />
+                </label>
+                <button
+                  disabled={busy}
+                  className="w-full rounded-xl bg-orange-600 px-4 py-3 font-semibold text-white disabled:opacity-50"
+                >
+                  {busy ? "ກຳລັງສົ່ງ…" : "ສົ່ງຄຳຂໍໃຫ້ Admin / Submit"}
+                </button>
+              </form>
+            )}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setChecking(true);
+                setError("");
+                void refresh()
+                  .catch((err) => setError(String(err)))
+                  .finally(() => setChecking(false));
+              }}
+              className="w-full text-sm font-semibold text-orange-700 underline disabled:opacity-50"
+            >
+              ກວດສະຖານະໃໝ່ / Refresh status
+            </button>
           </div>
         ) : sentPhone ? (
           <form
@@ -268,8 +419,10 @@ export default function OrganizerPhoneModal({
             >
               {busy ? (
                 <Loader2 className="animate-spin" size={20} />
+              ) : cooldown > 0 ? (
+                `ສົ່ງອີກໃນ ${cooldown} ວິນາທີ`
               ) : (
-                cooldown > 0 ? `ສົ່ງອີກໃນ ${cooldown} ວິນາທີ` : "ສົ່ງ OTP / Send code"
+                "ສົ່ງ OTP / Send code"
               )}
             </button>
           </form>
@@ -279,5 +432,39 @@ export default function OrganizerPhoneModal({
         </p>
       </motion.div>
     </motion.div>
+  );
+}
+
+/** Direct /create visits use the same modal; the editor only mounts after API approval. */
+export function OrganizerCreateGate() {
+  const { user, token, loading } = useAuth();
+  const navigate = useNavigate();
+  const [allowedUid, setAllowedUid] = useState<string | null>(null);
+  const close = useCallback(() => navigate("/"), [navigate]);
+  const allow = useCallback(() => setAllowedUid(user?.id ?? null), [user?.id]);
+
+  if (loading)
+    return (
+      <main className="grid min-h-screen place-items-center">
+        ກຳລັງກວດສອບສິດ…
+      </main>
+    );
+  if (user && token && allowedUid === user.id) {
+    return (
+      <Suspense
+        fallback={
+          <main className="grid min-h-screen place-items-center">
+            ກຳລັງໂຫຼດໜ້າສ້າງງານ…
+          </main>
+        }
+      >
+        <CreateEvent />
+      </Suspense>
+    );
+  }
+  return (
+    <main className="min-h-screen bg-slate-50">
+      <OrganizerPhoneModal onClose={close} onEligible={allow} />
+    </main>
   );
 }
