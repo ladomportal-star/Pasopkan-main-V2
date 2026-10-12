@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Ticket, User, Plus, Search, Shield, Moon, Sun, Menu, X, Compass, Globe, Activity, MapPin, Zap, Lightbulb, Mountain, PartyPopper, Bell, Calendar, Info, Star, ChevronRight, ArrowLeft, ShieldCheck, AlertCircle, Settings } from 'lucide-react';
 import Logo from './Logo';
 import SearchModal from './SearchModal';
+import OrganizerPhoneModal from './OrganizerPhoneModal';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -81,20 +82,26 @@ export default function Navbar() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [selectedNotif, setSelectedNotif] = useState<AppNotification | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [showOrganizerPhoneModal, setShowOrganizerPhoneModal] = useState(false);
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
   const notificationRef = useRef<HTMLDivElement>(null);
 
   const hasUnread = unreadCount > 0;
   const { lang, toggleLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, token, user, loginWithGoogle } = useAuth();
 
 
 
   const navigate = useNavigate();
-  const { user, loginWithGoogle } = useAuth();
-  
-  const handleCreateEventClick = () => navigate('/create');
+  const closeOrganizerPhoneModal = useCallback(() => setShowOrganizerPhoneModal(false), []);
+  const handleCreateEventClick = () => {
+    if (!isAuthenticated || !token) {
+      navigate('/login');
+      return;
+    }
+    setShowOrganizerPhoneModal(true);
+  };
 
   const t = translations[lang];
 
@@ -307,6 +314,9 @@ export default function Navbar() {
         </div>
       </nav>
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      <AnimatePresence>
+        {showOrganizerPhoneModal && <OrganizerPhoneModal onClose={closeOrganizerPhoneModal} />}
+      </AnimatePresence>
 
       {/* Notification Detail Slide-over */}
       <AnimatePresence>
