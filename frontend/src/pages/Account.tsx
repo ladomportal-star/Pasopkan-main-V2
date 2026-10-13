@@ -63,7 +63,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { api } from "../lib/api";
+import { api, listAllMyEvents } from "../lib/api";
 import { motion, AnimatePresence } from "motion/react";
 import { LaoEvent, SeatingZone, Coupon } from "../data/events";
 import { fromBackendEvent, toEventPayload } from "../lib/eventPayload";
@@ -298,7 +298,7 @@ export default function Account() {
   }, [toastQueue]);
 
   const navigate = useNavigate();
-  const { logout, user, syncProfileToSupabase } = useAuth();
+  const { logout, user, token, syncProfileToSupabase } = useAuth();
   const { lang, toggleLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const t = translations[lang] as unknown as Record<string, string>;
@@ -311,6 +311,11 @@ export default function Account() {
   type OrganizerEvent = LaoEvent & Record<string, any>;
   const [myEvents, setMyEvents] = useState<OrganizerEvent[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>("");
+  const [eventsLoadError, setEventsLoadError] = useState(false);
+  const [organizerAccessUid, setOrganizerAccessUid] = useState<string | null>(null);
+  const organizerAccess = Boolean(user?.id && organizerAccessUid === user.id);
+  const eventOwnerRef = useRef(user?.id);
+  eventOwnerRef.current = user?.id;
   // A placeholder so `selectedEvent` is never undefined — while events are
   // still loading, and for an organizer with no events at all yet.
   const noEvent = useMemo(
@@ -336,8 +341,12 @@ export default function Account() {
   // The organizer's own events (drafts included) — the real replacement for
   // what used to be a hardcoded sample list merged with organizer_events.
   const loadMyEvents = async () => {
-    const res = await api.listEvents({ mine: true });
-    const mine = (res.data?.events ?? []).map((e) => {
+    const ownerId = user?.id;
+    if (!ownerId) return;
+    const rows = await listAllMyEvents({ token });
+    if (eventOwnerRef.current !== ownerId) return;
+    setEventsLoadError(false);
+    const mine = rows.map((e) => {
       const mapped = fromBackendEvent(e);
       const registered = (mapped.ticketTiers || []).reduce(
         (sum: number, t: any) => sum + (Number(t.sold) || 0),
@@ -346,18 +355,31 @@ export default function Account() {
       return { ...mapped, registered };
     });
     setMyEvents(mine);
-    setSelectedEventId((prev) => prev || mine[0]?.id || "");
+    setSelectedEventId((prev) => mine.some((event) => event.id === prev) ? prev : mine[0]?.id || "");
   };
 
   useEffect(() => {
     let cancelled = false;
-    loadMyEvents().catch(() => {
-      if (!cancelled) setMyEvents([]);
-    });
+    setOrganizerAccessUid(null);
+    setMyEvents([]);
+    setSelectedEventId("");
+    setEventsLoadError(false);
+    if (user && token) {
+      api.get<{ role: string }>("/organizer/eligibility", { token, throwOnError: true })
+        .then(async ({ data }) => {
+          if (cancelled) return;
+          const allowed = data?.role === "organizer" || data?.role === "admin";
+          setOrganizerAccessUid(allowed ? user.id : null);
+          if (allowed) await loadMyEvents();
+        })
+        .catch(() => {
+          if (!cancelled) setEventsLoadError(true);
+        });
+    }
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [user?.id, token]);
 
   const [showScanner, setShowScanner] = useState(false);
   const [isLookingUpTicket, setIsLookingUpTicket] = useState(false);
@@ -378,9 +400,10 @@ export default function Account() {
   const [scannerError, setScannerError] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState("");
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<
+  const [requestedTab, setActiveTab] = useState<
     "profile" | "my-event" | "payouts"
   >((location.state as any)?.targetTab || "profile");
+  const activeTab = organizerAccess ? requestedTab : "profile";
 
   useEffect(() => {
     if ((location.state as any)?.targetTab) {
@@ -394,7 +417,7 @@ export default function Account() {
   // whatever's sitting in localStorage.
   useEffect(() => {
     const handleSyncEvents = () => {
-      loadMyEvents().catch(() => {});
+      if (organizerAccess) loadMyEvents().catch(() => setEventsLoadError(true));
     };
 
     window.addEventListener("storage", handleSyncEvents);
@@ -406,7 +429,7 @@ export default function Account() {
         handleSyncEvents,
       );
     };
-  }, []);
+  }, [organizerAccess, user?.id, token]);
 
   const lastScanRef = useRef<{ id: string; time: number } | null>(null);
 
@@ -693,7 +716,7 @@ export default function Account() {
         </div>
 
         {/* Tabs - Mobile Segmented Pill Bar */}
-        <div
+        {organizerAccess && <div
           className={`p-1 rounded-xl sm:rounded-2xl flex overflow-x-auto hide-scrollbar gap-1 mb-4 sm:mb-8 transition-colors ${
             theme === "dark" ? "bg-zinc-900/60" : "bg-gray-200/50"
           } sm:bg-transparent sm:p-0 sm:border-b sm:border-gray-100 sm:rounded-none sm:gap-8`}
@@ -713,7 +736,7 @@ export default function Account() {
           >
             {t.myProfile}
           </button>
-          <button
+          {organizerAccess && <button
             onClick={() => {
               setActiveTab("my-event");
               window.scrollTo(0, 0);
@@ -727,8 +750,8 @@ export default function Account() {
             }`}
           >
             {t.manageEvent}
-          </button>
-          <button
+          </button>}
+          {organizerAccess && <button
             onClick={() => {
               setActiveTab("payouts");
               window.scrollTo(0, 0);
@@ -742,8 +765,8 @@ export default function Account() {
             }`}
           >
             {t.payouts || (lang === "lo" ? "ໃບບິນເບີກຈ່າຍ" : "Payout Bills")}
-          </button>
-        </div>
+          </button>}
+        </div>}
 
         <div className={activeTab === "profile" ? "block" : "hidden"}>
           {/* Profile Card */}
@@ -886,7 +909,10 @@ export default function Account() {
           </div>
         </div>
 
-        <div className={activeTab === "my-event" ? "block" : "hidden"}>
+        {organizerAccess && <div className={activeTab === "my-event" ? "block" : "hidden"}>
+          {eventsLoadError && <p role="alert" className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {lang === "lo" ? "ບໍ່ສາມາດໂຫຼດງານຂອງທ່ານໄດ້. ກະລຸນາໂຫຼດໜ້າໃໝ່." : "Could not load your events. Please reload the page."}
+          </p>}
           {/* Manage Event Header */}
           <div className="mb-6 sm:mb-8">
             <h2
@@ -1127,14 +1153,14 @@ export default function Account() {
               )}
             </div>
           )}
-        </div>
+        </div>}
 
-        <div className={activeTab === "payouts" ? "block" : "hidden"}>
+        {organizerAccess && <div className={activeTab === "payouts" ? "block" : "hidden"}>
           <div className="rounded-3xl border border-amber-200 bg-amber-50 p-6 text-amber-950 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-100">
             <h2 className="text-xl font-bold">{lang === "lo" ? "ການເບີກຈ່າຍຍັງບໍ່ພ້ອມ" : "Payouts are not available yet"}</h2>
             <p className="mt-3 text-sm leading-relaxed">{lang === "lo" ? "ຂໍ້ມູນທະນາຄານ, ຍອດເງິນ ແລະ ການຂໍເບີກຈ່າຍຈະສະແດງຢູ່ນີ້ເມື່ອມີ API ທີ່ປອດໄພ ແລະຂັ້ນຕອນອະນຸມັດໂດຍ Admin. ບໍ່ມີການໂອນເງິນຈາກໜ້ານີ້." : "Bank details, balances and payout requests will appear here after a secure backend API and admin approval flow are available. This page does not transfer money."}</p>
           </div>
-        </div>
+        </div>}
       </div>
 
       <AnimatePresence>

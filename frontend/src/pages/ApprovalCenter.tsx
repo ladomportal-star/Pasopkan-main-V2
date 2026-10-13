@@ -27,7 +27,19 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const allowed = !!user && (!admin || user.role === 'admin');
+  const [organizerRole, setOrganizerRole] = useState<string | null>(null);
+  const [checkingRole, setCheckingRole] = useState(!admin);
+  useEffect(() => {
+    if (admin || !user || !token) { setCheckingRole(false); setOrganizerRole(null); return; }
+    let active = true;
+    setCheckingRole(true);
+    api.get<{ role: string }>('/organizer/eligibility', { token, throwOnError: true })
+      .then(({ data }) => { if (active) setOrganizerRole(data?.role ?? null); })
+      .catch(() => { if (active) setOrganizerRole(null); })
+      .finally(() => { if (active) setCheckingRole(false); });
+    return () => { active = false; };
+  }, [admin, user?.id, token]);
+  const allowed = !!user && (admin ? user.role === 'admin' : organizerRole === 'organizer' || organizerRole === 'admin');
   const refresh = useCallback(async () => {
     const opts = { token, throwOnError: true };
     const a = await api.get<{ applications: Application[] }>(admin ? '/admin/organizer-applications' : '/organizer-applications/mine', opts);
@@ -85,9 +97,9 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
     } catch (e) { setError(e instanceof Error ? e.message : 'Request failed'); }
     finally { setBusy(false); }
   }
-  if (loading) return <p className="p-8">Loading…</p>;
+  if (loading || checkingRole) return <p className="p-8">Loading…</p>;
   if (!user) return <div className="p-8"><Link to="/login">ກະລຸນາເຂົ້າລະບົບ / Sign in</Link></div>;
-  if (!allowed) return <p className="p-8" role="alert">Admins only / ສຳລັບ Admin ເທົ່ານັ້ນ</p>;
+  if (!allowed) return <p className="p-8" role="alert">{admin ? 'Admins only / ສຳລັບ Admin ເທົ່ານັ້ນ' : 'Organizer access requires approval / ຕ້ອງໄດ້ຮັບອະນຸມັດກ່ອນ'}</p>;
   return <main className="max-w-4xl mx-auto w-full p-6 space-y-6">
     <Link to="/account" className="underline">← ບັນຊີ / Account</Link>
     <h1 className="text-2xl font-bold">{admin ? 'ສູນອະນຸມັດ / Admin review' : 'ຜູ້ຈັດງານ / Organizer'}</h1>

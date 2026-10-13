@@ -146,6 +146,7 @@ export async function listEvents(query: {
   status?: string;
   mine?: boolean;
   viewerUid?: string;
+  cursor?: string;
   limit: number;
 }) {
   if (query.mine && !query.viewerUid) throw new HttpError(401, "Sign in to list your events");
@@ -154,17 +155,21 @@ export async function listEvents(query: {
       where: { authId: query.viewerUid! },
       select: { role: true },
     });
-    if (viewer?.role !== "organizer" && viewer?.role !== "admin") return [];
+    if (viewer?.role !== "organizer" && viewer?.role !== "admin")
+      return { events: [], nextCursor: null };
   }
   const where: Prisma.EventWhereInput = query.mine
     ? { organizer: { user: { authId: query.viewerUid } } }
     : { status: { in: [...publicStates] } };
-  return db.event.findMany({
+  const rows = await db.event.findMany({
     where: { AND: [where, ...(query.status ? [{ status: query.status as any }] : [])] },
     include,
-    orderBy: { createdAt: "desc" },
-    take: query.limit,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: query.limit + 1,
+    ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
   });
+  const events = rows.slice(0, query.limit);
+  return { events, nextCursor: rows.length > query.limit ? events.at(-1)?.id ?? null : null };
 }
 export async function getEvent(ref: string, uid?: string) {
   const event = await db.event.findFirst({ where: refWhere(ref), include });

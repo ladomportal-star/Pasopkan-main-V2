@@ -58,6 +58,29 @@ describe("events", () => {
     expect((await request(app).get("/api/events?mine=true")).status).toBe(401);
   });
 
+  it("paginates only the signed-in organizer's events", async () => {
+    const firstOwner = await as("paging-organizer-a");
+    const secondOwner = await as("paging-organizer-b");
+    const first = await createEvent(app, firstOwner, { title: "First owner event" });
+    const second = await createEvent(app, firstOwner, { title: "Second owner event" });
+    const unrelated = await createEvent(app, secondOwner, { title: "Other owner event" });
+
+    const pageOne = await request(app).get("/api/events?mine=true&limit=1").set(firstOwner);
+    expect(pageOne.status).toBe(200);
+    expect(pageOne.body.events).toHaveLength(1);
+    expect(pageOne.body.nextCursor).toBeTruthy();
+    const pageTwo = await request(app)
+      .get(`/api/events?mine=true&limit=1&cursor=${pageOne.body.nextCursor}`)
+      .set(firstOwner);
+    expect(pageTwo.status).toBe(200);
+    expect(pageTwo.body.nextCursor).toBeNull();
+    expect([pageOne.body.events[0].id, pageTwo.body.events[0].id].sort()).toEqual(
+      [first.id, second.id].sort(),
+    );
+    expect([pageOne.body.events[0].id, pageTwo.body.events[0].id]).not.toContain(unrelated.id);
+    expect((await request(app).get("/api/events?mine=true").set(await as("ordinary-user"))).body.events).toEqual([]);
+  });
+
   it("only the owner (or an admin) may update an event", async () => {
     const owner = await as("org-4");
     const event = await createEvent(app, owner, { title: "Before" });

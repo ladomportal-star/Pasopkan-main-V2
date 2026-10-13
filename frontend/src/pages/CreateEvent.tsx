@@ -82,16 +82,15 @@ import {
   Palette,
   GripVertical,
   Info,
-  BarChart3,
   TrendingUp,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLanguage } from "../context/LanguageContext";
 import { safeStorage } from "../lib/storage";
-import { api } from "../lib/api";
-import { toEventPayload } from "../lib/eventPayload";
+import { api, listAllMyEvents } from "../lib/api";
+import { fromBackendEvent, toEventPayload } from "../lib/eventPayload";
+import { useAuth } from "../context/AuthContext";
 import { laosProvinces, getDistrictsForProvince } from "../lib/laosLocations";
-import { events } from "../data/events";
 import Logo from "../components/Logo";
 import { EventMapPicker } from "../components/EventMapPicker";
 import { ScrollTimePicker } from "../components/ScrollTimePicker";
@@ -116,7 +115,6 @@ import {
 import { renderTermIcon } from "../lib/termIcons";
 import SEO from "../components/SEO";
 import { compressImage } from "../lib/imageCompression";
-import OrganizerEventAnalytics from "../components/OrganizerEventAnalytics";
 import EventDetailGraphSection from "../components/EventDetailGraphSection";
 
 const PAYMENT_BANKS = [
@@ -845,6 +843,8 @@ export interface AttendeeQuestion {
 
 export default function CreateEvent() {
   const navigate = useNavigate();
+  const { user, token } = useAuth();
+  const storageKey = (name: string) => `organizer:${user?.id ?? "signed-out"}:${name}`;
   const { lang, toggleLanguage } = useLanguage();
   const t = translations[lang] as unknown as Record<string, string>;
   const currency = lang === "lo" ? "ກີບ" : "Kip";
@@ -926,25 +926,33 @@ export default function CreateEvent() {
   >("analytics");
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
 
-  // Local events state initialized with static events and storage
-  const [localEvents, setLocalEvents] = useState<any[]>(() => {
-    const saved = safeStorage.getItem("organizer_events");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const savedIds = new Set(parsed.map((e: any) => String(e.id)));
-          const defaultUniques = events.filter(
-            (e: any) => !savedIds.has(String(e.id)),
-          );
-          return [...parsed, ...defaultUniques];
-        }
-      } catch (e) {
-        console.error(e);
-      }
+  // Only the backend's owner-scoped event list may populate organizer views.
+  const [localEvents, setLocalEvents] = useState<any[]>([]);
+  const [eventsLoadError, setEventsLoadError] = useState(false);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    setLocalEvents([]);
+    setEventsLoadError(false);
+    setEventsLoading(Boolean(user && token));
+    if (user && token) {
+      listAllMyEvents({ token })
+        .then((rows) => {
+          if (!cancelled) {
+            setLocalEvents(rows.map(fromBackendEvent));
+            setEventsLoading(false);
+          }
+        })
+        .catch((error) => {
+          if (!cancelled) {
+            console.error("Could not load organizer events", error);
+            setEventsLoadError(true);
+            setEventsLoading(false);
+          }
+        });
     }
-    return events;
-  });
+    return () => { cancelled = true; };
+  }, [user?.id, token]);
 
   // Edit restriction states
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
@@ -2746,7 +2754,7 @@ export default function CreateEvent() {
       return;
     }
 
-    const savedDraft = safeStorage.getItem("eventDraft");
+    const savedDraft = safeStorage.getItem(storageKey("eventDraft"));
     if (savedDraft) {
       try {
         const parsed = JSON.parse(savedDraft);
@@ -2823,7 +2831,7 @@ export default function CreateEvent() {
     }
 
     // Auto-fill organizer payment information if saved previously or if organizer created events before
-    const savedPaymentInfo = safeStorage.getItem("organizer_payment_info");
+    const savedPaymentInfo = safeStorage.getItem(storageKey("payment_info"));
     let hasLoadedPay = false;
     if (savedPaymentInfo) {
       try {
@@ -2942,7 +2950,7 @@ export default function CreateEvent() {
     // Simulate network delay
     await new Promise((resolve) => setTimeout(resolve, 800));
 
-    safeStorage.setItem("eventDraft", JSON.stringify(draftData));
+    safeStorage.setItem(storageKey("eventDraft"), JSON.stringify(draftData));
     setLastSavedTime(new Date());
     setIsSavingDraft(false);
     setDraftSaved(true);
@@ -3207,7 +3215,7 @@ export default function CreateEvent() {
     setAttendeeMessage("");
 
     // Retain saved organizer payment info if available
-    const savedPaymentInfo = safeStorage.getItem("organizer_payment_info");
+    const savedPaymentInfo = safeStorage.getItem(storageKey("payment_info"));
     if (savedPaymentInfo) {
       try {
         const parsedPay = JSON.parse(savedPaymentInfo);
@@ -3278,33 +3286,20 @@ export default function CreateEvent() {
         accountHolder: accountHolder || "LAO EVENT ORGANIZER CO., LTD",
       };
       safeStorage.setItem(
-        "organizer_payment_info",
+        storageKey("payment_info"),
         JSON.stringify(paymentData),
       );
 
       // Remove draft immediately to free up browser storage quota
-      safeStorage.removeItem("eventDraft");
+      safeStorage.removeItem(storageKey("eventDraft"));
 
-      // Fetch fresh storage events so we don't clobber updates that occurred while the organizer was creating the event
-      let currentStorageEvents: any[] = [];
-      try {
-        const saved = safeStorage.getItem("organizer_events");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) currentStorageEvents = parsed;
-        }
-      } catch (e) {
-        console.error(e);
-      }
-      if (currentStorageEvents.length === 0 && localEvents.length > 0) {
-        currentStorageEvents = [...localEvents];
-      }
+      const currentEvents: any[] = [...localEvents];
 
       setIsLoading(true);
       if (editingEventId) {
         setWasEditing(true);
         // Update existing event
-        const updatedEvents = currentStorageEvents.map((evt) => {
+        const updatedEvents = currentEvents.map((evt) => {
           if (String(evt.id) === String(editingEventId)) {
             return {
               ...evt,
@@ -3462,18 +3457,20 @@ export default function CreateEvent() {
               String(editingEventId),
               toEventPayload(edited),
             )
-          : { ok: false, error: "Event not found" };
-        if (!result.ok) {
+          : null;
+        if (!result?.ok || !result.data?.event) {
           setIsLoading(false);
           setValidationError(
             lang === "lo"
-              ? `ບໍ່ສາມາດບັນທຶກການປ່ຽນແປງໄດ້: ${result.error ?? ""}`
-              : `Could not save changes: ${result.error ?? ""}`,
+              ? `ບໍ່ສາມາດບັນທຶກການປ່ຽນແປງໄດ້: ${result?.error ?? "Event not found"}`
+              : `Could not save changes: ${result?.error ?? "Event not found"}`,
           );
           return;
         }
-        setLocalEvents(updatedEvents);
-        safeStorage.setItem("organizer_events", JSON.stringify(updatedEvents));
+        const saved = fromBackendEvent(result.data.event);
+        setLocalEvents(updatedEvents.map((event) =>
+          String(event.id) === String(editingEventId) ? saved : event,
+        ));
         setEditingEventId(null);
       } else {
         setWasEditing(false);
@@ -3592,7 +3589,7 @@ export default function CreateEvent() {
           status: eventStatus || "pending",
         };
         const result = await api.createEvent(toEventPayload(newEvent));
-        if (!result.ok) {
+        if (!result.ok || !result.data?.event) {
           setIsLoading(false);
           setValidationError(
             lang === "lo"
@@ -3601,18 +3598,12 @@ export default function CreateEvent() {
           );
           return;
         }
-        // Use the real database id from here on, not the temporary client-side one.
-        const createdId = String(
-          (result.data?.event as { id?: string } | undefined)?.id ??
-            newEvent.id,
-        );
-        newEvent.id = createdId;
+        const created = fromBackendEvent(result.data.event);
         const updatedEvents = [
-          newEvent,
-          ...currentStorageEvents.filter((e) => String(e.id) !== createdId),
+          created,
+          ...currentEvents.filter((e) => String(e.id) !== created.id),
         ];
         setLocalEvents(updatedEvents);
-        safeStorage.setItem("organizer_events", JSON.stringify(updatedEvents));
       }
     }
     setIsLoading(false);
@@ -3669,9 +3660,9 @@ export default function CreateEvent() {
             onClick={() => setActiveTab("analytics")}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === "analytics" ? "bg-adv-orange/10 text-adv-orange font-bold" : "text-gray-500 hover:text-adv-slate hover:bg-gray-50"}`}
           >
-            <BarChart3 className="w-5 h-5" />
+            <Calendar className="w-5 h-5" />
             <span className="font-medium text-sm">
-              {lang === "lo" ? "ສະຖິຕິ & ກຣາບ" : "Analytics & Graphs"}
+              {t.myEvents}
             </span>
           </button>
 
@@ -8079,28 +8070,49 @@ export default function CreateEvent() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <h2 className="text-2xl sm:text-3xl font-black text-adv-slate flex items-center gap-2.5">
-                      <BarChart3 className="w-7 h-7 text-adv-orange shrink-0" />
+                      <Calendar className="w-7 h-7 text-adv-orange shrink-0" />
                       <span>
-                        {lang === "lo"
-                          ? "ການວິເຄາະ & ສະຖິຕິກຣາບ"
-                          : "Analytics & Sales Intelligence"}
+                        {t.myEvents}
                       </span>
                     </h2>
                     <p className="text-gray-500 font-medium text-xs sm:text-sm mt-1">
                       {lang === "lo"
-                        ? "ສູນກາງຕິດຕາມຍອດຂາຍປີ້, ລາຍຮັບກ່ອນຫັກຄ່າທຳນຽມ, ແລະ ຄວາມຄືບໜ້າຂອງທຸກກິດຈະກຳ"
-                        : "Monitor real-time ticket sales performance, revenue before fee curves, and attendance rates."}
+                        ? "ສະແດງສະເພາະກິດຈະກຳທີ່ທ່ານສ້າງ"
+                        : "Only events owned by your account are shown."}
                     </p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => { resetForm(); setActiveStep(1); setActiveTab("createEvent"); }}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-adv-orange px-4 py-3 text-sm font-bold text-white"
+                  >
+                    <Plus className="h-4 w-4" /> {t.createEvent}
+                  </button>
                 </div>
 
-                {/* Comprehensive Interactive Graph Dashboard */}
-                <OrganizerEventAnalytics
-                  events={localEvents}
-                  lang={lang as "en" | "lo"}
-                  currency={currency}
-                  onSelectEventForModal={(event) => setSelectedEvent(event)}
-                />
+                {eventsLoading ? (
+                  <p role="status" className="rounded-2xl border border-gray-200 bg-white p-5 text-gray-600">
+                    {lang === "lo" ? "ກຳລັງໂຫຼດກິດຈະກຳ…" : "Loading your events…"}
+                  </p>
+                ) : eventsLoadError ? (
+                  <p role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-700">
+                    {lang === "lo" ? "ບໍ່ສາມາດໂຫຼດງານຂອງທ່ານໄດ້. ກະລຸນາໂຫຼດໜ້າໃໝ່." : "Could not load your events. Please reload the page."}
+                  </p>
+                ) : localEvents.length === 0 ? (
+                  <p className="rounded-2xl border border-gray-200 bg-white p-5 text-gray-600">
+                    {lang === "lo" ? "ທ່ານຍັງບໍ່ມີກິດຈະກຳ." : "You have not created an event yet."}
+                  </p>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {localEvents.map((event) => (
+                      <button key={event.id} type="button" onClick={() => setSelectedEvent(event)} className="rounded-2xl border border-gray-200 bg-white p-5 text-left shadow-sm hover:border-orange-400">
+                        <h3 className="font-bold text-adv-slate">{event.title}</h3>
+                        <p className="mt-2 text-sm text-gray-500">{event.venue || event.location || (lang === "lo" ? "ບໍ່ມີສະຖານທີ່" : "Venue not set")}</p>
+                        <p className="mt-2 text-xs font-semibold text-orange-600">{event.status}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             {activeTab === "terms" && (

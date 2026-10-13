@@ -4,12 +4,13 @@ import { createEvent, getEvent, listEvents, updateEvent } from "../services/even
 
 /** GET /api/events — public catalog; `?mine=true` (signed in) lists the caller's own, drafts included. */
 export async function getEvents(req: Request, res: Response) {
-  const { status, mine, limit } = req.query as unknown as {
+  const { status, mine, limit, cursor } = req.query as unknown as {
     status?: string;
     mine?: boolean;
     limit: number;
+    cursor?: string;
   };
-  return ok(res, { events: await listEvents({ status, mine, limit, viewerUid: req.user?.uid }) });
+  return ok(res, await listEvents({ status, mine, limit, cursor, viewerUid: req.user?.uid }));
 }
 
 /** GET /api/events/:id — by uuid, slug, or legacy id. */

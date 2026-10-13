@@ -200,15 +200,16 @@ export const api = {
     }>("POST", "/otp/verify", { phone, code }, opts),
 
   listEvents: (
-    query?: { mine?: boolean; status?: string; limit?: number },
+    query?: { mine?: boolean; status?: string; limit?: number; cursor?: string },
     opts?: RequestOptions,
   ) => {
     const params = new URLSearchParams();
     if (query?.mine) params.set("mine", "true");
     if (query?.status) params.set("status", query.status);
     if (query?.limit) params.set("limit", String(query.limit));
+    if (query?.cursor) params.set("cursor", query.cursor);
     const qs = params.toString();
-    return request<{ events: Record<string, unknown>[] }>(
+    return request<{ events: Record<string, unknown>[]; nextCursor: string | null }>(
       "GET",
       `/events${qs ? `?${qs}` : ""}`,
       undefined,
@@ -376,3 +377,16 @@ export const api = {
       opts,
     ),
 };
+
+/** Fetch every page of the signed-in organizer's events; never use the public catalog. */
+export async function listAllMyEvents(opts?: RequestOptions): Promise<Record<string, unknown>[]> {
+  const events: Record<string, unknown>[] = [];
+  let cursor: string | undefined;
+  do {
+    const result = await api.listEvents({ mine: true, limit: 100, cursor }, { ...opts, throwOnError: true });
+    if (!result.data) throw new Error("Could not load your events");
+    events.push(...result.data.events);
+    cursor = result.data.nextCursor ?? undefined;
+  } while (cursor);
+  return events;
+}

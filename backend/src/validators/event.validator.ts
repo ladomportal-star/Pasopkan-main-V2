@@ -115,6 +115,7 @@ export const listEventsQuery = z.object({
     .enum(["true", "false"])
     .transform((v) => v === "true")
     .optional(),
+  cursor: z.string().uuid().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 
