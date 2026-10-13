@@ -1,78 +1,111 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'motion/react';
-import { Ticket, User, Plus, Search, Shield, Moon, Sun, Menu, X, Compass, Globe, Activity, MapPin, Zap, Lightbulb, Mountain, PartyPopper, Bell, Calendar, Info, Star, ChevronRight, ArrowLeft, ShieldCheck, AlertCircle, Settings } from 'lucide-react';
-import Logo from './Logo';
-import SearchModal from './SearchModal';
-import OrganizerPhoneModal from './OrganizerPhoneModal';
-import { useLanguage } from '../context/LanguageContext';
-import { useTheme } from '../context/ThemeContext';
-import { useAuth } from '../context/AuthContext';
-import { useNotifications, timeAgo } from '../context/NotificationsContext';
-import type { AppNotification } from '../types';
-import { PWAInstallButton } from './PWAInstallButton';
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  Ticket,
+  User,
+  Plus,
+  Search,
+  Shield,
+  Moon,
+  Sun,
+  Menu,
+  X,
+  Compass,
+  Globe,
+  Activity,
+  MapPin,
+  Zap,
+  Lightbulb,
+  Mountain,
+  PartyPopper,
+  Bell,
+  Calendar,
+  Info,
+  Star,
+  ChevronRight,
+  ArrowLeft,
+  ShieldCheck,
+  AlertCircle,
+  Settings,
+} from "lucide-react";
+import Logo from "./Logo";
+import SearchModal from "./SearchModal";
+import OrganizerPhoneModal from "./OrganizerPhoneModal";
+import { useLanguage } from "../context/LanguageContext";
+import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
+import { useNotifications, timeAgo } from "../context/NotificationsContext";
+import type { AppNotification } from "../types";
+import { PWAInstallButton } from "./PWAInstallButton";
 
 const translations = {
   en: {
-    concerts: 'Concerts',
-    sports: 'Adventure and Tour',
-    workshop: 'Workshops',
-    festivals: 'Festivals',
-    voucher: 'Voucher and Booking',
-    createEvent: 'Create Event',
-    search: 'Search destinations...',
-    myTickets: 'My Tickets',
-    account: 'Account',
-    admin: 'Admin',
-    switchLanguage: 'Language',
-    toggleTheme: 'Appearance',
-    notifications: 'Notifications',
-    noNotifications: 'No new notifications',
-    markAsRead: 'Mark all as read',
-    notificationDetails: 'Notification Details',
-    close: 'Close',
-    upcomingEvent: 'Upcoming Event',
-    noted: 'Noted'
+    concerts: "Concerts",
+    sports: "Adventure and Tour",
+    workshop: "Workshops",
+    festivals: "Festivals",
+    voucher: "Voucher and Booking",
+    createEvent: "Create Event",
+    search: "Search destinations...",
+    myTickets: "My Tickets",
+    account: "Account",
+    admin: "Admin",
+    switchLanguage: "Language",
+    toggleTheme: "Appearance",
+    notifications: "Notifications",
+    noNotifications: "No new notifications",
+    markAsRead: "Mark all as read",
+    notificationDetails: "Notification Details",
+    close: "Close",
+    upcomingEvent: "Upcoming Event",
+    noted: "Noted",
   },
   lo: {
-    concerts: 'ຄອນເສີດ',
-    sports: 'ການຜະຈົນໄພ ແລະ ທ່ອງທ່ຽວ',
-    workshop: 'ເວີກຊອບ',
-    festivals: 'ເທດສະການ',
-    voucher: 'Voucher ແລະ ການຈອງ',
-    createEvent: 'ສ້າງກິດຈະກຳ',
-    search: 'ຄົ້ນຫາ...',
-    myTickets: 'ປີ້ຂອງຂ້ອຍ',
-    account: 'ບັນຊີ',
-    admin: 'ແອດມິນ',
-    switchLanguage: 'ພາສາ',
-    toggleTheme: 'ໂໝດສະແດງຜົນ',
-    notifications: 'ການແຈ້ງເຕືອນ',
-    noNotifications: 'ບໍ່ມີການແແຈ້ງເຕືອນໃໝ່',
-    markAsRead: 'ໝາຍວ່າອ່ານແລ້ວທັງໝົດ',
-    notificationDetails: 'ລາຍລະອຽດການແຈ້ງເຕືອນ',
-    close: 'ປິດ',
-    upcomingEvent: 'ກິດຈະກຳໃໝ່',
-    noted: 'ບັນທຶກແລ້ວ'
-  }
+    concerts: "ຄອນເສີດ",
+    sports: "ການຜະຈົນໄພ ແລະ ທ່ອງທ່ຽວ",
+    workshop: "ເວີກຊອບ",
+    festivals: "ເທດສະການ",
+    voucher: "Voucher ແລະ ການຈອງ",
+    createEvent: "ສ້າງກິດຈະກຳ",
+    search: "ຄົ້ນຫາ...",
+    myTickets: "ປີ້ຂອງຂ້ອຍ",
+    account: "ບັນຊີ",
+    admin: "ແອດມິນ",
+    switchLanguage: "ພາສາ",
+    toggleTheme: "ໂໝດສະແດງຜົນ",
+    notifications: "ການແຈ້ງເຕືອນ",
+    noNotifications: "ບໍ່ມີການແແຈ້ງເຕືອນໃໝ່",
+    markAsRead: "ໝາຍວ່າອ່ານແລ້ວທັງໝົດ",
+    notificationDetails: "ລາຍລະອຽດການແຈ້ງເຕືອນ",
+    close: "ປິດ",
+    upcomingEvent: "ກິດຈະກຳໃໝ່",
+    noted: "ບັນທຶກແລ້ວ",
+  },
 };
 
-function getNavbarNotifIcon(notif: any): React.ComponentType<{ className?: string }> {
-  if (typeof notif?.icon === 'function') {
+function getNavbarNotifIcon(
+  notif: any,
+): React.ComponentType<{ className?: string }> {
+  if (typeof notif?.icon === "function") {
     return notif.icon;
   }
-  if (notif?.icon && typeof notif.icon === 'object' && (notif.icon.$$typeof || notif.icon.render)) {
+  if (
+    notif?.icon &&
+    typeof notif.icon === "object" &&
+    (notif.icon.$$typeof || notif.icon.render)
+  ) {
     return notif.icon;
   }
   const status = notif?.status;
   const type = notif?.type;
-  if (status === 'approved' || type === 'verified') return ShieldCheck;
-  if (status === 'rejected') return AlertCircle;
-  if (type === 'upcomingEvent') return Calendar;
-  if (type === 'ticket') return Ticket;
-  if (type === 'promo') return Star;
-  if (type === 'noted') return Info;
-  if (type === 'system') return AlertCircle;
+  if (status === "approved" || type === "verified") return ShieldCheck;
+  if (status === "rejected") return AlertCircle;
+  if (type === "upcomingEvent") return Calendar;
+  if (type === "ticket") return Ticket;
+  if (type === "promo") return Star;
+  if (type === "noted") return Info;
+  if (type === "system") return AlertCircle;
   return Bell;
 }
 
@@ -80,10 +113,13 @@ export default function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [selectedNotif, setSelectedNotif] = useState<AppNotification | null>(null);
+  const [selectedNotif, setSelectedNotif] = useState<AppNotification | null>(
+    null,
+  );
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [showOrganizerPhoneModal, setShowOrganizerPhoneModal] = useState(false);
-  const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
+  const { notifications, unreadCount, markRead, markAllRead } =
+    useNotifications();
   const notificationRef = useRef<HTMLDivElement>(null);
 
   const hasUnread = unreadCount > 0;
@@ -91,13 +127,14 @@ export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
   const { isAuthenticated, token, user, loginWithGoogle } = useAuth();
 
-
-
   const navigate = useNavigate();
-  const closeOrganizerPhoneModal = useCallback(() => setShowOrganizerPhoneModal(false), []);
+  const closeOrganizerPhoneModal = useCallback(
+    () => setShowOrganizerPhoneModal(false),
+    [],
+  );
   const handleCreateEventClick = () => {
     if (!isAuthenticated || !token) {
-      navigate('/login');
+      navigate("/login");
       return;
     }
     setShowOrganizerPhoneModal(true);
@@ -107,12 +144,15 @@ export default function Navbar() {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target as Node)
+      ) {
         setIsNotificationsOpen(false);
       }
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const markAllAsRead = () => {
@@ -132,22 +172,45 @@ export default function Navbar() {
           {/* Brand/Logo Section */}
           <div className="flex items-center gap-10">
             <Link to="/" className="flex items-center shrink-0">
-              <img 
-                src="/pasopkan_logo.png" 
-                alt="Pasopkan Logo" 
-                className="h-10 sm:h-12 lg:h-14 w-auto object-contain transition-transform duration-300 hover:scale-105" 
+              <img
+                src="/pasopkan_logo.png"
+                alt="Pasopkan Logo"
+                className="h-10 sm:h-12 lg:h-14 w-auto object-contain transition-transform duration-300 hover:scale-105"
                 referrerPolicy="no-referrer"
               />
             </Link>
 
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center gap-8 text-sm font-semibold text-adv-slate/70">
-              <Link to="/category/workshop" className="hover:text-adv-orange transition-colors">{t.workshop}</Link>
-              <Link to="/category/sports" className="hover:text-adv-orange transition-colors">{t.sports}</Link>
-              <Link to="/category/festival" className="hover:text-adv-orange transition-colors">{t.festivals}</Link>
-              <Link to="/category/voucher" className="hover:text-adv-orange transition-colors">{t.voucher}</Link>
+              <Link
+                to="/category/workshop"
+                className="hover:text-adv-orange transition-colors"
+              >
+                {t.workshop}
+              </Link>
+              <Link
+                to="/category/sports"
+                className="hover:text-adv-orange transition-colors"
+              >
+                {t.sports}
+              </Link>
+              <Link
+                to="/category/festival"
+                className="hover:text-adv-orange transition-colors"
+              >
+                {t.festivals}
+              </Link>
+              <Link
+                to="/category/voucher"
+                className="hover:text-adv-orange transition-colors"
+              >
+                {t.voucher}
+              </Link>
               <div className="w-px h-4 bg-gray-200 mx-2" />
-              <button onClick={handleCreateEventClick} className="flex items-center gap-2 text-adv-orange hover:text-orange-600 transition-colors font-bold cursor-pointer">
+              <button
+                onClick={handleCreateEventClick}
+                className="flex items-center gap-2 text-adv-orange hover:text-orange-600 transition-colors font-bold cursor-pointer"
+              >
                 <Plus className="w-4 h-4" />
                 {t.createEvent}
               </button>
@@ -157,7 +220,7 @@ export default function Navbar() {
           {/* Action Center */}
           <div className="flex items-center gap-2 lg:gap-6">
             {/* Search Trigger */}
-            <button 
+            <button
               onClick={() => setIsSearchOpen(true)}
               className="lg:flex items-center gap-3 px-4 py-2 bg-gray-100 rounded-full text-gray-400 hover:bg-gray-200 transition-all group hidden md:flex min-w-[200px]"
             >
@@ -166,7 +229,7 @@ export default function Navbar() {
             </button>
 
             {/* Mobile Search Trigger */}
-            <button 
+            <button
               onClick={() => setIsSearchOpen(true)}
               className="md:hidden p-2 text-adv-slate hover:text-adv-orange transition-all rounded-full hover:bg-gray-50"
               title={t.search}
@@ -174,12 +237,11 @@ export default function Navbar() {
               <Search className="w-5 h-5" />
             </button>
 
-
             <div className="flex items-center gap-1.5 lg:gap-3">
               <PWAInstallButton variant="nav" />
 
-              <Link 
-                to={isAuthenticated ? "/dashboard" : "/login"} 
+              <Link
+                to={isAuthenticated ? "/dashboard" : "/login"}
                 className="hidden md:block p-2 text-adv-slate hover:text-adv-orange transition-all"
                 title={t.myTickets}
               >
@@ -213,7 +275,9 @@ export default function Navbar() {
                       <div className="flex items-center justify-between px-4 pb-2 border-b border-gray-100">
                         <div className="flex items-center gap-2">
                           <Bell className="w-4 h-4 text-adv-orange" />
-                          <h3 className="font-bold text-sm text-adv-slate">{t.notifications}</h3>
+                          <h3 className="font-bold text-sm text-adv-slate">
+                            {t.notifications}
+                          </h3>
                         </div>
                         {hasUnread && (
                           <button
@@ -225,9 +289,11 @@ export default function Navbar() {
                         )}
                       </div>
 
-                      <div 
+                      <div
                         className={`overflow-y-auto overscroll-contain divide-y divide-gray-50 [scrollbar-width:thin] [scrollbar-color:#CBD5E1_transparent] ${
-                          notifications.length > 4 ? 'max-h-[295px]' : 'max-h-none'
+                          notifications.length > 4
+                            ? "max-h-[295px]"
+                            : "max-h-none"
                         }`}
                       >
                         {notifications.length === 0 ? (
@@ -236,7 +302,9 @@ export default function Navbar() {
                               <Bell className="w-5 h-5 text-adv-orange" />
                             </div>
                             <p className="text-xs font-bold text-adv-slate mb-0.5">
-                              {lang === 'lo' ? 'ຍັງບໍ່ມີການແຈ້ງເຕືອນໃໝ່' : 'No new notifications'}
+                              {lang === "lo"
+                                ? "ຍັງບໍ່ມີການແຈ້ງເຕືອນໃໝ່"
+                                : "No new notifications"}
                             </p>
                             <p className="text-[11px] text-gray-400">
                               {t.noNotifications}
@@ -250,7 +318,7 @@ export default function Navbar() {
                                 key={notif.id}
                                 onClick={() => handleNotifClick(notif)}
                                 className={`p-3 hover:bg-gray-50 cursor-pointer transition-colors flex items-start gap-3 ${
-                                  notif.isUnread ? 'bg-orange-50/30' : ''
+                                  notif.isUnread ? "bg-orange-50/30" : ""
                                 }`}
                               >
                                 <div className="w-8 h-8 rounded-xl bg-orange-100/60 text-adv-orange flex items-center justify-center shrink-0 mt-0.5">
@@ -259,14 +327,18 @@ export default function Navbar() {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center justify-between gap-1">
                                     <p className="text-xs font-bold text-adv-slate truncate">
-                                      {lang === 'lo' && notif.titleLo ? notif.titleLo : notif.title}
+                                      {lang === "lo" && notif.titleLo
+                                        ? notif.titleLo
+                                        : notif.title}
                                     </p>
                                     {notif.isUnread && (
                                       <span className="w-1.5 h-1.5 rounded-full bg-adv-orange shrink-0" />
                                     )}
                                   </div>
                                   <p className="text-[11px] text-gray-500 line-clamp-2 mt-0.5 leading-relaxed">
-                                    {lang === 'lo' && notif.messageLo ? notif.messageLo : notif.message}
+                                    {lang === "lo" && notif.messageLo
+                                      ? notif.messageLo
+                                      : notif.message}
                                   </p>
                                   <span className="text-[10px] text-gray-400 font-medium mt-1 block">
                                     {timeAgo(notif.createdAt, lang)}
@@ -279,20 +351,20 @@ export default function Navbar() {
                       </div>
 
                       <div className="px-3 py-2 border-t border-gray-100 flex items-center justify-between bg-gray-50/70">
-                        <Link 
-                          to="/notifications" 
+                        <Link
+                          to="/notifications"
                           onClick={() => setIsNotificationsOpen(false)}
                           className="text-xs font-bold text-gray-500 hover:text-adv-orange transition-colors px-1 py-0.5"
                         >
-                          {lang === 'lo' ? 'ເບິ່ງທັງໝົດ' : 'View All'}
+                          {lang === "lo" ? "ເບິ່ງທັງໝົດ" : "View All"}
                         </Link>
-                        <Link 
-                          to="/notifications?tab=settings" 
+                        <Link
+                          to="/notifications?tab=settings"
                           onClick={() => setIsNotificationsOpen(false)}
                           className="inline-flex items-center gap-1 text-xs font-bold text-adv-orange hover:text-orange-600 transition-colors px-1 py-0.5"
                         >
                           <Settings className="w-3.5 h-3.5" />
-                          <span>{lang === 'lo' ? 'ຕັ້ງຄ່າ' : 'Settings'}</span>
+                          <span>{lang === "lo" ? "ຕັ້ງຄ່າ" : "Settings"}</span>
                         </Link>
                       </div>
                     </motion.div>
@@ -300,22 +372,25 @@ export default function Navbar() {
                 </AnimatePresence>
               </div>
 
-              <Link 
-                to={isAuthenticated ? "/account" : "/login"} 
+              <Link
+                to={isAuthenticated ? "/account" : "/login"}
                 className="hidden sm:block p-2 text-adv-slate hover:text-adv-orange transition-all"
                 title={t.account}
               >
                 <User className="w-5 h-5" />
               </Link>
-              
-
             </div>
           </div>
         </div>
       </nav>
-      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+      />
       <AnimatePresence>
-        {showOrganizerPhoneModal && <OrganizerPhoneModal onClose={closeOrganizerPhoneModal} />}
+        {showOrganizerPhoneModal && (
+          <OrganizerPhoneModal onClose={closeOrganizerPhoneModal} />
+        )}
       </AnimatePresence>
 
       {/* Notification Detail Slide-over */}
@@ -330,64 +405,85 @@ export default function Navbar() {
               onClick={() => setSelectedNotif(null)}
               className="fixed inset-0 bg-adv-slate/20 backdrop-blur-sm z-[100]"
             />
-            
+
             {/* Panel */}
             <motion.div
-              initial={{ x: '100%' }}
+              initial={{ x: "100%" }}
               animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl z-[110] flex flex-col"
             >
               <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <button 
+                  <button
                     onClick={() => setSelectedNotif(null)}
                     className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
                   >
                     <ArrowLeft className="w-5 h-5 text-adv-slate" />
                   </button>
-                  <h2 className="font-bold text-lg text-adv-slate">{t.notificationDetails}</h2>
+                  <h2 className="font-bold text-lg text-adv-slate">
+                    {t.notificationDetails}
+                  </h2>
                 </div>
-                <button 
+                <button
                   onClick={() => setSelectedNotif(null)}
                   className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors"
                 >
                   <X className="w-5 h-5 text-gray-400" />
                 </button>
               </div>
-              
+
               <div className="flex-1 overflow-y-auto p-8">
-                <div className={`w-16 h-16 rounded-[2rem] flex items-center justify-center mb-8 ${
-                  selectedNotif.type === 'upcomingEvent' ? 'bg-blue-50 text-blue-500' :
-                  selectedNotif.type === 'verified' || selectedNotif.status === 'approved' ? 'bg-emerald-50 text-emerald-600' :
-                  selectedNotif.status === 'rejected' ? 'bg-red-50 text-red-600' :
-                  'bg-orange-50 text-adv-orange'
-                }`}>
+                <div
+                  className={`w-16 h-16 rounded-[2rem] flex items-center justify-center mb-8 ${
+                    selectedNotif.type === "upcomingEvent"
+                      ? "bg-blue-50 text-blue-500"
+                      : selectedNotif.type === "verified" ||
+                          selectedNotif.status === "approved"
+                        ? "bg-emerald-50 text-emerald-600"
+                        : selectedNotif.status === "rejected"
+                          ? "bg-red-50 text-red-600"
+                          : "bg-orange-50 text-adv-orange"
+                  }`}
+                >
                   {(() => {
                     const ModalIcon = getNavbarNotifIcon(selectedNotif);
                     return <ModalIcon className="w-8 h-8" />;
                   })()}
                 </div>
-                
+
                 <div className="space-y-6">
                   <div>
                     <span className="text-[10px] font-black uppercase tracking-widest text-adv-orange mb-2 block">
-                      {selectedNotif.status === 'approved' || selectedNotif.type === 'verified'
-                        ? (lang === 'lo' ? 'ກິດຈະກຳໄດ້ຮັບອະນຸມັດ' : 'Event Approved')
-                        : selectedNotif.status === 'rejected'
-                        ? (lang === 'lo' ? 'ກິດຈະກຳຖືກປະຕິເສດ' : 'Event Rejected')
-                        : selectedNotif.type === 'upcomingEvent' ? t.upcomingEvent : t.noted}
+                      {selectedNotif.status === "approved" ||
+                      selectedNotif.type === "verified"
+                        ? lang === "lo"
+                          ? "ກິດຈະກຳໄດ້ຮັບອະນຸມັດ"
+                          : "Event Approved"
+                        : selectedNotif.status === "rejected"
+                          ? lang === "lo"
+                            ? "ກິດຈະກຳຖືກປະຕິເສດ"
+                            : "Event Rejected"
+                          : selectedNotif.type === "upcomingEvent"
+                            ? t.upcomingEvent
+                            : t.noted}
                     </span>
                     <h3 className="text-2xl font-bold text-adv-slate leading-tight font-display">
-                      {lang === 'lo' && selectedNotif.titleLo ? selectedNotif.titleLo : selectedNotif.title}
+                      {lang === "lo" && selectedNotif.titleLo
+                        ? selectedNotif.titleLo
+                        : selectedNotif.title}
                     </h3>
-                    <p className="text-sm text-gray-400 font-medium mt-2">{timeAgo(selectedNotif.createdAt, lang)}</p>
+                    <p className="text-sm text-gray-400 font-medium mt-2">
+                      {timeAgo(selectedNotif.createdAt, lang)}
+                    </p>
                   </div>
-                  
+
                   <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100">
                     <p className="text-adv-slate leading-relaxed font-medium">
-                      {lang === 'lo' && selectedNotif.messageLo ? selectedNotif.messageLo : selectedNotif.message}
+                      {lang === "lo" && selectedNotif.messageLo
+                        ? selectedNotif.messageLo
+                        : selectedNotif.message}
                     </p>
                   </div>
 
@@ -396,9 +492,13 @@ export default function Navbar() {
                       <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
                       <div>
                         <h5 className="text-xs font-bold text-red-800 uppercase tracking-wider">
-                          {lang === 'lo' ? 'ເຫດຜົນການປະຕິເສດ' : 'Rejection Reason'}
+                          {lang === "lo"
+                            ? "ເຫດຜົນການປະຕິເສດ"
+                            : "Rejection Reason"}
                         </h5>
-                        <p className="text-xs text-red-700 mt-1">{selectedNotif.rejectionReason}</p>
+                        <p className="text-xs text-red-700 mt-1">
+                          {selectedNotif.rejectionReason}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -409,27 +509,34 @@ export default function Navbar() {
                       onClick={() => setSelectedNotif(null)}
                       className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-adv-orange text-white font-bold text-sm rounded-2xl hover:bg-orange-600 transition-colors shadow-sm"
                     >
-                      <span>{lang === 'lo' ? 'ເບິ່ງລາຍລະອຽດໃນບັນຊີ' : 'View in Account'}</span>
+                      <span>
+                        {lang === "lo"
+                          ? "ເບິ່ງລາຍລະອຽດໃນບັນຊີ"
+                          : "View in Account"}
+                      </span>
                       <ChevronRight className="w-4 h-4" />
                     </Link>
                   )}
-                  
-                  {selectedNotif.type === 'upcomingEvent' && (
+
+                  {selectedNotif.type === "upcomingEvent" && (
                     <div className="bg-blue-50/50 p-6 rounded-3xl border border-blue-100 flex items-start gap-4">
                       <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
                         <Calendar className="w-5 h-5 text-blue-500" />
                       </div>
                       <div>
-                        <h4 className="text-sm font-bold text-blue-600 mb-1">Event Preparation</h4>
+                        <h4 className="text-sm font-bold text-blue-600 mb-1">
+                          Event Preparation
+                        </h4>
                         <p className="text-xs text-blue-400 leading-relaxed font-medium">
-                          Make sure to check the local weather and have your digital ticket ready for scanning.
+                          Make sure to check the local weather and have your
+                          digital ticket ready for scanning.
                         </p>
                       </div>
                     </div>
                   )}
 
                   <div className="pt-8">
-                    <button 
+                    <button
                       onClick={() => setSelectedNotif(null)}
                       className="w-full py-4 bg-adv-slate text-white rounded-2xl font-bold hover:bg-black transition-all shadow-lg shadow-adv-slate/10"
                     >
@@ -462,7 +569,7 @@ export default function Navbar() {
             >
               <X className="w-6 h-6" />
             </motion.button>
-            
+
             <motion.img
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -475,16 +582,13 @@ export default function Navbar() {
           </motion.div>
         )}
       </AnimatePresence>
-
-
     </>
   );
 }
 
 const categories_list = [
-  { id: 'workshop', label: 'Workshops', icon: Lightbulb },
-  { id: 'sports', label: 'Adventure and Tour', icon: Mountain },
-  { id: 'festival', label: 'Festivals', icon: PartyPopper },
-  { id: 'voucher', label: 'Voucher and Booking', icon: Ticket },
+  { id: "workshop", label: "Workshops", icon: Lightbulb },
+  { id: "sports", label: "Adventure and Tour", icon: Mountain },
+  { id: "festival", label: "Festivals", icon: PartyPopper },
+  { id: "voucher", label: "Voucher and Booking", icon: Ticket },
 ];
-
