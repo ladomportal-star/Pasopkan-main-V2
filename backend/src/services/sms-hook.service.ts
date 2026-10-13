@@ -130,15 +130,43 @@ async function sendThroughWenova(
   } catch {
     throw new SmsHookError(502, "SMS gateway response is uncertain");
   }
-  const envelope = result as { success?: unknown; code?: unknown; data?: { resultCode?: unknown } };
-  const resultCode = envelope?.data?.resultCode;
-  if (response.ok && envelope?.success === true && Number(resultCode) === 20000) return;
+  const envelope =
+    result !== null && typeof result === "object" && !Array.isArray(result)
+      ? (result as {
+          success?: unknown;
+          code?: unknown;
+          statusCode?: unknown;
+          data?: unknown;
+        })
+      : null;
+  const data = envelope?.data;
+  const hasData = data !== null && typeof data === "object" && !Array.isArray(data);
+  const hasResultCode = hasData && Object.hasOwn(data, "resultCode");
+  const resultCode = hasResultCode ? (data as { resultCode?: unknown }).resultCode : undefined;
+  const topCode = envelope?.code == null ? undefined : Number(envelope.code);
+  const reportedStatus = envelope?.statusCode == null ? undefined : Number(envelope.statusCode);
+  const statusAgrees =
+    reportedStatus === undefined ||
+    (Number.isInteger(reportedStatus) && reportedStatus >= 200 && reportedStatus < 300);
+  const topCodeAgrees = topCode === undefined || topCode === 90001 || topCode === 20000;
+  // Wenova documents both a gateway resultCode of 20000 and a successful
+  // envelope with data: {}. A null resultCode means delivery is queued/pending;
+  // the provider has accepted the request even though handset delivery is not confirmed.
+  if (
+    response.ok &&
+    envelope?.success === true &&
+    statusAgrees &&
+    topCodeAgrees &&
+    (hasResultCode ? resultCode === null || Number(resultCode) === 20000 : hasData)
+  )
+    return;
 
   // Explicit Wenova business errors may be retried after configuration/balance is fixed.
-  const code = Number(resultCode ?? envelope?.code);
+  const code = Number(resultCode ?? topCode);
   const hasGatewayResult = resultCode !== null && resultCode !== undefined;
   const explicitlyRejected =
     (hasGatewayResult && Number.isInteger(code) && code !== 20000) ||
+    (topCode !== undefined && Number.isInteger(topCode) && !topCodeAgrees) ||
     envelope?.success === false ||
     (response.status >= 400 && response.status < 500);
   if (explicitlyRejected) {
@@ -146,6 +174,10 @@ async function sendThroughWenova(
     throw new WenovaExplicitRejection(code === 30501 ? 429 : 502, "SMS gateway rejected delivery");
   }
   // A pending/unknown response must not be treated as delivered or retried automatically.
+  logger.warn(
+    { httpStatus: response.status, hasData, hasResultCode, success: envelope?.success === true },
+    "Wenova SMS response was not confirmed",
+  );
   throw new SmsHookError(502, "SMS gateway response is uncertain");
 }
 
@@ -173,6 +205,7 @@ export async function deliverSmsHook(body: Buffer, headers: HookHeaders) {
 
   try {
     await sendThroughWenova(phoneNumber, otp, config);
+    // "sent" records provider acceptance (including a queued SMS), not handset delivery.
     await prisma.smsHookDelivery.update({
       where: { id },
       data: { status: "sent", completedAt: new Date() },

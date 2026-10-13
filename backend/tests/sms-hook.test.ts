@@ -69,7 +69,13 @@ describe("Supabase Send SMS hook -> Wenova", () => {
       "fetch",
       vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ success: true, data: { resultCode: 20000 } }),
+        status: 200,
+        json: async () => ({
+          success: true,
+          message: "Request successful",
+          data: {},
+          statusCode: 200,
+        }),
       }),
     );
   });
@@ -114,6 +120,34 @@ describe("Supabase Send SMS hook -> Wenova", () => {
     expect(JSON.parse(String(options?.body)).phoneNumber).toBe("2033334444");
   });
 
+  it("also accepts Wenova's gateway result code on confirmed success", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, data: { resultCode: 20000 } }),
+      }),
+    );
+    const event = signed(phoneChange);
+    expect((await postSigned(event)).status).toBe(200);
+    expect(db.get(event.id)?.status).toBe("sent");
+  });
+
+  it("accepts a documented success envelope with a generic success code", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, code: 90001, data: {} }),
+      }),
+    );
+    const event = signed(phoneChange);
+    expect((await postSigned(event)).status).toBe(200);
+    expect(db.get(event.id)?.status).toBe("sent");
+  });
+
   it("rejects invalid signatures and stale timestamps without contacting Wenova", async () => {
     const event = signed(phoneChange);
     expect((await postSigned(event, "v1,invalid")).status).toBe(401);
@@ -151,6 +185,30 @@ describe("Supabase Send SMS hook -> Wenova", () => {
     expect(db.size).toBe(0);
   });
 
+  it("does not trust a success flag paired with a business error or HTTP failure", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, code: 30105, data: {} }),
+      }),
+    );
+    expect((await postSigned(signed(phoneChange, "msg_business_error"))).status).toBe(502);
+    expect(db.size).toBe(0);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({ success: true, data: {} }),
+      }),
+    );
+    expect((await postSigned(signed(phoneChange, "msg_http_error"))).status).toBe(502);
+    expect(db.size).toBe(0);
+  });
+
   it("holds an ambiguous timeout instead of paying twice", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout")));
     const event = signed(phoneChange);
@@ -160,7 +218,7 @@ describe("Supabase Send SMS hook -> Wenova", () => {
     expect(db.get(event.id)?.status).toBe("pending");
   });
 
-  it("holds a gateway-pending response even when the outer API reports success", async () => {
+  it("accepts a queued gateway response without sending the same hook twice", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -170,9 +228,23 @@ describe("Supabase Send SMS hook -> Wenova", () => {
       }),
     );
     const event = signed(phoneChange);
-    expect((await postSigned(event)).status).toBe(502);
-    expect((await postSigned(event)).status).toBe(503);
+    expect((await postSigned(event)).status).toBe(200);
+    expect((await postSigned(event)).status).toBe(200);
     expect(fetch).toHaveBeenCalledTimes(1);
+    expect(db.get(event.id)?.status).toBe("sent");
+  });
+
+  it("holds a success flag without the documented data object", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true }),
+      }),
+    );
+    const event = signed(phoneChange);
+    expect((await postSigned(event)).status).toBe(502);
     expect(db.get(event.id)?.status).toBe("pending");
   });
 });
