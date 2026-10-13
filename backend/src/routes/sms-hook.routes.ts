@@ -20,7 +20,8 @@ router.post(
         timestamp: req.header("webhook-timestamp"),
         signature: req.header("webhook-signature"),
       });
-      return res.status(200).end();
+      // Supabase Auth requires a JSON content type even when this hook has no output.
+      return res.status(200).json({});
     } catch (error) {
       const status = error instanceof SmsHookError ? error.status : 503;
       const message = error instanceof SmsHookError ? error.message : "SMS delivery unavailable";

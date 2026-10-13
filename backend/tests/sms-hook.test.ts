@@ -1,4 +1,6 @@
 import { createHmac, randomBytes } from "node:crypto";
+import express from "express";
+import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const db = vi.hoisted(() => new Map<string, { payloadHash: string; status: string }>());
@@ -17,6 +19,7 @@ process.env.WENOVA_SMS_SCRIPT_ID = "";
 process.env.WENOVA_SMS_HEADER = "WNV-OTP";
 process.env.WENOVA_SMS_API_URL = "https://apimicroservices.wenova.fun/sms/package";
 const { deliverSmsHook } = await import("../src/services/sms-hook.service.ts");
+const { default: smsHookRoutes } = await import("../src/routes/sms-hook.routes.ts");
 
 function signed(body: object, id = "msg_test_1", time = Math.floor(Date.now() / 1000)) {
   const raw = JSON.stringify(body);
@@ -78,6 +81,24 @@ describe("Supabase Send SMS hook -> Wenova", () => {
         }),
       }),
     );
+  });
+
+  it("returns a JSON response to Supabase after successful SMS delivery", async () => {
+    const app = express();
+    app.use("/api", smsHookRoutes);
+    const event = signed(phoneChange);
+    const response = await request(app)
+      .post("/api/auth-hooks/send-sms")
+      .set("Content-Type", "application/json")
+      .set("webhook-id", event.id)
+      .set("webhook-timestamp", String(event.time))
+      .set("webhook-signature", event.signature)
+      .send(event.raw);
+
+    expect(response.status).toBe(200);
+    expect(response.headers["content-type"]).toMatch(/^application\/json\b/);
+    expect(response.body).toEqual({});
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it("sends the new phone number, Supabase OTP, and package billing only once", async () => {
