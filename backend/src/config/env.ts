@@ -47,6 +47,13 @@ const schema = z.object({
   // to the frontend or commit it. Used by the media storage service.
   SUPABASE_SERVICE_ROLE_KEY: z.string().trim().optional().default(""),
 
+  // Supabase Send SMS HTTP hook -> Wenova. Secrets are server-only.
+  SUPABASE_SEND_SMS_HOOK_SECRET: z.string().trim().optional().default(""),
+  WENOVA_SMS_TOKEN: z.string().trim().optional().default(""),
+  WENOVA_SMS_SCRIPT_ID: z.string().trim().optional().default(""),
+  WENOVA_SMS_HEADER: z.string().trim().optional().default(""),
+  WENOVA_SMS_API_URL: z.string().url().default("https://apimicroservices.wenova.fun/sms/package"),
+
   FRONTEND_DIST: z.string().optional().default(""),
 
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
@@ -88,6 +95,13 @@ export const env = {
   supabaseUrl: e.SUPABASE_URL.replace(/\/+$/, ""),
   supabasePublishableKey: e.SUPABASE_PUBLISHABLE_KEY || e.SUPABASE_ANON_KEY,
   supabaseServiceRoleKey: e.SUPABASE_SERVICE_ROLE_KEY,
+  smsHook: {
+    secret: e.SUPABASE_SEND_SMS_HOOK_SECRET,
+    wenovaToken: e.WENOVA_SMS_TOKEN,
+    wenovaScriptId: e.WENOVA_SMS_SCRIPT_ID,
+    header: e.WENOVA_SMS_HEADER,
+    apiUrl: e.WENOVA_SMS_API_URL,
+  },
   frontendDist: e.FRONTEND_DIST,
 
   rateLimit: { windowMs: e.RATE_LIMIT_WINDOW_MS, max: e.RATE_LIMIT_MAX },
@@ -113,6 +127,12 @@ export function checkEnv(warn: (msg: string) => void) {
   }
   if (!env.supabasePublishableKey) {
     warn("SUPABASE_PUBLISHABLE_KEY not set - phone OTP endpoints will return 503.");
+  }
+  if (
+    env.smsHook.secret &&
+    (!env.smsHook.header || (!env.smsHook.wenovaToken && !env.smsHook.wenovaScriptId))
+  ) {
+    warn("Send SMS hook is only partially configured - Wenova delivery will return 503.");
   }
   if (env.isProd && env.corsOrigins.length === 0) {
     warn("CORS_ORIGIN not set in production - all cross-origin browser requests will be blocked.");

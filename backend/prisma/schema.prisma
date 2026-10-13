@@ -340,3 +340,13 @@ model AuditLog {
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   @@index([entityType, entityId, createdAt])
 }
+
+// Supabase webhook idempotency; contains no phone number, token, or OTP.
+model SmsHookDelivery {
+  id String @id
+  payloadHash String
+  status String @default("pending")
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  completedAt DateTime? @db.Timestamptz(3)
+  @@index([createdAt])
+}

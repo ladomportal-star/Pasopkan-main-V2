@@ -16,6 +16,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "node scripts/test-prisma.mjs",
+    "test:sms-hook": "vitest run --config vitest.sms-hook.config.ts",
     "test:watch": "vitest",
     "check": "npm run typecheck && npm run lint && npm run test",
     "clean": "rimraf dist",
