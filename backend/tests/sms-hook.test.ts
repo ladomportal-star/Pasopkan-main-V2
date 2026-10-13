@@ -90,6 +90,30 @@ describe("Supabase Send SMS hook -> Wenova", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
+  it.each(["8562033334444", "+8562033334444", "02033334444", "2033334444"])(
+    "accepts a valid Lao recipient in the %s format",
+    async (phone) => {
+      expect((await postSigned(signed({ user: { phone }, sms: { otp: "012345" } }))).status).toBe(
+        200,
+      );
+      const [, options] = vi.mocked(fetch).mock.calls[0];
+      expect(JSON.parse(String(options?.body))).toMatchObject({
+        phoneNumber: "2033334444",
+        message: "Pasopkan verification code: 012345",
+      });
+    },
+  );
+
+  it("uses the account phone when optional recipient fields are blank", async () => {
+    const event = signed({
+      user: { phone: "+8562033334444", phone_change: "" },
+      sms: { phone: "", otp: "123456" },
+    });
+    expect((await postSigned(event)).status).toBe(200);
+    const [, options] = vi.mocked(fetch).mock.calls[0];
+    expect(JSON.parse(String(options?.body)).phoneNumber).toBe("2033334444");
+  });
+
   it("rejects invalid signatures and stale timestamps without contacting Wenova", async () => {
     const event = signed(phoneChange);
     expect((await postSigned(event, "v1,invalid")).status).toBe(401);
@@ -103,6 +127,13 @@ describe("Supabase Send SMS hook -> Wenova", () => {
   it("rejects malformed recipients and OTPs", async () => {
     const event = signed({ user: { phone: "+12025550123" }, sms: { otp: "123456" } });
     expect((await postSigned(event)).status).toBe(400);
+    expect(
+      (
+        await postSigned(
+          signed({ user: { phone: "+8562033334444" }, sms: { otp: "not-a-code" } }, "msg_bad_otp"),
+        )
+      ).status,
+    ).toBe(400);
     expect(fetch).not.toHaveBeenCalled();
   });
 

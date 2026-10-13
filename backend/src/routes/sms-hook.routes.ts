@@ -24,6 +24,7 @@ router.post(
     } catch (error) {
       const status = error instanceof SmsHookError ? error.status : 503;
       const message = error instanceof SmsHookError ? error.message : "SMS delivery unavailable";
+      if (status === 400) logger.warn({ reason: message }, "SMS hook payload rejected");
       if (!(error instanceof SmsHookError))
         logger.error("SMS hook failed without provider details");
       return res.status(status).json({ error: { http_code: status, message } });

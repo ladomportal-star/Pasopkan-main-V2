@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { env } from "../config/env.ts";
 import { prisma } from "../lib/prisma.ts";
 import { logger } from "../utils/logger.ts";
+import { isLaoMobilePhone, normalizeLaoMobilePhone } from "../utils/phone.ts";
 
 export class SmsHookError extends Error {
   constructor(
@@ -65,13 +66,20 @@ function parsePayload(body: Buffer) {
     throw new SmsHookError(400, "Invalid SMS hook payload");
   }
   // sms.phone is the actual recipient for phone_change; user.phone may still be the old number.
-  const recipient = payload.sms?.phone ?? payload.user?.phone_change ?? payload.user?.phone;
-  const match = typeof recipient === "string" && /^\+856(20\d{8})$/.exec(recipient);
+  // Supabase can include phone_change as an empty string for ordinary sign-in.
+  const recipient = [payload.sms?.phone, payload.user?.phone_change, payload.user?.phone].find(
+    (value): value is string => typeof value === "string" && value.trim().length > 0,
+  );
   const otp = payload.sms?.otp;
-  if (!match || typeof otp !== "string" || !/^\d{4,10}$/.test(otp)) {
-    throw new SmsHookError(400, "Invalid SMS hook payload");
+  // Supabase may store a Lao phone with or without its leading +. Normalize only
+  // recognized Lao mobile formats; never send to an arbitrary recipient.
+  if (typeof recipient !== "string") throw new SmsHookError(400, "Invalid SMS hook recipient");
+  const normalized = normalizeLaoMobilePhone(recipient);
+  if (!isLaoMobilePhone(normalized)) throw new SmsHookError(400, "Invalid SMS hook recipient");
+  if (typeof otp !== "string" || !/^\d{4,10}$/.test(otp)) {
+    throw new SmsHookError(400, "Invalid SMS hook OTP");
   }
-  return { phoneNumber: match[1], otp };
+  return { phoneNumber: normalized.slice(4), otp };
 }
 
 function checkedConfig() {
