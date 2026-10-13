@@ -169,7 +169,7 @@ export async function listEvents(query: {
     ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
   });
   const events = rows.slice(0, query.limit);
-  return { events, nextCursor: rows.length > query.limit ? events.at(-1)?.id ?? null : null };
+  return { events, nextCursor: rows.length > query.limit ? (events.at(-1)?.id ?? null) : null };
 }
 export async function getEvent(ref: string, uid?: string) {
   const event = await db.event.findFirst({ where: refWhere(ref), include });

@@ -78,7 +78,13 @@ describe("events", () => {
       [first.id, second.id].sort(),
     );
     expect([pageOne.body.events[0].id, pageTwo.body.events[0].id]).not.toContain(unrelated.id);
-    expect((await request(app).get("/api/events?mine=true").set(await as("ordinary-user"))).body.events).toEqual([]);
+    expect(
+      (
+        await request(app)
+          .get("/api/events?mine=true")
+          .set(await as("ordinary-user"))
+      ).body.events,
+    ).toEqual([]);
   });
 
   it("only the owner (or an admin) may update an event", async () => {
