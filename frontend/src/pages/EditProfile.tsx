@@ -90,6 +90,7 @@ export default function EditProfile() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -173,6 +174,7 @@ export default function EditProfile() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+    setSaveError(false);
 
     try {
       const payload = {
@@ -180,18 +182,17 @@ export default function EditProfile() {
         dateOfBirth: formData.dateOfBirth || formData.dob || '',
         dob: formData.dateOfBirth || formData.dob || '',
       };
-      safeStorage.setItem('pasopkan_user_profile', JSON.stringify(payload));
       await syncProfileToSupabase(payload);
+      setShowSuccess(true);
+      setTimeout(() => {
+        navigate('/account');
+      }, 5000);
     } catch (err) {
       console.error(err);
+      setSaveError(true);
+    } finally {
+      setIsSaving(false);
     }
-    
-    setIsSaving(false);
-    setShowSuccess(true);
-    
-    setTimeout(() => {
-      navigate('/account');
-    }, 5000);
   };
 
   return (
@@ -213,6 +214,11 @@ export default function EditProfile() {
         <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-adv-slate mb-5">{t.editProfile}</h1>
 
         <form onSubmit={handleSubmit} className="space-y-8">
+          {saveError && (
+            <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {lang === 'lo' ? 'ບັນທຶກໂປຣໄຟລ໌ບໍ່ສຳເລັດ. ກະລຸນາລອງໃໝ່.' : 'Could not save your profile. Please try again.'}
+            </p>
+          )}
           {/* Profile Picture */}
           <div className="bg-white border border-gray-100 rounded-3xl p-6 flex flex-col items-center sm:flex-row gap-6 shadow-sm">
             <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>

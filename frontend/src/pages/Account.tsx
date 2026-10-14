@@ -805,14 +805,18 @@ export default function Account() {
             </div>
             <div className="flex-1 text-center sm:text-left min-w-0">
               <h2 className="text-xl sm:text-2xl font-bold truncate">
-                {user?.name || user?.displayName || [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email || "Account"}
+                {[user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Pasopkan"}
               </h2>
-              <p className="text-gray-400 font-medium mb-1 text-xs sm:text-sm truncate">
-                {user?.email || user?.phone || ""}
-              </p>
-              <p className="text-gray-400/80 font-medium text-[10px] sm:text-xs truncate">
-                Id: {user?.id || "N/A"}
-              </p>
+              {user?.email && (
+                <p className="text-gray-400 font-medium mb-1 text-xs sm:text-sm truncate">
+                  {user.email}
+                </p>
+              )}
+              {user?.publicId && (
+                <p className="text-gray-400/80 font-medium text-[10px] sm:text-xs truncate">
+                  ID: {user.publicId}
+                </p>
+              )}
             </div>
           </div>
 

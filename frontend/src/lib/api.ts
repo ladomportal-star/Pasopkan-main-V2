@@ -42,6 +42,7 @@ interface RequestOptions {
 export interface BackendUser {
   id: string;
   authId: string;
+  publicId: string | null;
   email: string;
   firstName: string | null;
   lastName: string | null;

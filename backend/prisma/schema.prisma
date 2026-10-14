@@ -58,6 +58,7 @@ enum RefundStatus {
 model User {
   id String @id @default(uuid()) @db.Uuid
   authId String @unique
+  publicId String? @unique @db.VarChar(16)
   email String @default("")
   authEmail String?
   firstName String?

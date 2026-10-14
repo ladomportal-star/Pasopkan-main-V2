@@ -7,6 +7,7 @@ import { api, BackendUser } from '../lib/api';
 import DotsLoader from '../components/DotsLoader';
 
 export type AppUser = User & {
+  publicId?: string;
   name?: string;
   firstName?: string;
   lastName?: string;
@@ -105,6 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const name = [backendUser.firstName, backendUser.lastName].filter(Boolean).join(' ');
     return {
       ...supabaseUser,
+      publicId: backendUser.publicId ?? undefined,
       name: name || undefined,
       firstName: backendUser.firstName ?? undefined,
       lastName: backendUser.lastName ?? undefined,
