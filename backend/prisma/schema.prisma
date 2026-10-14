@@ -123,6 +123,11 @@ model Event {
   description String?
   category String?
   eventType String?
+  eventPrivacy String @default("public")
+  durationEn String?
+  durationLo String?
+  cancellationPolicy String?
+  attendeeMessage String?
   status EventStatus @default(draft)
   dateType String @default("fixed")
   startDate DateTime? @db.Date
@@ -142,6 +147,7 @@ model Event {
   galleryUrls Json?
   languages Json?
   zoneImageUrl String?
+  hasSeating Boolean @default(false)
   allowReviews Boolean @default(true)
   allowRefunds Boolean @default(false)
   showRemainingTickets Boolean @default(true)
@@ -158,10 +164,27 @@ model Event {
   tiers TicketTier[]
   dates EventDate[]
   coupons Coupon[]
+  privateDetails EventPrivateDetails?
   orders Order[]
   staffAssignments EventStaff[]
   @@index([status, createdAt])
   @@index([organizerId])
+}
+
+model EventPrivateDetails {
+  eventId String @id @db.Uuid
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  bankName String?
+  accountNumber String?
+  accountHolder String?
+  onlinePlatform String?
+  onlineMeetingUrl String?
+  onlinePasscode String?
+  onlineInstructions String?
+  bookingSlotCapacities Json?
+  attendeeQuestions Json?
+  ticketSaleWindows Json?
+  organizerSocialLinks Json?
 }
 
 model EventDate {

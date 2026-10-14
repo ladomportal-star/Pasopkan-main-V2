@@ -33,6 +33,11 @@ export const createEventBody = z.object({
   description: z.string().optional(),
   category: z.enum(["Sports", "Workshop", "Festival", "Voucher", "Other"]).optional(),
   eventType: z.string().optional(),
+  eventPrivacy: z.enum(["public", "private"]).default("public"),
+  durationEn: z.string().max(500).nullish(),
+  durationLo: z.string().max(500).nullish(),
+  cancellationPolicy: z.string().max(10000).nullish(),
+  attendeeMessage: z.string().max(10000).nullish(),
   status: z
     .enum([
       "draft",
@@ -84,6 +89,22 @@ export const createEventBody = z.object({
     })
     .optional(),
 
+  privateDetails: z
+    .object({
+      bankName: z.string().max(200).nullish(),
+      accountNumber: z.string().max(100).nullish(),
+      accountHolder: z.string().max(200).nullish(),
+      onlinePlatform: z.string().max(100).nullish(),
+      onlineMeetingUrl: z.string().max(2000).nullish(),
+      onlinePasscode: z.string().max(200).nullish(),
+      onlineInstructions: z.string().max(10000).nullish(),
+      bookingSlotCapacities: z.record(z.string(), z.coerce.number().int().nonnegative()).nullish(),
+      attendeeQuestions: z.array(z.record(z.string(), z.unknown())).max(50).nullish(),
+      ticketSaleWindows: z.array(z.record(z.string(), z.unknown())).max(100).nullish(),
+      organizerSocialLinks: z.record(z.string(), z.string().max(2000)).nullish(),
+    })
+    .optional(),
+
   tiers: z.array(tier).default([]),
   dates: z.array(eventDate).default([]),
   coupons: z.array(coupon).default([]),
@@ -92,6 +113,26 @@ export const createEventBody = z.object({
 // Partial for PATCH-style updates. The child arrays drop their `.default([])`
 // so "not sent" stays undefined and never wipes existing tiers/dates/etc.
 export const updateEventBody = createEventBody.partial().extend({
+  eventPrivacy: z.enum(["public", "private"]).optional(),
+  status: z
+    .enum([
+      "draft",
+      "pending_review",
+      "rejected",
+      "published",
+      "sold_out",
+      "cancelled",
+      "completed",
+    ])
+    .optional(),
+  dateType: z.enum(["fixed", "flexible", "booking"]).optional(),
+  timezone: z.string().optional(),
+  hasSeating: z.coerce.boolean().optional(),
+  allowReviews: z.coerce.boolean().optional(),
+  allowRefunds: z.coerce.boolean().optional(),
+  showRemainingTickets: z.coerce.boolean().optional(),
+  enableCountdown: z.coerce.boolean().optional(),
+  requireEveryTicketInfo: z.coerce.boolean().optional(),
   tiers: z.array(tier).optional(),
   dates: z.array(eventDate).optional(),
   coupons: z.array(coupon).optional(),

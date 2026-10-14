@@ -86,7 +86,6 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLanguage } from "../context/LanguageContext";
-import { safeStorage } from "../lib/storage";
 import { api, listAllMyEvents } from "../lib/api";
 import { fromBackendEvent, toEventPayload } from "../lib/eventPayload";
 import { useAuth } from "../context/AuthContext";
@@ -115,7 +114,6 @@ import {
 import { renderTermIcon } from "../lib/termIcons";
 import SEO from "../components/SEO";
 import { compressImage } from "../lib/imageCompression";
-import EventDetailGraphSection from "../components/EventDetailGraphSection";
 
 const PAYMENT_BANKS = [
   {
@@ -844,7 +842,6 @@ export interface AttendeeQuestion {
 export default function CreateEvent() {
   const navigate = useNavigate();
   const { user, token } = useAuth();
-  const storageKey = (name: string) => `organizer:${user?.id ?? "signed-out"}:${name}`;
   const { lang, toggleLanguage } = useLanguage();
   const t = translations[lang] as unknown as Record<string, string>;
   const currency = lang === "lo" ? "ກີບ" : "Kip";
@@ -1655,16 +1652,17 @@ export default function CreateEvent() {
     setLatitude(event.latitude);
     setLongitude(event.longitude);
     setGoogleMapsLink(event.googleMapUrl || "");
-    setOrganizerName(event.organizer || "Unknown");
+    setOrganizerName(event.organizer || "");
     setOrganizerInfo(event.organizerInfo || "");
     setOrganizerContact(event.organizerContact || "");
     setOrganizerPhone(event.organizerPhone || "");
     setOrganizerEmail(event.organizerEmail || "");
     setOrganizerLogo(event.organizerLogo || null);
     setOrganizerSocialLinks(event.organizerSocialLinks || {});
-    if (event.bankName) setBankName(event.bankName);
-    if (event.accountNumber) setAccountNumber(event.accountNumber);
-    if (event.accountHolder) setAccountHolder(event.accountHolder);
+    setAttendeeQuestions(event.attendeeQuestions || []);
+    setBankName(event.bankName || "");
+    setAccountNumber(event.accountNumber || "");
+    setAccountHolder(event.accountHolder || "");
     setEventType(event.eventType || "offline");
     setOnlinePlatform(event.onlinePlatform || "zoom");
     setOnlineMeetingUrl(event.onlineMeetingUrl || "");
@@ -2748,129 +2746,6 @@ export default function CreateEvent() {
     }
   };
 
-  useEffect(() => {
-    // If admin is editing an existing event or user is in edit mode, do not restore drafts or overwrite with defaults
-    if (searchParams.get("adminEdit") || searchParams.get("editId")) {
-      return;
-    }
-
-    const savedDraft = safeStorage.getItem(storageKey("eventDraft"));
-    if (savedDraft) {
-      try {
-        const parsed = JSON.parse(savedDraft);
-        if (parsed.eventName) setEventName(parsed.eventName);
-        if (parsed.venueName) setVenueName(parsed.venueName);
-        if (parsed.province) setProvince(parsed.province);
-        if (parsed.district) setDistrict(parsed.district);
-        if (parsed.streetAddress) setStreetAddress(parsed.streetAddress);
-        if (parsed.organizerName) setOrganizerName(parsed.organizerName);
-        if (parsed.organizerPhone) setOrganizerPhone(parsed.organizerPhone);
-        if (parsed.organizerEmail) setOrganizerEmail(parsed.organizerEmail);
-        if (parsed.organizerInfo) setOrganizerInfo(parsed.organizerInfo);
-        if (parsed.organizerContact)
-          setOrganizerContact(parsed.organizerContact);
-        if (parsed.organizerLogo) setOrganizerLogo(parsed.organizerLogo);
-        if (parsed.organizerSocialLinks)
-          setOrganizerSocialLinks(parsed.organizerSocialLinks);
-        if (parsed.eventType) setEventType(parsed.eventType);
-        if (parsed.onlinePlatform) setOnlinePlatform(parsed.onlinePlatform);
-        if (parsed.onlineMeetingUrl)
-          setOnlineMeetingUrl(parsed.onlineMeetingUrl);
-        if (parsed.onlinePasscode) setOnlinePasscode(parsed.onlinePasscode);
-        if (parsed.onlineInstructions)
-          setOnlineInstructions(parsed.onlineInstructions);
-        if (parsed.dateType) setDateType(parsed.dateType);
-        if (parsed.flexibleDateDesc)
-          setFlexibleDateDesc(parsed.flexibleDateDesc);
-        if (
-          parsed.bookingAvailableDays &&
-          Array.isArray(parsed.bookingAvailableDays)
-        )
-          setBookingAvailableDays(parsed.bookingAvailableDays);
-        if (parsed.bookingTimeSlots && Array.isArray(parsed.bookingTimeSlots))
-          setBookingTimeSlots(parsed.bookingTimeSlots);
-        if (
-          parsed.bookingSlotCapacities &&
-          typeof parsed.bookingSlotCapacities === "object"
-        )
-          setBookingSlotCapacities(parsed.bookingSlotCapacities);
-        if (parsed.activeStep) setActiveStep(parsed.activeStep);
-        if (parsed.showRemainingTickets !== undefined)
-          setShowRemainingTickets(parsed.showRemainingTickets);
-        if (parsed.allowRefunds !== undefined)
-          setAllowRefunds(parsed.allowRefunds);
-        if (parsed.maxTickets) setMaxTickets(parsed.maxTickets);
-        if (parsed.verticalImage) setVerticalImage(parsed.verticalImage);
-        if (parsed.horizontalImage) setHorizontalImage(parsed.horizontalImage);
-        if (parsed.galleryImages && Array.isArray(parsed.galleryImages))
-          setGalleryImages(parsed.galleryImages);
-
-        if (parsed.startDate) setStartDate(parsed.startDate);
-        if (parsed.startTime) setStartTime(parsed.startTime);
-        if (parsed.endDate) setEndDate(parsed.endDate);
-        if (parsed.endTime) setEndTime(parsed.endTime);
-        if (parsed.ticketTiers) setTicketTiers(parsed.ticketTiers);
-        if (parsed.enableCoupons !== undefined)
-          setEnableCoupons(parsed.enableCoupons);
-        if (parsed.coupons) setCoupons(parsed.coupons);
-
-        if (parsed.bankName) setBankName(parsed.bankName);
-        if (parsed.accountNumber) setAccountNumber(parsed.accountNumber);
-        if (parsed.accountHolder) setAccountHolder(parsed.accountHolder);
-
-        if (parsed.hasSeating !== undefined) setHasSeating(parsed.hasSeating);
-        if (parsed.zoneImage) setZoneImage(parsed.zoneImage);
-        if (parsed.hasTimeSelection !== undefined)
-          setHasTimeSelection(parsed.hasTimeSelection);
-        if (parsed.timeSlots) setTimeSlots(parsed.timeSlots);
-        if (parsed.availableDates) setAvailableDates(parsed.availableDates);
-        if (parsed.editorContent) setEditorContent(parsed.editorContent);
-      } catch (e) {
-        console.error("Failed to parse draft", e);
-      }
-    }
-
-    // Auto-fill organizer payment information if saved previously or if organizer created events before
-    const savedPaymentInfo = safeStorage.getItem(storageKey("payment_info"));
-    let hasLoadedPay = false;
-    if (savedPaymentInfo) {
-      try {
-        const parsedPay = JSON.parse(savedPaymentInfo);
-        if (parsedPay.bankName) {
-          setBankName(parsedPay.bankName);
-          hasLoadedPay = true;
-        }
-        if (parsedPay.accountNumber) {
-          setAccountNumber(parsedPay.accountNumber);
-          hasLoadedPay = true;
-        }
-        if (parsedPay.accountHolder) {
-          setAccountHolder(parsedPay.accountHolder);
-          hasLoadedPay = true;
-        }
-      } catch (e) {
-        console.error("Failed to parse organizer payment info", e);
-      }
-    }
-
-    if (!hasLoadedPay && localEvents.length > 0) {
-      const prevWithBank = localEvents.find(
-        (e: any) => e.bankName || e.accountNumber || e.accountHolder,
-      );
-      if (prevWithBank) {
-        if (prevWithBank.bankName) setBankName(prevWithBank.bankName);
-        if (prevWithBank.accountNumber)
-          setAccountNumber(prevWithBank.accountNumber);
-        if (prevWithBank.accountHolder)
-          setAccountHolder(prevWithBank.accountHolder);
-      } else {
-        setBankName("BCEL");
-        setAccountNumber("160-12-00001234-001");
-        setAccountHolder("LAO EVENT ORGANIZER CO., LTD");
-      }
-    }
-  }, []);
-
   // Flag to avoid re-injecting innerHTML when changes originate from the editor or toolbar itself
   const isInternalEditorUpdateRef = useRef(false);
   const prevStepRef = useRef(activeStep);
@@ -2891,71 +2766,57 @@ export default function CreateEvent() {
     prevStepRef.current = activeStep;
   }, [activeStep, editorContent]);
 
+  const buildFormEvent = (status: "draft" | "pending_review") => ({
+    title: eventName.trim() || "Untitled event",
+    category: eventType === "online" ? "Workshop" : category,
+    venue: venueName, province, district, location: streetAddress,
+    latitude, longitude, googleMapUrl: googleMapsLink,
+    organizer: organizerName, organizerInfo, organizerContact, organizerPhone,
+    organizerEmail, organizerLogo, organizerSocialLinks,
+    bankName, accountNumber, accountHolder, eventType,
+    onlinePlatform, onlineMeetingUrl, onlinePasscode, onlineInstructions,
+    dateType, flexibleDateDesc, bookingAvailableDays, bookingTimeSlots,
+    bookingSlotCapacities, date: startDate, time: startTime, endDate, endTime,
+    durationEn, durationLo, languages: selectedLanguages,
+    ticketTiers: ticketTiers.filter((tier) => tier.name.trim()).map((tier) => ({
+      ...tier, price: Number(String(tier.price).replace(/,/g, "")) || 0,
+      available: Number(String(tier.quantity).replace(/,/g, "")) || 0,
+    })),
+    coupons: enableCoupons ? coupons : [], hasSeating, zoneImage,
+    availableDates: dateType === "flexible" ? availableDates : [],
+    image: verticalImage || horizontalImage || "",
+    exampleImages: galleryImages,
+    description: editorRef.current?.innerHTML || editorContent || "",
+    cancellationPolicy, showRemainingTickets, allowRefunds, allowReviews,
+    maxTickets, eventPrivacy, attendeeMessage, attendeeQuestions, status,
+  });
+
+  const draftSaveInFlight = useRef(false);
   const handleSaveDraft = async () => {
+    if (draftSaveInFlight.current || !token || eventsLoading) return;
+    if (!editingEventId && !eventName.trim()) return;
+    const existing = localEvents.find((event) => String(event.id) === String(editingEventId));
+    if (editingEventId && (!existing || existing.status !== "draft")) return;
+    draftSaveInFlight.current = true;
     setIsSavingDraft(true);
-
-    const currentHtml = editorRef.current?.innerHTML || "";
-    if (currentHtml) {
-      setEditorContent(currentHtml);
+    try {
+      const payload = toEventPayload(buildFormEvent("draft"));
+      const result = editingEventId
+        ? await api.updateEvent(String(editingEventId), payload)
+        : await api.createEvent(payload);
+      if (!result.ok || !result.data?.event) throw new Error(result.error || "Draft save failed");
+      const saved = fromBackendEvent(result.data.event);
+      setEditingEventId(saved.id);
+      setLocalEvents((events) => [saved, ...events.filter((event) => String(event.id) !== String(saved.id))]);
+      setLastSavedTime(new Date());
+      setDraftSaved(true);
+      setTimeout(() => setDraftSaved(false), 3000);
+    } catch (error) {
+      setValidationError(error instanceof Error ? error.message : "Could not save draft");
+    } finally {
+      draftSaveInFlight.current = false;
+      setIsSavingDraft(false);
     }
-
-    const draftData = {
-      eventName,
-      venueName,
-      province,
-      district,
-      streetAddress,
-      organizerName,
-      organizerPhone,
-      organizerEmail,
-      organizerInfo,
-      organizerContact,
-      organizerLogo,
-      organizerSocialLinks,
-      eventType,
-      onlinePlatform,
-      onlineMeetingUrl,
-      onlinePasscode,
-      onlineInstructions,
-      dateType,
-      flexibleDateDesc,
-      bookingAvailableDays,
-      bookingTimeSlots,
-      bookingSlotCapacities,
-      activeStep,
-      showRemainingTickets,
-      allowRefunds,
-      maxTickets,
-      verticalImage,
-      horizontalImage,
-      galleryImages,
-      startDate,
-      startTime,
-      endDate,
-      endTime,
-      ticketTiers,
-      coupons,
-      enableCoupons,
-      bankName,
-      accountNumber,
-      accountHolder,
-      hasSeating,
-      zoneImage,
-      hasTimeSelection,
-      timeSlots,
-      availableDates,
-      editorContent: currentHtml || editorContent || "",
-    };
-
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    safeStorage.setItem(storageKey("eventDraft"), JSON.stringify(draftData));
-    setLastSavedTime(new Date());
-    setIsSavingDraft(false);
-    setDraftSaved(true);
-
-    setTimeout(() => setDraftSaved(false), 3000);
   };
 
   const handleSaveDraftRef = useRef(handleSaveDraft);
@@ -3214,34 +3075,13 @@ export default function CreateEvent() {
     setEventPrivacy("public");
     setAttendeeMessage("");
 
-    // Retain saved organizer payment info if available
-    const savedPaymentInfo = safeStorage.getItem(storageKey("payment_info"));
-    if (savedPaymentInfo) {
-      try {
-        const parsedPay = JSON.parse(savedPaymentInfo);
-        if (parsedPay.bankName) setBankName(parsedPay.bankName);
-        if (parsedPay.accountNumber) setAccountNumber(parsedPay.accountNumber);
-        if (parsedPay.accountHolder) setAccountHolder(parsedPay.accountHolder);
-      } catch (e) {}
-    } else if (localEvents.length > 0) {
-      const prevWithBank = localEvents.find(
-        (e: any) => e.bankName || e.accountNumber || e.accountHolder,
-      );
-      if (prevWithBank) {
-        if (prevWithBank.bankName) setBankName(prevWithBank.bankName);
-        if (prevWithBank.accountNumber)
-          setAccountNumber(prevWithBank.accountNumber);
-        if (prevWithBank.accountHolder)
-          setAccountHolder(prevWithBank.accountHolder);
-      } else {
-        setBankName("BCEL");
-        setAccountNumber("160-12-00001234-001");
-        setAccountHolder("LAO EVENT ORGANIZER CO., LTD");
-      }
-    }
+    setBankName("");
+    setAccountNumber("");
+    setAccountHolder("");
   };
 
   const handleContinue = async () => {
+    if (draftSaveInFlight.current || isLoading) return;
     // If on Step 1..3, just go to next step without validating yet
     if (activeStep < 4) {
       setValidationError(null);
@@ -3273,26 +3113,7 @@ export default function CreateEvent() {
       setEditorContent(finalDescription);
     }
 
-    setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsLoading(false);
-    if (activeStep < 4) {
-      setActiveStep(activeStep + 1);
-    } else {
-      // Save payment info for organizer so they don't have to enter it again
-      const paymentData = {
-        bankName: bankName || "BCEL",
-        accountNumber: accountNumber || "160-12-00001234-001",
-        accountHolder: accountHolder || "LAO EVENT ORGANIZER CO., LTD",
-      };
-      safeStorage.setItem(
-        storageKey("payment_info"),
-        JSON.stringify(paymentData),
-      );
-
-      // Remove draft immediately to free up browser storage quota
-      safeStorage.removeItem(storageKey("eventDraft"));
-
+    {
       const currentEvents: any[] = [...localEvents];
 
       setIsLoading(true);
@@ -3327,13 +3148,7 @@ export default function CreateEvent() {
                 Object.keys(organizerSocialLinks).length > 0
                   ? organizerSocialLinks
                   : evt.organizerSocialLinks || {},
-              bankName: bankName || evt.bankName || "BCEL",
-              accountNumber:
-                accountNumber || evt.accountNumber || "160-12-00001234-001",
-              accountHolder:
-                accountHolder ||
-                evt.accountHolder ||
-                "LAO EVENT ORGANIZER CO., LTD",
+              bankName, accountNumber, accountHolder,
               userId: evt.userId,
               organizerId: evt.organizerId,
               createdBy: evt.createdBy,
@@ -3368,14 +3183,14 @@ export default function CreateEvent() {
                           (v) => Number(v) || 0,
                         ),
                       )
-                    : 10
+                    : 0
                   : undefined,
               date:
                 dateType === "flexible" && availableDates.length > 0
                   ? availableDates[0].date
                   : startDate ||
                     evt.date ||
-                    new Date().toISOString().split("T")[0],
+                    "",
               time:
                 dateType === "flexible" &&
                 availableDates.length > 0 &&
@@ -3383,15 +3198,15 @@ export default function CreateEvent() {
                   ? availableDates[0].startTime
                   : dateType === "booking" && bookingTimeSlots.length > 0
                     ? bookingTimeSlots[0]
-                    : startTime || evt.time || "18:00",
+                    : startTime || evt.time || "",
               endDate:
                 dateType === "flexible" && availableDates.length > 0
                   ? availableDates[availableDates.length - 1].date
                   : endDate ||
                     startDate ||
                     evt.endDate ||
-                    new Date().toISOString().split("T")[0],
-              endTime: endTime || evt.endTime || "22:00",
+                    "",
+              endTime: endTime || evt.endTime || "",
               durationEn: durationEn || evt.durationEn,
               durationLo: durationLo || evt.durationLo,
               languages:
@@ -3399,14 +3214,18 @@ export default function CreateEvent() {
                   ? selectedLanguages
                   : evt.languages || ["Lao", "English"],
               ticketTiers: ticketTiers.map((tier) => ({
-                id: tier.id ? String(tier.id) : String(Math.random()),
+                id: tier.id ? String(tier.id) : crypto.randomUUID(),
                 name: tier.name,
                 price: Number(String(tier.price).replace(/,/g, "")) || 0,
                 available:
-                  Number(String(tier.quantity).replace(/,/g, "")) || 100,
+                  Number(String(tier.quantity).replace(/,/g, "")) || 0,
                 description: tier.name + " Access",
+                saleStartDate: tier.saleStartDate,
+                saleStartTime: tier.saleStartTime,
+                saleEndDate: tier.saleEndDate,
+                saleEndTime: tier.saleEndTime,
               })),
-              coupons: coupons || evt.coupons,
+              coupons: enableCoupons ? coupons : [],
               hasSeating:
                 hasSeating !== undefined ? hasSeating : evt.hasSeating,
               zoneImage: zoneImage || evt.zoneImage,
@@ -3430,7 +3249,7 @@ export default function CreateEvent() {
                     ? [verticalImage]
                     : evt.exampleImages || [],
               description:
-                editorContent || evt.description || eventName + " description",
+                finalDescription,
               cancellationPolicy: cancellationPolicy || evt.cancellationPolicy,
               showRemainingTickets:
                 showRemainingTickets !== undefined
@@ -3440,11 +3259,13 @@ export default function CreateEvent() {
                 allowRefunds !== undefined ? allowRefunds : evt.allowRefunds,
               allowReviews:
                 allowReviews !== undefined ? allowReviews : evt.allowReviews,
+              requireEveryTicketInfo,
               maxTickets: maxTickets || evt.maxTickets,
               enableCountdown: false,
               eventPrivacy: eventPrivacy || evt.eventPrivacy,
               attendeeMessage: attendeeMessage || evt.attendeeMessage,
-              status: eventStatus || evt.status || "pending",
+              attendeeQuestions,
+              status: "pending_review",
             };
           }
           return evt;
@@ -3493,9 +3314,7 @@ export default function CreateEvent() {
           organizerEmail,
           organizerLogo,
           organizerSocialLinks,
-          bankName: bankName || "BCEL",
-          accountNumber: accountNumber || "160-12-00001234-001",
-          accountHolder: accountHolder || "LAO EVENT ORGANIZER CO., LTD",
+          bankName, accountNumber, accountHolder,
           submittedAt: new Date().toISOString().split("T")[0],
           createdAt: new Date().toISOString(),
           views: 0,
@@ -3523,12 +3342,12 @@ export default function CreateEvent() {
                       (v) => Number(v) || 0,
                     ),
                   )
-                : 10
+                : 0
               : undefined,
           date:
             dateType === "flexible" && availableDates.length > 0
               ? availableDates[0].date
-              : startDate || new Date().toISOString().split("T")[0],
+              : startDate || "",
           time:
             dateType === "flexible" &&
             availableDates.length > 0 &&
@@ -3536,12 +3355,12 @@ export default function CreateEvent() {
               ? availableDates[0].startTime
               : dateType === "booking" && bookingTimeSlots.length > 0
                 ? bookingTimeSlots[0]
-                : startTime || "18:00",
+              : startTime || "",
           endDate:
             dateType === "flexible" && availableDates.length > 0
               ? availableDates[availableDates.length - 1].date
-              : endDate || startDate || new Date().toISOString().split("T")[0],
-          endTime: endTime || "22:00",
+              : endDate || startDate || "",
+          endTime: endTime || "",
           durationEn,
           durationLo,
           languages: selectedLanguages,
@@ -3549,10 +3368,14 @@ export default function CreateEvent() {
             id: String(tier.id || Date.now()),
             name: tier.name,
             price: Number(String(tier.price).replace(/,/g, "")) || 0,
-            available: Number(String(tier.quantity).replace(/,/g, "")) || 100,
+            available: Number(String(tier.quantity).replace(/,/g, "")) || 0,
             description: tier.name + " Access",
+            saleStartDate: tier.saleStartDate,
+            saleStartTime: tier.saleStartTime,
+            saleEndDate: tier.saleEndDate,
+            saleEndTime: tier.saleEndTime,
           })),
-          coupons,
+          coupons: enableCoupons ? coupons : [],
           hasSeating: hasSeating,
           zoneImage: zoneImage,
           hasTimeSelection:
@@ -3570,23 +3393,25 @@ export default function CreateEvent() {
           image:
             verticalImage ||
             horizontalImage ||
-            "https://images.unsplash.com/photo-1540611025311-01df3cef54b5?q=80&w=2000&auto=format&fit=crop",
+            "",
           exampleImages:
             galleryImages.length > 0
               ? galleryImages
               : verticalImage
                 ? [verticalImage]
                 : [],
-          description: editorContent || eventName + " description",
+          description: finalDescription,
           cancellationPolicy,
           showRemainingTickets,
           allowRefunds,
           allowReviews,
+          requireEveryTicketInfo,
           maxTickets,
           enableCountdown: false,
           eventPrivacy,
           attendeeMessage,
-          status: eventStatus || "pending",
+          attendeeQuestions,
+          status: "pending_review",
         };
         const result = await api.createEvent(toEventPayload(newEvent));
         if (!result.ok || !result.data?.event) {
@@ -8257,7 +8082,7 @@ export default function CreateEvent() {
                         {selectedEvent.title}
                       </h2>
                       <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mt-0.5">
-                        Event Details & Statistics
+                        Event Details
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -8296,13 +8121,6 @@ export default function CreateEvent() {
                         />
                       </div>
                     )}
-
-                    {/* Interactive Event Analytics & Performance Graph */}
-                    <EventDetailGraphSection
-                      event={selectedEvent}
-                      lang={lang as "en" | "lo"}
-                      currency={currency}
-                    />
 
                     {/* Ticket Price & Tiers Information */}
                     <div className="bg-gray-50/80 p-6 rounded-[24px] border border-gray-100 space-y-4 shadow-sm">

@@ -12,7 +12,7 @@ const toCategory = (c: unknown): Category =>
 
 const toStatus = (s: unknown): "draft" | "pending_review" => {
   const v = String(s ?? "").toLowerCase();
-  return ["active", "published", "pending_review"].includes(v) ? "pending_review" : "draft";
+  return ["active", "published", "pending", "pending_review"].includes(v) ? "pending_review" : "draft";
 };
 
 const num = (v: unknown): number => Number(String(v ?? "").replace(/[^0-9.-]/g, "")) || 0;
@@ -33,6 +33,11 @@ export function toEventPayload(e: FeEvent): Record<string, unknown> {
     description: str(e.description),
     category: toCategory(e.category),
     eventType: str(e.eventType),
+    eventPrivacy: e.eventPrivacy === "private" ? "private" : "public",
+    durationEn: str(e.durationEn),
+    durationLo: str(e.durationLo),
+    cancellationPolicy: str(e.cancellationPolicy),
+    attendeeMessage: str(e.attendeeMessage),
     status: toStatus(e.status),
 
     dateType,
@@ -60,6 +65,25 @@ export function toEventPayload(e: FeEvent): Record<string, unknown> {
     allowRefunds: !!e.allowRefunds,
     showRemainingTickets: e.showRemainingTickets !== false,
     enableCountdown: !!e.enableCountdown,
+    requireEveryTicketInfo: !!e.requireEveryTicketInfo,
+    maxTicketsPerOrder: e.maxTickets ? num(e.maxTickets) : undefined,
+
+    privateDetails: {
+      bankName: str(e.bankName),
+      accountNumber: str(e.accountNumber),
+      accountHolder: str(e.accountHolder),
+      onlinePlatform: str(e.onlinePlatform),
+      onlineMeetingUrl: str(e.onlineMeetingUrl),
+      onlinePasscode: str(e.onlinePasscode),
+      onlineInstructions: str(e.onlineInstructions),
+      bookingSlotCapacities: e.bookingSlotCapacities ?? {},
+      attendeeQuestions: e.attendeeQuestions ?? [],
+      ticketSaleWindows: (e.ticketTiers ?? []).filter((t: FeEvent) => t?.name).map((t: FeEvent) => ({
+        saleStartDate: t.saleStartDate, saleEndDate: t.saleEndDate,
+        saleStartTime: t.saleStartTime, saleEndTime: t.saleEndTime,
+      })),
+      organizerSocialLinks: e.organizerSocialLinks ?? {},
+    },
 
     organizer: e.organizer
       ? {
@@ -73,15 +97,18 @@ export function toEventPayload(e: FeEvent): Record<string, unknown> {
 
     tiers: (e.ticketTiers ?? [])
       .filter((t: FeEvent) => t?.name)
-      .map((t: FeEvent) => ({
+      .map((t: FeEvent, index: number) => ({
         name: String(t.name),
+        sortOrder: index,
         priceKip: num(t.price),
         quantityTotal: t.available != null && Number.isFinite(Number(t.available))
           ? num(t.available) + num(t.sold)
           : null,
       })),
 
-    dates: (e.availableDates ?? [])
+    dates: (dateType === "booking"
+      ? (e.bookingAvailableDays ?? []).map((date: string) => ({ date, timeSlots: e.bookingTimeSlots ?? [] }))
+      : e.availableDates ?? [])
       .filter((d: FeEvent) => d?.date)
       .map((d: FeEvent) => ({
         date: String(d.date),
@@ -128,6 +155,11 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
     description: e.description ?? "",
     category: e.category ?? "Other",
     eventType: e.eventType,
+    eventPrivacy: e.eventPrivacy ?? "public",
+    durationEn: e.durationEn ?? "",
+    durationLo: e.durationLo ?? "",
+    cancellationPolicy: e.cancellationPolicy ?? "",
+    attendeeMessage: e.attendeeMessage ?? "",
     status: e.status,
 
     dateType: e.dateType,
@@ -144,8 +176,17 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
       e.dateType === "booking" ? Array.from(new Set(availableDates.flatMap((d: FeEvent) => d.timeSlots))) : [],
     bookingSlotCapacities:
       e.dateType === "booking"
-        ? Object.fromEntries((e.dates ?? []).map((d: BackendEvent) => [d.date, d.capacity ?? 0]))
+        ? (e.privateDetails?.bookingSlotCapacities ?? Object.fromEntries((e.dates ?? []).map((d: BackendEvent) => [d.date, d.capacity ?? 0])))
         : {},
+    attendeeQuestions: e.privateDetails?.attendeeQuestions ?? [],
+    bankName: e.privateDetails?.bankName ?? "",
+    accountNumber: e.privateDetails?.accountNumber ?? "",
+    accountHolder: e.privateDetails?.accountHolder ?? "",
+    onlinePlatform: e.privateDetails?.onlinePlatform ?? "",
+    onlineMeetingUrl: e.privateDetails?.onlineMeetingUrl ?? "",
+    onlinePasscode: e.privateDetails?.onlinePasscode ?? "",
+    onlineInstructions: e.privateDetails?.onlineInstructions ?? "",
+    organizerSocialLinks: e.privateDetails?.organizerSocialLinks ?? {},
 
     venue: e.venueName ?? "",
     location: e.addressText ?? "",
@@ -165,6 +206,8 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
     allowRefunds: !!e.allowRefunds,
     showRemainingTickets: e.showRemainingTickets !== false,
     enableCountdown: !!e.enableCountdown,
+    requireEveryTicketInfo: !!e.requireEveryTicketInfo,
+    maxTickets: e.maxTicketsPerOrder ?? undefined,
 
     organizer: e.organizer?.name,
     organizerInfo: e.organizer?.description,
@@ -174,13 +217,14 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
     organizerLogo: e.organizer?.logoUrlDisplay ?? e.organizer?.logoUrl,
     organizerId: e.organizerId,
 
-    ticketTiers: (e.tiers ?? []).map((t: BackendEvent) => ({
+    ticketTiers: (e.tiers ?? []).map((t: BackendEvent, index: number) => ({
       id: t.id,
       name: t.name,
       price: t.priceKip,
       available: t.quantityTotal == null ? Infinity : Math.max(t.quantityTotal - t.quantitySold, 0),
       description: t.description ?? `${t.name} Access`,
       sold: t.quantitySold ?? 0,
+      ...(e.privateDetails?.ticketSaleWindows?.[index] ?? {}),
     })),
     coupons: (e.coupons ?? []).map((c: BackendEvent) => ({
       id: c.id,

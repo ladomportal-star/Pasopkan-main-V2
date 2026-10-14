@@ -4,17 +4,23 @@ import { assertMediaReferences } from "./media.service.ts";
 import { HttpError } from "../middlewares/error.middleware.ts";
 import { requireVerifiedPhone } from "./verified-phone.service.ts";
 import type { CreateEventBody, UpdateEventBody } from "../validators/event.validator.ts";
-const include = { tiers: true, dates: true, coupons: true, organizer: true } as const;
+const publicInclude = {
+  tiers: { orderBy: { sortOrder: "asc" } },
+  dates: { orderBy: { date: "asc" } },
+  coupons: true,
+  organizer: true,
+} as const;
+const ownerInclude = { ...publicInclude, privateDetails: true } as const;
 const publicStates = ["published", "sold_out", "completed"] as const;
 const refWhere = (ref: string) => (/^[0-9a-f-]{36}$/i.test(ref) ? { id: ref } : { slug: ref });
 function columns(body: Partial<CreateEventBody>) {
   const {
     organizer: _o,
+    privateDetails: _p,
     tiers: _t,
     dates: _d,
     coupons: _c,
     legacyId: _l,
-    hasSeating: _s,
     startDate,
     endDate,
     ...rest
@@ -38,6 +44,25 @@ async function children(
     });
   if (body.coupons?.length)
     await tx.coupon.createMany({ data: body.coupons.map((c) => ({ ...c, eventId })) });
+}
+async function savePrivateDetails(
+  tx: Prisma.TransactionClient,
+  eventId: string,
+  details: CreateEventBody["privateDetails"],
+) {
+  if (!details) return;
+  const data = {
+    ...details,
+    bookingSlotCapacities: details.bookingSlotCapacities ?? undefined,
+    attendeeQuestions: details.attendeeQuestions as Prisma.InputJsonValue | undefined,
+    ticketSaleWindows: details.ticketSaleWindows as Prisma.InputJsonValue | undefined,
+    organizerSocialLinks: details.organizerSocialLinks ?? undefined,
+  };
+  await tx.eventPrivateDetails.upsert({
+    where: { eventId },
+    create: { ...data, eventId },
+    update: data,
+  });
 }
 export async function createEvent(body: CreateEventBody, uid: string) {
   if (body.rejectionReason)
@@ -69,7 +94,10 @@ export async function createEvent(body: CreateEventBody, uid: string) {
       data: { ...columns(body), title: body.title, organizerId: organizer.id },
     });
     await children(tx, event.id, body);
-    return tx.event.findUnique({ where: { id: event.id }, include });
+    await savePrivateDetails(tx, event.id, body.privateDetails);
+    if (body.organizer)
+      await tx.organizer.update({ where: { id: organizer.id }, data: body.organizer });
+    return tx.event.findUnique({ where: { id: event.id }, include: ownerInclude });
   });
 }
 export async function updateEvent(ref: string, patch: UpdateEventBody, uid: string) {
@@ -123,6 +151,9 @@ export async function updateEvent(ref: string, patch: UpdateEventBody, uid: stri
     if (patch.dates !== undefined) await tx.eventDate.deleteMany({ where: { eventId: event.id } });
     if (patch.coupons !== undefined) await tx.coupon.deleteMany({ where: { eventId: event.id } });
     await children(tx, event.id, patch);
+    await savePrivateDetails(tx, event.id, patch.privateDetails);
+    if (patch.organizer)
+      await tx.organizer.update({ where: { id: event.organizerId }, data: patch.organizer });
     if (data.status && data.status !== event.status) {
       if (actor.role === "admin" && ["published", "rejected"].includes(patch.status))
         await tx.event.update({
@@ -139,7 +170,7 @@ export async function updateEvent(ref: string, patch: UpdateEventBody, uid: stri
         },
       });
     }
-    return tx.event.findUnique({ where: { id: event.id }, include });
+    return tx.event.findUnique({ where: { id: event.id }, include: ownerInclude });
   });
 }
 export async function listEvents(query: {
@@ -160,10 +191,10 @@ export async function listEvents(query: {
   }
   const where: Prisma.EventWhereInput = query.mine
     ? { organizer: { user: { authId: query.viewerUid } } }
-    : { status: { in: [...publicStates] } };
+    : { status: { in: [...publicStates] }, eventPrivacy: "public" };
   const rows = await db.event.findMany({
     where: { AND: [where, ...(query.status ? [{ status: query.status as any }] : [])] },
-    include,
+    include: query.mine ? ownerInclude : publicInclude,
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: query.limit + 1,
     ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
@@ -172,16 +203,17 @@ export async function listEvents(query: {
   return { events, nextCursor: rows.length > query.limit ? (events.at(-1)?.id ?? null) : null };
 }
 export async function getEvent(ref: string, uid?: string) {
-  const event = await db.event.findFirst({ where: refWhere(ref), include });
+  const event = await db.event.findFirst({ where: refWhere(ref), include: publicInclude });
   if (!event) return null;
-  if (!(publicStates as readonly string[]).includes(event.status)) {
-    const actor = uid ? await db.user.findUnique({ where: { authId: uid } }) : null;
-    if (
-      !actor ||
-      (actor.role !== "admin" &&
-        (actor.role !== "organizer" || event.organizer.userId !== actor.id))
-    )
-      return null;
-  }
+  const actor = uid ? await db.user.findUnique({ where: { authId: uid } }) : null;
+  const ownsEvent =
+    !!actor &&
+    (actor.role === "admin" || (actor.role === "organizer" && event.organizer.userId === actor.id));
+  if (ownsEvent) return db.event.findUnique({ where: { id: event.id }, include: ownerInclude });
+  if (
+    event.eventPrivacy !== "public" ||
+    !(publicStates as readonly string[]).includes(event.status)
+  )
+    return null;
   return event;
 }

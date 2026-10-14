@@ -27,6 +27,84 @@ describe("events", () => {
     expect(mine.body.events.map((e: { title: string }) => e.title)).toContain("Owned");
   });
 
+  it("persists draft form data while keeping payment and meeting details owner-only", async () => {
+    const owner = await as("org-private-form");
+    await createEvent(app, owner, { title: "Organizer setup" });
+    const created = await request(app)
+      .post("/api/events")
+      .set(owner)
+      .send({
+        title: "Real draft",
+        status: "draft",
+        eventPrivacy: "private",
+        durationEn: "Two hours",
+        cancellationPolicy: "No refunds",
+        hasSeating: true,
+        organizer: { name: "Real organizer", contactPhone: "2012345678" },
+        privateDetails: {
+          bankName: "Actual bank",
+          accountNumber: "private-account",
+          onlinePasscode: "private-passcode",
+          bookingSlotCapacities: { "10:00": 12 },
+          attendeeQuestions: [{ label: "Name", type: "text", required: true }],
+        },
+      });
+    expect(created.status).toBe(201);
+    const id = created.body.event.id;
+    expect(created.body.event.privateDetails.accountNumber).toBe("private-account");
+    expect(created.body.event.hasSeating).toBe(true);
+    expect(created.body.event.organizer.name).toBe("Real organizer");
+    const updated = await request(app)
+      .put(`/api/events/${id}`)
+      .set(owner)
+      .send({
+        title: "Real draft updated",
+        privateDetails: { accountNumber: "new-account" },
+      });
+    expect(updated.status).toBe(200);
+    expect(updated.body.event.privateDetails.accountNumber).toBe("new-account");
+    expect((await request(app).get(`/api/events/${id}`)).status).toBe(404);
+    expect(
+      (await request(app).get(`/api/events/${id}`).set(owner)).body.event.privateDetails
+        .accountNumber,
+    ).toBe("new-account");
+    const submitted = await request(app)
+      .put(`/api/events/${id}`)
+      .set(owner)
+      .send({ status: "pending_review" });
+    expect(submitted.body.event.status).toBe("pending_review");
+    const admin = await as("admin-private-form");
+    await db.user.create({ data: { authId: "admin-private-form", role: "admin" } });
+    expect(
+      (await request(app).put(`/api/events/${id}`).set(admin).send({ status: "published" })).status,
+    ).toBe(200);
+    expect((await request(app).get(`/api/events/${id}`)).status).toBe(404);
+    expect(
+      (await request(app).get("/api/events")).body.events.some((e: { id: string }) => e.id === id),
+    ).toBe(false);
+    const publicEvent = await request(app)
+      .post("/api/events")
+      .set(owner)
+      .send({
+        title: "Public with private payment",
+        status: "pending_review",
+        privateDetails: { accountNumber: "never-public" },
+      });
+    expect(publicEvent.status).toBe(201);
+    const publicId = publicEvent.body.event.id;
+    expect(
+      (await request(app).put(`/api/events/${publicId}`).set(admin).send({ status: "published" }))
+        .status,
+    ).toBe(200);
+    expect((await request(app).get(`/api/events/${publicId}`)).body.event).not.toHaveProperty(
+      "privateDetails",
+    );
+    const publicList = await request(app).get("/api/events");
+    expect(
+      publicList.body.events.find((e: { id: string }) => e.id === publicId),
+    ).not.toHaveProperty("privateDetails");
+  });
+
   it("hides drafts from the public catalog and from other users, but not from the owner", async () => {
     const owner = await as("org-2");
     const draft = await createEvent(app, owner, { title: "Secret Draft", status: "draft" });
