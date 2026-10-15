@@ -79,9 +79,24 @@ model User {
   audits AuditLog[]
   refundReviews Refund[]
   checkIns CheckIn[]
+  eventSubmissionOtps EventSubmissionOtp[]
   staffAssignments EventStaff[] @relation("AssignedStaff")
   staffGrants EventStaff[] @relation("StaffGrantor")
   @@index([authEmail])
+}
+
+model EventSubmissionOtp {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone String
+  codeDigest String
+  attempts Int @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime @db.Timestamptz(3)
+  consumedAt DateTime? @db.Timestamptz(3)
+  @@index([userId, createdAt])
+  @@index([expiresAt])
 }
 
 model OrganizerApplication {

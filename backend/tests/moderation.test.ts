@@ -3,7 +3,7 @@ import request from "supertest";
 import { createApp } from "../src/app.ts";
 import { db } from "../src/config/database.ts";
 import { as } from "./helpers/auth.ts";
-import { createEvent } from "./helpers/seed.ts";
+import { createEvent, submissionProofFor } from "./helpers/seed.ts";
 
 const app = createApp();
 async function admin() {
@@ -56,7 +56,14 @@ describe("admin moderation boundaries", () => {
     expect(
       (await request(app).put(path).set(owner).send({ rejectionReason: "Fake approval" })).status,
     ).toBe(403);
-    const submitted = await request(app).put(path).set(owner).send({ status: "pending_review" });
+    const submitted = await request(app)
+      .put(path)
+      .set(owner)
+      .send({
+        status: "pending_review",
+        termsAccepted: true,
+        submissionOtp: await submissionProofFor(owner),
+      });
     expect(submitted.body.event.rejectionReason).toBeNull();
     expect((await request(app).get("/api/admin/events").set(owner)).status).toBe(403);
     const queue = await request(app)
@@ -97,8 +104,12 @@ describe("admin moderation boundaries", () => {
       ).status,
     ).toBe(409);
     expect(
-      (await request(app).post("/api/events").set(headers).send({ title: "Approved host draft" }))
-        .status,
+      (
+        await request(app)
+          .post("/api/events")
+          .set(headers)
+          .send({ title: "Approved host draft", termsAccepted: true })
+      ).status,
     ).toBe(201);
   });
 
@@ -118,7 +129,16 @@ describe("admin moderation boundaries", () => {
       ).status,
     ).toBe(409);
     expect(
-      (await request(app).put(path).set(owner).send({ status: "pending_review" })).status,
+      (
+        await request(app)
+          .put(path)
+          .set(owner)
+          .send({
+            status: "pending_review",
+            termsAccepted: true,
+            submissionOtp: await submissionProofFor(owner),
+          })
+      ).status,
     ).toBe(200);
     expect((await request(app).get(path)).status).toBe(404);
     expect(
@@ -129,7 +149,14 @@ describe("admin moderation boundaries", () => {
           .send({ status: "published" })
       ).status,
     ).toBe(200);
-    const edited = await request(app).put(path).set(owner).send({ title: "Needs another review" });
+    const edited = await request(app)
+      .put(path)
+      .set(owner)
+      .send({
+        title: "Needs another review",
+        termsAccepted: true,
+        submissionOtp: await submissionProofFor(owner),
+      });
     expect(edited.body.event.status).toBe("pending_review");
     expect(await db.auditLog.count({ where: { entityId: event.id, action: "event.status" } })).toBe(
       3,

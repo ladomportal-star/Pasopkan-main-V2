@@ -89,6 +89,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { api, listAllMyEvents } from "../lib/api";
 import { fromBackendEvent, toEventPayload } from "../lib/eventPayload";
 import { useAuth } from "../context/AuthContext";
+import EventSubmissionOtpModal from "../components/EventSubmissionOtpModal";
 import { laosProvinces, getDistrictsForProvince } from "../lib/laosLocations";
 import Logo from "../components/Logo";
 import { EventMapPicker } from "../components/EventMapPicker";
@@ -848,6 +849,7 @@ export default function CreateEvent() {
 
   const [searchParams] = useSearchParams();
   const location = useLocation();
+  const openingNewEvent = searchParams.get("new") === "1";
 
   const [eventName, setEventName] = useState("");
   const [category, setCategory] = useState<
@@ -920,7 +922,11 @@ export default function CreateEvent() {
   const [activeStep, setActiveStep] = useState(1);
   const [activeTab, setActiveTab] = useState<
     "createEvent" | "analytics" | "terms"
-  >("analytics");
+  >(openingNewEvent ? "terms" : "analytics");
+  const [termsGate, setTermsGate] = useState(openingNewEvent);
+  const [termsChecked, setTermsChecked] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [showSubmissionOtp, setShowSubmissionOtp] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
 
   // Only the backend's owner-scoped event list may populate organizer views.
@@ -1754,8 +1760,11 @@ export default function CreateEvent() {
     setEventPrivacy(event.eventPrivacy || "public");
     setAttendeeMessage(event.attendeeMessage || "");
 
-    // Switch to createEvent tab
-    setActiveTab("createEvent");
+    // Existing drafts must also accept the current organizer terms before editing.
+    setTermsChecked(false);
+    setTermsAccepted(false);
+    setTermsGate(true);
+    setActiveTab("terms");
     setActiveStep(1); // start at step 1
     setSelectedEvent(null); // Close details modal if open
   };
@@ -2800,7 +2809,7 @@ export default function CreateEvent() {
     draftSaveInFlight.current = true;
     setIsSavingDraft(true);
     try {
-      const payload = toEventPayload(buildFormEvent("draft"));
+      const payload = { ...toEventPayload(buildFormEvent("draft")), termsAccepted: true };
       const result = editingEventId
         ? await api.updateEvent(String(editingEventId), payload)
         : await api.createEvent(payload);
@@ -3038,6 +3047,9 @@ export default function CreateEvent() {
     setOrganizerName("");
     setOrganizerInfo("");
     setOrganizerContact("");
+    setOrganizerPhone("");
+    setOrganizerEmail("");
+    setOrganizerSocialLinks({});
     setEventType("offline");
     setDateType("flexible");
     setFlexibleDateDesc("");
@@ -3080,6 +3092,22 @@ export default function CreateEvent() {
     setAccountHolder("");
   };
 
+  const startNewEvent = () => {
+    resetForm();
+    setActiveStep(1);
+    setTermsChecked(false);
+    setTermsAccepted(false);
+    setTermsGate(true);
+    setActiveTab("terms");
+  };
+
+  const handledNewRequest = useRef(false);
+  useEffect(() => {
+    if (searchParams.get("new") !== "1" || handledNewRequest.current) return;
+    handledNewRequest.current = true;
+    startNewEvent();
+  }, [searchParams]);
+
   const handleContinue = async () => {
     if (draftSaveInFlight.current || isLoading) return;
     // If on Step 1..3, just go to next step without validating yet
@@ -3106,6 +3134,21 @@ export default function CreateEvent() {
     }
 
     setValidationError(null);
+    if (!termsAccepted) {
+      setTermsGate(true);
+      setActiveTab("terms");
+      return;
+    }
+    if (user?.role === "admin") {
+      await completeSubmission(null);
+    } else {
+      setShowSubmissionOtp(true);
+    }
+  };
+
+  const completeSubmission = async (submissionOtp: { challengeId: string; code: string } | null): Promise<boolean> => {
+    if (!termsAccepted) return false;
+    setValidationError(null);
 
     let finalDescription = editorContent || "";
     if (activeStep === 1 && editorRef.current) {
@@ -3117,6 +3160,7 @@ export default function CreateEvent() {
       const currentEvents: any[] = [...localEvents];
 
       setIsLoading(true);
+      try {
       if (editingEventId) {
         setWasEditing(true);
         // Update existing event
@@ -3276,7 +3320,7 @@ export default function CreateEvent() {
         const result = edited
           ? await api.updateEvent(
               String(editingEventId),
-              toEventPayload(edited),
+              { ...toEventPayload(edited), termsAccepted: true, submissionOtp: submissionOtp ?? undefined },
             )
           : null;
         if (!result?.ok || !result.data?.event) {
@@ -3286,7 +3330,7 @@ export default function CreateEvent() {
               ? `ບໍ່ສາມາດບັນທຶກການປ່ຽນແປງໄດ້: ${result?.error ?? "Event not found"}`
               : `Could not save changes: ${result?.error ?? "Event not found"}`,
           );
-          return;
+          return false;
         }
         const saved = fromBackendEvent(result.data.event);
         setLocalEvents(updatedEvents.map((event) =>
@@ -3413,7 +3457,7 @@ export default function CreateEvent() {
           attendeeQuestions,
           status: "pending_review",
         };
-        const result = await api.createEvent(toEventPayload(newEvent));
+        const result = await api.createEvent({ ...toEventPayload(newEvent), termsAccepted: true, submissionOtp: submissionOtp ?? undefined });
         if (!result.ok || !result.data?.event) {
           setIsLoading(false);
           setValidationError(
@@ -3421,7 +3465,7 @@ export default function CreateEvent() {
               ? `ບໍ່ສາມາດສ້າງກິດຈະກຳໄດ້: ${result.error ?? ""}`
               : `Could not create the event: ${result.error ?? ""}`,
           );
-          return;
+          return false;
         }
         const created = fromBackendEvent(result.data.event);
         const updatedEvents = [
@@ -3430,9 +3474,16 @@ export default function CreateEvent() {
         ];
         setLocalEvents(updatedEvents);
       }
+      } catch (error) {
+        setValidationError(error instanceof Error ? error.message : "Could not submit the event");
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
     }
-    setIsLoading(false);
+    setShowSubmissionOtp(false);
     setShowSuccessModal(true);
+    return true;
   };
 
   const handleBack = () => {
@@ -3493,7 +3544,7 @@ export default function CreateEvent() {
 
           {(activeTab === "createEvent" || editingEventId) && (
             <button
-              onClick={() => setActiveTab("createEvent")}
+              onClick={() => setActiveTab(termsAccepted ? "createEvent" : "terms")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === "createEvent" ? "bg-adv-orange/10 text-adv-orange font-bold border-l-4 border-adv-orange" : "text-gray-500 hover:text-adv-slate hover:bg-gray-50"}`}
             >
               <Plus className="w-5 h-5 shrink-0 text-adv-orange" />
@@ -3530,9 +3581,7 @@ export default function CreateEvent() {
             </button>
             <button
               onClick={() => {
-                resetForm();
-                setActiveStep(1);
-                setActiveTab("createEvent");
+                startNewEvent();
               }}
               className="hidden sm:flex items-center gap-2 bg-adv-orange hover:bg-adv-orange/90 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer"
             >
@@ -7908,7 +7957,7 @@ export default function CreateEvent() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => { resetForm(); setActiveStep(1); setActiveTab("createEvent"); }}
+                    onClick={startNewEvent}
                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-adv-orange px-4 py-3 text-sm font-bold text-white"
                   >
                     <Plus className="h-4 w-4" /> {t.createEvent}
@@ -8051,11 +8100,45 @@ export default function CreateEvent() {
                       );
                     })}
                 </div>
+                {termsGate && (
+                  <div className="rounded-2xl border border-orange-200 bg-white p-6 shadow-sm">
+                    <label className="flex cursor-pointer items-start gap-3 text-sm font-semibold text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={termsChecked}
+                        onChange={(event) => setTermsChecked(event.target.checked)}
+                        className="mt-1 h-4 w-4 accent-orange-600"
+                      />
+                      <span>{t.agreeToTerms}</span>
+                    </label>
+                    <button
+                      type="button"
+                      disabled={!termsChecked}
+                      onClick={() => {
+                        setTermsAccepted(true);
+                        setTermsGate(false);
+                        setActiveTab("createEvent");
+                        window.scrollTo(0, 0);
+                      }}
+                      className="mt-5 rounded-xl bg-adv-orange px-6 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {lang === "lo" ? "ຕົກລົງ ແລະ ສ້າງກິດຈະກຳ" : "Agree and continue to event form"}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {showSubmissionOtp && token && (
+        <EventSubmissionOtpModal
+          token={token}
+          onClose={() => setShowSubmissionOtp(false)}
+          onConfirm={completeSubmission}
+        />
+      )}
 
       {/* Event Details Modal */}
       <AnimatePresence>

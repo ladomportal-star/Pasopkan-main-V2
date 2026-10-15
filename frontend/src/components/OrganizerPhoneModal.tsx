@@ -49,7 +49,7 @@ export default function OrganizerPhoneModal({
     if (onEligible) onEligible();
     else {
       onClose();
-      navigate("/create");
+      navigate("/create?new=1");
     }
   }, [navigate, onClose, onEligible]);
 

@@ -14,6 +14,9 @@ export default defineConfig({
       DATABASE_URL: "",
       SQL_HOST: "",
       LOG_LEVEL: "silent",
+      SUPABASE_SEND_SMS_HOOK_SECRET: "test-event-submission-otp-secret",
+      WENOVA_SMS_TOKEN: "test-token",
+      WENOVA_SMS_HEADER: "WNV-OTP",
     },
   },
 });

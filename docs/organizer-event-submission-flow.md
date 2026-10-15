@@ -1,0 +1,8 @@
+# Organizer event submission flow
+
+1. An approved organizer opens Create Event. The editor first shows the current organizer terms. The organizer must explicitly check the agreement and continue before the event form mounts. The backend also requires `termsAccepted: true` when an organizer creates a draft.
+2. The organizer completes the form and may save drafts without an OTP. Drafts stay owner-scoped and are not public.
+3. Submit validates the complete form, then asks the organizer to re-enter the phone already confirmed on their Supabase Auth identity. `POST /api/organizer/event-submission-otp` compares the entered number with that confirmed phone and sends a new six-digit Wenova SMS. The code expires after five minutes. Requests have a 60-second per-account cooldown and an IP rate limit; attempts are capped at five. If Wenova's response is uncertain, the UI retains the challenge so a code that arrives can still be used without automatically sending another paid SMS.
+4. The final event create/update request includes `termsAccepted: true` and `submissionOtp: { challengeId, code }`. The backend checks the code and consumes it in the same database transaction as the event status change. A replay or missing code cannot submit another event. Organizers submit for admin review; only admins publish.
+
+This challenge is separate from the login and initial organizer-enrollment OTP. The code is never stored in plaintext or logged. The migration `20261015010000_event_submission_otp` must be applied before deploying the new backend. It uses the existing backend-only Wenova configuration and `SUPABASE_SEND_SMS_HOOK_SECRET`; no new frontend secret is needed.

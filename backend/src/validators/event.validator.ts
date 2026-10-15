@@ -49,6 +49,13 @@ export const createEventBody = z.object({
       "completed",
     ])
     .default("draft"),
+  termsAccepted: z.literal(true).optional(),
+  submissionOtp: z
+    .object({
+      challengeId: z.string().uuid(),
+      code: z.string().regex(/^\d{6}$/),
+    })
+    .optional(),
 
   dateType: z.enum(["fixed", "flexible", "booking"]).default("fixed"),
   startDate: z.string().nullish(),

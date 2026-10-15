@@ -3,6 +3,7 @@ import type { Prisma } from "../lib/prisma.ts";
 import { assertMediaReferences } from "./media.service.ts";
 import { HttpError } from "../middlewares/error.middleware.ts";
 import { requireVerifiedPhone } from "./verified-phone.service.ts";
+import { consumeSubmissionOtp, validateSubmissionOtp } from "./event-submission-otp.service.ts";
 import type { CreateEventBody, UpdateEventBody } from "../validators/event.validator.ts";
 const publicInclude = {
   tiers: { orderBy: { sortOrder: "asc" } },
@@ -21,6 +22,8 @@ function columns(body: Partial<CreateEventBody>) {
     dates: _d,
     coupons: _c,
     legacyId: _l,
+    termsAccepted: _terms,
+    submissionOtp: _otp,
     startDate,
     endDate,
     ...rest
@@ -74,6 +77,10 @@ export async function createEvent(body: CreateEventBody, uid: string) {
   );
   const role = await db.user.findUnique({ where: { authId: uid }, select: { role: true } });
   if (role?.role === "organizer") await requireVerifiedPhone(uid);
+  const submitting = role?.role === "organizer" && body.status === "pending_review";
+  if (role?.role === "organizer" && !body.termsAccepted)
+    throw new HttpError(400, "Accept the organizer terms before creating an event");
+  const otp = submitting ? await validateSubmissionOtp(uid, body.submissionOtp) : null;
   return db.$transaction(async (tx) => {
     const user = await tx.user.findUnique({ where: { authId: uid }, include: { organizer: true } });
     if (!user) throw new HttpError(403, "A registered account is required");
@@ -95,6 +102,18 @@ export async function createEvent(body: CreateEventBody, uid: string) {
     });
     await children(tx, event.id, body);
     await savePrivateDetails(tx, event.id, body.privateDetails);
+    if (otp) await consumeSubmissionOtp(tx, otp);
+    if (body.termsAccepted) {
+      await tx.auditLog.create({
+        data: {
+          actorId: user.id,
+          action: "event.terms_accepted",
+          entityType: "Event",
+          entityId: event.id,
+          metadata: { at: new Date().toISOString() },
+        },
+      });
+    }
     if (body.organizer)
       await tx.organizer.update({ where: { id: organizer.id }, data: body.organizer });
     return tx.event.findUnique({ where: { id: event.id }, include: ownerInclude });
@@ -106,6 +125,16 @@ export async function updateEvent(ref: string, patch: UpdateEventBody, uid: stri
     uid,
     "public",
   );
+  const [actorRole, currentEvent] = await Promise.all([
+    db.user.findUnique({ where: { authId: uid }, select: { role: true } }),
+    db.event.findFirst({ where: refWhere(ref), select: { status: true } }),
+  ]);
+  const submitting =
+    actorRole?.role === "organizer" &&
+    (patch.status === "pending_review" || currentEvent?.status === "published");
+  if (submitting && !patch.termsAccepted)
+    throw new HttpError(400, "Accept the organizer terms before submitting an event");
+  const otp = submitting ? await validateSubmissionOtp(uid, patch.submissionOtp) : null;
   return db.$transaction(async (tx) => {
     const event = await tx.event.findFirst({ where: refWhere(ref), include: { organizer: true } });
     if (!event) return null;
@@ -121,6 +150,12 @@ export async function updateEvent(ref: string, patch: UpdateEventBody, uid: stri
         (actor.role !== "organizer" || event.organizer.userId !== actor.id))
     )
       throw new HttpError(403, "You do not have permission to modify this event");
+    if (
+      actor.role === "organizer" &&
+      (patch.status === "pending_review" || event.status === "published") &&
+      !otp
+    )
+      throw new HttpError(403, "Event submission requires a fresh phone OTP");
     if (["cancelled", "completed"].includes(event.status))
       throw new HttpError(409, "Closed events cannot be modified or reopened");
     if (
@@ -152,6 +187,18 @@ export async function updateEvent(ref: string, patch: UpdateEventBody, uid: stri
     if (patch.coupons !== undefined) await tx.coupon.deleteMany({ where: { eventId: event.id } });
     await children(tx, event.id, patch);
     await savePrivateDetails(tx, event.id, patch.privateDetails);
+    if (otp) {
+      await consumeSubmissionOtp(tx, otp);
+      await tx.auditLog.create({
+        data: {
+          actorId: actor.id,
+          action: "event.terms_accepted",
+          entityType: "Event",
+          entityId: event.id,
+          metadata: { at: new Date().toISOString() },
+        },
+      });
+    }
     if (patch.organizer)
       await tx.organizer.update({ where: { id: event.organizerId }, data: patch.organizer });
     if (data.status && data.status !== event.status) {

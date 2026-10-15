@@ -11,6 +11,7 @@ import notificationRoutes from "./notification.routes.ts";
 import moderationRoutes from "./moderation.routes.ts";
 import mediaRoutes from "./media.routes.ts";
 import staffRoutes from "./staff.routes.ts";
+import eventSubmissionOtpRoutes from "./event-submission-otp.routes.ts";
 
 const apiRouter = Router();
 
@@ -26,5 +27,6 @@ apiRouter.use(notificationRoutes);
 apiRouter.use(moderationRoutes);
 apiRouter.use(mediaRoutes);
 apiRouter.use(staffRoutes);
+apiRouter.use(eventSubmissionOtpRoutes);
 
 export default apiRouter;

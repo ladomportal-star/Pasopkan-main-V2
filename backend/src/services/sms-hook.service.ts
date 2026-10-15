@@ -8,6 +8,7 @@ export class SmsHookError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    public readonly uncertain = false,
   ) {
     super(message);
   }
@@ -82,11 +83,10 @@ function parsePayload(body: Buffer) {
   return { phoneNumber: normalized.slice(4), otp };
 }
 
-function checkedConfig() {
-  const { secret, wenovaToken, wenovaScriptId, header, apiUrl } = env.smsHook;
+function checkedWenovaConfig() {
+  const { wenovaToken, wenovaScriptId, header, apiUrl } = env.smsHook;
   const scriptId = !wenovaToken && wenovaScriptId ? Number(wenovaScriptId) : undefined;
   if (
-    !signingKeys(secret).length ||
     (!wenovaToken && !scriptId) ||
     (!wenovaToken && wenovaScriptId && (!Number.isSafeInteger(scriptId) || (scriptId ?? 0) <= 0)) ||
     !/^[A-Za-z0-9_-]{2,32}$/.test(header) ||
@@ -94,7 +94,13 @@ function checkedConfig() {
   ) {
     throw new SmsHookError(503, "SMS delivery is not configured");
   }
-  return { secret, wenovaToken, scriptId, header, apiUrl };
+  return { wenovaToken, scriptId, header, apiUrl };
+}
+
+function checkedConfig() {
+  const secret = env.smsHook.secret;
+  if (!signingKeys(secret).length) throw new SmsHookError(503, "SMS delivery is not configured");
+  return { secret, ...checkedWenovaConfig() };
 }
 
 class WenovaExplicitRejection extends SmsHookError {}
@@ -102,12 +108,13 @@ class WenovaExplicitRejection extends SmsHookError {}
 async function sendThroughWenova(
   phoneNumber: string,
   otp: string,
-  config: ReturnType<typeof checkedConfig>,
+  config: ReturnType<typeof checkedWenovaConfig>,
+  message = `Pasopkan verification code: ${otp}`,
 ) {
   const body = {
     header: config.header,
     phoneNumber,
-    message: `Pasopkan verification code: ${otp}`,
+    message,
     ...(config.wenovaToken ? { token: config.wenovaToken } : { scriptId: config.scriptId }),
     usePackage: true,
   };
@@ -121,14 +128,14 @@ async function sendThroughWenova(
     });
   } catch {
     // The gateway might have accepted the request before a timeout. Do not automatically resend.
-    throw new SmsHookError(503, "SMS gateway response is uncertain");
+    throw new SmsHookError(503, "SMS gateway response is uncertain", true);
   }
 
   let result: unknown;
   try {
     result = await response.json();
   } catch {
-    throw new SmsHookError(502, "SMS gateway response is uncertain");
+    throw new SmsHookError(502, "SMS gateway response is uncertain", true);
   }
   const envelope =
     result !== null && typeof result === "object" && !Array.isArray(result)
@@ -178,7 +185,13 @@ async function sendThroughWenova(
     { httpStatus: response.status, hasData, hasResultCode, success: envelope?.success === true },
     "Wenova SMS response was not confirmed",
   );
-  throw new SmsHookError(502, "SMS gateway response is uncertain");
+  throw new SmsHookError(502, "SMS gateway response is uncertain", true);
+}
+
+/** Send a fresh event-submission code to an already confirmed account phone. */
+export async function sendEventSubmissionOtp(phone: string, code: string) {
+  const config = checkedWenovaConfig();
+  await sendThroughWenova(phone.slice(4), code, config, `Pasopkan event submission code: ${code}`);
 }
 
 /** Signed, idempotent Supabase Auth SMS delivery. Never store or log the OTP. */

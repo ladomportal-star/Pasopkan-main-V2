@@ -1,13 +1,139 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.ts";
 import { db } from "../src/config/database.ts";
 import { as } from "./helpers/auth.ts";
-import { createEvent } from "./helpers/seed.ts";
+import { createEvent, submissionProofFor } from "./helpers/seed.ts";
+import { requireVerifiedPhone } from "../src/services/verified-phone.service.ts";
 
 const app = createApp();
 
 describe("events", () => {
+  it("requires terms and a fresh one-use SMS code when an organizer submits", async () => {
+    const owner = await as("otp-submission-host");
+    const event = await createEvent(app, owner, { status: "draft" });
+    const path = `/api/events/${event.id}`;
+    expect(
+      (await request(app).post("/api/events").set(owner).send({ title: "Bypass terms" })).status,
+    ).toBe(400);
+    expect(
+      (await request(app).put(path).set(owner).send({ status: "pending_review" })).status,
+    ).toBe(400);
+    expect(
+      (
+        await request(app)
+          .put(path)
+          .set(owner)
+          .send({ status: "pending_review", termsAccepted: true })
+      ).status,
+    ).toBe(403);
+
+    const phone = await requireVerifiedPhone("otp-submission-host");
+    const wrongPhone = phone === "+8562012345678" ? "+8562087654321" : "+8562012345678";
+    expect(
+      (
+        await request(app)
+          .post("/api/organizer/event-submission-otp")
+          .set(owner)
+          .send({ phone: wrongPhone })
+      ).status,
+    ).toBe(400);
+    const realFetch = globalThis.fetch;
+    let sentCode = "";
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (String(input).includes("apimicroservices.wenova.fun")) {
+        const body = JSON.parse(String(init?.body)) as { message: string };
+        sentCode = body.message.match(/\d{6}$/)?.[0] ?? "";
+        return Promise.resolve(
+          new Response(JSON.stringify({ success: true, data: { resultCode: 20000 } }), {
+            status: 200,
+          }),
+        );
+      }
+      return realFetch(input, init);
+    });
+    try {
+      const sent = await request(app)
+        .post("/api/organizer/event-submission-otp")
+        .set(owner)
+        .send({ phone });
+      expect(sent.status).toBe(200);
+      expect(sent.body.challengeId).toBeTruthy();
+      expect(sentCode).toMatch(/^\d{6}$/);
+      const proof = { challengeId: sent.body.challengeId, code: sentCode };
+      expect(
+        (
+          await request(app)
+            .put(path)
+            .set(owner)
+            .send({
+              status: "pending_review",
+              termsAccepted: true,
+              submissionOtp: { ...proof, code: sentCode === "000000" ? "000001" : "000000" },
+            })
+        ).status,
+      ).toBe(403);
+      expect(
+        (
+          await request(app)
+            .put(path)
+            .set(owner)
+            .send({ status: "pending_review", termsAccepted: true, submissionOtp: proof })
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await request(app)
+            .put(path)
+            .set(owner)
+            .send({ status: "pending_review", termsAccepted: true, submissionOtp: proof })
+        ).status,
+      ).toBe(403);
+      expect(
+        (await request(app).post("/api/organizer/event-submission-otp").set(owner).send({ phone }))
+          .status,
+      ).toBe(429);
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
+  it("keeps an uncertain SMS challenge usable instead of automatically resending", async () => {
+    const owner = await as("uncertain-sms-host");
+    const event = await createEvent(app, owner, { status: "draft" });
+    const phone = await requireVerifiedPhone("uncertain-sms-host");
+    const realFetch = globalThis.fetch;
+    let sentCode = "";
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (String(input).includes("apimicroservices.wenova.fun")) {
+        sentCode =
+          (JSON.parse(String(init?.body)) as { message: string }).message.match(/\d{6}$/)?.[0] ??
+          "";
+        return Promise.reject(new Error("provider response timed out"));
+      }
+      return realFetch(input, init);
+    });
+    try {
+      const sent = await request(app)
+        .post("/api/organizer/event-submission-otp")
+        .set(owner)
+        .send({ phone });
+      expect(sent.status).toBe(200);
+      expect(sent.body.deliveryUncertain).toBe(true);
+      expect(sentCode).toMatch(/^\d{6}$/);
+      const submitted = await request(app)
+        .put(`/api/events/${event.id}`)
+        .set(owner)
+        .send({
+          status: "pending_review",
+          termsAccepted: true,
+          submissionOtp: { challengeId: sent.body.challengeId, code: sentCode },
+        });
+      expect(submitted.status).toBe(200);
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
   it("requires sign-in to create, and validates the body", async () => {
     expect((await request(app).post("/api/events").send({ title: "x" })).status).toBe(401);
     const bad = await request(app)
@@ -36,6 +162,7 @@ describe("events", () => {
       .send({
         title: "Real draft",
         status: "draft",
+        termsAccepted: true,
         eventPrivacy: "private",
         durationEn: "Two hours",
         cancellationPolicy: "No refunds",
@@ -71,7 +198,11 @@ describe("events", () => {
     const submitted = await request(app)
       .put(`/api/events/${id}`)
       .set(owner)
-      .send({ status: "pending_review" });
+      .send({
+        status: "pending_review",
+        termsAccepted: true,
+        submissionOtp: await submissionProofFor(owner),
+      });
     expect(submitted.body.event.status).toBe("pending_review");
     const admin = await as("admin-private-form");
     await db.user.create({ data: { authId: "admin-private-form", role: "admin" } });
@@ -88,6 +219,8 @@ describe("events", () => {
       .send({
         title: "Public with private payment",
         status: "pending_review",
+        termsAccepted: true,
+        submissionOtp: await submissionProofFor(owner),
         privateDetails: { accountNumber: "never-public" },
       });
     expect(publicEvent.status).toBe(201);
@@ -178,7 +311,11 @@ describe("events", () => {
     const byOwner = await request(app)
       .put(`/api/events/${event.id}`)
       .set(owner)
-      .send({ title: "After" });
+      .send({
+        title: "After",
+        termsAccepted: true,
+        submissionOtp: await submissionProofFor(owner),
+      });
     expect(byOwner.status).toBe(200);
     expect(byOwner.body.event.title).toBe("After");
     expect(byOwner.body.event.tiers).toHaveLength(2); // untouched when not sent

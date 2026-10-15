@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -31,7 +31,6 @@ import {
 } from "lucide-react";
 import Logo from "./Logo";
 import SearchModal from "./SearchModal";
-import OrganizerPhoneModal from "./OrganizerPhoneModal";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
@@ -117,7 +116,6 @@ export default function Navbar() {
     null,
   );
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
-  const [showOrganizerPhoneModal, setShowOrganizerPhoneModal] = useState(false);
   const { notifications, unreadCount, markRead, markAllRead } =
     useNotifications();
   const notificationRef = useRef<HTMLDivElement>(null);
@@ -128,16 +126,12 @@ export default function Navbar() {
   const { isAuthenticated, token, user, loginWithGoogle } = useAuth();
 
   const navigate = useNavigate();
-  const closeOrganizerPhoneModal = useCallback(
-    () => setShowOrganizerPhoneModal(false),
-    [],
-  );
   const handleCreateEventClick = () => {
     if (!isAuthenticated || !token) {
       navigate("/login");
       return;
     }
-    setShowOrganizerPhoneModal(true);
+    navigate("/create?new=1");
   };
 
   const t = translations[lang];
@@ -387,12 +381,6 @@ export default function Navbar() {
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
       />
-      <AnimatePresence>
-        {showOrganizerPhoneModal && (
-          <OrganizerPhoneModal onClose={closeOrganizerPhoneModal} />
-        )}
-      </AnimatePresence>
-
       {/* Notification Detail Slide-over */}
       <AnimatePresence>
         {selectedNotif && (

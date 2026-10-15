@@ -130,7 +130,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
         <div className="flex gap-3"><button disabled={busy} className="rounded bg-orange-600 px-4 py-2 text-white disabled:opacity-50">{editingId ? 'Save changes' : 'Create event'}</button>
           {editingId && <button type="button" onClick={() => { setEditingId(null); setEventTitle(''); setEventVenue(''); setEventDescription(''); }} className="underline">Cancel edit</button>}</div>
       </form>}
-      {!admin && <Link className="underline" to="/create">Create event / ສ້າງກິດຈະກຳ</Link>}
+      {!admin && <Link className="underline" to="/create?new=1">Create event / ສ້າງກິດຈະກຳ</Link>}
       {!events.length && <p>No events / ບໍ່ມີກິດຈະກຳ</p>}
       {events.map(e => <article key={e.id} className="border rounded-xl p-4 space-y-2"><Link className="underline" to={`/event/${e.id}`}>{e.title}</Link><p>{e.status} {e.rejectionReason}</p>
         {admin ? <><button type="button" disabled={busy || ['cancelled', 'completed'].includes(e.status)} className="border p-2 mr-2 disabled:opacity-40" onClick={() => editEvent(e)}>Edit / ແກ້ໄຂ</button>
