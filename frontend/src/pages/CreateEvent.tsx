@@ -9,9 +9,6 @@ import {
   Calendar,
   Undo,
   Redo,
-  Heading3,
-  FileImage,
-  Folder,
   FileText,
   Plus,
   User,
@@ -20,17 +17,7 @@ import {
   Phone,
   ChevronDown,
   ChevronUp,
-  ChevronLeft,
-  ChevronRight,
-  Inbox,
   Ticket,
-  Bold,
-  Italic,
-  Underline,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  AlignJustify,
   List,
   ListOrdered,
   Image as ImageIcon,
@@ -40,13 +27,8 @@ import {
   Trash2,
   X,
   Check,
-  QrCode,
-  LogOut,
-  Edit,
   ShieldCheck,
-  DollarSign,
   RefreshCcw,
-  FileCheck,
   BookOpen,
   AlertCircle,
   ShieldAlert,
@@ -54,35 +36,16 @@ import {
   ArrowRight,
   Globe,
   Clock,
-  Settings,
   Lock,
-  Eye,
   UploadCloud,
   ExternalLink,
-  Monitor,
-  Smartphone,
   CheckCircle2,
   Sparkles,
-  Paperclip,
-  Search,
-  Quote,
   Minus,
-  Heading1,
-  Heading2,
   Link as LinkIcon,
-  Award,
-  Unlink,
-  Superscript,
-  Subscript,
-  Strikethrough,
-  RemoveFormatting,
-  MessageSquare,
   MessageCircle,
-  Type,
-  Palette,
   GripVertical,
   Info,
-  TrendingUp,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLanguage } from "../context/LanguageContext";
@@ -91,19 +54,16 @@ import { fromBackendEvent, toEventPayload } from "../lib/eventPayload";
 import { useAuth } from "../context/AuthContext";
 import EventSubmissionOtpModal from "../components/EventSubmissionOtpModal";
 import { laosProvinces, getDistrictsForProvince } from "../lib/laosLocations";
-import Logo from "../components/Logo";
 import { EventMapPicker } from "../components/EventMapPicker";
 import { ScrollTimePicker } from "../components/ScrollTimePicker";
 import { FlexibleDatePicker } from "../components/FlexibleDatePicker";
-import { CalendarPicker } from "../components/CalendarPicker";
 import {
   DateInputDDMMYYYY,
   formatToDDMMYYYY,
   parseDDMMYYYYToDate,
 } from "../components/DateInputDDMMYYYY";
 import { AdaptiveImage } from "../components/AdaptiveImage";
-import EventDetails from "./EventDetails";
-import SocialLinksForm, { SocialLinks } from "../components/SocialLinksForm";
+import { SocialLinks } from "../components/SocialLinksForm";
 import {
   getOrganizerTermsSettings,
   OrganizerTermsSettings,
@@ -115,30 +75,6 @@ import {
 import { renderTermIcon } from "../lib/termIcons";
 import SEO from "../components/SEO";
 import { compressImage } from "../lib/imageCompression";
-
-const PAYMENT_BANKS = [
-  {
-    value: "BCEL",
-    labelEn: "BCEL Bank",
-    labelLo: "BCEL Bank (ທະນາຄານ ການຄ້າຕ່າງປະເທດລາວ)",
-  },
-  {
-    value: "JDB",
-    labelEn: "JDB Bank",
-    labelLo: "JDB Bank (ທະນາຄານ ພັດທະນາຮ່ວມ)",
-  },
-  {
-    value: "LDB",
-    labelEn: "LDB Bank",
-    labelLo: "LDB Bank (ທະນາຄານ ພັດທະນາລາວ)",
-  },
-  {
-    value: "Indochina Bank",
-    labelEn: "Indochina Bank",
-    labelLo: "Indochina Bank (ທະນາຄານ ອິນໂດຈີນ)",
-  },
-  { value: "ST Bank", labelEn: "ST Bank", labelLo: "ST Bank (ທະນາຄານ ເອັສທີ)" },
-];
 
 const translations = {
   en: {
@@ -172,8 +108,6 @@ const translations = {
     addEventBgImage: "Add event background image",
     eventName: "Event Name",
     eventAddress: "Event Address",
-    offline: "Offline",
-    online: "Online",
     venueName: "Venue Name",
     province: "Province",
     district: "District",
@@ -438,16 +372,6 @@ const translations = {
     quickPresetsDesc: "Click to instantly add popular session slots:",
     dateValidationError:
       "For approval, events must be scheduled at least 14 days (2 weeks) in advance of their start date.",
-    previewEvent: "Preview Event",
-    previewNotice:
-      "Preview Mode: This is how your event page will look to attendees before publication.",
-    backToEdit: "Back to Edit",
-    publishFromPreview: "Publish Event Now",
-    eventPrivacy: "Event Privacy",
-    publicEvent: "Public",
-    publicEventDesc: "Shown on your calendar and eligible to be featured.",
-    privateEvent: "Private",
-    privateEventDesc: "Unlisted. Only people with the link can register.",
     eventMessageForAttendees: "Event message for attendees",
     eventMessageDesc:
       "This event message will be sent to attendees along with their booking confirmation",
@@ -485,8 +409,6 @@ const translations = {
     addEventBgImage: "ເພີ່ມຮູບພາບພື້ນຫຼັງ event",
     eventName: "ຊື່ event",
     eventAddress: "ທີ່ຢູ່ event",
-    offline: "ອອບລາຍ",
-    online: "ອອນລາຍ",
     venueName: "ຊື່ສະຖານທີ່",
     province: "ແຂວງ/ນະຄອນ",
     district: "ເມືອງ",
@@ -744,17 +666,6 @@ const translations = {
     quickPresetsDesc: "ຄລິກເພື່ອເພີ່ມຊ່ວງເວລາທີ່ນິຍົມໃຊ້ທັນທີ:",
     dateValidationError:
       "ເພື່ອການອະນຸມັດ, ກິດຈະກຳຕ້ອງຖືກກຳນົດເວລາຢ່າງໜ້ອຍ 14 ວັນ (2 ອາທິດ) ລ່ວງໜ້າກ່ອນວັນທີເລີ່ມຕົ້ນ.",
-    previewEvent: "ເບິ່ງຕົວຢ່າງ event",
-    previewNotice:
-      "ໂໝດເບິ່ງຕົວຢ່າງ: ນີ້ແມ່ນຮູບແບບໜ້າ event ຂອງທ່ານທີ່ຈະສະແດງໃຫ້ຜູ້ເຂົ້າຮ່ວມເບິ່ງກ່ອນການເຜີຍແຜ່.",
-    backToEdit: "ກັບໄປແກ້ໄຂ",
-    publishFromPreview: "ເຜີຍແຜ່ event ດຽວນີ້",
-    eventPrivacy: "ຄວາມເປັນສ່ວນຕົວຂອງກິດຈະກຳ",
-    publicEvent: "ສາທາລະນະ",
-    publicEventDesc: "ສະແດງໃນປະຕິທິນຂອງທ່ານ ແລະ ມີສິດໄດ້ຮັບການແນະນຳ.",
-    privateEvent: "ສ່ວນຕົວ",
-    privateEventDesc:
-      "ບໍ່ສະແດງໃນລາຍການ. ເພື່ອນທີ່ມີລິ້ງເທົ່ານັ້ນທີ່ສາມາດລົງທະບຽນໄດ້.",
     eventMessageForAttendees: "ຂໍ້ຄວາມກິດຈະກຳສຳລັບຜູ້ເຂົ້າຮ່ວມ",
     eventMessageDesc:
       "ຂໍ້ຄວາມກິດຈະກຳນີ້ຈະຖືກສົ່ງໄປຫາຜູ້ເຂົ້າຮ່ວມພ້ອມກັບໃບຢັ້ງຢືນການຈອງຂອງພວກເຂົາ",
@@ -850,9 +761,13 @@ export default function CreateEvent() {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const openingNewEvent = searchParams.get("new") === "1";
-  const openingEditor = openingNewEvent || Boolean(
-    searchParams.get("editId") || searchParams.get("adminEdit") || location.state?.editEventId,
-  );
+  const openingEditor =
+    openingNewEvent ||
+    Boolean(
+      searchParams.get("editId") ||
+      searchParams.get("adminEdit") ||
+      location.state?.editEventId,
+    );
 
   const [eventName, setEventName] = useState("");
   const [category, setCategory] = useState<
@@ -864,7 +779,6 @@ export default function CreateEvent() {
   const [streetAddress, setStreetAddress] = useState("");
   const [latitude, setLatitude] = useState<number | undefined>(undefined);
   const [longitude, setLongitude] = useState<number | undefined>(undefined);
-  const [mapInputMode, setMapInputMode] = useState<"map" | "link">("map");
   const [googleMapsLink, setGoogleMapsLink] = useState("");
   const [organizerName, setOrganizerName] = useState("");
   const [organizerInfo, setOrganizerInfo] = useState("");
@@ -946,14 +860,20 @@ export default function CreateEvent() {
     let cancelled = false;
     setTermsAcceptanceStatus("loading");
     setTermsAccepted(false);
-    api.get<{ accepted: boolean }>("/organizer/terms-acceptance", { token, throwOnError: true })
+    api
+      .get<{ accepted: boolean }>("/organizer/terms-acceptance", {
+        token,
+        throwOnError: true,
+      })
       .then(({ data }) => {
         if (cancelled) return;
-        if (!data) throw new Error("Could not check organizer terms acceptance");
+        if (!data)
+          throw new Error("Could not check organizer terms acceptance");
         setTermsAcceptanceStatus(data.accepted ? "accepted" : "required");
         setTermsAccepted(data.accepted);
         setTermsGate(!data.accepted);
-        if (openingEditor) setActiveTab(data.accepted ? "createEvent" : "terms");
+        if (openingEditor)
+          setActiveTab(data.accepted ? "createEvent" : "terms");
       })
       .catch((error) => {
         if (cancelled) return;
@@ -963,7 +883,9 @@ export default function CreateEvent() {
         setTermsGate(true);
         if (openingEditor) setActiveTab("terms");
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id, token, termsRetry]);
 
   // Only the backend's owner-scoped event list may populate organizer views.
@@ -991,7 +913,9 @@ export default function CreateEvent() {
           }
         });
     }
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id, token]);
 
   // Edit restriction states
@@ -1530,143 +1454,10 @@ export default function CreateEvent() {
   const [showRemainingTickets, setShowRemainingTickets] = useState(true);
   const [allowRefunds, setAllowRefunds] = useState(false);
   const [allowReviews, setAllowReviews] = useState(true);
-  const [eventStatus, setEventStatus] = useState<string>("pending");
   const [maxTickets, setMaxTickets] = useState("4");
   const [requireEveryTicketInfo, setRequireEveryTicketInfo] = useState(true);
   const [cancellationPolicy, setCancellationPolicy] = useState("");
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
-  const [newGalleryUrl, setNewGalleryUrl] = useState("");
-
-  // Preview event modal state
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [previewData, setPreviewData] = useState<any>(null);
-  const [previewDeviceMode, setPreviewDeviceMode] = useState<
-    "desktop" | "mobile"
-  >("desktop");
-  const [previewImageIndex, setPreviewImageIndex] = useState(0);
-
-  // Close preview modal on Escape key press
-  useEffect(() => {
-    if (!showPreviewModal) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setShowPreviewModal(false);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showPreviewModal]);
-
-  const handleOpenPreview = () => {
-    setPreviewImageIndex(0);
-    const preview = {
-      id: editingEventId || "preview-temp-id",
-      title:
-        eventName.trim() ||
-        (lang === "lo" ? "ຊື່ກິດຈະກຳຕົວຢ່າງ" : "Sample Event Name"),
-      category: eventType === "online" ? "Workshop" : category || "Festival",
-      venue: venueName || (lang === "lo" ? "ສະຖານທີ່ຈັດງານ" : "Event Venue"),
-      province: province || "Vientiane",
-      district: district || "Chanthabouly",
-      location: streetAddress || "Vientiane, Laos",
-      googleMapUrl: googleMapsLink || "",
-      latitude: latitude,
-      longitude: longitude,
-      organizer: organizerName || "Organizer Name",
-      organizerInfo: organizerInfo || "",
-      organizerBio: organizerInfo || "",
-      organizerContact: organizerContact || "",
-      organizerPhone: organizerPhone || "",
-      organizerEmail: organizerEmail || "",
-      organizerLogo: organizerLogo || "",
-      organizerSocialLinks: organizerSocialLinks || {},
-      eventType: eventType,
-      onlinePlatform: onlinePlatform,
-      onlineMeetingUrl: onlineMeetingUrl,
-      onlinePasscode: onlinePasscode,
-      onlineInstructions: onlineInstructions,
-      dateType: dateType,
-      flexibleDateDesc: dateType === "flexible" ? flexibleDateDesc : "",
-      bookingAvailableDays: dateType === "booking" ? bookingAvailableDays : [],
-      bookingTimeSlots: dateType === "booking" ? bookingTimeSlots : [],
-      bookingSlotCapacities:
-        dateType === "booking" ? bookingSlotCapacities : {},
-      date:
-        dateType === "flexible" && availableDates.length > 0
-          ? availableDates[0].date
-          : startDate || new Date().toISOString().split("T")[0],
-      time:
-        dateType === "flexible" &&
-        availableDates.length > 0 &&
-        availableDates[0].timeSlots?.length > 0
-          ? availableDates[0].timeSlots[0]
-          : startTime || "18:00",
-      endDate:
-        dateType === "flexible" && availableDates.length > 0
-          ? availableDates[availableDates.length - 1].date
-          : endDate || startDate || new Date().toISOString().split("T")[0],
-      endTime: endTime || "22:00",
-      price: ticketTiers[0]?.price
-        ? `${(Number(String(ticketTiers[0].price).replace(/,/g, "")) || 0).toLocaleString()} ${currency}`
-        : `0 ${currency}`,
-      currency: currency,
-      image:
-        verticalImage ||
-        horizontalImage ||
-        "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&q=80&w=1000",
-      horizontalImage:
-        horizontalImage ||
-        verticalImage ||
-        "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&q=80&w=1000",
-      exampleImages: galleryImages.length > 0 ? galleryImages : [],
-      description:
-        activeStep === 1 && editorRef.current
-          ? editorRef.current.innerHTML || editorContent || ""
-          : editorContent ||
-            (lang === "lo"
-              ? "ຍັງບໍ່ມີລາຍລະອຽດກິດຈະກຳ..."
-              : "No event description provided yet..."),
-      ticketTiers: ticketTiers
-        .filter((t) => t.name || t.price)
-        .map((tier) => ({
-          ...tier,
-          id: String(tier.id || Math.random()),
-          name: tier.name || "General Admission",
-          price: Number(String(tier.price).replace(/,/g, "")) || 0,
-          available: Number(String(tier.quantity).replace(/,/g, "")) || 100,
-          quantity: Number(String(tier.quantity).replace(/,/g, "")) || 100,
-          description: tier.name
-            ? `${tier.name} Access`
-            : "General Admission Access",
-        })),
-      coupons: enableCoupons ? coupons : [],
-      hasSeating: hasSeating,
-      zoneImage: zoneImage,
-      hasTimeSelection: dateType === "flexible",
-      timeSlots: dateType === "flexible" ? timeSlots : [],
-      availableDates: dateType === "flexible" ? availableDates : [],
-      status: "preview",
-      requireEveryTicketInfo: requireEveryTicketInfo,
-      allowRefunds: allowRefunds,
-      allowReviews: allowReviews,
-      showRemainingTickets: showRemainingTickets,
-      cancellationPolicy: cancellationPolicy,
-    };
-    setPreviewData(preview);
-    setShowPreviewModal(true);
-  };
-
-  // Calculate days until event
-  const getDaysUntilEvent = (eventDateStr: string) => {
-    if (!eventDateStr) return 0;
-    const eventStartDate = new Date(`${eventDateStr}T00:00:00`);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    eventStartDate.setHours(0, 0, 0, 0);
-    const diffTime = eventStartDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
 
   const handleStartEdit = (event: any) => {
     setEditingEventId(event.id);
@@ -1762,8 +1553,6 @@ export default function CreateEvent() {
     setEnableCoupons(event.coupons && event.coupons.length > 0 ? true : false);
     setHasSeating(event.hasSeating || false);
     setZoneImage(event.zoneImage || null);
-    setHasTimeSelection(event.hasTimeSelection || false);
-    setTimeSlots(event.timeSlots || []);
     setAvailableDates(event.availableDates || []);
     setVerticalImage(event.image || null);
     setHorizontalImage(event.image || null);
@@ -1777,7 +1566,6 @@ export default function CreateEvent() {
     );
     setAllowRefunds(event.allowRefunds !== false);
     setAllowReviews(event.allowReviews !== false);
-    setEventStatus(event.status || "active");
     setMaxTickets(event.maxTickets || "4");
     setEventPrivacy(event.eventPrivacy || "public");
     setAttendeeMessage(event.attendeeMessage || "");
@@ -1786,7 +1574,9 @@ export default function CreateEvent() {
     setTermsChecked(false);
     setTermsAccepted(termsAcceptanceStatus === "accepted");
     setTermsGate(termsAcceptanceStatus !== "accepted");
-    setActiveTab(termsAcceptanceStatus === "accepted" ? "createEvent" : "terms");
+    setActiveTab(
+      termsAcceptanceStatus === "accepted" ? "createEvent" : "terms",
+    );
     setActiveStep(1); // start at step 1
     setSelectedEvent(null); // Close details modal if open
   };
@@ -1814,9 +1604,6 @@ export default function CreateEvent() {
   const [coverFitMode, setCoverFitMode] = useState<"contain" | "cover">(
     "contain",
   );
-  const [verticalUploadProgress, setVerticalUploadProgress] = useState<
-    number | null
-  >(null);
   const [horizontalUploadProgress, setHorizontalUploadProgress] = useState<
     number | null
   >(null);
@@ -1824,7 +1611,6 @@ export default function CreateEvent() {
   const [organizerLogoProgress, setOrganizerLogoProgress] = useState<
     number | null
   >(null);
-  const [isDraggingVertical, setIsDraggingVertical] = useState(false);
   const [isDraggingHorizontal, setIsDraggingHorizontal] = useState(false);
   const [isDraggingLogo, setIsDraggingLogo] = useState(false);
 
@@ -1834,19 +1620,6 @@ export default function CreateEvent() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(true);
   const [showImageLocationsModal, setShowImageLocationsModal] = useState(false);
-  const [imageLocationTab, setImageLocationTab] = useState<"homepage" | "pdf">(
-    "homepage",
-  );
-  const [showUserMenu, setShowUserMenu] = useState(false);
-
-  // Reports page states
-  const [reportMetric, setReportMetric] = useState<"revenue" | "tickets">(
-    "revenue",
-  );
-  const [reportCategoryFilter, setReportCategoryFilter] =
-    useState<string>("All");
-  const [reportSortOrder, setReportSortOrder] = useState<string>("highest");
-  const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
 
   // Step 2 state
   const [startDate, setStartDate] = useState("");
@@ -1875,8 +1648,6 @@ export default function CreateEvent() {
   );
   const [isDraggingZoneImage, setIsDraggingZoneImage] = useState(false);
 
-  const [hasTimeSelection, setHasTimeSelection] = useState(false);
-  const [timeSlots, setTimeSlots] = useState<string[]>([]);
   const [availableDates, setAvailableDates] = useState<
     {
       date: string;
@@ -1885,9 +1656,6 @@ export default function CreateEvent() {
       timeSlots?: string[];
     }[]
   >([]);
-  const [newTimeSlot, setNewTimeSlot] = useState("");
-  const [flexTimeStart, setFlexTimeStart] = useState("09:00");
-  const [flexTimeEnd, setFlexTimeEnd] = useState("17:00");
 
   // Automatically ensure ticket tier sale dates and coupon valid dates default to current date and end of event when event date is set
   useEffect(() => {
@@ -1995,13 +1763,8 @@ export default function CreateEvent() {
   );
 
   // Event Information Toolbar Reference State
-  const [selectedFont, setSelectedFont] = useState("Inter");
   const [selectedFontSize, setSelectedFontSize] = useState("16");
   const [selectedTextColor, setSelectedTextColor] = useState("#000000");
-  const [selectedAlign, setSelectedAlign] = useState<
-    "left" | "center" | "right" | "justify"
-  >("left");
-  const [showFontMenu, setShowFontMenu] = useState(false);
   const [showFontSizeMenu, setShowFontSizeMenu] = useState(false);
   const [showColorMenu, setShowColorMenu] = useState(false);
   const fontSizeDropdownRef = useRef<HTMLDivElement | null>(null);
@@ -2009,20 +1772,9 @@ export default function CreateEvent() {
   const colorInputRef = useRef<HTMLInputElement | null>(null);
   const savedSelectionRangeRef = useRef<Range | null>(null);
   const [customHexInput, setCustomHexInput] = useState("000000");
-  const [showAlignMenu, setShowAlignMenu] = useState(false);
   const [showToolbarLinkModal, setShowToolbarLinkModal] = useState(false);
   const [toolbarLinkUrl, setToolbarLinkUrl] = useState("");
   const [toolbarLinkText, setToolbarLinkText] = useState("");
-
-  const fontOptions = [
-    { label: "Inter", value: "Inter, sans-serif" },
-    { label: "Noto Sans Lao", value: "'Noto Sans Lao', sans-serif" },
-    { label: "Playfair Display", value: "'Playfair Display', serif" },
-    { label: "Plus Jakarta Sans", value: "'Plus Jakarta Sans', sans-serif" },
-    { label: "Space Grotesk", value: "'Space Grotesk', sans-serif" },
-    { label: "Arial", value: "Arial, sans-serif" },
-    { label: "Courier New", value: "'Courier New', monospace" },
-  ];
 
   const fontSizeOptions = [
     "12",
@@ -2051,13 +1803,6 @@ export default function CreateEvent() {
     { label: "Purple", value: "#8B5CF6" },
     { label: "Pink", value: "#EC4899" },
   ];
-
-  const applyToolbarFont = (fontName: string, fontVal: string) => {
-    setSelectedFont(fontName);
-    setShowFontMenu(false);
-    document.execCommand("fontName", false, fontVal);
-    if (editorRef.current) setEditorContent(editorRef.current.innerHTML);
-  };
 
   const applyToolbarFontSize = (sizePx: string) => {
     setSelectedFontSize(sizePx);
@@ -2201,17 +1946,6 @@ export default function CreateEvent() {
     setEditorContent(editorRef.current.innerHTML);
   };
 
-  const applyToolbarAlign = (
-    align: "left" | "center" | "right" | "justify",
-  ) => {
-    setSelectedAlign(align);
-    setShowAlignMenu(false);
-    if (align === "left") execCommand("justifyLeft");
-    else if (align === "center") execCommand("justifyCenter");
-    else if (align === "right") execCommand("justifyRight");
-    else if (align === "justify") execCommand("justifyFull");
-  };
-
   // Continuously record active selection inside editor so toolbar interactions never lose it
   useEffect(() => {
     const handleSelectionChange = () => {
@@ -2296,15 +2030,6 @@ export default function CreateEvent() {
     setToolbarLinkUrl("");
     setToolbarLinkText("");
     setSavedSelectionRange(null);
-  };
-
-  const insertCalloutBlock = () => {
-    const calloutHtml = `<blockquote class="border-l-4 border-adv-orange pl-4 py-2.5 my-3 italic text-gray-700 bg-orange-50/70 rounded-r-2xl shadow-xs font-medium">“${lang === "lo" ? "ເພີ່ມຂໍ້ຄວາມໝາຍເຫດ ຫຼື ຄຳເວົ້າພິເສດຢູ່ທີ່ນີ້..." : "Add your special note, quote, or highlight here..."}”</blockquote><p><br></p>`;
-    execCommand("insertHTML", calloutHtml);
-    if (editorRef.current) {
-      isInternalEditorUpdateRef.current = true;
-      setEditorContent(editorRef.current.innerHTML);
-    }
   };
 
   const handleEditorPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
@@ -2800,50 +2525,98 @@ export default function CreateEvent() {
   const buildFormEvent = (status: "draft" | "pending_review") => ({
     title: eventName.trim() || "Untitled event",
     category: eventType === "online" ? "Workshop" : category,
-    venue: venueName, province, district, location: streetAddress,
-    latitude, longitude, googleMapUrl: googleMapsLink,
-    organizer: organizerName, organizerInfo, organizerContact, organizerPhone,
-    organizerEmail, organizerLogo, organizerSocialLinks,
-    bankName, accountNumber, accountHolder, eventType,
-    onlinePlatform, onlineMeetingUrl, onlinePasscode, onlineInstructions,
-    dateType, flexibleDateDesc, bookingAvailableDays, bookingTimeSlots,
-    bookingSlotCapacities, date: startDate, time: startTime, endDate, endTime,
-    durationEn, durationLo, languages: selectedLanguages,
-    ticketTiers: ticketTiers.filter((tier) => tier.name.trim()).map((tier) => ({
-      ...tier, price: Number(String(tier.price).replace(/,/g, "")) || 0,
-      available: Number(String(tier.quantity).replace(/,/g, "")) || 0,
-    })),
-    coupons: enableCoupons ? coupons : [], hasSeating, zoneImage,
+    venue: venueName,
+    province,
+    district,
+    location: streetAddress,
+    latitude,
+    longitude,
+    googleMapUrl: googleMapsLink,
+    organizer: organizerName,
+    organizerInfo,
+    organizerContact,
+    organizerPhone,
+    organizerEmail,
+    organizerLogo,
+    organizerSocialLinks,
+    bankName,
+    accountNumber,
+    accountHolder,
+    eventType,
+    onlinePlatform,
+    onlineMeetingUrl,
+    onlinePasscode,
+    onlineInstructions,
+    dateType,
+    flexibleDateDesc,
+    bookingAvailableDays,
+    bookingTimeSlots,
+    bookingSlotCapacities,
+    date: startDate,
+    time: startTime,
+    endDate,
+    endTime,
+    durationEn,
+    durationLo,
+    languages: selectedLanguages,
+    ticketTiers: ticketTiers
+      .filter((tier) => tier.name.trim())
+      .map((tier) => ({
+        ...tier,
+        price: Number(String(tier.price).replace(/,/g, "")) || 0,
+        available: Number(String(tier.quantity).replace(/,/g, "")) || 0,
+      })),
+    coupons: enableCoupons ? coupons : [],
+    hasSeating,
+    zoneImage,
     availableDates: dateType === "flexible" ? availableDates : [],
     image: verticalImage || horizontalImage || "",
     exampleImages: galleryImages,
     description: editorRef.current?.innerHTML || editorContent || "",
-    cancellationPolicy, showRemainingTickets, allowRefunds, allowReviews,
-    maxTickets, eventPrivacy, attendeeMessage, attendeeQuestions, status,
+    cancellationPolicy,
+    showRemainingTickets,
+    allowRefunds,
+    allowReviews,
+    maxTickets,
+    eventPrivacy,
+    attendeeMessage,
+    attendeeQuestions,
+    status,
   });
 
   const draftSaveInFlight = useRef(false);
   const handleSaveDraft = async () => {
     if (draftSaveInFlight.current || !token || eventsLoading) return;
     if (!editingEventId && !eventName.trim()) return;
-    const existing = localEvents.find((event) => String(event.id) === String(editingEventId));
+    const existing = localEvents.find(
+      (event) => String(event.id) === String(editingEventId),
+    );
     if (editingEventId && (!existing || existing.status !== "draft")) return;
     draftSaveInFlight.current = true;
     setIsSavingDraft(true);
     try {
-      const payload = { ...toEventPayload(buildFormEvent("draft")), termsAccepted: true };
+      const payload = {
+        ...toEventPayload(buildFormEvent("draft")),
+        termsAccepted: true,
+      };
       const result = editingEventId
         ? await api.updateEvent(String(editingEventId), payload)
         : await api.createEvent(payload);
-      if (!result.ok || !result.data?.event) throw new Error(result.error || "Draft save failed");
+      if (!result.ok || !result.data?.event)
+        throw new Error(result.error || "Draft save failed");
       const saved = fromBackendEvent(result.data.event);
       setEditingEventId(saved.id);
-      setLocalEvents((events) => [saved, ...events.filter((event) => String(event.id) !== String(saved.id))]);
+      setLocalEvents((events) => [
+        saved,
+        ...events.filter((event) => String(event.id) !== String(saved.id)),
+      ]);
       setLastSavedTime(new Date());
       setDraftSaved(true);
       setTimeout(() => setDraftSaved(false), 3000);
     } catch (error) {
-      setValidationError(error instanceof Error ? error.message : "Could not save draft");
+      setValidationError(
+        error instanceof Error ? error.message : "Could not save draft",
+      );
     } finally {
       draftSaveInFlight.current = false;
       setIsSavingDraft(false);
@@ -3101,8 +2874,6 @@ export default function CreateEvent() {
     setEnableCoupons(false);
     setHasSeating(false);
     setZoneImage(null);
-    setHasTimeSelection(false);
-    setTimeSlots([]);
     setVerticalImage(null);
     setHorizontalImage(null);
     setGalleryImages([]);
@@ -3120,7 +2891,9 @@ export default function CreateEvent() {
     setTermsChecked(false);
     setTermsAccepted(termsAcceptanceStatus === "accepted");
     setTermsGate(termsAcceptanceStatus !== "accepted");
-    setActiveTab(termsAcceptanceStatus === "accepted" ? "createEvent" : "terms");
+    setActiveTab(
+      termsAcceptanceStatus === "accepted" ? "createEvent" : "terms",
+    );
   };
 
   const handledNewRequest = useRef(false);
@@ -3168,7 +2941,9 @@ export default function CreateEvent() {
     }
   };
 
-  const completeSubmission = async (submissionOtp: { challengeId: string; code: string } | null): Promise<boolean> => {
+  const completeSubmission = async (
+    submissionOtp: { challengeId: string; code: string } | null,
+  ): Promise<boolean> => {
     if (!termsAccepted) return false;
     setValidationError(null);
 
@@ -3183,321 +2958,330 @@ export default function CreateEvent() {
 
       setIsLoading(true);
       try {
-      if (editingEventId) {
-        setWasEditing(true);
-        // Update existing event
-        const updatedEvents = currentEvents.map((evt) => {
-          if (String(evt.id) === String(editingEventId)) {
-            return {
-              ...evt,
-              title: eventName,
-              category: eventType === "online" ? "Workshop" : category,
-              venue: venueName,
-              province: province || evt.province,
-              district: district || evt.district,
-              location: streetAddress,
-              latitude: latitude !== undefined ? latitude : evt.latitude,
-              longitude: longitude !== undefined ? longitude : evt.longitude,
-              googleMapUrl: googleMapsLink || evt.googleMapUrl,
-              // Keep organizer-created profile and verification data
-              organizer: organizerName || evt.organizer,
-              organizerInfo:
-                organizerInfo !== undefined && organizerInfo !== ""
-                  ? organizerInfo
-                  : evt.organizerInfo,
-              organizerContact: organizerContact || evt.organizerContact,
-              organizerPhone: organizerPhone || evt.organizerPhone,
-              organizerEmail: organizerEmail || evt.organizerEmail,
-              organizerLogo: organizerLogo || evt.organizerLogo,
-              organizerSocialLinks:
-                organizerSocialLinks &&
-                Object.keys(organizerSocialLinks).length > 0
-                  ? organizerSocialLinks
-                  : evt.organizerSocialLinks || {},
-              bankName, accountNumber, accountHolder,
-              userId: evt.userId,
-              organizerId: evt.organizerId,
-              createdBy: evt.createdBy,
-              creatorEmail: evt.creatorEmail,
-              createdAt: evt.createdAt,
-              registered: evt.registered,
-              scanned: evt.scanned,
-              totalTickets: evt.totalTickets,
-              soldTickets: evt.soldTickets,
-              revenue: evt.revenue,
-              views: evt.views,
-              purchases: evt.purchases,
-              likes: evt.likes,
-              featured: evt.featured,
-              eventType,
-              onlinePlatform,
-              onlineMeetingUrl,
-              onlinePasscode,
-              onlineInstructions,
-              dateType,
-              flexibleDateDesc: dateType === "flexible" ? flexibleDateDesc : "",
-              bookingAvailableDays:
-                dateType === "booking" ? bookingAvailableDays : [],
-              bookingTimeSlots: dateType === "booking" ? bookingTimeSlots : [],
-              bookingSlotCapacities:
-                dateType === "booking" ? bookingSlotCapacities : {},
-              bookingCapacity:
-                dateType === "booking"
-                  ? Object.values(bookingSlotCapacities).length > 0
-                    ? Math.max(
-                        ...Object.values(bookingSlotCapacities).map(
-                          (v) => Number(v) || 0,
+        if (editingEventId) {
+          setWasEditing(true);
+          // Update existing event
+          const updatedEvents = currentEvents.map((evt) => {
+            if (String(evt.id) === String(editingEventId)) {
+              return {
+                ...evt,
+                title: eventName,
+                category: eventType === "online" ? "Workshop" : category,
+                venue: venueName,
+                province: province || evt.province,
+                district: district || evt.district,
+                location: streetAddress,
+                latitude: latitude !== undefined ? latitude : evt.latitude,
+                longitude: longitude !== undefined ? longitude : evt.longitude,
+                googleMapUrl: googleMapsLink || evt.googleMapUrl,
+                // Keep organizer-created profile and verification data
+                organizer: organizerName || evt.organizer,
+                organizerInfo:
+                  organizerInfo !== undefined && organizerInfo !== ""
+                    ? organizerInfo
+                    : evt.organizerInfo,
+                organizerContact: organizerContact || evt.organizerContact,
+                organizerPhone: organizerPhone || evt.organizerPhone,
+                organizerEmail: organizerEmail || evt.organizerEmail,
+                organizerLogo: organizerLogo || evt.organizerLogo,
+                organizerSocialLinks:
+                  organizerSocialLinks &&
+                  Object.keys(organizerSocialLinks).length > 0
+                    ? organizerSocialLinks
+                    : evt.organizerSocialLinks || {},
+                bankName,
+                accountNumber,
+                accountHolder,
+                userId: evt.userId,
+                organizerId: evt.organizerId,
+                createdBy: evt.createdBy,
+                creatorEmail: evt.creatorEmail,
+                createdAt: evt.createdAt,
+                registered: evt.registered,
+                scanned: evt.scanned,
+                totalTickets: evt.totalTickets,
+                soldTickets: evt.soldTickets,
+                revenue: evt.revenue,
+                views: evt.views,
+                purchases: evt.purchases,
+                likes: evt.likes,
+                featured: evt.featured,
+                eventType,
+                onlinePlatform,
+                onlineMeetingUrl,
+                onlinePasscode,
+                onlineInstructions,
+                dateType,
+                flexibleDateDesc:
+                  dateType === "flexible" ? flexibleDateDesc : "",
+                bookingAvailableDays:
+                  dateType === "booking" ? bookingAvailableDays : [],
+                bookingTimeSlots:
+                  dateType === "booking" ? bookingTimeSlots : [],
+                bookingSlotCapacities:
+                  dateType === "booking" ? bookingSlotCapacities : {},
+                bookingCapacity:
+                  dateType === "booking"
+                    ? Object.values(bookingSlotCapacities).length > 0
+                      ? Math.max(
+                          ...Object.values(bookingSlotCapacities).map(
+                            (v) => Number(v) || 0,
+                          ),
+                        )
+                      : 0
+                    : undefined,
+                date:
+                  dateType === "flexible" && availableDates.length > 0
+                    ? availableDates[0].date
+                    : startDate || evt.date || "",
+                time:
+                  dateType === "flexible" &&
+                  availableDates.length > 0 &&
+                  availableDates[0].startTime
+                    ? availableDates[0].startTime
+                    : dateType === "booking" && bookingTimeSlots.length > 0
+                      ? bookingTimeSlots[0]
+                      : startTime || evt.time || "",
+                endDate:
+                  dateType === "flexible" && availableDates.length > 0
+                    ? availableDates[availableDates.length - 1].date
+                    : endDate || startDate || evt.endDate || "",
+                endTime: endTime || evt.endTime || "",
+                durationEn: durationEn || evt.durationEn,
+                durationLo: durationLo || evt.durationLo,
+                languages:
+                  selectedLanguages && selectedLanguages.length > 0
+                    ? selectedLanguages
+                    : evt.languages || ["Lao", "English"],
+                ticketTiers: ticketTiers.map((tier) => ({
+                  id: tier.id ? String(tier.id) : crypto.randomUUID(),
+                  name: tier.name,
+                  price: Number(String(tier.price).replace(/,/g, "")) || 0,
+                  available:
+                    Number(String(tier.quantity).replace(/,/g, "")) || 0,
+                  description: tier.name + " Access",
+                  saleStartDate: tier.saleStartDate,
+                  saleStartTime: tier.saleStartTime,
+                  saleEndDate: tier.saleEndDate,
+                  saleEndTime: tier.saleEndTime,
+                })),
+                coupons: enableCoupons ? coupons : [],
+                hasSeating:
+                  hasSeating !== undefined ? hasSeating : evt.hasSeating,
+                zoneImage: zoneImage || evt.zoneImage,
+                hasTimeSelection:
+                  dateType === "flexible" &&
+                  availableDates.some((d) => !!d.startTime),
+                timeSlots:
+                  dateType === "flexible"
+                    ? Array.from(
+                        new Set(
+                          availableDates
+                            .map((d) => d.startTime)
+                            .filter(Boolean),
                         ),
                       )
-                    : 0
-                  : undefined,
-              date:
-                dateType === "flexible" && availableDates.length > 0
-                  ? availableDates[0].date
-                  : startDate ||
-                    evt.date ||
-                    "",
-              time:
-                dateType === "flexible" &&
-                availableDates.length > 0 &&
-                availableDates[0].startTime
-                  ? availableDates[0].startTime
-                  : dateType === "booking" && bookingTimeSlots.length > 0
-                    ? bookingTimeSlots[0]
-                    : startTime || evt.time || "",
-              endDate:
-                dateType === "flexible" && availableDates.length > 0
-                  ? availableDates[availableDates.length - 1].date
-                  : endDate ||
-                    startDate ||
-                    evt.endDate ||
-                    "",
-              endTime: endTime || evt.endTime || "",
-              durationEn: durationEn || evt.durationEn,
-              durationLo: durationLo || evt.durationLo,
-              languages:
-                selectedLanguages && selectedLanguages.length > 0
-                  ? selectedLanguages
-                  : evt.languages || ["Lao", "English"],
-              ticketTiers: ticketTiers.map((tier) => ({
-                id: tier.id ? String(tier.id) : crypto.randomUUID(),
-                name: tier.name,
-                price: Number(String(tier.price).replace(/,/g, "")) || 0,
-                available:
-                  Number(String(tier.quantity).replace(/,/g, "")) || 0,
-                description: tier.name + " Access",
-                saleStartDate: tier.saleStartDate,
-                saleStartTime: tier.saleStartTime,
-                saleEndDate: tier.saleEndDate,
-                saleEndTime: tier.saleEndTime,
-              })),
-              coupons: enableCoupons ? coupons : [],
-              hasSeating:
-                hasSeating !== undefined ? hasSeating : evt.hasSeating,
-              zoneImage: zoneImage || evt.zoneImage,
-              hasTimeSelection:
-                dateType === "flexible" &&
-                availableDates.some((d) => !!d.startTime),
-              timeSlots:
-                dateType === "flexible"
-                  ? Array.from(
-                      new Set(
-                        availableDates.map((d) => d.startTime).filter(Boolean),
+                    : [],
+                availableDates: dateType === "flexible" ? availableDates : [],
+                image: verticalImage || horizontalImage || evt.image,
+                exampleImages:
+                  galleryImages.length > 0
+                    ? galleryImages
+                    : verticalImage
+                      ? [verticalImage]
+                      : evt.exampleImages || [],
+                description: finalDescription,
+                cancellationPolicy:
+                  cancellationPolicy || evt.cancellationPolicy,
+                showRemainingTickets:
+                  showRemainingTickets !== undefined
+                    ? showRemainingTickets
+                    : evt.showRemainingTickets,
+                allowRefunds:
+                  allowRefunds !== undefined ? allowRefunds : evt.allowRefunds,
+                allowReviews:
+                  allowReviews !== undefined ? allowReviews : evt.allowReviews,
+                requireEveryTicketInfo,
+                maxTickets: maxTickets || evt.maxTickets,
+                enableCountdown: false,
+                eventPrivacy: eventPrivacy || evt.eventPrivacy,
+                attendeeMessage: attendeeMessage || evt.attendeeMessage,
+                attendeeQuestions,
+                status: "pending_review",
+              };
+            }
+            return evt;
+          });
+          const edited = updatedEvents.find(
+            (e) => String(e.id) === String(editingEventId),
+          );
+          const result = edited
+            ? await api.updateEvent(String(editingEventId), {
+                ...toEventPayload(edited),
+                termsAccepted: true,
+                submissionOtp: submissionOtp ?? undefined,
+              })
+            : null;
+          if (!result?.ok || !result.data?.event) {
+            setIsLoading(false);
+            setValidationError(
+              lang === "lo"
+                ? `ບໍ່ສາມາດບັນທຶກການປ່ຽນແປງໄດ້: ${result?.error ?? "Event not found"}`
+                : `Could not save changes: ${result?.error ?? "Event not found"}`,
+            );
+            return false;
+          }
+          const saved = fromBackendEvent(result.data.event);
+          setLocalEvents(
+            updatedEvents.map((event) =>
+              String(event.id) === String(editingEventId) ? saved : event,
+            ),
+          );
+          setEditingEventId(null);
+        } else {
+          setWasEditing(false);
+          // Create new event
+          const newEvent = {
+            id: String(Date.now()),
+            title: eventName,
+            category: eventType === "online" ? "Workshop" : category,
+            venue: venueName,
+            province,
+            district,
+            location: streetAddress,
+            latitude,
+            longitude,
+            googleMapUrl: googleMapsLink,
+            organizer: organizerName,
+            organizerInfo,
+            organizerContact,
+            organizerPhone,
+            organizerEmail,
+            organizerLogo,
+            organizerSocialLinks,
+            bankName,
+            accountNumber,
+            accountHolder,
+            submittedAt: new Date().toISOString().split("T")[0],
+            createdAt: new Date().toISOString(),
+            views: 0,
+            purchases: 0,
+            registered: 0,
+            likes: 0,
+            revenue: "₭ 0",
+            eventType,
+            onlinePlatform,
+            onlineMeetingUrl,
+            onlinePasscode,
+            onlineInstructions,
+            dateType,
+            flexibleDateDesc: dateType === "flexible" ? flexibleDateDesc : "",
+            bookingAvailableDays:
+              dateType === "booking" ? bookingAvailableDays : [],
+            bookingTimeSlots: dateType === "booking" ? bookingTimeSlots : [],
+            bookingSlotCapacities:
+              dateType === "booking" ? bookingSlotCapacities : {},
+            bookingCapacity:
+              dateType === "booking"
+                ? Object.values(bookingSlotCapacities).length > 0
+                  ? Math.max(
+                      ...Object.values(bookingSlotCapacities).map(
+                        (v) => Number(v) || 0,
                       ),
                     )
-                  : [],
-              availableDates: dateType === "flexible" ? availableDates : [],
-              image: verticalImage || horizontalImage || evt.image,
-              exampleImages:
-                galleryImages.length > 0
-                  ? galleryImages
-                  : verticalImage
-                    ? [verticalImage]
-                    : evt.exampleImages || [],
-              description:
-                finalDescription,
-              cancellationPolicy: cancellationPolicy || evt.cancellationPolicy,
-              showRemainingTickets:
-                showRemainingTickets !== undefined
-                  ? showRemainingTickets
-                  : evt.showRemainingTickets,
-              allowRefunds:
-                allowRefunds !== undefined ? allowRefunds : evt.allowRefunds,
-              allowReviews:
-                allowReviews !== undefined ? allowReviews : evt.allowReviews,
-              requireEveryTicketInfo,
-              maxTickets: maxTickets || evt.maxTickets,
-              enableCountdown: false,
-              eventPrivacy: eventPrivacy || evt.eventPrivacy,
-              attendeeMessage: attendeeMessage || evt.attendeeMessage,
-              attendeeQuestions,
-              status: "pending_review",
-            };
-          }
-          return evt;
-        });
-        const edited = updatedEvents.find(
-          (e) => String(e.id) === String(editingEventId),
-        );
-        const result = edited
-          ? await api.updateEvent(
-              String(editingEventId),
-              { ...toEventPayload(edited), termsAccepted: true, submissionOtp: submissionOtp ?? undefined },
-            )
-          : null;
-        if (!result?.ok || !result.data?.event) {
-          setIsLoading(false);
-          setValidationError(
-            lang === "lo"
-              ? `ບໍ່ສາມາດບັນທຶກການປ່ຽນແປງໄດ້: ${result?.error ?? "Event not found"}`
-              : `Could not save changes: ${result?.error ?? "Event not found"}`,
-          );
-          return false;
-        }
-        const saved = fromBackendEvent(result.data.event);
-        setLocalEvents(updatedEvents.map((event) =>
-          String(event.id) === String(editingEventId) ? saved : event,
-        ));
-        setEditingEventId(null);
-      } else {
-        setWasEditing(false);
-        // Create new event
-        const newEvent = {
-          id: String(Date.now()),
-          title: eventName,
-          category: eventType === "online" ? "Workshop" : category,
-          venue: venueName,
-          province,
-          district,
-          location: streetAddress,
-          latitude,
-          longitude,
-          googleMapUrl: googleMapsLink,
-          organizer: organizerName,
-          organizerInfo,
-          organizerContact,
-          organizerPhone,
-          organizerEmail,
-          organizerLogo,
-          organizerSocialLinks,
-          bankName, accountNumber, accountHolder,
-          submittedAt: new Date().toISOString().split("T")[0],
-          createdAt: new Date().toISOString(),
-          views: 0,
-          purchases: 0,
-          registered: 0,
-          likes: 0,
-          revenue: "₭ 0",
-          eventType,
-          onlinePlatform,
-          onlineMeetingUrl,
-          onlinePasscode,
-          onlineInstructions,
-          dateType,
-          flexibleDateDesc: dateType === "flexible" ? flexibleDateDesc : "",
-          bookingAvailableDays:
-            dateType === "booking" ? bookingAvailableDays : [],
-          bookingTimeSlots: dateType === "booking" ? bookingTimeSlots : [],
-          bookingSlotCapacities:
-            dateType === "booking" ? bookingSlotCapacities : {},
-          bookingCapacity:
-            dateType === "booking"
-              ? Object.values(bookingSlotCapacities).length > 0
-                ? Math.max(
-                    ...Object.values(bookingSlotCapacities).map(
-                      (v) => Number(v) || 0,
+                  : 0
+                : undefined,
+            date:
+              dateType === "flexible" && availableDates.length > 0
+                ? availableDates[0].date
+                : startDate || "",
+            time:
+              dateType === "flexible" &&
+              availableDates.length > 0 &&
+              availableDates[0].startTime
+                ? availableDates[0].startTime
+                : dateType === "booking" && bookingTimeSlots.length > 0
+                  ? bookingTimeSlots[0]
+                  : startTime || "",
+            endDate:
+              dateType === "flexible" && availableDates.length > 0
+                ? availableDates[availableDates.length - 1].date
+                : endDate || startDate || "",
+            endTime: endTime || "",
+            durationEn,
+            durationLo,
+            languages: selectedLanguages,
+            ticketTiers: ticketTiers.map((tier) => ({
+              id: String(tier.id || Date.now()),
+              name: tier.name,
+              price: Number(String(tier.price).replace(/,/g, "")) || 0,
+              available: Number(String(tier.quantity).replace(/,/g, "")) || 0,
+              description: tier.name + " Access",
+              saleStartDate: tier.saleStartDate,
+              saleStartTime: tier.saleStartTime,
+              saleEndDate: tier.saleEndDate,
+              saleEndTime: tier.saleEndTime,
+            })),
+            coupons: enableCoupons ? coupons : [],
+            hasSeating: hasSeating,
+            zoneImage: zoneImage,
+            hasTimeSelection:
+              dateType === "flexible" &&
+              availableDates.some((d) => !!d.startTime),
+            timeSlots:
+              dateType === "flexible"
+                ? Array.from(
+                    new Set(
+                      availableDates.map((d) => d.startTime).filter(Boolean),
                     ),
                   )
-                : 0
-              : undefined,
-          date:
-            dateType === "flexible" && availableDates.length > 0
-              ? availableDates[0].date
-              : startDate || "",
-          time:
-            dateType === "flexible" &&
-            availableDates.length > 0 &&
-            availableDates[0].startTime
-              ? availableDates[0].startTime
-              : dateType === "booking" && bookingTimeSlots.length > 0
-                ? bookingTimeSlots[0]
-              : startTime || "",
-          endDate:
-            dateType === "flexible" && availableDates.length > 0
-              ? availableDates[availableDates.length - 1].date
-              : endDate || startDate || "",
-          endTime: endTime || "",
-          durationEn,
-          durationLo,
-          languages: selectedLanguages,
-          ticketTiers: ticketTiers.map((tier) => ({
-            id: String(tier.id || Date.now()),
-            name: tier.name,
-            price: Number(String(tier.price).replace(/,/g, "")) || 0,
-            available: Number(String(tier.quantity).replace(/,/g, "")) || 0,
-            description: tier.name + " Access",
-            saleStartDate: tier.saleStartDate,
-            saleStartTime: tier.saleStartTime,
-            saleEndDate: tier.saleEndDate,
-            saleEndTime: tier.saleEndTime,
-          })),
-          coupons: enableCoupons ? coupons : [],
-          hasSeating: hasSeating,
-          zoneImage: zoneImage,
-          hasTimeSelection:
-            dateType === "flexible" &&
-            availableDates.some((d) => !!d.startTime),
-          timeSlots:
-            dateType === "flexible"
-              ? Array.from(
-                  new Set(
-                    availableDates.map((d) => d.startTime).filter(Boolean),
-                  ),
-                )
-              : [],
-          availableDates: dateType === "flexible" ? availableDates : [],
-          image:
-            verticalImage ||
-            horizontalImage ||
-            "",
-          exampleImages:
-            galleryImages.length > 0
-              ? galleryImages
-              : verticalImage
-                ? [verticalImage]
                 : [],
-          description: finalDescription,
-          cancellationPolicy,
-          showRemainingTickets,
-          allowRefunds,
-          allowReviews,
-          requireEveryTicketInfo,
-          maxTickets,
-          enableCountdown: false,
-          eventPrivacy,
-          attendeeMessage,
-          attendeeQuestions,
-          status: "pending_review",
-        };
-        const result = await api.createEvent({ ...toEventPayload(newEvent), termsAccepted: true, submissionOtp: submissionOtp ?? undefined });
-        if (!result.ok || !result.data?.event) {
-          setIsLoading(false);
-          setValidationError(
-            lang === "lo"
-              ? `ບໍ່ສາມາດສ້າງກິດຈະກຳໄດ້: ${result.error ?? ""}`
-              : `Could not create the event: ${result.error ?? ""}`,
-          );
-          return false;
+            availableDates: dateType === "flexible" ? availableDates : [],
+            image: verticalImage || horizontalImage || "",
+            exampleImages:
+              galleryImages.length > 0
+                ? galleryImages
+                : verticalImage
+                  ? [verticalImage]
+                  : [],
+            description: finalDescription,
+            cancellationPolicy,
+            showRemainingTickets,
+            allowRefunds,
+            allowReviews,
+            requireEveryTicketInfo,
+            maxTickets,
+            enableCountdown: false,
+            eventPrivacy,
+            attendeeMessage,
+            attendeeQuestions,
+            status: "pending_review",
+          };
+          const result = await api.createEvent({
+            ...toEventPayload(newEvent),
+            termsAccepted: true,
+            submissionOtp: submissionOtp ?? undefined,
+          });
+          if (!result.ok || !result.data?.event) {
+            setIsLoading(false);
+            setValidationError(
+              lang === "lo"
+                ? `ບໍ່ສາມາດສ້າງກິດຈະກຳໄດ້: ${result.error ?? ""}`
+                : `Could not create the event: ${result.error ?? ""}`,
+            );
+            return false;
+          }
+          const created = fromBackendEvent(result.data.event);
+          const updatedEvents = [
+            created,
+            ...currentEvents.filter((e) => String(e.id) !== created.id),
+          ];
+          setLocalEvents(updatedEvents);
         }
-        const created = fromBackendEvent(result.data.event);
-        const updatedEvents = [
-          created,
-          ...currentEvents.filter((e) => String(e.id) !== created.id),
-        ];
-        setLocalEvents(updatedEvents);
-      }
       } catch (error) {
-        setValidationError(error instanceof Error ? error.message : "Could not submit the event");
+        setValidationError(
+          error instanceof Error ? error.message : "Could not submit the event",
+        );
         return false;
       } finally {
         setIsLoading(false);
@@ -3559,14 +3343,14 @@ export default function CreateEvent() {
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === "analytics" ? "bg-adv-orange/10 text-adv-orange font-bold" : "text-gray-500 hover:text-adv-slate hover:bg-gray-50"}`}
           >
             <Calendar className="w-5 h-5" />
-            <span className="font-medium text-sm">
-              {t.myEvents}
-            </span>
+            <span className="font-medium text-sm">{t.myEvents}</span>
           </button>
 
           {(activeTab === "createEvent" || editingEventId) && (
             <button
-              onClick={() => setActiveTab(termsAccepted ? "createEvent" : "terms")}
+              onClick={() =>
+                setActiveTab(termsAccepted ? "createEvent" : "terms")
+              }
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === "createEvent" ? "bg-adv-orange/10 text-adv-orange font-bold border-l-4 border-adv-orange" : "text-gray-500 hover:text-adv-slate hover:bg-gray-50"}`}
             >
               <Plus className="w-5 h-5 shrink-0 text-adv-orange" />
@@ -4809,7 +4593,7 @@ export default function CreateEvent() {
 
                                     {/* Native Picker Trigger (+) */}
                                     <label
-                                      onMouseDown={(e) => {
+                                      onMouseDown={() => {
                                         // Ensure active range is preserved before opening native color dialog
                                         const sel = window.getSelection();
                                         if (
@@ -5189,7 +4973,6 @@ export default function CreateEvent() {
                                   }
                                   setShowToolbarLinkModal(true);
                                   setShowColorMenu(false);
-                                  setShowFontMenu(false);
                                   setShowFontSizeMenu(false);
                                 }}
                                 className="w-7 h-7 rounded-lg hover:bg-white active:scale-95 text-gray-700 hover:text-gray-900 flex items-center justify-center transition-all cursor-pointer"
@@ -5218,7 +5001,7 @@ export default function CreateEvent() {
                               contentEditable
                               onClick={handleEditorClick}
                               onInput={handleEditorInput}
-                              onKeyUp={(e) => {
+                              onKeyUp={() => {
                                 handleEditorInput();
                                 const sel = window.getSelection();
                                 if (
@@ -7827,9 +7610,7 @@ export default function CreateEvent() {
                   <div>
                     <h2 className="text-2xl sm:text-3xl font-black text-adv-slate flex items-center gap-2.5">
                       <Calendar className="w-7 h-7 text-adv-orange shrink-0" />
-                      <span>
-                        {t.myEvents}
-                      </span>
+                      <span>{t.myEvents}</span>
                     </h2>
                     <p className="text-gray-500 font-medium text-xs sm:text-sm mt-1">
                       {lang === "lo"
@@ -7847,24 +7628,49 @@ export default function CreateEvent() {
                 </div>
 
                 {eventsLoading ? (
-                  <p role="status" className="rounded-2xl border border-gray-200 bg-white p-5 text-gray-600">
-                    {lang === "lo" ? "ກຳລັງໂຫຼດກິດຈະກຳ…" : "Loading your events…"}
+                  <p
+                    role="status"
+                    className="rounded-2xl border border-gray-200 bg-white p-5 text-gray-600"
+                  >
+                    {lang === "lo"
+                      ? "ກຳລັງໂຫຼດກິດຈະກຳ…"
+                      : "Loading your events…"}
                   </p>
                 ) : eventsLoadError ? (
-                  <p role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-700">
-                    {lang === "lo" ? "ບໍ່ສາມາດໂຫຼດງານຂອງທ່ານໄດ້. ກະລຸນາໂຫຼດໜ້າໃໝ່." : "Could not load your events. Please reload the page."}
+                  <p
+                    role="alert"
+                    className="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-700"
+                  >
+                    {lang === "lo"
+                      ? "ບໍ່ສາມາດໂຫຼດງານຂອງທ່ານໄດ້. ກະລຸນາໂຫຼດໜ້າໃໝ່."
+                      : "Could not load your events. Please reload the page."}
                   </p>
                 ) : localEvents.length === 0 ? (
                   <p className="rounded-2xl border border-gray-200 bg-white p-5 text-gray-600">
-                    {lang === "lo" ? "ທ່ານຍັງບໍ່ມີກິດຈະກຳ." : "You have not created an event yet."}
+                    {lang === "lo"
+                      ? "ທ່ານຍັງບໍ່ມີກິດຈະກຳ."
+                      : "You have not created an event yet."}
                   </p>
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-2">
                     {localEvents.map((event) => (
-                      <button key={event.id} type="button" onClick={() => setSelectedEvent(event)} className="rounded-2xl border border-gray-200 bg-white p-5 text-left shadow-sm hover:border-orange-400">
-                        <h3 className="font-bold text-adv-slate">{event.title}</h3>
-                        <p className="mt-2 text-sm text-gray-500">{event.venue || event.location || (lang === "lo" ? "ບໍ່ມີສະຖານທີ່" : "Venue not set")}</p>
-                        <p className="mt-2 text-xs font-semibold text-orange-600">{event.status}</p>
+                      <button
+                        key={event.id}
+                        type="button"
+                        onClick={() => setSelectedEvent(event)}
+                        className="rounded-2xl border border-gray-200 bg-white p-5 text-left shadow-sm hover:border-orange-400"
+                      >
+                        <h3 className="font-bold text-adv-slate">
+                          {event.title}
+                        </h3>
+                        <p className="mt-2 text-sm text-gray-500">
+                          {event.venue ||
+                            event.location ||
+                            (lang === "lo" ? "ບໍ່ມີສະຖານທີ່" : "Venue not set")}
+                        </p>
+                        <p className="mt-2 text-xs font-semibold text-orange-600">
+                          {event.status}
+                        </p>
                       </button>
                     ))}
                   </div>
@@ -7985,11 +7791,23 @@ export default function CreateEvent() {
                 {termsGate && (
                   <div className="rounded-2xl border border-orange-200 bg-white p-6 shadow-sm">
                     {termsAcceptanceStatus === "loading" ? (
-                      <p role="status">{lang === "lo" ? "ກຳລັງກວດສອບການຍອມຮັບເງື່ອນໄຂ..." : "Checking your terms acceptance..."}</p>
+                      <p role="status">
+                        {lang === "lo"
+                          ? "ກຳລັງກວດສອບການຍອມຮັບເງື່ອນໄຂ..."
+                          : "Checking your terms acceptance..."}
+                      </p>
                     ) : termsAcceptanceStatus === "error" ? (
                       <div role="alert">
-                        <p>{lang === "lo" ? "ບໍ່ສາມາດກວດສອບຫຼືບັນທຶກການຍອມຮັບໄດ້. ກະລຸນາລອງໃໝ່." : "Could not check or save your acceptance. Please try again."}</p>
-                        <button type="button" onClick={() => setTermsRetry((value) => value + 1)} className="mt-4 rounded-xl bg-adv-orange px-6 py-3 font-bold text-white">
+                        <p>
+                          {lang === "lo"
+                            ? "ບໍ່ສາມາດກວດສອບຫຼືບັນທຶກການຍອມຮັບໄດ້. ກະລຸນາລອງໃໝ່."
+                            : "Could not check or save your acceptance. Please try again."}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setTermsRetry((value) => value + 1)}
+                          className="mt-4 rounded-xl bg-adv-orange px-6 py-3 font-bold text-white"
+                        >
                           {lang === "lo" ? "ລອງໃໝ່" : "Retry"}
                         </button>
                       </div>
@@ -7999,7 +7817,9 @@ export default function CreateEvent() {
                           <input
                             type="checkbox"
                             checked={termsChecked}
-                            onChange={(event) => setTermsChecked(event.target.checked)}
+                            onChange={(event) =>
+                              setTermsChecked(event.target.checked)
+                            }
                             disabled={termsAcceptanceStatus === "saving"}
                             className="mt-1 h-4 w-4 accent-orange-600"
                           />
@@ -8007,29 +7827,41 @@ export default function CreateEvent() {
                         </label>
                         <button
                           type="button"
-                          disabled={!termsChecked || termsAcceptanceStatus === "saving"}
+                          disabled={
+                            !termsChecked || termsAcceptanceStatus === "saving"
+                          }
                           onClick={async () => {
                             setTermsAcceptanceStatus("saving");
                             try {
-                              const result = await api.post<{ accepted: boolean }>(
+                              const result = await api.post<{
+                                accepted: boolean;
+                              }>(
                                 "/organizer/terms-acceptance",
                                 { accepted: true },
                                 { token, throwOnError: true },
                               );
-                              if (!result.data?.accepted) throw new Error("Terms acceptance was not saved");
+                              if (!result.data?.accepted)
+                                throw new Error(
+                                  "Terms acceptance was not saved",
+                                );
                               setTermsAcceptanceStatus("accepted");
                               setTermsAccepted(true);
                               setTermsGate(false);
                               setActiveTab("createEvent");
                               window.scrollTo(0, 0);
                             } catch (error) {
-                              console.error("Could not save organizer terms acceptance", error);
+                              console.error(
+                                "Could not save organizer terms acceptance",
+                                error,
+                              );
                               setTermsAcceptanceStatus("error");
                             }
                           }}
                           className="mt-5 rounded-xl bg-adv-orange px-6 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          {lang === "lo" ? "ຕົກລົງ ແລະ ສ້າງກິດຈະກຳ" : "Agree and continue to event form"}
+                          {lang === "lo"
+                            ? "ຕົກລົງ ແລະ ສ້າງກິດຈະກຳ"
+                            : "Agree and continue to event form"}
                         </button>
                       </>
                     )}
@@ -8053,12 +7885,6 @@ export default function CreateEvent() {
       <AnimatePresence>
         {selectedEvent &&
           (() => {
-            const isPastModal =
-              new Date(`${selectedEvent.date}T23:59:59`) < new Date();
-            const daysUntilModal = getDaysUntilEvent(selectedEvent.date);
-            const isFlexibleModal = selectedEvent.dateType === "flexible";
-            const canEditModal = isFlexibleModal || daysUntilModal >= 7;
-
             return (
               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
                 <motion.div
@@ -8527,116 +8353,6 @@ export default function CreateEvent() {
             );
           })()}
 
-        {/* Full Interactive Event Preview Modal */}
-        {showPreviewModal && previewData && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={(e) => {
-              // Clicking directly on the backdrop closes the preview
-              if (e.target === e.currentTarget) {
-                setShowPreviewModal(false);
-              }
-            }}
-            className="fixed inset-0 z-[200] flex flex-col bg-slate-900/95 backdrop-blur-md overflow-hidden"
-          >
-            {/* Preview Top Bar */}
-            <div
-              onClick={(e) => e.stopPropagation()}
-              className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-col md:flex-row items-center justify-between shrink-0 shadow-2xl z-20 gap-4"
-            >
-              <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
-                <span className="flex items-center gap-2 px-3 py-1 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full text-xs font-black uppercase tracking-wider animate-pulse">
-                  <Eye className="w-4 h-4" />
-                  {lang === "lo" ? "ໂໝດເບິ່ງຕົວຢ່າງ" : "PREVIEW MODE"}
-                </span>
-                <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
-                  <button
-                    onClick={() => setPreviewDeviceMode("desktop")}
-                    className={`p-2 rounded-lg transition-all ${previewDeviceMode === "desktop" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-300"}`}
-                    title={lang === "lo" ? "ເບິ່ງແບບເດັສທ໋ອບ" : "Desktop View"}
-                  >
-                    <Monitor className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setPreviewDeviceMode("mobile")}
-                    className={`p-2 rounded-lg transition-all ${previewDeviceMode === "mobile" ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-300"}`}
-                    title={lang === "lo" ? "ເບິ່ງແບບມືຖື" : "Mobile View"}
-                  >
-                    <Smartphone className="w-4 h-4" />
-                  </button>
-                </div>
-                <span className="hidden sm:inline text-[11px] text-slate-400 font-medium ml-2">
-                  (
-                  {lang === "lo"
-                    ? "ຄລິກພື້ນທີ່ວ່າງເພື່ອປິດ ຫຼື ກົດ Esc"
-                    : "Click blank space to close or press Esc"}
-                  )
-                </span>
-              </div>
-
-              <div className="flex items-center gap-3 w-full md:w-auto">
-                <button
-                  onClick={() => setShowPreviewModal(false)}
-                  className="flex-1 md:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all border border-slate-700 flex justify-center items-center gap-1.5 cursor-pointer"
-                  title={lang === "lo" ? "ປິດໂໝດເບິ່ງຕົວຢ່າງ" : "Close preview"}
-                >
-                  <X className="w-4 h-4" />
-                  {t.backToEdit ||
-                    (lang === "lo" ? "ກັບໄປແກ້ໄຂ" : "Back to Edit")}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowPreviewModal(false);
-                    if (activeStep !== 5) setActiveStep(5);
-                    handleContinue();
-                  }}
-                  className="flex-1 md:flex-none px-5 py-2 bg-adv-orange hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-orange-500/20 flex justify-center items-center gap-1.5 cursor-pointer"
-                >
-                  <Check className="w-4 h-4" />
-                  {t.publishFromPreview ||
-                    (lang === "lo"
-                      ? "ເຜີຍແຜ່ event ດຽວນີ້"
-                      : "Publish Event Now")}
-                </button>
-              </div>
-            </div>
-
-            {/* Preview Body Content Scroll Area - Clicking on any blank space outside the card closes preview */}
-            <div
-              onClick={(e) => {
-                if (e.target === e.currentTarget) {
-                  setShowPreviewModal(false);
-                }
-              }}
-              className={`flex-1 overflow-y-auto text-adv-slate flex justify-center cursor-pointer ${previewDeviceMode === "mobile" ? "bg-slate-900/60 py-8 px-4 items-start" : "bg-slate-900/40 py-8 px-4 sm:px-6 md:px-8"}`}
-            >
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className={`w-full mx-auto transition-all duration-300 cursor-default ${previewDeviceMode === "mobile" ? "max-w-[400px] min-h-[800px] h-[800px] bg-gray-50 rounded-[3rem] border-[14px] border-slate-800 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col relative" : "max-w-6xl px-4 sm:px-8 py-8 bg-gray-50 rounded-3xl shadow-2xl border border-gray-200"}`}
-              >
-                {previewDeviceMode === "mobile" && (
-                  <div className="absolute top-0 inset-x-0 h-6 flex justify-center items-start z-50 pointer-events-none">
-                    <div className="w-32 h-6 bg-slate-800 rounded-b-3xl"></div>
-                  </div>
-                )}
-                <div
-                  className={
-                    previewDeviceMode === "mobile"
-                      ? "flex-1 overflow-y-auto scrollbar-hide"
-                      : "flex-1 overflow-y-auto"
-                  }
-                >
-                  <EventDetails
-                    previewEventData={previewData}
-                    onClosePreview={() => setShowPreviewModal(false)}
-                  />
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
       </AnimatePresence>
     </motion.div>
   );
