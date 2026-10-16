@@ -18,11 +18,37 @@ const eventDate = z.object({
 });
 
 const coupon = z.object({
-  code: z.string().min(1),
+  code: z.string().trim().min(1).max(100),
   discountType: z.enum(["percent", "fixed"]),
   discountValue: z.coerce.number().int().nonnegative(),
   maxRedemptions: z.coerce.number().int().positive().nullish(),
+  maxUsesPerUser: z.coerce.number().int().positive().nullish(),
+  maxDiscountAmount: z.coerce.number().int().positive().max(2147483647).nullish(),
+  startsAt: z.string().datetime().nullish(),
+  expiresAt: z.string().datetime().nullish(),
+  isActive: z.boolean().default(true),
+}).superRefine((value, ctx) => {
+  if (value.discountType === "percent" && value.discountValue > 100)
+    ctx.addIssue({ code: "custom", path: ["discountValue"], message: "Percentage must not exceed 100" });
+  if (value.startsAt && value.expiresAt && value.startsAt > value.expiresAt)
+    ctx.addIssue({ code: "custom", path: ["expiresAt"], message: "Coupon expiry must follow its start" });
 });
+
+const coupons = z.array(coupon).max(100).refine(
+  (values) => new Set(values.map((c) => c.code.toUpperCase())).size === values.length,
+  "Coupon codes must be unique within an event",
+);
+
+const question = z.object({
+  id: z.string().trim().min(1).max(100).optional(),
+  label: z.string().trim().max(500),
+  type: z.enum(["text", "long_text", "url", "checkbox", "single_choice", "multi_choice", "options"]),
+  required: z.boolean().default(false),
+  options: z.array(z.string().trim().min(1).max(500)).max(50).optional(),
+});
+export const attendeeQuestionsSchema = z.array(question).max(50)
+  .transform((values) => values.map((q, i) => ({ ...q, id: q.id ?? `question-${i + 1}` })))
+  .refine((values) => new Set(values.map((q) => q.id)).size === values.length, "Question IDs must be unique");
 
 /** Everything the CreateEvent form can send. Unknown keys are stripped. */
 export const createEventBody = z.object({
@@ -90,9 +116,9 @@ export const createEventBody = z.object({
     .object({
       name: z.string().min(1),
       description: z.string().optional(),
-      contactEmail: z.string().email().optional(),
-      contactPhone: z.string().optional(),
-      logoUrl: z.string().optional(),
+      contactEmail: z.string().email().nullish(),
+      contactPhone: z.string().nullish(),
+      logoUrl: z.string().nullish(),
     })
     .optional(),
 
@@ -106,7 +132,7 @@ export const createEventBody = z.object({
       onlinePasscode: z.string().max(200).nullish(),
       onlineInstructions: z.string().max(10000).nullish(),
       bookingSlotCapacities: z.record(z.string(), z.coerce.number().int().nonnegative()).nullish(),
-      attendeeQuestions: z.array(z.record(z.string(), z.unknown())).max(50).nullish(),
+      attendeeQuestions: attendeeQuestionsSchema.nullish(),
       ticketSaleWindows: z.array(z.record(z.string(), z.unknown())).max(100).nullish(),
       organizerSocialLinks: z.record(z.string(), z.string().max(2000)).nullish(),
     })
@@ -114,7 +140,7 @@ export const createEventBody = z.object({
 
   tiers: z.array(tier).default([]),
   dates: z.array(eventDate).default([]),
-  coupons: z.array(coupon).default([]),
+  coupons: coupons.default([]),
 });
 
 // Partial for PATCH-style updates. The child arrays drop their `.default([])`
@@ -142,7 +168,7 @@ export const updateEventBody = createEventBody.partial().extend({
   requireEveryTicketInfo: z.coerce.boolean().optional(),
   tiers: z.array(tier).optional(),
   dates: z.array(eventDate).optional(),
-  coupons: z.array(coupon).optional(),
+  coupons: coupons.optional(),
 });
 
 export const eventIdParam = z.object({ id: z.string().min(1) });

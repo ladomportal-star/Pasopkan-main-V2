@@ -28,8 +28,7 @@ router.get("/organizer/eligibility", requireAuth, requireRegisteredUser, async (
     phoneVerified: Boolean(phone),
     phone,
     canCreateEvent:
-      user?.role === "admin" ||
-      (user?.role === "organizer" && Boolean(user.organizer) && Boolean(phone)),
+      user?.role === "admin" || (user?.role === "organizer" && Boolean(user.organizer)),
   });
 });
 router.get(

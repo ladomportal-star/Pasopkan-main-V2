@@ -9,16 +9,76 @@ import { requireVerifiedPhone } from "../src/services/verified-phone.service.ts"
 const app = createApp();
 
 describe("events", () => {
-  it("requires terms and a fresh one-use SMS code when an organizer submits", async () => {
+  it("sends the submission OTP only after an unverified approved organizer has drafted", async () => {
+    const uid = "unverified-submit-host";
+    const owner = await as(uid);
+    const user = await db.user.create({ data: { authId: uid, role: "organizer" } });
+    await db.organizer.create({ data: { userId: user.id, name: "Host" } });
+    const draft = await request(app).post("/api/events").set(owner).send({
+      title: "Draft first",
+      status: "draft",
+      termsAccepted: true,
+    });
+    expect(draft.status).toBe(201);
+
+    const realFetch = globalThis.fetch;
+    let sentCode = "";
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (String(input).includes("apimicroservices.wenova.fun")) {
+        sentCode =
+          (JSON.parse(String(init?.body)) as { message: string }).message.match(/\d{6}$/)?.[0] ??
+          "";
+        return Promise.resolve(
+          new Response(JSON.stringify({ success: true, data: { resultCode: 20000 } }), {
+            status: 200,
+          }),
+        );
+      }
+      return realFetch(input, init);
+    });
+    try {
+      const phone = "+8562012345678";
+      const sent = await request(app)
+        .post("/api/organizer/event-submission-otp")
+        .set(owner)
+        .send({ phone });
+      expect(sent.status).toBe(200);
+      expect(sentCode).toMatch(/^\d{6}$/);
+      const proof = { challengeId: sent.body.challengeId, code: sentCode };
+      const submitted = await request(app)
+        .put(`/api/events/${draft.body.event.id}`)
+        .set(owner)
+        .send({
+          status: "pending_review",
+          termsAccepted: true,
+          submissionOtp: proof,
+        });
+      expect(submitted.status).toBe(200);
+      expect(submitted.body.event.status).toBe("pending_review");
+      expect(
+        (
+          await request(app).put(`/api/events/${draft.body.event.id}`).set(owner).send({
+            status: "pending_review",
+            termsAccepted: true,
+            submissionOtp: proof,
+          })
+        ).status,
+      ).toBe(403);
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
+  it("remembers accepted terms but still requires a fresh one-use SMS code when submitting", async () => {
     const owner = await as("otp-submission-host");
     const event = await createEvent(app, owner, { status: "draft" });
     const path = `/api/events/${event.id}`;
     expect(
-      (await request(app).post("/api/events").set(owner).send({ title: "Bypass terms" })).status,
-    ).toBe(400);
+      (await request(app).post("/api/events").set(owner).send({ title: "Terms already accepted" })).status,
+    ).toBe(201);
     expect(
       (await request(app).put(path).set(owner).send({ status: "pending_review" })).status,
-    ).toBe(400);
+    ).toBe(403);
     expect(
       (
         await request(app)

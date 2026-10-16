@@ -16,7 +16,7 @@ async function admin() {
 }
 
 describe("admin moderation boundaries", () => {
-  it("requires a confirmed Auth phone before applying or creating organizer events", async () => {
+  it("lets an approved organizer draft before phone OTP but still blocks unverified submission", async () => {
     const uid = "unverified-organizer";
     const headers = await as(uid);
     const user = await db.user.create({
@@ -26,13 +26,23 @@ describe("admin moderation boundaries", () => {
 
     const eligibility = await request(app).get("/api/organizer/eligibility").set(headers);
     expect(eligibility.status).toBe(200);
-    expect(eligibility.body).toMatchObject({ phoneVerified: false, canCreateEvent: false });
+    expect(eligibility.body).toMatchObject({ phoneVerified: false, canCreateEvent: true });
     expect(
       (await request(app).post("/api/organizer-applications").set(headers).send({ name: "Host" }))
         .status,
     ).toBe(403);
+    const draft = await request(app)
+      .post("/api/events")
+      .set(headers)
+      .send({ title: "Draft before OTP", termsAccepted: true });
+    expect(draft.status).toBe(201);
     expect(
-      (await request(app).post("/api/events").set(headers).send({ title: "No OTP" })).status,
+      (
+        await request(app).put(`/api/events/${draft.body.event.id}`).set(headers).send({
+          status: "pending_review",
+          termsAccepted: true,
+        })
+      ).status,
     ).toBe(403);
   });
 

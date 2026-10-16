@@ -6,7 +6,7 @@ const attendee = z.object({
   lastName: z.string().max(100).optional(),
   email: z.string().max(200).optional(),
   phone: z.string().max(40).optional(),
-  customAnswers: z.record(z.string(), z.union([z.string(), z.array(z.string())])).optional(),
+  customAnswers: z.record(z.string().max(100), z.union([z.string().max(5000), z.array(z.string().max(500)).max(50)])).optional(),
 });
 
 export const createTicketBody = z.object({
@@ -18,6 +18,7 @@ export const createTicketBody = z.object({
   selectedTime: z.string().optional(),
   paymentTxnId: z.string().min(1).optional(),
   freeOnly: z.boolean().optional(),
+  couponCode: z.string().trim().min(1).max(100).optional(),
   /** One entry per ticket (i.e. per unit of `quantity`), in order. Optional. */
   attendees: z.array(attendee).max(50).optional(),
 });

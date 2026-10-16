@@ -240,6 +240,8 @@ model Coupon {
   discountType String
   discountValue Int
   maxRedemptions Int?
+  maxUsesPerUser Int?
+  maxDiscountAmount Int?
   redeemedCount Int @default(0)
   startsAt DateTime? @db.Timestamptz(3)
   expiresAt DateTime? @db.Timestamptz(3)

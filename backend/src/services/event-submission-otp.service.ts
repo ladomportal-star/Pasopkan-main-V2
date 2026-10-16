@@ -3,9 +3,9 @@ import { db } from "../config/database.ts";
 import { env } from "../config/env.ts";
 import type { Prisma } from "../lib/prisma.ts";
 import { HttpError } from "../middlewares/error.middleware.ts";
-import { normalizeLaoMobilePhone } from "../utils/phone.ts";
+import { isLaoMobilePhone, normalizeLaoMobilePhone } from "../utils/phone.ts";
 import { sendEventSubmissionOtp, SmsHookError } from "./sms-hook.service.ts";
-import { requireVerifiedPhone } from "./verified-phone.service.ts";
+import { getVerifiedPhone } from "./verified-phone.service.ts";
 
 const TTL_MS = 5 * 60_000;
 const COOLDOWN_MS = 60_000;
@@ -20,11 +20,12 @@ function digest(uid: string, phone: string, code: string) {
     .digest("hex");
 }
 
-/** A caller may only send a code to the confirmed phone on their own organizer account. */
+/** Keep an existing confirmed account phone bound; otherwise verify a new phone at submission. */
 export async function issueEventSubmissionOtp(uid: string, enteredPhone: string) {
-  const confirmedPhone = await requireVerifiedPhone(uid);
+  const confirmedPhone = await getVerifiedPhone(uid);
   const phone = normalizeLaoMobilePhone(enteredPhone);
-  if (phone !== confirmedPhone)
+  if (!isLaoMobilePhone(phone)) throw new HttpError(400, "Enter a valid Lao mobile number");
+  if (confirmedPhone && phone !== confirmedPhone)
     throw new HttpError(400, "Enter the verified phone on your account");
   const user = await db.user.findUnique({ where: { authId: uid }, include: { organizer: true } });
   if (!user || user.role !== "organizer" || !user.organizer)
@@ -66,21 +67,22 @@ export async function issueEventSubmissionOtp(uid: string, enteredPhone: string)
 /** Validate without consuming: the event transaction consumes atomically. */
 export async function validateSubmissionOtp(uid: string, proof?: SubmissionProof) {
   if (!proof) throw new HttpError(403, "Event submission requires a fresh phone OTP");
-  const phone = await requireVerifiedPhone(uid);
+  const confirmedPhone = await getVerifiedPhone(uid);
   const challenge = await db.eventSubmissionOtp.findUnique({ where: { id: proof.challengeId } });
   const user = await db.user.findUnique({ where: { authId: uid }, select: { id: true } });
   if (
     !user ||
     !challenge ||
     challenge.userId !== user.id ||
-    challenge.phone !== phone ||
+    !isLaoMobilePhone(challenge.phone) ||
+    (confirmedPhone !== null && challenge.phone !== confirmedPhone) ||
     challenge.consumedAt ||
     challenge.expiresAt <= new Date() ||
     challenge.attempts >= MAX_ATTEMPTS
   )
     throw new HttpError(403, "OTP expired or unavailable; request a new code");
   const expected = Buffer.from(challenge.codeDigest, "hex");
-  const supplied = Buffer.from(digest(uid, phone, proof.code), "hex");
+  const supplied = Buffer.from(digest(uid, challenge.phone, proof.code), "hex");
   if (expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) {
     await db.eventSubmissionOtp.updateMany({
       where: { id: challenge.id, consumedAt: null, attempts: { lt: MAX_ATTEMPTS } },
@@ -88,7 +90,12 @@ export async function validateSubmissionOtp(uid: string, proof?: SubmissionProof
     });
     throw new HttpError(403, "Invalid OTP");
   }
-  return { id: challenge.id, userId: user.id, phone, codeDigest: challenge.codeDigest };
+  return {
+    id: challenge.id,
+    userId: user.id,
+    phone: challenge.phone,
+    codeDigest: challenge.codeDigest,
+  };
 }
 
 export async function consumeSubmissionOtp(

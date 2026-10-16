@@ -2,9 +2,9 @@ import { db } from "../config/database.ts";
 import type { Prisma } from "../lib/prisma.ts";
 import { assertMediaReferences } from "./media.service.ts";
 import { HttpError } from "../middlewares/error.middleware.ts";
-import { requireVerifiedPhone } from "./verified-phone.service.ts";
 import { consumeSubmissionOtp, validateSubmissionOtp } from "./event-submission-otp.service.ts";
 import type { CreateEventBody, UpdateEventBody } from "../validators/event.validator.ts";
+import { registrationQuestions } from "./event-registration.ts";
 const publicInclude = {
   tiers: { orderBy: { sortOrder: "asc" } },
   dates: { orderBy: { date: "asc" } },
@@ -12,6 +12,21 @@ const publicInclude = {
   organizer: true,
 } as const;
 const ownerInclude = { ...publicInclude, privateDetails: true } as const;
+const registrationInclude = {
+  ...publicInclude,
+  privateDetails: { select: { attendeeQuestions: true, ticketSaleWindows: true, bookingSlotCapacities: true } },
+} as const;
+function publicRegistration<T extends { privateDetails?: {
+  attendeeQuestions: unknown; ticketSaleWindows: unknown; bookingSlotCapacities: unknown;
+} | null }>(event: T) {
+  const { privateDetails, ...row } = event;
+  return {
+    ...row,
+    attendeeQuestions: registrationQuestions(privateDetails?.attendeeQuestions),
+    ticketSaleWindows: privateDetails?.ticketSaleWindows ?? [],
+    bookingSlotCapacities: privateDetails?.bookingSlotCapacities ?? {},
+  };
+}
 const publicStates = ["published", "sold_out", "completed"] as const;
 const refWhere = (ref: string) => (/^[0-9a-f-]{36}$/i.test(ref) ? { id: ref } : { slug: ref });
 function columns(body: Partial<CreateEventBody>) {
@@ -79,7 +94,6 @@ export async function createEvent(body: CreateEventBody, uid: string) {
     where: { authId: uid },
     select: { role: true, organizerTermsAcceptedAt: true },
   });
-  if (role?.role === "organizer") await requireVerifiedPhone(uid);
   const submitting = role?.role === "organizer" && body.status === "pending_review";
   if (role?.role === "organizer" && !role.organizerTermsAcceptedAt && !body.termsAccepted)
     throw new HttpError(400, "Accept the organizer terms before creating an event");
@@ -257,16 +271,16 @@ export async function listEvents(query: {
     : { status: { in: [...publicStates] }, eventPrivacy: "public" };
   const rows = await db.event.findMany({
     where: { AND: [where, ...(query.status ? [{ status: query.status as any }] : [])] },
-    include: query.mine ? ownerInclude : publicInclude,
+    include: query.mine ? ownerInclude : registrationInclude,
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: query.limit + 1,
     ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
   });
-  const events = rows.slice(0, query.limit);
+  const events = rows.slice(0, query.limit).map((row) => query.mine ? row : publicRegistration(row));
   return { events, nextCursor: rows.length > query.limit ? (events.at(-1)?.id ?? null) : null };
 }
 export async function getEvent(ref: string, uid?: string) {
-  const event = await db.event.findFirst({ where: refWhere(ref), include: publicInclude });
+  const event = await db.event.findFirst({ where: refWhere(ref), include: registrationInclude });
   if (!event) return null;
   const actor = uid ? await db.user.findUnique({ where: { authId: uid } }) : null;
   const ownsEvent =
@@ -278,5 +292,5 @@ export async function getEvent(ref: string, uid?: string) {
     !(publicStates as readonly string[]).includes(event.status)
   )
     return null;
-  return event;
+  return publicRegistration(event);
 }
