@@ -6,14 +6,14 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { DateInputDDMMYYYY } from '../components/DateInputDDMMYYYY';
 import SEO from '../components/SEO';
-import { safeStorage } from '../lib/storage';
+import { prepareProfilePhoto } from '../lib/profilePhoto';
 
 const translations = {
   en: {
     editProfile: 'Edit Profile',
     backToAccount: 'Back to Account',
     profilePicture: 'Profile Picture',
-    clickToUpdate: 'Click on the image to update your photo.',
+    clickToUpdate: 'Choose a photo, then save your changes.',
     personalInfo: 'Personal Information',
     firstName: 'First Name',
     lastName: 'Last Name',
@@ -35,7 +35,7 @@ const translations = {
     editProfile: 'ແກ້ໄຂໂປຣໄຟລ໌',
     backToAccount: 'ກັບໄປທີ່ບັນຊີ',
     profilePicture: 'ຮູບໂປຣໄຟລ໌',
-    clickToUpdate: 'ຄລິກທີ່ຮູບເພື່ອອັບເດດຮູບຂອງທ່ານ.',
+    clickToUpdate: 'ເລືອກຮູບ ແລ້ວກົດບັນທຶກການປ່ຽນແປງ.',
     personalInfo: 'ຂໍ້ມູນສ່ວນຕົວ',
     firstName: 'ຊື່',
     lastName: 'ນາມສະກຸນ',
@@ -60,7 +60,9 @@ export default function EditProfile() {
   const { lang } = useLanguage();
   const { user, syncProfileToSupabase } = useAuth();
   const t = translations[lang];
-  const [profilePic, setProfilePic] = useState<string | null>(null);
+  const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
+  const [isPreparingPhoto, setIsPreparingPhoto] = useState(false);
+  const profilePic = pendingPhoto || user?.avatar || null;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
@@ -85,71 +87,26 @@ export default function EditProfile() {
       dateOfBirth: user.dateOfBirth || '',
       dob: user.dateOfBirth || '',
     });
-    if (user.avatar) setProfilePic(user.avatar);
   }, [user]);
 
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [saveError, setSaveError] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const img = new Image();
-        img.onload = async () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 256;
-          const MAX_HEIGHT = 256;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          const base64Pic = canvas.toDataURL('image/jpeg', 0.7);
-          
-          setProfilePic(base64Pic);
-          
-          try {
-            safeStorage.setItem('pasopkan_user_profile_pic', base64Pic);
-          } catch (err) {
-            console.error('LocalStorage quota exceeded, skipping local cache', err);
-          }
-          
-          try {
-            await syncProfileToSupabase({ profilePic: base64Pic });
-          } catch (err) {
-            console.error('Profile sync error:', err);
-          }
-        };
-        img.src = reader.result as string;
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    setIsPreparingPhoto(true);
+    setSaveError(null);
+    try {
+      setPendingPhoto(await prepareProfilePhoto(file));
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Could not process the image.');
+    } finally {
+      setIsPreparingPhoto(false);
+      e.target.value = '';
     }
   };
-
-  useEffect(() => {
-    try {
-      const savedPic = safeStorage.getItem('pasopkan_user_profile_pic') || localStorage.getItem('pasopkan_user_profile_pic');
-      if (savedPic) setProfilePic(savedPic);
-    } catch (err) {
-      console.error(err);
-    }
-  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -174,7 +131,7 @@ export default function EditProfile() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    setSaveError(false);
+    setSaveError(null);
 
     try {
       const payload = {
@@ -182,14 +139,15 @@ export default function EditProfile() {
         dateOfBirth: formData.dateOfBirth || formData.dob || '',
         dob: formData.dateOfBirth || formData.dob || '',
       };
-      await syncProfileToSupabase(payload);
+      await syncProfileToSupabase({ ...payload, ...(pendingPhoto ? { profilePic: pendingPhoto } : {}) });
+      setPendingPhoto(null);
       setShowSuccess(true);
       setTimeout(() => {
         navigate('/account');
       }, 5000);
     } catch (err) {
       console.error(err);
-      setSaveError(true);
+      setSaveError(err instanceof Error ? err.message : 'Could not save your profile. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -216,7 +174,7 @@ export default function EditProfile() {
         <form onSubmit={handleSubmit} className="space-y-8">
           {saveError && (
             <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {lang === 'lo' ? 'ບັນທຶກໂປຣໄຟລ໌ບໍ່ສຳເລັດ. ກະລຸນາລອງໃໝ່.' : 'Could not save your profile. Please try again.'}
+              {lang === 'lo' ? 'ບັນທຶກໂປຣໄຟລ໌ບໍ່ສຳເລັດ: ' : 'Could not save your profile: '}{saveError}
             </p>
           )}
           {/* Profile Picture */}
@@ -239,7 +197,7 @@ export default function EditProfile() {
                 type="file" 
                 ref={fileInputRef} 
                 onChange={handleFileChange} 
-                accept="image/*" 
+                accept="image/jpeg,image/png,image/webp"
                 className="hidden" 
               />
             </div>
@@ -355,7 +313,7 @@ export default function EditProfile() {
             </button>
             <button
               type="submit"
-              disabled={isSaving || showSuccess}
+              disabled={isSaving || isPreparingPhoto || showSuccess}
               className="flex items-center justify-center gap-2 px-8 py-2.5 rounded-xl bg-adv-slate text-white font-bold text-sm hover:bg-black transition-all disabled:opacity-70 shadow-lg shadow-gray-200 order-1 sm:order-2"
             >
               {isSaving ? (

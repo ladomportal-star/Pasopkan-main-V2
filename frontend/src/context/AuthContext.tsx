@@ -205,7 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   /** Push profile edits (name, phone, gender, date of birth, avatar) to the backend. */
   const syncProfileToSupabase = async (profileData: any) => {
-    if (!user || !token) return;
+    if (!user || !token) throw new Error('Please sign in before saving your profile.');
 
     const gender: 'male' | 'female' | 'other' | undefined = ['male', 'female', 'other'].includes(
       profileData.gender,

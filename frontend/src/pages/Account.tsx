@@ -72,6 +72,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import SEO from "../components/SEO";
 import ManageCouponsSection from "../components/ManageCouponsSection";
+import { prepareProfilePhoto } from "../lib/profilePhoto";
 
 const LazyScanner = React.lazy(
   () =>
@@ -305,6 +306,7 @@ export default function Account() {
 
   const profilePic = user?.avatar || user?.photoURL || null;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSavingProfilePhoto, setIsSavingProfilePhoto] = useState(false);
 
   // A handful of legacy display-only fields (registered/scanned/tiers/...)
   // that predate the real backend and aren't part of LaoEvent proper.
@@ -624,48 +626,20 @@ export default function Account() {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          const MAX_WIDTH = 256;
-          const MAX_HEIGHT = 256;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext("2d");
-          ctx?.drawImage(img, 0, 0, width, height);
-          const base64Pic = canvas.toDataURL("image/jpeg", 0.7);
-
-          syncProfileToSupabase({ profilePic: base64Pic })
-            .then(() => {
-              setShowProfilePicSuccess(true);
-              setTimeout(() => setShowProfilePicSuccess(false), 5000);
-            })
-            .catch((error: unknown) => {
-              addToast(error instanceof Error ? error.message : "Could not save profile photo", "error");
-            });
-        };
-        img.src = reader.result as string;
-      };
-      reader.readAsDataURL(file);
+    if (!file || isSavingProfilePhoto) return;
+    setIsSavingProfilePhoto(true);
+    try {
+      const profilePicDataUrl = await prepareProfilePhoto(file);
+      await syncProfileToSupabase({ profilePic: profilePicDataUrl });
+      setShowProfilePicSuccess(true);
+      setTimeout(() => setShowProfilePicSuccess(false), 5000);
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : "Could not save profile photo", "error");
+    } finally {
+      setIsSavingProfilePhoto(false);
+      e.target.value = "";
     }
   };
 
@@ -779,7 +753,7 @@ export default function Account() {
           >
             <div
               className="relative group cursor-pointer shrink-0"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => { if (!isSavingProfilePhoto) fileInputRef.current?.click(); }}
             >
               <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gray-50 dark:bg-zinc-800 border border-gray-100 dark:border-zinc-700 flex items-center justify-center text-gray-300 shrink-0 overflow-hidden shadow-inner transition-transform group-hover:scale-[1.02] duration-300">
                 {profilePic ? (
@@ -799,7 +773,8 @@ export default function Account() {
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileChange}
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={isSavingProfilePhoto}
                 className="hidden"
               />
             </div>
