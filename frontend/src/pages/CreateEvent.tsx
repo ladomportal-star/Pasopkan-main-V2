@@ -1525,21 +1525,6 @@ export default function CreateEvent() {
   const [eventPrivacy, setEventPrivacy] = useState<"public" | "private">(
     "public",
   );
-  const [showPrivacyDropdown, setShowPrivacyDropdown] = useState(false);
-  const privacyDropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        privacyDropdownRef.current &&
-        !privacyDropdownRef.current.contains(e.target as Node)
-      ) {
-        setShowPrivacyDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const [attendeeMessage, setAttendeeMessage] = useState("");
   const [showRemainingTickets, setShowRemainingTickets] = useState(true);
@@ -3726,106 +3711,6 @@ export default function CreateEvent() {
                   </div>
 
                   <div className="flex items-center gap-3 ml-8 pb-4">
-                    {/* Privacy Selector Dropdown */}
-                    <div className="relative" ref={privacyDropdownRef}>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setShowPrivacyDropdown(!showPrivacyDropdown)
-                        }
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 bg-orange-50 hover:bg-orange-100 text-adv-orange border border-orange-200 rounded-full text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer"
-                        title={t.eventPrivacy}
-                      >
-                        {eventPrivacy === "private" ? (
-                          <Lock className="w-3.5 h-3.5 text-adv-orange shrink-0" />
-                        ) : (
-                          <Globe className="w-3.5 h-3.5 text-adv-orange shrink-0" />
-                        )}
-                        <span>
-                          {eventPrivacy === "private"
-                            ? t.privateEvent
-                            : t.publicEvent}
-                        </span>
-                        <ChevronDown
-                          className={`w-3.5 h-3.5 text-adv-orange transition-transform ${showPrivacyDropdown ? "rotate-180" : ""}`}
-                        />
-                      </button>
-
-                      <AnimatePresence>
-                        {showPrivacyDropdown && (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                            transition={{ duration: 0.15 }}
-                            className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white text-adv-slate rounded-2xl p-2.5 shadow-xl shadow-orange-500/10 border border-orange-200/90 ring-1 ring-orange-100 z-[60]"
-                          >
-                            {/* Public Option */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEventPrivacy("public");
-                                setShowPrivacyDropdown(false);
-                              }}
-                              className={`w-full text-left p-3 rounded-xl transition-all flex items-start justify-between gap-3 cursor-pointer ${
-                                eventPrivacy === "public"
-                                  ? "bg-orange-50/90 border border-orange-200/70 text-adv-orange"
-                                  : "hover:bg-orange-50/50 text-gray-700"
-                              }`}
-                            >
-                              <div className="flex items-start gap-3">
-                                <Globe className="w-4.5 h-4.5 text-adv-orange shrink-0 mt-0.5" />
-                                <div>
-                                  <div
-                                    className={`text-sm leading-snug ${eventPrivacy === "public" ? "font-extrabold text-adv-orange" : "font-bold text-adv-slate"}`}
-                                  >
-                                    {t.publicEvent}
-                                  </div>
-                                  <div className="text-xs text-gray-500 font-normal leading-relaxed mt-0.5">
-                                    {t.publicEventDesc}
-                                  </div>
-                                </div>
-                              </div>
-                              {eventPrivacy === "public" && (
-                                <Check className="w-4 h-4 text-adv-orange shrink-0 mt-0.5" />
-                              )}
-                            </button>
-
-                            {/* Private Option */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEventPrivacy("private");
-                                setShowPrivacyDropdown(false);
-                              }}
-                              className={`w-full text-left p-3 rounded-xl transition-all flex items-start justify-between gap-3 cursor-pointer mt-1 ${
-                                eventPrivacy === "private"
-                                  ? "bg-orange-50/90 border border-orange-200/70 text-adv-orange"
-                                  : "hover:bg-orange-50/50 text-gray-700"
-                              }`}
-                            >
-                              <div className="flex items-start gap-3">
-                                <Lock className="w-4.5 h-4.5 text-adv-orange shrink-0 mt-0.5" />
-                                <div>
-                                  <div
-                                    className={`text-sm leading-snug ${eventPrivacy === "private" ? "font-extrabold text-adv-orange" : "font-bold text-adv-slate"}`}
-                                  >
-                                    {t.privateEvent}
-                                  </div>
-                                  <div className="text-xs text-gray-500 font-normal leading-relaxed mt-0.5">
-                                    {t.privateEventDesc}
-                                  </div>
-                                </div>
-                              </div>
-                              {eventPrivacy === "private" && (
-                                <Check className="w-4 h-4 text-adv-orange shrink-0 mt-0.5" />
-                              )}
-                            </button>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-
                     {lastSavedTime && (
                       <span className="text-xs text-gray-400 mr-2 animate-in fade-in duration-500 font-medium">
                         {t.lastSaved}{" "}
@@ -4378,46 +4263,6 @@ export default function CreateEvent() {
                             <span className="text-adv-slate font-bold text-sm">
                               {t.eventAddress}:
                             </span>
-                          </div>
-                          {/* Segmented Pill Selector (Offline vs Online) */}
-                          <div className="inline-flex items-center bg-gray-100/90 p-1 rounded-2xl border border-gray-200/80 shadow-inner gap-1">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEventType("offline");
-                                setVenueName("");
-                                setProvince("");
-                                setDistrict("");
-                                setStreetAddress("");
-                              }}
-                              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-extrabold transition-all duration-200 ${
-                                eventType === "offline"
-                                  ? "bg-adv-orange text-white shadow-md shadow-orange-500/20"
-                                  : "text-gray-600 hover:text-adv-slate hover:bg-gray-200/60"
-                              }`}
-                            >
-                              <MapPin className="w-4 h-4" />
-                              {t.offline}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEventType("online");
-                                setCategory("Workshop");
-                                setVenueName("Online Event / ງານອອນລາຍ");
-                                setProvince("Online");
-                                setDistrict("Online");
-                                setStreetAddress("Online Event / ງານອອນລາຍ");
-                              }}
-                              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-extrabold transition-all duration-200 ${
-                                eventType === "online"
-                                  ? "bg-adv-orange text-white shadow-md shadow-orange-500/20"
-                                  : "text-gray-600 hover:text-adv-slate hover:bg-gray-200/60"
-                              }`}
-                            >
-                              <Video className="w-4 h-4" />
-                              {t.online}
-                            </button>
                           </div>
                         </div>
 
