@@ -6,7 +6,12 @@ const attendee = z.object({
   lastName: z.string().max(100).optional(),
   email: z.string().max(200).optional(),
   phone: z.string().max(40).optional(),
-  customAnswers: z.record(z.string().max(100), z.union([z.string().max(5000), z.array(z.string().max(500)).max(50)])).optional(),
+  customAnswers: z
+    .record(
+      z.string().max(100),
+      z.union([z.string().max(5000), z.array(z.string().max(500)).max(50)]),
+    )
+    .optional(),
 });
 
 export const createTicketBody = z.object({

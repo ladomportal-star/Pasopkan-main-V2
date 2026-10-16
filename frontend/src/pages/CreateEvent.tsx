@@ -1566,6 +1566,7 @@ export default function CreateEvent() {
     );
     setAllowRefunds(event.allowRefunds !== false);
     setAllowReviews(event.allowReviews !== false);
+    setRequireEveryTicketInfo(event.requireEveryTicketInfo !== false);
     setMaxTickets(event.maxTickets || "4");
     setEventPrivacy(event.eventPrivacy || "public");
     setAttendeeMessage(event.attendeeMessage || "");
@@ -2523,6 +2524,7 @@ export default function CreateEvent() {
   }, [activeStep, editorContent]);
 
   const buildFormEvent = (status: "draft" | "pending_review") => ({
+    mediaReferences: localEvents.find((event) => String(event.id) === String(editingEventId))?.mediaReferences,
     title: eventName.trim() || "Untitled event",
     category: eventType === "online" ? "Workshop" : category,
     venue: venueName,
@@ -2577,6 +2579,7 @@ export default function CreateEvent() {
     showRemainingTickets,
     allowRefunds,
     allowReviews,
+    requireEveryTicketInfo,
     maxTickets,
     eventPrivacy,
     attendeeMessage,
@@ -2586,7 +2589,7 @@ export default function CreateEvent() {
 
   const draftSaveInFlight = useRef(false);
   const handleSaveDraft = async () => {
-    if (draftSaveInFlight.current || !token || eventsLoading) return;
+    if (draftSaveInFlight.current || isLoading || !termsAccepted || !token || eventsLoading) return;
     if (!editingEventId && !eventName.trim()) return;
     const existing = localEvents.find(
       (event) => String(event.id) === String(editingEventId),
@@ -2605,6 +2608,12 @@ export default function CreateEvent() {
       if (!result.ok || !result.data?.event)
         throw new Error(result.error || "Draft save failed");
       const saved = fromBackendEvent(result.data.event);
+      // Replace local data URLs with the uploaded references returned by the API.
+      setVerticalImage((current) => current === verticalImage ? saved.image || null : current);
+      setHorizontalImage((current) => current === horizontalImage ? saved.image || null : current);
+      setGalleryImages((current) => current === galleryImages ? saved.exampleImages : current);
+      setOrganizerLogo((current) => current === organizerLogo ? saved.organizerLogo || null : current);
+      setZoneImage((current) => current === zoneImage ? saved.zoneImage || null : current);
       setEditingEventId(saved.id);
       setLocalEvents((events) => [
         saved,
@@ -2833,6 +2842,7 @@ export default function CreateEvent() {
     setEditingEventId(null);
     setValidationError(null);
     setEventName("");
+    setCategory("Festival");
     setVenueName("");
     setProvince("");
     setDistrict("");
@@ -2845,7 +2855,22 @@ export default function CreateEvent() {
     setOrganizerPhone("");
     setOrganizerEmail("");
     setOrganizerSocialLinks({});
+    setAttendeeQuestions([]);
+    setOrganizerLogo(null);
+    setGoogleMapsLink("");
+    setCancellationPolicy("");
+    setShowRemainingTickets(true);
+    setAllowRefunds(false);
+    setAllowReviews(true);
+    setRequireEveryTicketInfo(true);
+    setMaxTickets("4");
+    setEditorContent("");
+    if (editorRef.current) editorRef.current.innerHTML = "";
     setEventType("offline");
+    setOnlinePlatform("zoom");
+    setOnlineMeetingUrl("");
+    setOnlinePasscode("");
+    setOnlineInstructions("");
     setDateType("flexible");
     setFlexibleDateDesc("");
     setBookingAvailableDays([]);
@@ -2941,355 +2966,41 @@ export default function CreateEvent() {
     }
   };
 
+  const submissionInFlight = useRef(false);
   const completeSubmission = async (
     submissionOtp: { challengeId: string; code: string } | null,
   ): Promise<boolean> => {
-    if (!termsAccepted) return false;
+    if (!termsAccepted || submissionInFlight.current || draftSaveInFlight.current) return false;
+    submissionInFlight.current = true;
+    setIsLoading(true);
     setValidationError(null);
-
-    let finalDescription = editorContent || "";
-    if (activeStep === 1 && editorRef.current) {
-      finalDescription = editorRef.current.innerHTML;
-      setEditorContent(finalDescription);
+    try {
+      // Drafts and submissions share one payload, so all four steps round-trip identically.
+      const payload = {
+        ...toEventPayload(buildFormEvent("pending_review")),
+        termsAccepted: true,
+        submissionOtp: submissionOtp ?? undefined,
+      };
+      const result = editingEventId
+        ? await api.updateEvent(String(editingEventId), payload)
+        : await api.createEvent(payload);
+      if (!result.ok || !result.data?.event) throw new Error(
+        result.error || (lang === "lo" ? "ບໍ່ສາມາດບັນທຶກ Event ໄດ້" : "Could not save the event"),
+      );
+      const saved = fromBackendEvent(result.data.event);
+      setWasEditing(Boolean(editingEventId));
+      setLocalEvents((events) => [saved, ...events.filter((event) => String(event.id) !== String(saved.id))]);
+      setEditingEventId(null);
+      setShowSubmissionOtp(false);
+      setShowSuccessModal(true);
+      return true;
+    } catch (error) {
+      setValidationError(error instanceof Error ? error.message : "Could not submit the event");
+      return false;
+    } finally {
+      submissionInFlight.current = false;
+      setIsLoading(false);
     }
-
-    {
-      const currentEvents: any[] = [...localEvents];
-
-      setIsLoading(true);
-      try {
-        if (editingEventId) {
-          setWasEditing(true);
-          // Update existing event
-          const updatedEvents = currentEvents.map((evt) => {
-            if (String(evt.id) === String(editingEventId)) {
-              return {
-                ...evt,
-                title: eventName,
-                category: eventType === "online" ? "Workshop" : category,
-                venue: venueName,
-                province: province || evt.province,
-                district: district || evt.district,
-                location: streetAddress,
-                latitude: latitude !== undefined ? latitude : evt.latitude,
-                longitude: longitude !== undefined ? longitude : evt.longitude,
-                googleMapUrl: googleMapsLink || evt.googleMapUrl,
-                // Keep organizer-created profile and verification data
-                organizer: organizerName || evt.organizer,
-                organizerInfo:
-                  organizerInfo !== undefined && organizerInfo !== ""
-                    ? organizerInfo
-                    : evt.organizerInfo,
-                organizerContact: organizerContact || evt.organizerContact,
-                organizerPhone: organizerPhone || evt.organizerPhone,
-                organizerEmail: organizerEmail || evt.organizerEmail,
-                organizerLogo: organizerLogo || evt.organizerLogo,
-                organizerSocialLinks:
-                  organizerSocialLinks &&
-                  Object.keys(organizerSocialLinks).length > 0
-                    ? organizerSocialLinks
-                    : evt.organizerSocialLinks || {},
-                bankName,
-                accountNumber,
-                accountHolder,
-                userId: evt.userId,
-                organizerId: evt.organizerId,
-                createdBy: evt.createdBy,
-                creatorEmail: evt.creatorEmail,
-                createdAt: evt.createdAt,
-                registered: evt.registered,
-                scanned: evt.scanned,
-                totalTickets: evt.totalTickets,
-                soldTickets: evt.soldTickets,
-                revenue: evt.revenue,
-                views: evt.views,
-                purchases: evt.purchases,
-                likes: evt.likes,
-                featured: evt.featured,
-                eventType,
-                onlinePlatform,
-                onlineMeetingUrl,
-                onlinePasscode,
-                onlineInstructions,
-                dateType,
-                flexibleDateDesc:
-                  dateType === "flexible" ? flexibleDateDesc : "",
-                bookingAvailableDays:
-                  dateType === "booking" ? bookingAvailableDays : [],
-                bookingTimeSlots:
-                  dateType === "booking" ? bookingTimeSlots : [],
-                bookingSlotCapacities:
-                  dateType === "booking" ? bookingSlotCapacities : {},
-                bookingCapacity:
-                  dateType === "booking"
-                    ? Object.values(bookingSlotCapacities).length > 0
-                      ? Math.max(
-                          ...Object.values(bookingSlotCapacities).map(
-                            (v) => Number(v) || 0,
-                          ),
-                        )
-                      : 0
-                    : undefined,
-                date:
-                  dateType === "flexible" && availableDates.length > 0
-                    ? availableDates[0].date
-                    : startDate || evt.date || "",
-                time:
-                  dateType === "flexible" &&
-                  availableDates.length > 0 &&
-                  availableDates[0].startTime
-                    ? availableDates[0].startTime
-                    : dateType === "booking" && bookingTimeSlots.length > 0
-                      ? bookingTimeSlots[0]
-                      : startTime || evt.time || "",
-                endDate:
-                  dateType === "flexible" && availableDates.length > 0
-                    ? availableDates[availableDates.length - 1].date
-                    : endDate || startDate || evt.endDate || "",
-                endTime: endTime || evt.endTime || "",
-                durationEn: durationEn || evt.durationEn,
-                durationLo: durationLo || evt.durationLo,
-                languages:
-                  selectedLanguages && selectedLanguages.length > 0
-                    ? selectedLanguages
-                    : evt.languages || ["Lao", "English"],
-                ticketTiers: ticketTiers.map((tier) => ({
-                  id: tier.id ? String(tier.id) : crypto.randomUUID(),
-                  name: tier.name,
-                  price: Number(String(tier.price).replace(/,/g, "")) || 0,
-                  available:
-                    Number(String(tier.quantity).replace(/,/g, "")) || 0,
-                  description: tier.name + " Access",
-                  saleStartDate: tier.saleStartDate,
-                  saleStartTime: tier.saleStartTime,
-                  saleEndDate: tier.saleEndDate,
-                  saleEndTime: tier.saleEndTime,
-                })),
-                coupons: enableCoupons ? coupons : [],
-                hasSeating:
-                  hasSeating !== undefined ? hasSeating : evt.hasSeating,
-                zoneImage: zoneImage || evt.zoneImage,
-                hasTimeSelection:
-                  dateType === "flexible" &&
-                  availableDates.some((d) => !!d.startTime),
-                timeSlots:
-                  dateType === "flexible"
-                    ? Array.from(
-                        new Set(
-                          availableDates
-                            .map((d) => d.startTime)
-                            .filter(Boolean),
-                        ),
-                      )
-                    : [],
-                availableDates: dateType === "flexible" ? availableDates : [],
-                image: verticalImage || horizontalImage || evt.image,
-                exampleImages:
-                  galleryImages.length > 0
-                    ? galleryImages
-                    : verticalImage
-                      ? [verticalImage]
-                      : evt.exampleImages || [],
-                description: finalDescription,
-                cancellationPolicy:
-                  cancellationPolicy || evt.cancellationPolicy,
-                showRemainingTickets:
-                  showRemainingTickets !== undefined
-                    ? showRemainingTickets
-                    : evt.showRemainingTickets,
-                allowRefunds:
-                  allowRefunds !== undefined ? allowRefunds : evt.allowRefunds,
-                allowReviews:
-                  allowReviews !== undefined ? allowReviews : evt.allowReviews,
-                requireEveryTicketInfo,
-                maxTickets: maxTickets || evt.maxTickets,
-                enableCountdown: false,
-                eventPrivacy: eventPrivacy || evt.eventPrivacy,
-                attendeeMessage: attendeeMessage || evt.attendeeMessage,
-                attendeeQuestions,
-                status: "pending_review",
-              };
-            }
-            return evt;
-          });
-          const edited = updatedEvents.find(
-            (e) => String(e.id) === String(editingEventId),
-          );
-          const result = edited
-            ? await api.updateEvent(String(editingEventId), {
-                ...toEventPayload(edited),
-                termsAccepted: true,
-                submissionOtp: submissionOtp ?? undefined,
-              })
-            : null;
-          if (!result?.ok || !result.data?.event) {
-            setIsLoading(false);
-            setValidationError(
-              lang === "lo"
-                ? `ບໍ່ສາມາດບັນທຶກການປ່ຽນແປງໄດ້: ${result?.error ?? "Event not found"}`
-                : `Could not save changes: ${result?.error ?? "Event not found"}`,
-            );
-            return false;
-          }
-          const saved = fromBackendEvent(result.data.event);
-          setLocalEvents(
-            updatedEvents.map((event) =>
-              String(event.id) === String(editingEventId) ? saved : event,
-            ),
-          );
-          setEditingEventId(null);
-        } else {
-          setWasEditing(false);
-          // Create new event
-          const newEvent = {
-            id: String(Date.now()),
-            title: eventName,
-            category: eventType === "online" ? "Workshop" : category,
-            venue: venueName,
-            province,
-            district,
-            location: streetAddress,
-            latitude,
-            longitude,
-            googleMapUrl: googleMapsLink,
-            organizer: organizerName,
-            organizerInfo,
-            organizerContact,
-            organizerPhone,
-            organizerEmail,
-            organizerLogo,
-            organizerSocialLinks,
-            bankName,
-            accountNumber,
-            accountHolder,
-            submittedAt: new Date().toISOString().split("T")[0],
-            createdAt: new Date().toISOString(),
-            views: 0,
-            purchases: 0,
-            registered: 0,
-            likes: 0,
-            revenue: "₭ 0",
-            eventType,
-            onlinePlatform,
-            onlineMeetingUrl,
-            onlinePasscode,
-            onlineInstructions,
-            dateType,
-            flexibleDateDesc: dateType === "flexible" ? flexibleDateDesc : "",
-            bookingAvailableDays:
-              dateType === "booking" ? bookingAvailableDays : [],
-            bookingTimeSlots: dateType === "booking" ? bookingTimeSlots : [],
-            bookingSlotCapacities:
-              dateType === "booking" ? bookingSlotCapacities : {},
-            bookingCapacity:
-              dateType === "booking"
-                ? Object.values(bookingSlotCapacities).length > 0
-                  ? Math.max(
-                      ...Object.values(bookingSlotCapacities).map(
-                        (v) => Number(v) || 0,
-                      ),
-                    )
-                  : 0
-                : undefined,
-            date:
-              dateType === "flexible" && availableDates.length > 0
-                ? availableDates[0].date
-                : startDate || "",
-            time:
-              dateType === "flexible" &&
-              availableDates.length > 0 &&
-              availableDates[0].startTime
-                ? availableDates[0].startTime
-                : dateType === "booking" && bookingTimeSlots.length > 0
-                  ? bookingTimeSlots[0]
-                  : startTime || "",
-            endDate:
-              dateType === "flexible" && availableDates.length > 0
-                ? availableDates[availableDates.length - 1].date
-                : endDate || startDate || "",
-            endTime: endTime || "",
-            durationEn,
-            durationLo,
-            languages: selectedLanguages,
-            ticketTiers: ticketTiers.map((tier) => ({
-              id: String(tier.id || Date.now()),
-              name: tier.name,
-              price: Number(String(tier.price).replace(/,/g, "")) || 0,
-              available: Number(String(tier.quantity).replace(/,/g, "")) || 0,
-              description: tier.name + " Access",
-              saleStartDate: tier.saleStartDate,
-              saleStartTime: tier.saleStartTime,
-              saleEndDate: tier.saleEndDate,
-              saleEndTime: tier.saleEndTime,
-            })),
-            coupons: enableCoupons ? coupons : [],
-            hasSeating: hasSeating,
-            zoneImage: zoneImage,
-            hasTimeSelection:
-              dateType === "flexible" &&
-              availableDates.some((d) => !!d.startTime),
-            timeSlots:
-              dateType === "flexible"
-                ? Array.from(
-                    new Set(
-                      availableDates.map((d) => d.startTime).filter(Boolean),
-                    ),
-                  )
-                : [],
-            availableDates: dateType === "flexible" ? availableDates : [],
-            image: verticalImage || horizontalImage || "",
-            exampleImages:
-              galleryImages.length > 0
-                ? galleryImages
-                : verticalImage
-                  ? [verticalImage]
-                  : [],
-            description: finalDescription,
-            cancellationPolicy,
-            showRemainingTickets,
-            allowRefunds,
-            allowReviews,
-            requireEveryTicketInfo,
-            maxTickets,
-            enableCountdown: false,
-            eventPrivacy,
-            attendeeMessage,
-            attendeeQuestions,
-            status: "pending_review",
-          };
-          const result = await api.createEvent({
-            ...toEventPayload(newEvent),
-            termsAccepted: true,
-            submissionOtp: submissionOtp ?? undefined,
-          });
-          if (!result.ok || !result.data?.event) {
-            setIsLoading(false);
-            setValidationError(
-              lang === "lo"
-                ? `ບໍ່ສາມາດສ້າງກິດຈະກຳໄດ້: ${result.error ?? ""}`
-                : `Could not create the event: ${result.error ?? ""}`,
-            );
-            return false;
-          }
-          const created = fromBackendEvent(result.data.event);
-          const updatedEvents = [
-            created,
-            ...currentEvents.filter((e) => String(e.id) !== created.id),
-          ];
-          setLocalEvents(updatedEvents);
-        }
-      } catch (error) {
-        setValidationError(
-          error instanceof Error ? error.message : "Could not submit the event",
-        );
-        return false;
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    setShowSubmissionOtp(false);
-    setShowSuccessModal(true);
-    return true;
   };
 
   const handleBack = () => {

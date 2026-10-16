@@ -435,21 +435,77 @@ export default function OrganizerPhoneModal({
   );
 }
 
-/** Direct /create visits use the same modal; the editor only mounts after API approval. */
+/** Check owner eligibility before mounting the editor or organizer enrollment UI. */
 export function OrganizerCreateGate() {
   const { user, token, loading } = useAuth();
   const navigate = useNavigate();
-  const [allowedUid, setAllowedUid] = useState<string | null>(null);
+  const [gateState, setGateState] = useState<
+    "checking" | "ready" | "onboarding" | "error"
+  >("checking");
+  const [checkedUid, setCheckedUid] = useState<string | null>(null);
+  const [gateError, setGateError] = useState("");
+  const [retry, setRetry] = useState(0);
   const close = useCallback(() => navigate("/"), [navigate]);
-  const allow = useCallback(() => setAllowedUid(user?.id ?? null), [user?.id]);
+  const allow = useCallback(() => {
+    setCheckedUid(user?.id ?? null);
+    setGateState("ready");
+  }, [user?.id]);
 
-  if (loading)
+  useEffect(() => {
+    if (loading) return;
+    if (!user || !token) {
+      setCheckedUid(null);
+      setGateState("onboarding");
+      return;
+    }
+    let active = true;
+    setGateState("checking");
+    void (async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const result = await api.get<Eligibility>("/organizer/eligibility", {
+        token: sessionData.session?.access_token ?? token,
+        throwOnError: true,
+      });
+      if (!result.data) throw new Error("Could not check organizer status");
+      if (active) {
+        setCheckedUid(user.id);
+        setGateState(result.data.canCreateEvent ? "ready" : "onboarding");
+      }
+    })().catch((error) => {
+      if (!active) return;
+      setGateError(
+        error instanceof Error
+          ? error.message
+          : "Could not check organizer status",
+      );
+      setCheckedUid(user.id);
+      setGateState("error");
+    });
+    return () => {
+      active = false;
+    };
+  }, [loading, token, user?.id, retry]);
+
+  if (loading || gateState === "checking" || (user && checkedUid !== user.id))
     return (
       <main className="grid min-h-screen place-items-center">
         ກຳລັງກວດສອບສິດ…
       </main>
     );
-  if (user && token && allowedUid === user.id) {
+  if (gateState === "error")
+    return (
+      <main className="grid min-h-screen place-items-center gap-4 p-6 text-center">
+        <p role="alert">{gateError}</p>
+        <button
+          type="button"
+          onClick={() => setRetry((value) => value + 1)}
+          className="rounded-xl bg-orange-600 px-5 py-3 font-semibold text-white"
+        >
+          ລອງໃໝ່ / Retry
+        </button>
+      </main>
+    );
+  if (user && token && gateState === "ready") {
     return (
       <Suspense
         fallback={

@@ -17,38 +17,64 @@ const eventDate = z.object({
   capacity: z.coerce.number().int().positive().nullish(),
 });
 
-const coupon = z.object({
-  code: z.string().trim().min(1).max(100),
-  discountType: z.enum(["percent", "fixed"]),
-  discountValue: z.coerce.number().int().nonnegative(),
-  maxRedemptions: z.coerce.number().int().positive().nullish(),
-  maxUsesPerUser: z.coerce.number().int().positive().nullish(),
-  maxDiscountAmount: z.coerce.number().int().positive().max(2147483647).nullish(),
-  startsAt: z.string().datetime().nullish(),
-  expiresAt: z.string().datetime().nullish(),
-  isActive: z.boolean().default(true),
-}).superRefine((value, ctx) => {
-  if (value.discountType === "percent" && value.discountValue > 100)
-    ctx.addIssue({ code: "custom", path: ["discountValue"], message: "Percentage must not exceed 100" });
-  if (value.startsAt && value.expiresAt && value.startsAt > value.expiresAt)
-    ctx.addIssue({ code: "custom", path: ["expiresAt"], message: "Coupon expiry must follow its start" });
-});
+const coupon = z
+  .object({
+    code: z.string().trim().min(1).max(100),
+    discountType: z.enum(["percent", "fixed"]),
+    discountValue: z.coerce.number().int().nonnegative(),
+    maxRedemptions: z.coerce.number().int().positive().nullish(),
+    maxUsesPerUser: z.coerce.number().int().positive().nullish(),
+    maxDiscountAmount: z.coerce.number().int().positive().max(2147483647).nullish(),
+    startsAt: z.string().datetime().nullish(),
+    expiresAt: z.string().datetime().nullish(),
+    isActive: z.boolean().default(true),
+  })
+  .superRefine((value, ctx) => {
+    if (value.discountType === "percent" && value.discountValue > 100)
+      ctx.addIssue({
+        code: "custom",
+        path: ["discountValue"],
+        message: "Percentage must not exceed 100",
+      });
+    if (value.startsAt && value.expiresAt && value.startsAt > value.expiresAt)
+      ctx.addIssue({
+        code: "custom",
+        path: ["expiresAt"],
+        message: "Coupon expiry must follow its start",
+      });
+  });
 
-const coupons = z.array(coupon).max(100).refine(
-  (values) => new Set(values.map((c) => c.code.toUpperCase())).size === values.length,
-  "Coupon codes must be unique within an event",
-);
+const coupons = z
+  .array(coupon)
+  .max(100)
+  .refine(
+    (values) => new Set(values.map((c) => c.code.toUpperCase())).size === values.length,
+    "Coupon codes must be unique within an event",
+  );
 
 const question = z.object({
   id: z.string().trim().min(1).max(100).optional(),
   label: z.string().trim().max(500),
-  type: z.enum(["text", "long_text", "url", "checkbox", "single_choice", "multi_choice", "options"]),
+  type: z.enum([
+    "text",
+    "long_text",
+    "url",
+    "checkbox",
+    "single_choice",
+    "multi_choice",
+    "options",
+  ]),
   required: z.boolean().default(false),
   options: z.array(z.string().trim().min(1).max(500)).max(50).optional(),
 });
-export const attendeeQuestionsSchema = z.array(question).max(50)
+export const attendeeQuestionsSchema = z
+  .array(question)
+  .max(50)
   .transform((values) => values.map((q, i) => ({ ...q, id: q.id ?? `question-${i + 1}` })))
-  .refine((values) => new Set(values.map((q) => q.id)).size === values.length, "Question IDs must be unique");
+  .refine(
+    (values) => new Set(values.map((q) => q.id)).size === values.length,
+    "Question IDs must be unique",
+  );
 
 /** Everything the CreateEvent form can send. Unknown keys are stripped. */
 export const createEventBody = z.object({

@@ -62,31 +62,46 @@ export async function createOrder(input: CreateOrderInput) {
       const date = input.selectedDate?.slice(0, 10);
       if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !input.selectedTime)
         throw new HttpError(422, "Select a valid booking date and time");
-      const bookingDate = await tx.eventDate.findFirst({ where: {
-        eventId: event.id, date: new Date(`${date}T00:00:00Z`),
-      } });
-      if (!bookingDate || !Array.isArray(bookingDate.timeSlots) ||
-          !bookingDate.timeSlots.includes(input.selectedTime))
+      const bookingDate = await tx.eventDate.findFirst({
+        where: {
+          eventId: event.id,
+          date: new Date(`${date}T00:00:00Z`),
+        },
+      });
+      if (
+        !bookingDate ||
+        !Array.isArray(bookingDate.timeSlots) ||
+        !bookingDate.timeSlots.includes(input.selectedTime)
+      )
         throw new HttpError(422, "The selected booking session is unavailable");
       const capacities = event.privateDetails?.bookingSlotCapacities;
-      const capacity = capacities && typeof capacities === "object" && !Array.isArray(capacities)
-        ? capacities[input.selectedTime] : null;
+      const capacity =
+        capacities && typeof capacities === "object" && !Array.isArray(capacities)
+          ? capacities[input.selectedTime]
+          : null;
       const limit = typeof capacity === "number" ? capacity : bookingDate.capacity;
       if (limit != null) {
-        const reserved = await tx.orderItem.count({ where: {
-          status: { in: ["valid", "checked_in", "pending"] },
-          order: { eventId: event.id,
-            selectedDate: { in: [date, `${date}T00:00:00.000Z`, input.selectedDate!] },
-            selectedTime: input.selectedTime,
-            OR: [{ status: "confirmed" }, { status: "pending", expiresAt: { gt: new Date() } }],
+        const reserved = await tx.orderItem.count({
+          where: {
+            status: { in: ["valid", "checked_in", "pending"] },
+            order: {
+              eventId: event.id,
+              selectedDate: { in: [date, `${date}T00:00:00.000Z`, input.selectedDate!] },
+              selectedTime: input.selectedTime,
+              OR: [{ status: "confirmed" }, { status: "pending", expiresAt: { gt: new Date() } }],
+            },
           },
-        } });
+        });
         if (reserved + qty > limit) throw new HttpError(409, "This booking session is full");
       }
       selectedDate = date;
     }
-    const attendees = validateAttendees(event.privateDetails?.attendeeQuestions,
-      event.requireEveryTicketInfo, qty, input.attendees);
+    const attendees = validateAttendees(
+      event.privateDetails?.attendeeQuestions,
+      event.requireEveryTicketInfo,
+      qty,
+      input.attendees,
+    );
     const windows = event.privateDetails?.ticketSaleWindows;
     const window = Array.isArray(windows) ? windows[tier.sortOrder] : null;
     if (window && typeof window === "object" && !Array.isArray(window)) {
@@ -107,26 +122,41 @@ export async function createOrder(input: CreateOrderInput) {
     let couponCode: string | undefined;
     if (input.couponCode) {
       const now = new Date();
-      const coupon = await tx.coupon.findFirst({ where: {
-        eventId: event.id, code: { equals: input.couponCode.trim(), mode: "insensitive" },
-      } });
-      if (!coupon || !coupon.isActive || (coupon.startsAt && coupon.startsAt > now) ||
-          (coupon.expiresAt && coupon.expiresAt < now))
+      const coupon = await tx.coupon.findFirst({
+        where: {
+          eventId: event.id,
+          code: { equals: input.couponCode.trim(), mode: "insensitive" },
+        },
+      });
+      if (
+        !coupon ||
+        !coupon.isActive ||
+        (coupon.startsAt && coupon.startsAt > now) ||
+        (coupon.expiresAt && coupon.expiresAt < now)
+      )
         throw new HttpError(422, "Invalid or expired coupon");
       // The event row lock serializes coupon usage and stock reservations together.
-      const usedWhere = { eventId: event.id, couponCode: coupon.code, OR: [
-        { status: { in: ["confirmed", "refunded"] as ("confirmed" | "refunded")[] } },
-        { status: "pending" as const, expiresAt: { gt: now } },
-      ] };
+      const usedWhere = {
+        eventId: event.id,
+        couponCode: coupon.code,
+        OR: [
+          { status: { in: ["confirmed", "refunded"] as ("confirmed" | "refunded")[] } },
+          { status: "pending" as const, expiresAt: { gt: now } },
+        ],
+      };
       const [uses, userUses] = await Promise.all([
         tx.order.count({ where: usedWhere }),
         tx.order.count({ where: { ...usedWhere, userId: user.id } }),
       ]);
-      if ((coupon.maxRedemptions != null && uses >= coupon.maxRedemptions) ||
-          (coupon.maxUsesPerUser != null && userUses >= coupon.maxUsesPerUser))
+      if (
+        (coupon.maxRedemptions != null && uses >= coupon.maxRedemptions) ||
+        (coupon.maxUsesPerUser != null && userUses >= coupon.maxUsesPerUser)
+      )
         throw new HttpError(422, "Coupon usage limit reached");
-      discount = coupon.discountType === "percent"
-        ? Math.floor(subtotal * Math.min(coupon.discountValue, 100) / 100) : coupon.discountValue;
+      discount =
+        coupon.discountType === "percent"
+          ? Math.floor((subtotal * Math.min(coupon.discountValue, 100)) / 100)
+          : coupon.discountValue;
       discount = Math.min(subtotal, discount, coupon.maxDiscountAmount ?? subtotal);
       couponCode = coupon.code;
     }

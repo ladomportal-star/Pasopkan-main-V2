@@ -400,6 +400,7 @@ export default function Checkout() {
       (event?.attendeeQuestions?.every((q) => {
         if (!q.required) return true;
         const answer = owner.customAnswers[q.id];
+        if (q.type === "checkbox") return answer === "true";
         if (Array.isArray(answer)) return answer.length > 0;
         return answer && answer.trim() !== "";
       }) ??
@@ -411,7 +412,7 @@ export default function Checkout() {
     const discountVal = Number(appliedCoupon.discount);
 
     if (appliedCoupon.type === "percentage") {
-      const calculated = (subtotal * discountVal) / 100;
+      const calculated = Math.floor((subtotal * discountVal) / 100);
       if (
         appliedCoupon.maxDiscountAmount &&
         appliedCoupon.maxDiscountAmount > 0
@@ -514,7 +515,7 @@ export default function Checkout() {
   // requested tier is actually free before it reserves stock or issues tickets.
   const createRealOrder = async (): Promise<boolean> => {
     if (!event) return false;
-    const { ticketOwners: owners } = latestFormRef.current;
+    const { ticketOwners: owners, appliedCoupon: currentCoupon } = latestFormRef.current;
     const groups =
       selectedTiersList.length > 0
         ? selectedTiersList
@@ -522,7 +523,12 @@ export default function Checkout() {
           ? [{ tier, quantity: quantity || 1 }]
           : [];
     if (groups.length === 0) return false;
-    if (groups.some((group) => Number(group.tier.price) > 0)) {
+    if (currentCoupon && groups.length > 1) {
+      alert(lang === "lo" ? "ກະລຸນາໃຊ້ Coupon ກັບປີ້ປະເພດດຽວຕໍ່ການສັ່ງຊື້." :
+        "Use a coupon with one ticket type per checkout.");
+      return false;
+    }
+    if (!currentCoupon && groups.some((group) => Number(group.tier.price) > 0)) {
       alert(
         lang === "lo"
           ? "ການຊຳລະເງິນຍັງບໍ່ເປີດໃຊ້ສຳລັບປີ້ນີ້."
@@ -533,8 +539,10 @@ export default function Checkout() {
 
     let offset = 0;
     for (const group of groups) {
-      const attendees = owners
-        .slice(offset, offset + group.quantity)
+      const groupOwners = event.requireEveryTicketInfo === false
+        ? Array.from({ length: group.quantity }, () => owners[0])
+        : owners.slice(offset, offset + group.quantity);
+      const attendees = groupOwners
         .map((o) => ({
           firstName: o.firstName.trim() || undefined,
           lastName: o.lastName.trim() || undefined,
@@ -552,6 +560,7 @@ export default function Checkout() {
         selectedDate: state.selectedDate || event.date,
         selectedTime: state.selectedTime || event.time,
         freeOnly: true,
+        couponCode: currentCoupon?.code,
         attendees,
       });
       if (!res.ok) {

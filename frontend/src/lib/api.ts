@@ -259,6 +259,7 @@ export const api = {
       selectedTime?: string;
       paymentTxnId?: string;
       freeOnly?: boolean;
+      couponCode?: string;
       attendees?: Array<{
         firstName?: string;
         lastName?: string;

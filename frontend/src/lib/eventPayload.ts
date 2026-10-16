@@ -21,31 +21,51 @@ const str = (v: unknown): string | undefined => {
   return s === "" ? undefined : s;
 };
 
+// Form dates may be DD/MM/YYYY; the API and database use calendar ISO dates.
+const day = (v: unknown): string | undefined => {
+  const value = str(v);
+  if (!value) return undefined;
+  const local = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(value);
+  return local ? `${local[3]}-${local[2].padStart(2, "0")}-${local[1].padStart(2, "0")}` : value.slice(0, 10);
+};
+const boundary = (value: unknown, end = false): string | null => {
+  if (typeof value === "string" && value.includes("T")) return new Date(value).toISOString();
+  const date = day(value);
+  return date ? new Date(`${date}T${end ? "23:59:59.999" : "00:00:00"}+07:00`).toISOString() : null;
+};
+const optionalLimit = (value: unknown): number | null =>
+  value == null || value === "" || value === "unlimited" ? null : num(value) || null;
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type FeEvent = any;
 
 export function toEventPayload(e: FeEvent): Record<string, unknown> {
   const canonicalImage = (url: string) => e.mediaReferences?.[url] ?? url;
   const dateType = ["fixed", "flexible", "booking"].includes(e.dateType) ? e.dateType : "fixed";
+  const calendarDates = (dateType === "booking" ? e.bookingAvailableDays ?? [] :
+    dateType === "flexible" ? (e.availableDates ?? []).map((d: FeEvent) => d.date) : [])
+    .map(day).filter(Boolean).sort();
+  const sessions = dateType === "flexible" ? [...(e.availableDates ?? [])]
+    .sort((a, b) => String(day(a.date)).localeCompare(String(day(b.date)))) : [];
 
   return {
     title: str(e.title) ?? "Untitled event",
-    description: str(e.description),
+    description: String(e.description ?? ""),
     category: toCategory(e.category),
     eventType: str(e.eventType),
     eventPrivacy: e.eventPrivacy === "private" ? "private" : "public",
     durationEn: str(e.durationEn),
     durationLo: str(e.durationLo),
-    cancellationPolicy: str(e.cancellationPolicy),
-    attendeeMessage: str(e.attendeeMessage),
+    cancellationPolicy: str(e.cancellationPolicy) ?? null,
+    attendeeMessage: str(e.attendeeMessage) ?? null,
     status: toStatus(e.status),
 
     dateType,
-    startDate: str(e.date) ?? str(e.startDate),
-    startTime: str(e.time) ?? str(e.startTime),
-    endDate: str(e.endDate),
-    endTime: str(e.endTime),
-    flexibleDateDesc: str(e.flexibleDateDesc),
+    startDate: calendarDates[0] ?? day(e.date) ?? day(e.startDate) ?? null,
+    startTime: str(sessions[0]?.startTime) ?? (dateType === "booking" ? str(e.bookingTimeSlots?.[0]) : undefined) ?? str(e.time) ?? str(e.startTime) ?? null,
+    endDate: calendarDates.at(-1) ?? day(e.endDate) ?? null,
+    endTime: str(sessions.at(-1)?.endTime) ?? str(e.endTime) ?? null,
+    flexibleDateDesc: dateType === "flexible" ? str(e.flexibleDateDesc) ?? null : null,
 
     venueName: str(e.venue) ?? str(e.venueName),
     addressText: str(e.location) ?? str(e.streetAddress),
@@ -53,31 +73,31 @@ export function toEventPayload(e: FeEvent): Record<string, unknown> {
     district: str(e.district),
     latitude: e.latitude === "" || e.latitude == null ? undefined : Number(e.latitude),
     longitude: e.longitude === "" || e.longitude == null ? undefined : Number(e.longitude),
-    googleMapUrl: str(e.googleMapUrl) ?? str(e.googleMapsLink),
+    googleMapUrl: str(e.googleMapUrl) ?? str(e.googleMapsLink) ?? null,
 
-    coverImageUrl: str(canonicalImage(e.image)),
+    coverImageUrl: str(canonicalImage(e.image)) ?? null,
     galleryUrls: Array.isArray(e.exampleImages) ? e.exampleImages.map(canonicalImage) : undefined,
     languages: Array.isArray(e.languages) ? e.languages : undefined,
 
     hasSeating: !!e.hasSeating,
-    zoneImageUrl: str(canonicalImage(e.zoneImage)),
+    zoneImageUrl: str(canonicalImage(e.zoneImage)) ?? null,
     allowReviews: e.allowReviews !== false,
     allowRefunds: !!e.allowRefunds,
     showRemainingTickets: e.showRemainingTickets !== false,
     enableCountdown: !!e.enableCountdown,
     requireEveryTicketInfo: !!e.requireEveryTicketInfo,
-    maxTicketsPerOrder: e.maxTickets ? num(e.maxTickets) : undefined,
+    maxTicketsPerOrder: optionalLimit(e.maxTickets),
 
     privateDetails: {
-      bankName: str(e.bankName),
-      accountNumber: str(e.accountNumber),
-      accountHolder: str(e.accountHolder),
-      onlinePlatform: str(e.onlinePlatform),
-      onlineMeetingUrl: str(e.onlineMeetingUrl),
-      onlinePasscode: str(e.onlinePasscode),
-      onlineInstructions: str(e.onlineInstructions),
-      bookingSlotCapacities: e.bookingSlotCapacities ?? {},
-      attendeeQuestions: e.attendeeQuestions ?? [],
+      bankName: str(e.bankName) ?? null,
+      accountNumber: str(e.accountNumber) ?? null,
+      accountHolder: str(e.accountHolder) ?? null,
+      onlinePlatform: str(e.onlinePlatform) ?? null,
+      onlineMeetingUrl: str(e.onlineMeetingUrl) ?? null,
+      onlinePasscode: str(e.onlinePasscode) ?? null,
+      onlineInstructions: str(e.onlineInstructions) ?? null,
+      bookingSlotCapacities: dateType === "booking" ? e.bookingSlotCapacities ?? {} : {},
+      attendeeQuestions: (e.attendeeQuestions ?? []).filter((q: FeEvent) => str(q.label)),
       ticketSaleWindows: (e.ticketTiers ?? []).filter((t: FeEvent) => t?.name).map((t: FeEvent) => ({
         saleStartDate: t.saleStartDate, saleEndDate: t.saleEndDate,
         saleStartTime: t.saleStartTime, saleEndTime: t.saleEndTime,
@@ -88,10 +108,10 @@ export function toEventPayload(e: FeEvent): Record<string, unknown> {
     organizer: e.organizer
       ? {
           name: String(e.organizer),
-          description: str(e.organizerInfo),
-          contactEmail: str(e.organizerEmail),
-          contactPhone: str(e.organizerPhone) ?? str(e.organizerContact),
-          logoUrl: str(canonicalImage(e.organizerLogo)),
+          description: String(e.organizerInfo ?? ""),
+          contactEmail: str(e.organizerEmail) ?? null,
+          contactPhone: str(e.organizerPhone) ?? str(e.organizerContact) ?? null,
+          logoUrl: str(canonicalImage(e.organizerLogo)) ?? null,
         }
       : undefined,
 
@@ -101,17 +121,19 @@ export function toEventPayload(e: FeEvent): Record<string, unknown> {
         name: String(t.name),
         sortOrder: index,
         priceKip: num(t.price),
-        quantityTotal: t.available != null && Number.isFinite(Number(t.available))
+        quantityTotal: t.quantity === "unlimited" ? null : t.quantity != null && t.quantity !== ""
+          ? num(t.quantity)
+          : t.available != null && Number.isFinite(Number(t.available))
           ? num(t.available) + num(t.sold)
           : null,
       })),
 
     dates: (dateType === "booking"
       ? (e.bookingAvailableDays ?? []).map((date: string) => ({ date, timeSlots: e.bookingTimeSlots ?? [] }))
-      : e.availableDates ?? [])
+      : dateType === "flexible" ? e.availableDates ?? [] : [])
       .filter((d: FeEvent) => d?.date)
       .map((d: FeEvent) => ({
-        date: String(d.date),
+        date: day(d.date),
         startTime: str(d.startTime),
         endTime: str(d.endTime),
         timeSlots: Array.isArray(d.timeSlots) ? d.timeSlots : undefined,
@@ -123,6 +145,12 @@ export function toEventPayload(e: FeEvent): Record<string, unknown> {
         code: String(c.code),
         discountType: c.discountType === "fixed" || c.type === "fixed" ? "fixed" : "percent",
         discountValue: num(c.discountValue ?? c.discount ?? c.percentage ?? c.amount ?? c.value),
+        maxRedemptions: optionalLimit(c.maxUses ?? c.maxRedemptions),
+        maxUsesPerUser: optionalLimit(c.maxUsesPerUser),
+        maxDiscountAmount: optionalLimit(c.maxDiscountAmount),
+        startsAt: boundary(c.validFrom ?? c.startsAt),
+        expiresAt: boundary(c.validUntil ?? c.expiresAt, true),
+        isActive: c.isActive !== false,
       })),
   };
 }
@@ -140,7 +168,7 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
   (e.galleryUrls ?? []).forEach((ref: string, i: number) => remember(ref, e.galleryUrlsDisplay?.[i]));
   remember(e.organizer?.logoUrl, e.organizer?.logoUrlDisplay);
   const availableDates = (e.dates ?? []).map((d: BackendEvent) => ({
-    date: d.date,
+    date: day(d.date) ?? "",
     startTime: d.startTime ?? "",
     endTime: d.endTime ?? "",
     timeSlots: d.timeSlots ?? [],
@@ -163,9 +191,9 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
     status: e.status,
 
     dateType: e.dateType,
-    date: e.startDate,
+    date: day(e.startDate) ?? "",
     time: e.startTime,
-    endDate: e.endDate,
+    endDate: day(e.endDate) ?? "",
     endTime: e.endTime,
     flexibleDateDesc: e.flexibleDateDesc,
     availableDates,
@@ -176,9 +204,9 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
       e.dateType === "booking" ? Array.from(new Set(availableDates.flatMap((d: FeEvent) => d.timeSlots))) : [],
     bookingSlotCapacities:
       e.dateType === "booking"
-        ? (e.privateDetails?.bookingSlotCapacities ?? Object.fromEntries((e.dates ?? []).map((d: BackendEvent) => [d.date, d.capacity ?? 0])))
+        ? (e.bookingSlotCapacities ?? e.privateDetails?.bookingSlotCapacities ?? Object.fromEntries((e.dates ?? []).map((d: BackendEvent) => [d.date, d.capacity ?? 0])))
         : {},
-    attendeeQuestions: e.privateDetails?.attendeeQuestions ?? [],
+    attendeeQuestions: e.attendeeQuestions ?? e.privateDetails?.attendeeQuestions ?? [],
     bankName: e.privateDetails?.bankName ?? "",
     accountNumber: e.privateDetails?.accountNumber ?? "",
     accountHolder: e.privateDetails?.accountHolder ?? "",
@@ -207,7 +235,7 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
     showRemainingTickets: e.showRemainingTickets !== false,
     enableCountdown: !!e.enableCountdown,
     requireEveryTicketInfo: !!e.requireEveryTicketInfo,
-    maxTickets: e.maxTicketsPerOrder ?? undefined,
+    maxTickets: e.maxTicketsPerOrder == null ? "unlimited" : String(e.maxTicketsPerOrder),
 
     organizer: e.organizer?.name,
     organizerInfo: e.organizer?.description,
@@ -222,9 +250,10 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
       name: t.name,
       price: t.priceKip,
       available: t.quantityTotal == null ? Infinity : Math.max(t.quantityTotal - t.quantitySold, 0),
+      quantity: t.quantityTotal == null ? "unlimited" : String(t.quantityTotal),
       description: t.description ?? `${t.name} Access`,
       sold: t.quantitySold ?? 0,
-      ...(e.privateDetails?.ticketSaleWindows?.[index] ?? {}),
+      ...((e.ticketSaleWindows ?? e.privateDetails?.ticketSaleWindows)?.[index] ?? {}),
     })),
     coupons: (e.coupons ?? []).map((c: BackendEvent) => ({
       id: c.id,
@@ -232,6 +261,11 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
       type: c.discountType === "fixed" ? "fixed" : "percentage",
       discount: c.discountValue,
       isActive: c.isActive,
+      maxUses: c.maxRedemptions ?? "",
+      maxUsesPerUser: c.maxUsesPerUser ?? "",
+      maxDiscountAmount: c.maxDiscountAmount ?? "",
+      validFrom: c.startsAt ? new Date(new Date(c.startsAt).getTime() + 7 * 60 * 60_000).toISOString().slice(0, 10) : "",
+      validUntil: c.expiresAt ? new Date(new Date(c.expiresAt).getTime() + 7 * 60 * 60_000).toISOString().slice(0, 10) : "",
     })),
 
     createdAt: e.createdAt,

@@ -14,11 +14,19 @@ const publicInclude = {
 const ownerInclude = { ...publicInclude, privateDetails: true } as const;
 const registrationInclude = {
   ...publicInclude,
-  privateDetails: { select: { attendeeQuestions: true, ticketSaleWindows: true, bookingSlotCapacities: true } },
+  privateDetails: {
+    select: { attendeeQuestions: true, ticketSaleWindows: true, bookingSlotCapacities: true },
+  },
 } as const;
-function publicRegistration<T extends { privateDetails?: {
-  attendeeQuestions: unknown; ticketSaleWindows: unknown; bookingSlotCapacities: unknown;
-} | null }>(event: T) {
+function publicRegistration<
+  T extends {
+    privateDetails?: {
+      attendeeQuestions: unknown;
+      ticketSaleWindows: unknown;
+      bookingSlotCapacities: unknown;
+    } | null;
+  },
+>(event: T) {
   const { privateDetails, ...row } = event;
   return {
     ...row,
@@ -276,7 +284,9 @@ export async function listEvents(query: {
     take: query.limit + 1,
     ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
   });
-  const events = rows.slice(0, query.limit).map((row) => query.mine ? row : publicRegistration(row));
+  const events = rows
+    .slice(0, query.limit)
+    .map((row) => (query.mine ? row : publicRegistration(row)));
   return { events, nextCursor: rows.length > query.limit ? (events.at(-1)?.id ?? null) : null };
 }
 export async function getEvent(ref: string, uid?: string) {

@@ -74,7 +74,8 @@ describe("events", () => {
     const event = await createEvent(app, owner, { status: "draft" });
     const path = `/api/events/${event.id}`;
     expect(
-      (await request(app).post("/api/events").set(owner).send({ title: "Terms already accepted" })).status,
+      (await request(app).post("/api/events").set(owner).send({ title: "Terms already accepted" }))
+        .status,
     ).toBe(201);
     expect(
       (await request(app).put(path).set(owner).send({ status: "pending_review" })).status,
