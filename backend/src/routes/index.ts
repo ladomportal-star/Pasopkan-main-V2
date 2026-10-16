@@ -12,6 +12,7 @@ import moderationRoutes from "./moderation.routes.ts";
 import mediaRoutes from "./media.routes.ts";
 import staffRoutes from "./staff.routes.ts";
 import eventSubmissionOtpRoutes from "./event-submission-otp.routes.ts";
+import organizerTermsRoutes from "./organizer-terms.routes.ts";
 
 const apiRouter = Router();
 
@@ -28,5 +29,6 @@ apiRouter.use(moderationRoutes);
 apiRouter.use(mediaRoutes);
 apiRouter.use(staffRoutes);
 apiRouter.use(eventSubmissionOtpRoutes);
+apiRouter.use(organizerTermsRoutes);
 
 export default apiRouter;

@@ -75,10 +75,13 @@ export async function createEvent(body: CreateEventBody, uid: string) {
     uid,
     "public",
   );
-  const role = await db.user.findUnique({ where: { authId: uid }, select: { role: true } });
+  const role = await db.user.findUnique({
+    where: { authId: uid },
+    select: { role: true, organizerTermsAcceptedAt: true },
+  });
   if (role?.role === "organizer") await requireVerifiedPhone(uid);
   const submitting = role?.role === "organizer" && body.status === "pending_review";
-  if (role?.role === "organizer" && !body.termsAccepted)
+  if (role?.role === "organizer" && !role.organizerTermsAcceptedAt && !body.termsAccepted)
     throw new HttpError(400, "Accept the organizer terms before creating an event");
   const otp = submitting ? await validateSubmissionOtp(uid, body.submissionOtp) : null;
   return db.$transaction(async (tx) => {
@@ -86,6 +89,11 @@ export async function createEvent(body: CreateEventBody, uid: string) {
     if (!user) throw new HttpError(403, "A registered account is required");
     if (user.role !== "admin" && (user.role !== "organizer" || !user.organizer))
       throw new HttpError(403, "An approved organizer profile is required");
+    if (user.role === "organizer" && body.termsAccepted && !user.organizerTermsAcceptedAt)
+      await tx.user.updateMany({
+        where: { id: user.id, organizerTermsAcceptedAt: null },
+        data: { organizerTermsAcceptedAt: new Date() },
+      });
     if (!["draft", "pending_review"].includes(body.status ?? "draft"))
       throw new HttpError(403, "Submit the event for admin review before publication");
     // An event always has an organizer for ownership and accounting. Admins do not
@@ -126,13 +134,16 @@ export async function updateEvent(ref: string, patch: UpdateEventBody, uid: stri
     "public",
   );
   const [actorRole, currentEvent] = await Promise.all([
-    db.user.findUnique({ where: { authId: uid }, select: { role: true } }),
+    db.user.findUnique({
+      where: { authId: uid },
+      select: { role: true, organizerTermsAcceptedAt: true },
+    }),
     db.event.findFirst({ where: refWhere(ref), select: { status: true } }),
   ]);
   const submitting =
     actorRole?.role === "organizer" &&
     (patch.status === "pending_review" || currentEvent?.status === "published");
-  if (submitting && !patch.termsAccepted)
+  if (submitting && !actorRole?.organizerTermsAcceptedAt && !patch.termsAccepted)
     throw new HttpError(400, "Accept the organizer terms before submitting an event");
   const otp = submitting ? await validateSubmissionOtp(uid, patch.submissionOtp) : null;
   return db.$transaction(async (tx) => {
@@ -150,6 +161,11 @@ export async function updateEvent(ref: string, patch: UpdateEventBody, uid: stri
         (actor.role !== "organizer" || event.organizer.userId !== actor.id))
     )
       throw new HttpError(403, "You do not have permission to modify this event");
+    if (actor.role === "organizer" && patch.termsAccepted && !actor.organizerTermsAcceptedAt)
+      await tx.user.updateMany({
+        where: { id: actor.id, organizerTermsAcceptedAt: null },
+        data: { organizerTermsAcceptedAt: new Date() },
+      });
     if (
       actor.role === "organizer" &&
       (patch.status === "pending_review" || event.status === "published") &&
