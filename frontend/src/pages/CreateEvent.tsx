@@ -850,6 +850,9 @@ export default function CreateEvent() {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const openingNewEvent = searchParams.get("new") === "1";
+  const openingEditor = openingNewEvent || Boolean(
+    searchParams.get("editId") || searchParams.get("adminEdit") || location.state?.editEventId,
+  );
 
   const [eventName, setEventName] = useState("");
   const [category, setCategory] = useState<
@@ -926,8 +929,42 @@ export default function CreateEvent() {
   const [termsGate, setTermsGate] = useState(openingNewEvent);
   const [termsChecked, setTermsChecked] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsAcceptanceStatus, setTermsAcceptanceStatus] = useState<
+    "loading" | "required" | "saving" | "accepted" | "error"
+  >("loading");
+  const [termsRetry, setTermsRetry] = useState(0);
   const [showSubmissionOtp, setShowSubmissionOtp] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+
+  // Terms acceptance belongs to the account, not to an individual event or browser.
+  useEffect(() => {
+    if (!user || !token) {
+      setTermsAcceptanceStatus("error");
+      setTermsAccepted(false);
+      return;
+    }
+    let cancelled = false;
+    setTermsAcceptanceStatus("loading");
+    setTermsAccepted(false);
+    api.get<{ accepted: boolean }>("/organizer/terms-acceptance", { token, throwOnError: true })
+      .then(({ data }) => {
+        if (cancelled) return;
+        if (!data) throw new Error("Could not check organizer terms acceptance");
+        setTermsAcceptanceStatus(data.accepted ? "accepted" : "required");
+        setTermsAccepted(data.accepted);
+        setTermsGate(!data.accepted);
+        if (openingEditor) setActiveTab(data.accepted ? "createEvent" : "terms");
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Could not check organizer terms acceptance", error);
+        setTermsAcceptanceStatus("error");
+        setTermsAccepted(false);
+        setTermsGate(true);
+        if (openingEditor) setActiveTab("terms");
+      });
+    return () => { cancelled = true; };
+  }, [user?.id, token, termsRetry]);
 
   // Only the backend's owner-scoped event list may populate organizer views.
   const [localEvents, setLocalEvents] = useState<any[]>([]);
@@ -1760,11 +1797,11 @@ export default function CreateEvent() {
     setEventPrivacy(event.eventPrivacy || "public");
     setAttendeeMessage(event.attendeeMessage || "");
 
-    // Existing drafts must also accept the current organizer terms before editing.
+    // Reuse the account's previous acceptance when editing an existing draft.
     setTermsChecked(false);
-    setTermsAccepted(false);
-    setTermsGate(true);
-    setActiveTab("terms");
+    setTermsAccepted(termsAcceptanceStatus === "accepted");
+    setTermsGate(termsAcceptanceStatus !== "accepted");
+    setActiveTab(termsAcceptanceStatus === "accepted" ? "createEvent" : "terms");
     setActiveStep(1); // start at step 1
     setSelectedEvent(null); // Close details modal if open
   };
@@ -3096,9 +3133,9 @@ export default function CreateEvent() {
     resetForm();
     setActiveStep(1);
     setTermsChecked(false);
-    setTermsAccepted(false);
-    setTermsGate(true);
-    setActiveTab("terms");
+    setTermsAccepted(termsAcceptanceStatus === "accepted");
+    setTermsGate(termsAcceptanceStatus !== "accepted");
+    setActiveTab(termsAcceptanceStatus === "accepted" ? "createEvent" : "terms");
   };
 
   const handledNewRequest = useRef(false);
@@ -8102,28 +8139,55 @@ export default function CreateEvent() {
                 </div>
                 {termsGate && (
                   <div className="rounded-2xl border border-orange-200 bg-white p-6 shadow-sm">
-                    <label className="flex cursor-pointer items-start gap-3 text-sm font-semibold text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={termsChecked}
-                        onChange={(event) => setTermsChecked(event.target.checked)}
-                        className="mt-1 h-4 w-4 accent-orange-600"
-                      />
-                      <span>{t.agreeToTerms}</span>
-                    </label>
-                    <button
-                      type="button"
-                      disabled={!termsChecked}
-                      onClick={() => {
-                        setTermsAccepted(true);
-                        setTermsGate(false);
-                        setActiveTab("createEvent");
-                        window.scrollTo(0, 0);
-                      }}
-                      className="mt-5 rounded-xl bg-adv-orange px-6 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {lang === "lo" ? "ຕົກລົງ ແລະ ສ້າງກິດຈະກຳ" : "Agree and continue to event form"}
-                    </button>
+                    {termsAcceptanceStatus === "loading" ? (
+                      <p role="status">{lang === "lo" ? "ກຳລັງກວດສອບການຍອມຮັບເງື່ອນໄຂ..." : "Checking your terms acceptance..."}</p>
+                    ) : termsAcceptanceStatus === "error" ? (
+                      <div role="alert">
+                        <p>{lang === "lo" ? "ບໍ່ສາມາດກວດສອບຫຼືບັນທຶກການຍອມຮັບໄດ້. ກະລຸນາລອງໃໝ່." : "Could not check or save your acceptance. Please try again."}</p>
+                        <button type="button" onClick={() => setTermsRetry((value) => value + 1)} className="mt-4 rounded-xl bg-adv-orange px-6 py-3 font-bold text-white">
+                          {lang === "lo" ? "ລອງໃໝ່" : "Retry"}
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <label className="flex cursor-pointer items-start gap-3 text-sm font-semibold text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={termsChecked}
+                            onChange={(event) => setTermsChecked(event.target.checked)}
+                            disabled={termsAcceptanceStatus === "saving"}
+                            className="mt-1 h-4 w-4 accent-orange-600"
+                          />
+                          <span>{t.agreeToTerms}</span>
+                        </label>
+                        <button
+                          type="button"
+                          disabled={!termsChecked || termsAcceptanceStatus === "saving"}
+                          onClick={async () => {
+                            setTermsAcceptanceStatus("saving");
+                            try {
+                              const result = await api.post<{ accepted: boolean }>(
+                                "/organizer/terms-acceptance",
+                                { accepted: true },
+                                { token, throwOnError: true },
+                              );
+                              if (!result.data?.accepted) throw new Error("Terms acceptance was not saved");
+                              setTermsAcceptanceStatus("accepted");
+                              setTermsAccepted(true);
+                              setTermsGate(false);
+                              setActiveTab("createEvent");
+                              window.scrollTo(0, 0);
+                            } catch (error) {
+                              console.error("Could not save organizer terms acceptance", error);
+                              setTermsAcceptanceStatus("error");
+                            }
+                          }}
+                          className="mt-5 rounded-xl bg-adv-orange px-6 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {lang === "lo" ? "ຕົກລົງ ແລະ ສ້າງກິດຈະກຳ" : "Agree and continue to event form"}
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
