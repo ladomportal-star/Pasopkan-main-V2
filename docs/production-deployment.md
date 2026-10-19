@@ -128,12 +128,15 @@ Run these checks after DNS and TLS are active:
 2. Open `https://pasopkan.la/login`, sign in with Google, and confirm the browser
    returns to `https://pasopkan.la`.
 3. In browser DevTools -> Network, verify API requests go to
-   `https://api.pasopkan.la/api/...`, include the Bearer token on protected
+   `https://api.pasopkan.la/api/...`, include the Bearer token on all application-data
    calls, and have no CORS error.
 4. Refresh a deep link such as `https://pasopkan.la/login`; it must not return
    a Vercel 404.
 5. Test account sync, event listing, media upload/read, order reservation and
    admin approval with a staging account before enabling real payments.
+   Before sign-in, direct application links must redirect to `/login`, and
+   `/api/events` must return HTTP 401 without data. Health and OTP bootstrap
+   remain accessible. See [account-only access](authentication-access.md).
 6. With a staging Google account, click Create Event, enter a Lao phone, send
    and verify a real OTP, submit an Organizer application, approve it as Admin,
    and confirm the event editor opens. Also verify an unconfirmed phone or

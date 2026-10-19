@@ -150,7 +150,13 @@ describe("admin moderation boundaries", () => {
           })
       ).status,
     ).toBe(200);
-    expect((await request(app).get(path)).status).toBe(404);
+    expect(
+      (
+        await request(app)
+          .get(path)
+          .set(await as("review-reader"))
+      ).status,
+    ).toBe(404);
     expect(
       (
         await request(app)

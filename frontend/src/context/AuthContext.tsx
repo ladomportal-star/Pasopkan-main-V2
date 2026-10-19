@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { safeStorage } from '../lib/storage';
 import { api, BackendUser } from '../lib/api';
 import DotsLoader from '../components/DotsLoader';
+import { hasAccountSession, SESSION_EXPIRED_EVENT } from '../lib/authAccess';
 
 export type AppUser = User & {
   publicId?: string;
@@ -50,9 +51,28 @@ function removeEmptyOAuthFragment() {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
-  const [token, setToken] = useState<string | null>(safeStorage.getItem('token'));
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const profileVersion = useRef(0);
+  const activeAccountId = useRef<string | null>(null);
+  const clearAccount = () => {
+    profileVersion.current += 1;
+    activeAccountId.current = null;
+    setToken(null);
+    setUser(null);
+    safeStorage.removeItem('token');
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    const expire = () => {
+      clearAccount();
+      void supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, expire);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, expire);
+  }, []);
 
   // Private avatar links expire after five minutes; refresh only their display URL.
   useEffect(() => {
@@ -72,33 +92,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setToken(session.access_token);
-        safeStorage.setItem('token', session.access_token);
-        fetchAndSetUserProfile(session.user, session.access_token);
-      } else {
-        setLoading(false);
+    let active = true;
+    let receivedAuthEvent = false;
+    const applySession = (session: { access_token: string; user: User } | null) => {
+      if (!active) return;
+      if (!session || session.user.is_anonymous) {
+        clearAccount();
+        return;
       }
+      if (activeAccountId.current !== session.user.id) {
+        setUser(null);
+        setLoading(true);
+      }
+      activeAccountId.current = session.user.id;
+      setToken(session.access_token);
+      safeStorage.setItem('token', session.access_token);
+      void fetchAndSetUserProfile(session.user, session.access_token);
+    };
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!active || receivedAuthEvent) return;
+      applySession(session);
+      removeEmptyOAuthFragment();
+    }).catch(() => { if (active && !receivedAuthEvent) clearAccount(); });
+
+    // Listen for changes on auth state (sign in, sign out, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      receivedAuthEvent = true;
+      applySession(session);
       removeEmptyOAuthFragment();
     });
 
-    // Listen for changes on auth state (sign in, sign out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session) {
-        setToken(session.access_token);
-        safeStorage.setItem('token', session.access_token);
-        removeEmptyOAuthFragment();
-        await fetchAndSetUserProfile(session.user, session.access_token);
-      } else {
-        setToken(null);
-        setUser(null);
-        safeStorage.removeItem('token');
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      profileVersion.current += 1;
+      subscription.unsubscribe();
+    };
   }, []);
 
   /** Map the backend's `users` row onto the `AppUser` shape the UI reads. */
@@ -124,6 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   /** Sync the Supabase session into our own `users` table (source of truth
    *  for `role` and profile fields) and load the result into state. */
   const fetchAndSetUserProfile = async (supabaseUser: User, accessToken: string) => {
+    const version = ++profileVersion.current;
     try {
       const fullName: string = supabaseUser.user_metadata?.full_name || '';
       const [firstName, ...rest] = fullName.split(' ');
@@ -134,15 +163,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           lastName: rest.length > 0 ? rest.join(' ') : undefined,
           phone: supabaseUser.phone || undefined,
         },
-        { token: accessToken, throwOnError: true },
+        { token: accessToken },
       );
       if (error || !data) throw new Error(error || 'No data returned');
-      setUser(mergeBackendUser(supabaseUser, data.user));
+      if (version === profileVersion.current) setUser(mergeBackendUser(supabaseUser, data.user));
     } catch (e) {
       console.error('Error syncing user profile with backend:', e);
-      setUser(supabaseUser); // fallback: signed in, but role/profile unknown
+      if (version === profileVersion.current) clearAccount();
     } finally {
-      setLoading(false);
+      if (version === profileVersion.current) setLoading(false);
     }
   };
 
@@ -190,6 +219,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     setLoading(true);
+    profileVersion.current += 1;
     try {
       await supabase.auth.signOut();
     } catch (error) {
@@ -246,7 +276,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loginWithPhoneSession,
       loginWithGoogle,
       logout, 
-      isAuthenticated: !!user,
+      isAuthenticated: hasAccountSession(user, token),
       loading,
       syncProfileToSupabase,
     }}>

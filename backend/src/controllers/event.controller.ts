@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { ok, fail } from "../utils/response.util.ts";
 import { createEvent, getEvent, listEvents, updateEvent } from "../services/event.service.ts";
 
-/** GET /api/events — public catalog; `?mine=true` (signed in) lists the caller's own, drafts included. */
+/** GET /api/events — account-only catalog; `?mine=true` lists the caller's own drafts too. */
 export async function getEvents(req: Request, res: Response) {
   const { status, mine, limit, cursor } = req.query as unknown as {
     status?: string;

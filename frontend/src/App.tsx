@@ -3,9 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import RequireAccount from './components/RequireAccount';
+import { LOGIN_RETURN_KEY, safeLoginReturn } from './lib/authAccess';
 import { NotificationsProvider } from './context/NotificationsContext';
 import Layout from './components/Layout';
 import BottomNav from './components/BottomNav';
@@ -65,6 +68,7 @@ function AnimatedRoutes() {
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={routeKey}>
+        <Route element={<RequireAccount />}>
         <Route 
           path="/" 
           element={
@@ -105,10 +109,38 @@ function AnimatedRoutes() {
         <Route path="/admin" element={<PageTransition><ApprovalCenter admin /></PageTransition>} />
         <Route path="/create" element={<PageTransition><OrganizerCreateGate /></PageTransition>} />
         <Route path="/staff-scanner" element={<PageTransition><StaffScanner /></PageTransition>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
         <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
         <Route path="/register" element={<PageTransition><Register /></PageTransition>} />
       </Routes>
     </AnimatePresence>
+  );
+}
+
+function SessionContent() {
+  const { user, isAuthenticated } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    // Google returns to the configured site root; finish the saved local return there.
+    if (!isAuthenticated || /^\/(login|register)\/?$/i.test(location.pathname)) return;
+    try {
+      const saved = sessionStorage.getItem(LOGIN_RETURN_KEY);
+      if (!saved) return;
+      sessionStorage.removeItem(LOGIN_RETURN_KEY);
+      const target = safeLoginReturn(saved);
+      navigate(/^\/checkout(?:[?#]|$)/.test(target) ? '/' : target, { replace: true });
+    } catch {}
+  }, [isAuthenticated, location.pathname, navigate]);
+  return (
+    <NotificationsProvider key={isAuthenticated ? user!.id : 'signed-out'}>
+      <div className={`${isAuthenticated ? 'pb-16 md:pb-0 ' : ''}min-h-screen flex flex-col bg-white text-adv-slate transition-colors duration-300`}>
+        <AnimatedRoutes />
+        <BottomNav />
+        <OfflineIndicator />
+      </div>
+    </NotificationsProvider>
   );
 }
 
@@ -118,13 +150,7 @@ export default function App() {
       <BrowserRouter>
         <ScrollToTop />
         <AuthProvider>
-          <NotificationsProvider>
-          <div className="pb-16 md:pb-0 min-h-screen flex flex-col bg-white text-adv-slate transition-colors duration-300">
-            <AnimatedRoutes />
-            <BottomNav />
-            <OfflineIndicator />
-          </div>
-          </NotificationsProvider>
+          <SessionContent />
         </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>

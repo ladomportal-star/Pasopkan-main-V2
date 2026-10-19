@@ -73,12 +73,47 @@ describe("authentication (real JWT verification, nothing bypassed)", () => {
     expect(res.body.tickets).toEqual([]);
   });
 
-  it("guest (anonymous) sessions may browse but cannot create events", async () => {
+  it("rejects anonymous sessions for browsing and writes", async () => {
     const guest = await as("guest-1", { anonymous: true });
-    expect((await request(app).get("/api/events").set(guest)).status).toBe(200);
+    expect((await request(app).get("/api/events").set(guest)).status).toBe(403);
     expect((await request(app).post("/api/events").set(guest).send({ title: "x" })).status).toBe(
       403,
     );
+  });
+
+  it.each([
+    "/events",
+    "/events/example",
+    "/media/url?reference=x",
+    "/resolve-map-url?url=x",
+    "/tickets",
+    "/notifications",
+    "/account/sync",
+    "/organizer/eligibility",
+    "/admin/events",
+    "/checkins/events",
+    "/payment/status/example",
+    "/future-data-route",
+  ])("requires login before exposing %s", async (path) => {
+    const response = await request(app).get(`/api${path}`);
+    expect(response.status).toBe(401);
+    expect(response.headers["cache-control"]).toContain("no-store");
+    expect(response.body).not.toHaveProperty("events");
+  });
+
+  it("keeps health and login bootstrap reachable without granting data access", async () => {
+    expect((await request(app).get("/api/health")).status).toBe(200);
+    expect((await request(app).post("/api/otp/send").send({})).status).toBe(400);
+    expect((await request(app).post("/api/otp/verify").send({})).status).toBe(400);
+    expect((await request(app).get("/api/otp/send")).status).toBe(401);
+    expect((await request(app).post("/api/events").send({})).status).toBe(401);
+    expect(
+      (
+        await request(app)
+          .get("/api/events")
+          .set(await as("signed-in-reader"))
+      ).status,
+    ).toBe(200);
   });
 
   it("answers 503 (not a silent pass) when auth is not configured", async () => {

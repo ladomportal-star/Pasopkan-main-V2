@@ -22,7 +22,7 @@ export default function BottomNav() {
   const { isAuthenticated } = useAuth();
   const t = translations[lang];
 
-  if (location.pathname === '/staff-scanner' || location.pathname === '/admin' || location.pathname === '/create') {
+  if (!isAuthenticated || location.pathname === '/staff-scanner' || location.pathname === '/admin' || location.pathname === '/create') {
     return null;
   }
   

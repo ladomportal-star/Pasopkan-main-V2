@@ -251,7 +251,7 @@ describe("events", () => {
       });
     expect(updated.status).toBe(200);
     expect(updated.body.event.privateDetails.accountNumber).toBe("new-account");
-    expect((await request(app).get(`/api/events/${id}`)).status).toBe(404);
+    expect((await request(app).get(`/api/events/${id}`)).status).toBe(401);
     expect(
       (await request(app).get(`/api/events/${id}`).set(owner)).body.event.privateDetails
         .accountNumber,
@@ -270,9 +270,19 @@ describe("events", () => {
     expect(
       (await request(app).put(`/api/events/${id}`).set(admin).send({ status: "published" })).status,
     ).toBe(200);
-    expect((await request(app).get(`/api/events/${id}`)).status).toBe(404);
     expect(
-      (await request(app).get("/api/events")).body.events.some((e: { id: string }) => e.id === id),
+      (
+        await request(app)
+          .get(`/api/events/${id}`)
+          .set(await as("catalog-reader"))
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await request(app)
+          .get("/api/events")
+          .set(await as("catalog-reader"))
+      ).body.events.some((e: { id: string }) => e.id === id),
     ).toBe(false);
     const publicEvent = await request(app)
       .post("/api/events")
@@ -290,10 +300,16 @@ describe("events", () => {
       (await request(app).put(`/api/events/${publicId}`).set(admin).send({ status: "published" }))
         .status,
     ).toBe(200);
-    expect((await request(app).get(`/api/events/${publicId}`)).body.event).not.toHaveProperty(
-      "privateDetails",
-    );
-    const publicList = await request(app).get("/api/events");
+    expect(
+      (
+        await request(app)
+          .get(`/api/events/${publicId}`)
+          .set(await as("catalog-reader"))
+      ).body.event,
+    ).not.toHaveProperty("privateDetails");
+    const publicList = await request(app)
+      .get("/api/events")
+      .set(await as("catalog-reader"));
     expect(
       publicList.body.events.find((e: { id: string }) => e.id === publicId),
     ).not.toHaveProperty("privateDetails");
@@ -303,10 +319,12 @@ describe("events", () => {
     const owner = await as("org-2");
     const draft = await createEvent(app, owner, { title: "Secret Draft", status: "draft" });
 
-    const pub = await request(app).get("/api/events");
+    const pub = await request(app)
+      .get("/api/events")
+      .set(await as("catalog-reader"));
     expect(pub.body.events.map((e: { title: string }) => e.title)).not.toContain("Secret Draft");
 
-    expect((await request(app).get(`/api/events/${draft.id}`)).status).toBe(404);
+    expect((await request(app).get(`/api/events/${draft.id}`)).status).toBe(401);
     expect(
       (
         await request(app)
@@ -317,11 +335,15 @@ describe("events", () => {
     expect((await request(app).get(`/api/events/${draft.id}`).set(owner)).status).toBe(200);
   });
 
-  it("lists published events publicly and resolves them by id", async () => {
+  it("lets signed-in accounts discover published events and resolve them by id", async () => {
     const event = await createEvent(app, await as("org-3"), { title: "Public Show" });
-    const list = await request(app).get("/api/events");
+    const list = await request(app)
+      .get("/api/events")
+      .set(await as("catalog-reader"));
     expect(list.body.events.map((e: { title: string }) => e.title)).toContain("Public Show");
-    const one = await request(app).get(`/api/events/${event.id}`);
+    const one = await request(app)
+      .get(`/api/events/${event.id}`)
+      .set(await as("catalog-reader"));
     expect(one.status).toBe(200);
     expect(one.body.event.title).toBe("Public Show");
   });

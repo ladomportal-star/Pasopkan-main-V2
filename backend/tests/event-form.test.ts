@@ -150,12 +150,20 @@ describe("organizer form database round-trip", () => {
       expect(updated.body.event.requireEveryTicketInfo).toBe(true);
       expect(updated.body.event.coupons).toEqual([]);
       await db.event.update({ where: { id }, data: { status: "published" } });
-      const publicEvent = (await request(app).get(`/api/events/${id}`)).body.event;
+      const publicEvent = (
+        await request(app)
+          .get(`/api/events/${id}`)
+          .set(await as("form-catalog-reader"))
+      ).body.event;
       expect(publicEvent.attendeeQuestions).toEqual([question]);
       expect(publicEvent).not.toHaveProperty("privateDetails");
       expect(JSON.stringify(publicEvent)).not.toContain("private-passcode");
       expect(fromBackendEvent(publicEvent).attendeeQuestions).toEqual([question]);
-      const catalog = (await request(app).get("/api/events?limit=100")).body.events;
+      const catalog = (
+        await request(app)
+          .get("/api/events?limit=100")
+          .set(await as("form-catalog-reader"))
+      ).body.events;
       expect(catalog.find((event: { id: string }) => event.id === id).attendeeQuestions).toEqual([
         question,
       ]);

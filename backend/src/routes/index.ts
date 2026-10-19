@@ -13,8 +13,23 @@ import mediaRoutes from "./media.routes.ts";
 import staffRoutes from "./staff.routes.ts";
 import eventSubmissionOtpRoutes from "./event-submission-otp.routes.ts";
 import organizerTermsRoutes from "./organizer-terms.routes.ts";
+import { requireAuth, requireRegisteredUser } from "../middlewares/auth.middleware.ts";
 
 const apiRouter = Router();
+
+// Default-deny access to application data, including future routes. Only login,
+// deployment health checks and provider callbacks may run without an account.
+apiRouter.use(async (req, res, next) => {
+  res.setHeader("Cache-Control", "private, no-store");
+  res.vary("Authorization");
+  const path = req.path.replace(/\/+$/, "").toLowerCase();
+  const infrastructure =
+    (req.method === "GET" && path === "/health") ||
+    (req.method === "POST" &&
+      ["/otp/send", "/otp/verify", "/webhook/payment", "/payment/webhook"].includes(path));
+  if (infrastructure) return next();
+  return requireAuth(req, res, () => requireRegisteredUser(req, res, next));
+});
 
 apiRouter.use(healthRoutes);
 apiRouter.use(mapsRoutes);

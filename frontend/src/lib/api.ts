@@ -5,6 +5,7 @@
 // Pass `{ throwOnError: true }` to get an exception instead.
 import { safeStorage } from "./storage";
 import { prepareMedia, resolveMedia } from "./media";
+import { SESSION_EXPIRED_EVENT } from "./authAccess";
 
 const configuredApiOrigin = String(import.meta.env.VITE_API_URL ?? "").trim();
 
@@ -125,6 +126,10 @@ async function request<T>(
     const data = text ? (JSON.parse(text) as T) : null;
 
     if (!res.ok) {
+      if (res.status === 401 && token && !path.startsWith('/otp/')) {
+        safeStorage.removeItem('token');
+        window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+      }
       const error = (data as { error?: string })?.error || `HTTP ${res.status}`;
       if (opts.throwOnError) throw new Error(error);
       return { ok: false, status: res.status, data, error };

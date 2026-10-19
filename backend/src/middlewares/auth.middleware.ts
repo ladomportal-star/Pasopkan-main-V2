@@ -54,6 +54,8 @@ async function authenticate(req: Request, res: Response, token: string): Promise
 
 /** Require a valid access token; attaches `req.user`. */
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  // A parent router may already have verified this request.
+  if (req.user) return next();
   const token = bearer(req);
   if (!token) {
     return res.status(401).json({ error: "Missing or invalid authorization header" });
@@ -67,6 +69,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 /** Attach `req.user` when a valid token is sent; anonymous callers pass through.
  *  A token that is present but invalid is still rejected. */
 export async function optionalAuth(req: Request, res: Response, next: NextFunction) {
+  if (req.user) return next();
   const token = bearer(req);
   if (!token) return next();
   const user = await authenticate(req, res, token);
@@ -75,7 +78,7 @@ export async function optionalAuth(req: Request, res: Response, next: NextFuncti
   next();
 }
 
-/** Guest (anonymous sign-in) sessions may browse, but not act as an account holder. */
+/** Anonymous sign-in tokens are not registered account sessions. */
 export function requireRegisteredUser(req: Request, res: Response, next: NextFunction) {
   if (!req.user || req.user.isAnonymous) {
     return res.status(403).json({ error: "Sign in with an account to do this" });

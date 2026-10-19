@@ -12,7 +12,7 @@ import {
   TicketCheck,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
@@ -20,6 +20,7 @@ import { api } from "../lib/api";
 import { displayLaoPhone, isValidLaoMobilePhone, normalizeLaoPhone } from "../lib/phone";
 import OtpInput from "../components/OtpInput";
 import SEO from "../components/SEO";
+import { LOGIN_RETURN_KEY, safeLoginReturn } from "../lib/authAccess";
 
 const GoogleMark = ({ className = "h-5 w-5 shrink-0" }: { className?: string }) => (
   <svg aria-hidden="true" viewBox="0 0 24 24" className={className}>
@@ -48,7 +49,18 @@ export default function Login({
   registering?: boolean;
 }) {
   const navigate = useNavigate();
-  const { loginWithGoogle, loginWithPhoneSession } = useAuth();
+  const location = useLocation();
+  const { loginWithGoogle, loginWithPhoneSession, isAuthenticated, loading } = useAuth();
+  let savedReturn: string | null = null;
+  try { savedReturn = sessionStorage.getItem(LOGIN_RETURN_KEY); } catch {}
+  const destination = safeLoginReturn(location.state?.returnTo ?? savedReturn);
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      try { sessionStorage.removeItem(LOGIN_RETURN_KEY); } catch {}
+      navigate(/^\/checkout(?:[?#]|$)/.test(destination) && !location.state?.returnState ? '/' : destination,
+        { replace: true, state: location.state?.returnState });
+    }
+  }, [loading, isAuthenticated, destination, navigate, location.state]);
   const { lang, toggleLanguage } = useLanguage();
   const { theme } = useTheme();
   const [busy, setBusy] = useState(false);
@@ -100,6 +112,7 @@ export default function Login({
     setBusy(true);
     setError("");
     try {
+      try { sessionStorage.setItem(LOGIN_RETURN_KEY, destination); } catch {}
       await loginWithGoogle();
     } catch {
       setError(
@@ -170,7 +183,6 @@ export default function Login({
 
     try {
       await loginWithPhoneSession(result.data.session);
-      navigate("/");
     } catch {
       setBusy(false);
       setError(lo ? "ບໍ່ສາມາດເປີດ session ໄດ້. ກະລຸນາລອງໃໝ່." : "Could not start your session. Try again.");
@@ -549,6 +561,7 @@ export default function Login({
                 : "New to Pasopkan?"}{" "}
             <Link
               to={registering ? "/login" : "/register"}
+              state={{ returnTo: destination, returnState: location.state?.returnState }}
               className="font-bold text-adv-orange hover:text-orange-600"
             >
               {registering
