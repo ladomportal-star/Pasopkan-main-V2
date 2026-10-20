@@ -4,9 +4,9 @@ import { env } from "../config/env.ts";
 import { HttpError } from "../middlewares/error.middleware.ts";
 const buckets = { public: "listing-media", private: "private-media" } as const;
 function storage() {
-  if (!env.supabaseUrl || !env.supabaseServiceRoleKey)
+  if (!env.supabaseUrl || !env.supabaseAdminKey)
     throw new HttpError(503, "Media storage is not configured");
-  return createClient(env.supabaseUrl, env.supabaseServiceRoleKey, {
+  return createClient(env.supabaseUrl, env.supabaseAdminKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   }).storage;
 }

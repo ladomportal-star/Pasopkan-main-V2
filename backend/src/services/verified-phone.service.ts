@@ -11,7 +11,7 @@ const authUser = z.object({
 
 /** Read the confirmed phone from Supabase Auth, never from editable profile data. */
 export async function getVerifiedPhone(uid: string): Promise<string | null> {
-  if (!env.supabaseUrl || !env.supabaseServiceRoleKey)
+  if (!env.supabaseUrl || !env.supabaseAdminKey)
     throw new HttpError(503, "Phone verification is not configured");
   let result: z.infer<typeof authUser>;
   try {
@@ -19,8 +19,8 @@ export async function getVerifiedPhone(uid: string): Promise<string | null> {
       `${env.supabaseUrl}/auth/v1/admin/users/${encodeURIComponent(uid)}`,
       {
         headers: {
-          apikey: env.supabaseServiceRoleKey,
-          Authorization: `Bearer ${env.supabaseServiceRoleKey}`,
+          apikey: env.supabaseAdminKey,
+          Authorization: `Bearer ${env.supabaseAdminKey}`,
         },
         signal: AbortSignal.timeout(5000),
       },

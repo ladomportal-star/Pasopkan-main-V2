@@ -45,6 +45,7 @@ const schema = z.object({
   SUPABASE_ANON_KEY: z.string().trim().optional().default(""),
   // Service role key: full admin access, bypasses RLS. SECRET — never expose
   // to the frontend or commit it. Used by the media storage service.
+  SUPABASE_SECRET_KEY: z.string().trim().optional().default(""),
   SUPABASE_SERVICE_ROLE_KEY: z.string().trim().optional().default(""),
 
   // Supabase Send SMS HTTP hook -> Wenova. Secrets are server-only.
@@ -94,7 +95,9 @@ export const env = {
 
   supabaseUrl: e.SUPABASE_URL.replace(/\/+$/, ""),
   supabasePublishableKey: e.SUPABASE_PUBLISHABLE_KEY || e.SUPABASE_ANON_KEY,
-  supabaseServiceRoleKey: e.SUPABASE_SERVICE_ROLE_KEY,
+  // Prefer Supabase's current server-only secret key. Keep the legacy name as
+  // a migration fallback for existing deployments.
+  supabaseAdminKey: e.SUPABASE_SECRET_KEY || e.SUPABASE_SERVICE_ROLE_KEY,
   smsHook: {
     secret: e.SUPABASE_SEND_SMS_HOOK_SECRET,
     wenovaToken: e.WENOVA_SMS_TOKEN,
@@ -122,8 +125,8 @@ export function checkEnv(warn: (msg: string) => void) {
   if (!env.supabaseUrl) {
     warn("SUPABASE_URL not set - every authenticated endpoint will return 503.");
   }
-  if (!env.supabaseServiceRoleKey) {
-    warn("SUPABASE_SERVICE_ROLE_KEY not set - media storage endpoints will return 503.");
+  if (!env.supabaseAdminKey) {
+    warn("SUPABASE_SECRET_KEY not set - verified-phone and media endpoints will return 503.");
   }
   if (!env.supabasePublishableKey) {
     warn("SUPABASE_PUBLISHABLE_KEY not set - phone OTP endpoints will return 503.");

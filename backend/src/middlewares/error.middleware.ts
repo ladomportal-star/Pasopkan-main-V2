@@ -34,6 +34,14 @@ export function errorHandler(err: any, _req: Request, res: Response, _next: Next
     return res.status(503).json({ error: "Database unavailable, please try again shortly" });
   }
   const status = Number(err?.status || err?.statusCode) || 500;
+  // HttpError messages are deliberately authored for API clients and are safe
+  // to return even for operational 5xx failures. Unexpected exceptions remain
+  // sanitized below.
+  if (err instanceof HttpError) {
+    if (status >= 500) logger.error("[error]", err.message);
+    else logger.warn("[error]", err.message);
+    return res.status(status).json({ error: err.message });
+  }
   if (status >= 500) {
     logger.error("[error]", err?.stack || err?.message || err);
     // Never leak internals of an unexpected failure to the client.
