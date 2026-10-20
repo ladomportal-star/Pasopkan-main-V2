@@ -47,7 +47,7 @@ const translations = {
     workshops: "Workshops",
     concerts: "Concerts",
     vouchers: "Voucher and Booking",
-    admin: "Admin Portal",
+    admin: "PskAdmin Portal",
   },
   lo: {
     tagline:
@@ -68,7 +68,7 @@ const translations = {
     workshops: "ເວີກຊອບ",
     concerts: "ຄອນເສີດ",
     vouchers: "Voucher ແລະ ການຈອງ",
-    admin: "ລະບົບແອດມິນ",
+    admin: "ລະບົບ PskAdmin",
   },
 };
 

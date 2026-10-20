@@ -429,7 +429,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
           role="alert"
           className="rounded-2xl border border-rose-200 bg-rose-50 p-5 font-semibold text-rose-800"
         >
-          ບັນຊີນີ້ບໍ່ມີສິດ Admin / This account does not have admin access.
+          ບັນຊີນີ້ບໍ່ມີສິດ PskAdmin / This account does not have PskAdmin access.
         </div>
       </main>
     );
@@ -450,7 +450,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
               Pasopkan · Control room
             </p>
             <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-950">
-              Admin Dashboard
+              PskAdmin Dashboard
             </h1>
             <p className="mt-1 text-sm text-slate-600">
               ຂໍ້ມູນຈາກ database ແລະ API ທີ່ກວດສິດແລ້ວເທົ່ານັ້ນ.
@@ -865,7 +865,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                       <option value="all">All roles</option>
                       <option value="user">Users</option>
                       <option value="organizer">Organizers</option>
-                      <option value="admin">Admins</option>
+                      <option value="admin">PskAdmins</option>
                     </select>
                     <button
                       type="submit"
@@ -1068,7 +1068,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
           </>
         )}
         <footer className="flex items-center justify-center gap-2 py-2 text-xs text-slate-500">
-          <ShieldCheck className="h-4 w-4" /> Admin-only data · Server verifies
+          <ShieldCheck className="h-4 w-4" /> PskAdmin-only data · Server verifies
           every privileged action
         </footer>
       </div>

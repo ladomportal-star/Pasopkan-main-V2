@@ -240,7 +240,7 @@ export default function OrganizerPhoneModal({
         </h2>
         <p className="mt-2 text-center text-sm leading-6 text-slate-500">
           {eligibility?.phoneVerified
-            ? `ເບີໂທຢືນຢັນແລ້ວ: ${eligibility.phone ?? ""}. ຂັ້ນຕໍ່ໄປແມ່ນໃຫ້ Admin ອະນຸມັດ.`
+            ? `ເບີໂທຢືນຢັນແລ້ວ: ${eligibility.phone ?? ""}. ຂັ້ນຕໍ່ໄປແມ່ນໃຫ້ PskAdmin ອະນຸມັດ.`
             : sentPhone
               ? `ປ້ອນລະຫັດ 6 ຫຼັກທີ່ສົ່ງໄປຫາ ${sentPhone}`
               : "ໃສ່ເບີມືຖືລາວຂອງທ່ານ ເພື່ອຮັບລະຫັດ OTP ຈິງທາງ SMS"}
@@ -289,7 +289,7 @@ export default function OrganizerPhoneModal({
           <div className="mt-7 space-y-4">
             {latest?.status === "pending" ? (
               <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
-                ຄຳຂໍ Organizer ກຳລັງລໍ Admin ອະນຸມັດ. ຍັງສ້າງ Event ບໍ່ໄດ້.
+                ຄຳຂໍ Organizer ກຳລັງລໍ PskAdmin ອະນຸມັດ. ຍັງສ້າງ Event ບໍ່ໄດ້.
               </p>
             ) : (
               <form
@@ -324,7 +324,7 @@ export default function OrganizerPhoneModal({
                   disabled={busy}
                   className="w-full rounded-xl bg-orange-600 px-4 py-3 font-semibold text-white disabled:opacity-50"
                 >
-                  {busy ? "ກຳລັງສົ່ງ…" : "ສົ່ງຄຳຂໍໃຫ້ Admin / Submit"}
+                  {busy ? "ກຳລັງສົ່ງ…" : "ສົ່ງຄຳຂໍໃຫ້ PskAdmin / Submit"}
                 </button>
               </form>
             )}
@@ -428,7 +428,7 @@ export default function OrganizerPhoneModal({
           </form>
         )}
         <p className="mt-5 text-center text-xs leading-5 text-slate-400">
-          ຫຼັງຢືນຢັນເບີໂທ ຕ້ອງໄດ້ຮັບການອະນຸມັດຈາກ Admin ກ່ອນສ້າງງານ
+          ຫຼັງຢືນຢັນເບີໂທ ຕ້ອງໄດ້ຮັບການອະນຸມັດຈາກ PskAdmin ກ່ອນສ້າງງານ
         </p>
       </motion.div>
     </motion.div>

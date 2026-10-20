@@ -180,7 +180,7 @@ export default function EventSubmissionOtpModal({
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 font-bold text-white disabled:opacity-50"
             >
               {busy && <Loader2 size={18} className="animate-spin" />}ຢືນຢັນ ແລະ
-              ສົ່ງໃຫ້ Admin ກວດ
+              ສົ່ງໃຫ້ PskAdmin ກວດ
             </button>
           </form>
         )}
