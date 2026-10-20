@@ -5,6 +5,7 @@ import { HttpError } from "../middlewares/error.middleware.ts";
 import { consumeSubmissionOtp, validateSubmissionOtp } from "./event-submission-otp.service.ts";
 import type { CreateEventBody, UpdateEventBody } from "../validators/event.validator.ts";
 import { registrationQuestions } from "./event-registration.ts";
+import { createNotification } from "./notification.service.ts";
 const publicInclude = {
   tiers: { orderBy: { sortOrder: "asc" } },
   dates: { orderBy: { date: "asc" } },
@@ -254,6 +255,47 @@ export async function updateEvent(ref: string, patch: UpdateEventBody, uid: stri
           metadata: { before: event.status, after: data.status },
         },
       });
+
+      if (actor.role === "admin" && ["published", "rejected"].includes(data.status)) {
+        const organizerUser = await tx.user.findUnique({
+          where: { id: event.organizer.userId },
+          select: { authId: true },
+        });
+        if (organizerUser?.authId) {
+          const approved = data.status === "published";
+          await createNotification(organizerUser.authId, {
+            type: approved ? "verified" : "system",
+            title: approved ? "Event approved" : "Event needs changes",
+            titleLo: approved ? "ກິດຈະກຳຜ່ານການອະນຸມັດ" : "ກິດຈະກຳຕ້ອງປັບປຸງ",
+            message: approved
+              ? `Your event “${event.title}” is now published.`
+              : `Your event “${event.title}” was rejected. Reason: ${patch.rejectionReason ?? "Please review and update your event."}`,
+            messageLo: approved
+              ? `ກິດຈະກຳ “${event.title}” ຂອງທ່ານໄດ້ຮັບອະນຸມັດແລະເຜີຍແຜ່ແລ້ວ.`
+              : `ກິດຈະກຳ “${event.title}” ຖືກປະຕິເສດ: ${patch.rejectionReason ?? "ກະລຸນາກວດສອບແລະແກ້ໄຂ."}`,
+            data: {
+              eventId: event.id,
+              status: approved ? "approved" : "rejected",
+              ...(!approved && patch.rejectionReason ? { rejectionReason: patch.rejectionReason } : {}),
+            },
+          }, tx);
+        }
+      } else if (actor.role === "organizer" && data.status === "pending_review") {
+        const admins = await tx.user.findMany({
+          where: { role: "admin" },
+          select: { authId: true },
+        });
+        await Promise.all(admins.map((admin) =>
+          createNotification(admin.authId, {
+            type: "noted",
+            title: "Event submitted for review",
+            titleLo: "ມີກິດຈະກຳລໍຖ້າກວດສອບ",
+            message: `Organizer submitted “${event.title}” for review.`,
+            messageLo: `Organizer ໄດ້ສົ່ງ “${event.title}” ເພື່ອກວດສອບ.`,
+            data: { eventId: event.id, status: data.status },
+          }, tx),
+        ));
+      }
     }
     return tx.event.findUnique({ where: { id: event.id }, include: ownerInclude });
   });

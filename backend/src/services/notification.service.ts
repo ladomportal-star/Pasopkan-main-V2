@@ -11,12 +11,20 @@ export interface NewNotification {
   messageLo?: string;
   data?: Record<string, string>;
 }
-const toApi = (row: Notification) => ({
-  ...row,
-  userId: undefined,
-  isUnread: row.readAt === null,
-  createdAt: row.createdAt.toISOString(),
-});
+const toApi = (row: Notification) => {
+  const data = row.data && typeof row.data === "object" && !Array.isArray(row.data)
+    ? row.data as Record<string, unknown>
+    : {};
+  return {
+    ...row,
+    userId: undefined,
+    eventId: typeof data.eventId === "string" ? data.eventId : undefined,
+    status: typeof data.status === "string" ? data.status : undefined,
+    rejectionReason: typeof data.rejectionReason === "string" ? data.rejectionReason : undefined,
+    isUnread: row.readAt === null,
+    createdAt: row.createdAt.toISOString(),
+  };
+};
 export async function createNotification(
   userUid: string,
   input: NewNotification,

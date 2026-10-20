@@ -11,13 +11,8 @@ import {
   ShieldCheck,
   AlertCircle,
   XCircle,
-  SlidersHorizontal,
   RefreshCw,
-  Settings,
-  Mail,
-  Smartphone,
   CheckCircle2,
-  Save,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence, type Variants } from 'motion/react';
@@ -25,19 +20,8 @@ import { useLanguage } from '../context/LanguageContext';
 import SEO from '../components/SEO';
 import NotificationsEmptyState from '../components/NotificationsEmptyState';
 import PullToRefresh from '../components/PullToRefresh';
-import { safeStorage } from '../lib/storage';
 import { useNotifications, timeAgo } from '../context/NotificationsContext';
 import { AppNotification } from '../types';
-
-export interface NotificationPreferences {
-  pushEnabled: boolean;
-  emailEnabled: boolean;
-}
-
-const DEFAULT_PREFERENCES: NotificationPreferences = {
-  pushEnabled: true,
-  emailEnabled: true,
-};
 
 const translations = {
   en: {
@@ -45,24 +29,11 @@ const translations = {
     notifications: 'Notifications',
     allTab: 'All',
     unreadTab: 'Unread',
-    settingsTab: 'Settings',
     markAllRead: 'Mark all as read',
     allMarkedRead: 'All notifications marked as read',
     clearAll: 'Clear all',
     clearedAll: 'All notifications cleared',
 
-    preferencesTitle: 'Notification Settings',
-    preferencesDesc: 'Manage how and when you receive notifications across Pasopkan',
-    deliveryChannels: 'Delivery Channels',
-    deliveryChannelsDesc: 'Choose where and how you want to receive notifications',
-    pushNotif: 'Push Notifications',
-    pushNotifDesc: 'Get alerts on your device for event reminders.',
-    emailNotif: 'Email Notifications',
-    emailNotifDesc: 'Receive updates about your upcoming events.',
-    settingsUpdated: 'Settings updated',
-    saveSettings: 'Save Preferences',
-    savedSettings: 'Notification preferences saved!',
-    quickSettings: 'Configure Settings',
 
     refreshBtn: 'Refresh',
     refreshing: 'Updating...',
@@ -75,24 +46,11 @@ const translations = {
     notifications: 'ການແຈ້ງເຕືອນ',
     allTab: 'ທັງໝົດ',
     unreadTab: 'ຍັງບໍ່ໄດ້ອ່ານ',
-    settingsTab: 'ຕັ້ງຄ່າການແຈ້ງເຕືອນ',
     markAllRead: 'ໝາຍວ່າອ່ານແລ້ວທັງໝົດ',
     allMarkedRead: 'ໝາຍວ່າອ່ານແລ້ວທັງໝົດຮຽບຮ້ອຍ',
     clearAll: 'ລຶບທັງໝົດ',
     clearedAll: 'ລຶບການແຈ້ງເຕືອນທັງໝົດແລ້ວ',
 
-    preferencesTitle: 'ຕັ້ງຄ່າການແຈ້ງເຕືອນ',
-    preferencesDesc: 'ຈັດການວິທີ ແລະ ເວລາທີ່ທ່ານຕ້ອງການຮັບການແຈ້ງເຕືອນຕ່າງໆ ໃນ Pasopkan',
-    deliveryChannels: 'ຊ່ອງທາງການຮັບແຈ້ງເຕືອນ',
-    deliveryChannelsDesc: 'ເລືອກຊ່ອງທາງທີ່ທ່ານຕ້ອງການຮັບຂ່າວສານ ແລະ ການແຈ້ງເຕືອນ',
-    pushNotif: 'ການແຈ້ງເຕືອນໃນມືຖື',
-    pushNotifDesc: 'ຮັບການແຈ້ງເຕືອນໃນອຸປະກອນຂອງທ່ານສຳລັບການເຕືອນກິດຈະກຳ.',
-    emailNotif: 'ການແຈ້ງເຕືອນຜ່ານອີເມວ',
-    emailNotifDesc: 'ຮັບຂໍ້ມູນອັບເດດກ່ຽວກັບກິດຈະກຳທີ່ຈະມາເຖິງຂອງທ່ານ.',
-    settingsUpdated: 'ອັບເດດການຕັ້ງຄ່າສຳເລັດແລ້ວ',
-    saveSettings: 'ບັນທຶກການຕັ້ງຄ່າ',
-    savedSettings: 'ບັນທຶກການຕັ້ງຄ່າການແຈ້ງເຕືອນສຳເລັດແລ້ວ!',
-    quickSettings: 'ຕັ້ງຄ່າການແຈ້ງເຕືອນ',
 
     refreshBtn: 'ໂຫຼດໃໝ່',
     refreshing: 'ກຳລັງອັບເດດ...',
@@ -152,33 +110,21 @@ export default function Notifications() {
     clearAll,
   } = useNotifications();
 
-  // Tab is kept in the URL (?tab=settings) so a link into settings works directly.
+  // Keep the inbox filter in the URL for shareable all/unread views.
   const queryTab = searchParams.get('tab');
-  const initialTab = queryTab === 'settings' ? 'settings' : queryTab === 'unread' ? 'unread' : 'all';
-  const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'settings'>(initialTab);
+  const initialTab = queryTab === 'unread' ? 'unread' : 'all';
+  const [activeTab, setActiveTab] = useState<'all' | 'unread'>(initialTab);
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam === 'settings' && activeTab !== 'settings') setActiveTab('settings');
-    else if (tabParam === 'unread' && activeTab !== 'unread') setActiveTab('unread');
+    if (tabParam === 'unread' && activeTab !== 'unread') setActiveTab('unread');
     else if (tabParam === 'all' && activeTab !== 'all') setActiveTab('all');
   }, [searchParams]);
 
-  const handleTabChange = (newTab: 'all' | 'unread' | 'settings') => {
+  const handleTabChange = (newTab: 'all' | 'unread') => {
     setActiveTab(newTab);
     setSearchParams({ tab: newTab });
   };
-
-  // Delivery-channel preferences are a local-only setting (no backend table yet).
-  const [preferences, setPreferences] = useState<NotificationPreferences>(() => {
-    try {
-      const saved = safeStorage.getItem('pasopkan_notification_preferences');
-      if (saved) return { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) };
-    } catch (e) {
-      console.error('Failed to parse notification preferences', e);
-    }
-    return DEFAULT_PREFERENCES;
-  });
 
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -193,18 +139,6 @@ export default function Notifications() {
     setTimeout(() => setShowSuccessToast(false), 2500);
   };
 
-  const handleTogglePref = (key: keyof NotificationPreferences) => {
-    setPreferences((prev) => {
-      const updated = { ...prev, [key]: !prev[key] };
-      try {
-        safeStorage.setItem('pasopkan_notification_preferences', JSON.stringify(updated));
-      } catch (e) {
-        console.error('Failed to save notification preferences', e);
-      }
-      triggerToast(t.settingsUpdated);
-      return updated;
-    });
-  };
 
   const fetchNotificationsFromServer = async () => {
     const ok = await refresh();
@@ -238,8 +172,8 @@ export default function Notifications() {
   return (
     <div className="min-h-screen bg-[#F9FAFB] py-4 md:py-8">
       <SEO
-        title={`${activeTab === 'settings' ? t.preferencesTitle : t.notifications} | Pasopkan`}
-        description="View and configure notification preferences on Pasopkan."
+        title={`${t.notifications} | Pasopkan`}
+        description="View your account notifications on Pasopkan."
         noindex={true}
       />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 sm:pt-4 pb-16">
@@ -255,32 +189,28 @@ export default function Notifications() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 flex items-center justify-center text-adv-orange shadow-sm shrink-0">
-              {activeTab === 'settings' ? <Settings className="w-6 h-6" /> : <Bell className="w-6 h-6" />}
+              <Bell className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2.5">
                 <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-adv-slate">
-                  {activeTab === 'settings' ? t.preferencesTitle : t.notifications}
+                  {t.notifications}
                 </h1>
-                {activeTab !== 'settings' && unreadCount > 0 && (
+                {unreadCount > 0 && (
                   <span className="px-2.5 py-0.5 rounded-full bg-adv-orange text-white text-xs font-bold shadow-sm">
                     {unreadCount}
                   </span>
                 )}
               </div>
               <p className="text-xs sm:text-sm text-gray-400 font-medium mt-0.5">
-                {activeTab === 'settings'
-                  ? t.preferencesDesc
-                  : lang === 'lo'
-                    ? 'ຕິດຕາມຂ່າວສານ, ການຈອງ ແລະ ກິດຈະກຳຂອງທ່ານ'
-                    : 'Stay informed about your events, bookings, and activities'}
+                {lang === 'lo'
+                  ? 'ຕິດຕາມຂ່າວສານ, ການຈອງ ແລະ ກິດຈະກຳຂອງທ່ານ'
+                  : 'Stay informed about your events, bookings, and activities'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-auto">
-            {activeTab !== 'settings' && (
-              <>
                 <button
                   onClick={fetchNotificationsFromServer}
                   disabled={isRefreshing}
@@ -312,14 +242,11 @@ export default function Notifications() {
                     </button>
                   </>
                 )}
-              </>
-            )}
           </div>
         </div>
 
         {/* Tabs */}
-        {activeTab !== 'settings' && (
-          <div className="flex items-center justify-between mb-6 border-b border-gray-200/80 pb-3 gap-2 overflow-x-auto hide-scrollbar">
+        <div className="flex items-center justify-between mb-6 border-b border-gray-200/80 pb-3 gap-2 overflow-x-auto hide-scrollbar">
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => handleTabChange('all')}
@@ -359,15 +286,6 @@ export default function Notifications() {
                 )}
               </button>
 
-              <button
-                onClick={() => handleTabChange('settings')}
-                // Only rendered while activeTab !== 'settings' (this whole block is guarded
-                // above), so this button is never the active one - no ternary needed here.
-                className="px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer bg-white text-gray-500 hover:text-adv-slate border border-gray-100 hover:border-gray-200"
-              >
-                <Settings className="w-3.5 h-3.5" />
-                <span>{t.settingsTab}</span>
-              </button>
             </div>
 
             <div className="flex items-center gap-3 shrink-0">
@@ -376,19 +294,10 @@ export default function Notifications() {
                   {t.lastUpdated} {lastRefreshedAt}
                 </span>
               )}
-              <button
-                onClick={() => handleTabChange('settings')}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-adv-orange transition-colors cursor-pointer"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span className="inline">{t.quickSettings}</span>
-              </button>
             </div>
           </div>
-        )}
 
         {/* Notifications List or Empty State */}
-        {activeTab !== 'settings' && (
           <div className="mb-8">
             <PullToRefresh onRefresh={fetchNotificationsFromServer} isRefreshing={isRefreshing}>
               {filteredNotifications.length === 0 ? (
@@ -481,81 +390,6 @@ export default function Notifications() {
               )}
             </PullToRefresh>
           </div>
-        )}
-
-        {/* Settings tab */}
-        {activeTab === 'settings' && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-6"
-          >
-            <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-7 shadow-sm">
-              <div className="mb-4 pb-3 border-b border-gray-100">
-                <h3 className="text-base sm:text-lg font-bold text-adv-slate flex items-center gap-2">
-                  <Smartphone className="w-5 h-5 text-adv-orange" />
-                  {t.deliveryChannels}
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-400 font-medium mt-0.5">{t.deliveryChannelsDesc}</p>
-              </div>
-
-              <div className="divide-y divide-gray-50">
-                <div className="flex items-center justify-between gap-4 py-3.5">
-                  <div className="flex items-start gap-3.5 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-orange-50 text-adv-orange flex items-center justify-center shrink-0 mt-0.5">
-                      <Smartphone className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="text-sm font-bold text-adv-slate leading-snug">{t.pushNotif}</h4>
-                      <p className="text-xs text-gray-400 font-medium leading-relaxed mt-0.5">{t.pushNotifDesc}</p>
-                    </div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={preferences.pushEnabled}
-                      onChange={() => handleTogglePref('pushEnabled')}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-adv-orange"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between gap-4 py-3.5">
-                  <div className="flex items-start gap-3.5 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center shrink-0 mt-0.5">
-                      <Mail className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="text-sm font-bold text-adv-slate leading-snug">{t.emailNotif}</h4>
-                      <p className="text-xs text-gray-400 font-medium leading-relaxed mt-0.5">{t.emailNotifDesc}</p>
-                    </div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={preferences.emailEnabled}
-                      onChange={() => handleTogglePref('emailEnabled')}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-adv-orange"></div>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                onClick={() => triggerToast(t.savedSettings)}
-                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-adv-orange hover:bg-orange-600 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 active:scale-95 transition-all cursor-pointer"
-              >
-                <Save className="w-4 h-4" />
-                <span>{t.saveSettings}</span>
-              </button>
-            </div>
-          </motion.div>
-        )}
       </div>
 
       {/* Success Toast */}

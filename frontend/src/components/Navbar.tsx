@@ -27,7 +27,6 @@ import {
   ArrowLeft,
   ShieldCheck,
   AlertCircle,
-  Settings,
 } from "lucide-react";
 import Logo from "./Logo";
 import SearchModal from "./SearchModal";
@@ -116,7 +115,7 @@ export default function Navbar() {
     null,
   );
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
-  const { notifications, unreadCount, markRead, markAllRead } =
+  const { notifications, unreadCount, markRead, markAllRead, refresh, error } =
     useNotifications();
   const notificationRef = useRef<HTMLDivElement>(null);
 
@@ -245,7 +244,11 @@ export default function Navbar() {
               {/* Notification Bell with Dropdown */}
               <div className="relative" ref={notificationRef}>
                 <button
-                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                  onClick={() => {
+                    const willOpen = !isNotificationsOpen;
+                    setIsNotificationsOpen(willOpen);
+                    if (willOpen) void refresh();
+                  }}
                   className="p-2 text-adv-slate hover:text-adv-orange transition-all relative rounded-full hover:bg-gray-50 cursor-pointer"
                   title={t.notifications}
                   aria-label={t.notifications}
@@ -296,12 +299,14 @@ export default function Navbar() {
                               <Bell className="w-5 h-5 text-adv-orange" />
                             </div>
                             <p className="text-xs font-bold text-adv-slate mb-0.5">
-                              {lang === "lo"
-                                ? "ຍັງບໍ່ມີການແຈ້ງເຕືອນໃໝ່"
-                                : "No new notifications"}
+                              {error
+                                ? (lang === "lo" ? "ໂຫຼດການແຈ້ງເຕືອນບໍ່ສຳເລັດ" : "Could not load notifications")
+                                : (lang === "lo" ? "ຍັງບໍ່ມີການແຈ້ງເຕືອນໃໝ່" : "No new notifications")}
                             </p>
                             <p className="text-[11px] text-gray-400">
-                              {t.noNotifications}
+                              {error
+                                ? (lang === "lo" ? "ກວດກາການເຊື່ອມຕໍ່ ແລ້ວເປີດແຖບນີ້ອີກຄັ້ງ" : "Check your connection and reopen this panel to retry")
+                                : t.noNotifications}
                             </p>
                           </div>
                         ) : (
@@ -351,14 +356,6 @@ export default function Navbar() {
                           className="text-xs font-bold text-gray-500 hover:text-adv-orange transition-colors px-1 py-0.5"
                         >
                           {lang === "lo" ? "ເບິ່ງທັງໝົດ" : "View All"}
-                        </Link>
-                        <Link
-                          to="/notifications?tab=settings"
-                          onClick={() => setIsNotificationsOpen(false)}
-                          className="inline-flex items-center gap-1 text-xs font-bold text-adv-orange hover:text-orange-600 transition-colors px-1 py-0.5"
-                        >
-                          <Settings className="w-3.5 h-3.5" />
-                          <span>{lang === "lo" ? "ຕັ້ງຄ່າ" : "Settings"}</span>
                         </Link>
                       </div>
                     </motion.div>

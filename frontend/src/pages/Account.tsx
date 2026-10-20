@@ -521,9 +521,9 @@ export default function Account() {
       label: t.notifications,
       desc:
         lang === "en"
-          ? "Control how you receive activity updates"
-          : "ຄວບຄຸມວິທີທີ່ທ່ານໄດ້ຮັບການແຈ້ງເຕືອນກິດຈະກຳ",
-      path: "/notifications?tab=settings",
+          ? "View your in-app activity updates"
+          : "ເບິ່ງການແຈ້ງເຕືອນກິດຈະກຳໃນແອັບ",
+      path: "/notifications",
       color: "text-adv-orange dark:text-orange-450",
       bg: "bg-orange-50 dark:bg-orange-500/10",
     },
