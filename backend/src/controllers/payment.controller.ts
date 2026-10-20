@@ -1,10 +1,13 @@
 import type { Request, Response } from "express";
 import { ok } from "../utils/response.util.ts";
 import { paymentService } from "../services/payment.service.ts";
+import { HttpError } from "../middlewares/error.middleware.ts";
 
-/** Webhook receiver (PhaJay / Telbiz / JDB / BCEL). A failure answers 5xx so the gateway retries. */
+/** Webhook receiver. Provider-specific signature verification is required. */
 export async function receiveWebhook(req: Request, res: Response) {
-  const result = await paymentService.recordWebhook(req.body || {});
+  if (!Buffer.isBuffer(req.body))
+    throw new HttpError(400, "Expected an application/json webhook body");
+  const result = await paymentService.recordWebhook(req.body, req.headers);
   return ok(res, {
     success: true,
     message: "Payment webhook received and processed successfully",

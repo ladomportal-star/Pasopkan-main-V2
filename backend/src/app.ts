@@ -10,6 +10,7 @@ import apiRouter from "./routes/index.ts";
 import { notFound, errorHandler } from "./middlewares/error.middleware.ts";
 import { logger } from "./utils/logger.ts";
 import smsHookRoutes from "./routes/sms-hook.routes.ts";
+import paymentWebhookRoutes from "./routes/payment-webhook.routes.ts";
 
 /** Build and configure the Express application. */
 export function createApp() {
@@ -61,6 +62,8 @@ export function createApp() {
 
   // Supabase Auth hook requires the original bytes for signature verification.
   app.use("/api", smsHookRoutes);
+  // Payment providers also sign the raw body. This must run before JSON parsing.
+  app.use("/api", paymentWebhookRoutes);
 
   app.use("/api", express.json({ limit: "10mb" }));
   app.use("/api", express.urlencoded({ extended: true, limit: "10mb" }));

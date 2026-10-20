@@ -55,6 +55,31 @@ const schema = z.object({
   WENOVA_SMS_HEADER: z.string().trim().optional().default(""),
   WENOVA_SMS_API_URL: z.string().url().default("https://apimicroservices.wenova.fun/sms/package"),
 
+  // Payment credentials are server-only. A provider adapter must also be
+  // implemented and explicitly registered before any live payment is enabled.
+  PAYMENT_PROVIDER: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9_-]*$/i)
+    .optional()
+    .default(""),
+  PAYMENT_API_BASE_URL: z
+    .string()
+    .trim()
+    .optional()
+    .default("")
+    .refine((value) => {
+      if (!value) return true;
+      try {
+        return new URL(value).protocol === "https:";
+      } catch {
+        return false;
+      }
+    }, "Payment API URL must be a valid HTTPS URL"),
+  PAYMENT_API_KEY: z.string().trim().optional().default(""),
+  PAYMENT_MERCHANT_ID: z.string().trim().optional().default(""),
+  PAYMENT_WEBHOOK_SECRET: z.string().trim().optional().default(""),
+
   FRONTEND_DIST: z.string().optional().default(""),
 
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
@@ -105,6 +130,18 @@ export const env = {
     header: e.WENOVA_SMS_HEADER,
     apiUrl: e.WENOVA_SMS_API_URL,
   },
+  payment: {
+    provider: e.PAYMENT_PROVIDER,
+    apiBaseUrl: e.PAYMENT_API_BASE_URL,
+    apiKey: e.PAYMENT_API_KEY,
+    merchantId: e.PAYMENT_MERCHANT_ID,
+    webhookSecret: e.PAYMENT_WEBHOOK_SECRET,
+    get credentialsComplete() {
+      return Boolean(
+        this.provider && this.apiBaseUrl && this.apiKey && this.merchantId && this.webhookSecret,
+      );
+    },
+  },
   frontendDist: e.FRONTEND_DIST,
 
   rateLimit: { windowMs: e.RATE_LIMIT_WINDOW_MS, max: e.RATE_LIMIT_MAX },
@@ -136,6 +173,21 @@ export function checkEnv(warn: (msg: string) => void) {
     (!env.smsHook.header || (!env.smsHook.wenovaToken && !env.smsHook.wenovaScriptId))
   ) {
     warn("Send SMS hook is only partially configured - Wenova delivery will return 503.");
+  }
+  const paymentCredentialCount = [
+    env.payment.provider,
+    env.payment.apiBaseUrl,
+    env.payment.apiKey,
+    env.payment.merchantId,
+    env.payment.webhookSecret,
+  ].filter(Boolean).length;
+  if (paymentCredentialCount > 0 && !env.payment.credentialsComplete) {
+    warn(
+      "Payment gateway configuration is incomplete - live checkout and refunds remain disabled.",
+    );
+  }
+  if (!env.payment.credentialsComplete) {
+    warn("Payment gateway is not configured - live checkout and refunds remain disabled.");
   }
   if (env.isProd && env.corsOrigins.length === 0) {
     warn("CORS_ORIGIN not set in production - all cross-origin browser requests will be blocked.");
