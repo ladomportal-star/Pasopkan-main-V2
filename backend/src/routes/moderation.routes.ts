@@ -115,7 +115,7 @@ router.get(
     const hasMore = rows.length > limit;
     const users = rows.slice(0, limit);
     res.setHeader("Cache-Control", "private, no-store");
-    res.json({ users, nextCursor: hasMore ? users.at(-1)?.id ?? null : null });
+    res.json({ users, nextCursor: hasMore ? (users.at(-1)?.id ?? null) : null });
   },
 );
 
