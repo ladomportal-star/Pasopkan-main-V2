@@ -1617,6 +1617,9 @@ export default function CreateEvent() {
   const [draftSaved, setDraftSaved] = useState(false);
   const [lastSavedTime, setLastSavedTime] = useState<Date | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [smsNotificationStatus, setSmsNotificationStatus] = useState<
+    "accepted" | "unavailable" | null
+  >(null);
   const [showNotificationModal, setShowNotificationModal] = useState(true);
   const [showImageLocationsModal, setShowImageLocationsModal] = useState(false);
 
@@ -2972,6 +2975,7 @@ export default function CreateEvent() {
     submissionInFlight.current = true;
     setIsLoading(true);
     setValidationError(null);
+    setSmsNotificationStatus(null);
     try {
       // Drafts and submissions share one payload, so all four steps round-trip identically.
       const payload = {
@@ -2986,6 +2990,9 @@ export default function CreateEvent() {
         result.error || (lang === "lo" ? "ບໍ່ສາມາດບັນທຶກ Event ໄດ້" : "Could not save the event"),
       );
       const saved = fromBackendEvent(result.data.event);
+      setSmsNotificationStatus(
+        editingEventId ? null : (result.data.smsNotification ?? "unavailable"),
+      );
       setWasEditing(Boolean(editingEventId));
       setLocalEvents((events) => [saved, ...events.filter((event) => String(event.id) !== String(saved.id))]);
       setEditingEventId(null);
@@ -7093,6 +7100,24 @@ export default function CreateEvent() {
                     <p className="text-gray-500 mb-10 leading-relaxed font-medium">
                       {wasEditing ? t.updateEventSuccessDesc : t.successDesc}
                     </p>
+                    {!wasEditing && smsNotificationStatus && (
+                      <p
+                        role="status"
+                        className={`-mt-5 mb-6 rounded-xl p-3 text-sm ${
+                          smsNotificationStatus === "accepted"
+                            ? "bg-emerald-50 text-emerald-800"
+                            : "bg-amber-50 text-amber-900"
+                        }`}
+                      >
+                        {smsNotificationStatus === "accepted"
+                          ? lang === "lo"
+                            ? "Wenova ຮັບຄຳຂໍ SMS ແລ້ວ (ການຮັບຂໍ້ຄວາມຂຶ້ນກັບເຄືອຂ່າຍ)."
+                            : "Wenova accepted the SMS request; handset delivery depends on the carrier."
+                          : lang === "lo"
+                            ? "ບັນທຶກ Event ສຳເລັດ ແຕ່ລະບົບຢືນຢັນຜົນການສົ່ງ SMS ບໍ່ໄດ້."
+                            : "Event saved, but SMS delivery could not be confirmed."}
+                      </p>
+                    )}
                     <button
                       onClick={() => {
                         setShowSuccessModal(false);

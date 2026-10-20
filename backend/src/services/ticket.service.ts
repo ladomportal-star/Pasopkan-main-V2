@@ -35,7 +35,7 @@ export async function createOrder(input: CreateOrderInput) {
   if (input.paymentTxnId)
     throw new HttpError(400, "Payment references must be created by the server");
   const user = await getOrCreateUser(input.uid, input.email);
-  return db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
     const event = await tx.event.findFirst({
       where: /^[0-9a-f-]{36}$/i.test(input.eventId)
         ? { id: input.eventId }
@@ -233,8 +233,13 @@ export async function createOrder(input: CreateOrderInput) {
         tx,
       );
     const { items, ...row } = order;
-    return { order: row, items };
+    return {
+      order: row,
+      items,
+      organizerUid: event.organizer.user.authId === input.uid ? null : event.organizer.user.authId,
+    };
   });
+  return result;
 }
 export async function releaseExpiredOrders() {
   return db.$transaction(async (tx) => {

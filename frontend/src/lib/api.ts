@@ -232,14 +232,20 @@ export const api = {
     ),
 
   createEvent: (event: Record<string, unknown>, opts?: RequestOptions) =>
-    request<{ event: Record<string, unknown> }>("POST", "/events", event, opts),
+    request<{
+      event: Record<string, unknown>;
+      smsNotification?: "accepted" | "unavailable";
+    }>("POST", "/events", event, opts),
 
   updateEvent: (
     idOrRef: string,
     patch: Record<string, unknown>,
     opts?: RequestOptions,
   ) =>
-    request<{ event: Record<string, unknown> }>(
+    request<{
+      event: Record<string, unknown>;
+      smsNotification?: "accepted" | "unavailable";
+    }>(
       "PUT",
       `/events/${encodeURIComponent(idOrRef)}`,
       patch,

@@ -107,9 +107,8 @@ class WenovaExplicitRejection extends SmsHookError {}
 
 async function sendThroughWenova(
   phoneNumber: string,
-  otp: string,
+  message: string,
   config: ReturnType<typeof checkedWenovaConfig>,
-  message = `Pasopkan verification code: ${otp}`,
 ) {
   const body = {
     header: config.header,
@@ -191,7 +190,15 @@ async function sendThroughWenova(
 /** Send a fresh event-submission code to an already confirmed account phone. */
 export async function sendEventSubmissionOtp(phone: string, code: string) {
   const config = checkedWenovaConfig();
-  await sendThroughWenova(phone.slice(4), code, config, `Pasopkan event submission code: ${code}`);
+  await sendThroughWenova(phone.slice(4), `Pasopkan event submission code: ${code}`, config);
+}
+
+/** Send a non-OTP transactional alert to an already-verified Lao mobile. */
+export async function sendTransactionalSms(phone: string, message: string) {
+  const normalized = normalizeLaoMobilePhone(phone);
+  if (!isLaoMobilePhone(normalized) || !message.trim() || message.length > 320)
+    throw new SmsHookError(400, "Invalid SMS notification");
+  await sendThroughWenova(normalized.slice(4), message.trim(), checkedWenovaConfig());
 }
 
 /** Signed, idempotent Supabase Auth SMS delivery. Never store or log the OTP. */
@@ -217,7 +224,7 @@ export async function deliverSmsHook(body: Buffer, headers: HookHeaders) {
   }
 
   try {
-    await sendThroughWenova(phoneNumber, otp, config);
+    await sendThroughWenova(phoneNumber, `Pasopkan verification code: ${otp}`, config);
     // "sent" records provider acceptance (including a queued SMS), not handset delivery.
     await prisma.smsHookDelivery.update({
       where: { id },
