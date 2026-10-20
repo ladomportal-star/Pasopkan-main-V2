@@ -107,7 +107,6 @@ const translations = {
     addEventImageOther: "Add event image for\nother locations",
     addEventBgImage: "Add event background image",
     eventName: "Event Name",
-    eventAddress: "Event Address",
     venueName: "Venue Name",
     province: "Province",
     district: "District",
@@ -408,7 +407,6 @@ const translations = {
     addEventImageOther: "ເພີ່ມຮູບພາບ event ສຳລັບ\nສະຖານທີ່ອື່ນໆ",
     addEventBgImage: "ເພີ່ມຮູບພາບພື້ນຫຼັງ event",
     eventName: "ຊື່ event",
-    eventAddress: "ທີ່ຢູ່ event",
     venueName: "ຊື່ສະຖານທີ່",
     province: "ແຂວງ/ນະຄອນ",
     district: "ເມືອງ",
@@ -3752,15 +3750,6 @@ export default function CreateEvent() {
 
                       {/* Event Address */}
                       <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 space-y-4">
-                        <div className="flex flex-wrap items-center gap-3">
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <span className="text-adv-orange font-bold">*</span>
-                            <span className="text-adv-slate font-bold text-sm">
-                              {t.eventAddress}:
-                            </span>
-                          </div>
-                        </div>
-
                         {eventType === "offline" ? (
                           <>
                             <div id="field-venue-name">
