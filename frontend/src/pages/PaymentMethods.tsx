@@ -140,45 +140,6 @@ const LAO_BANKS = [
   { id: 'stb', name: 'ST Bank', label: 'STB', badgeBg: 'bg-purple-600', textColor: 'text-purple-600', logo: '/ST.png' }
 ];
 
-const MOCK_PAYOUTS = [
-  {
-    id: 'TXN-98472-LA',
-    date: '2026-07-01',
-    event: 'Vang Vieng Music Festival 2026',
-    amount: 15500000,
-    status: 'Completed',
-    account: 'BCEL *6701',
-    accountName: 'Somsack Xayarath'
-  },
-  {
-    id: 'TXN-47201-LA',
-    date: '2026-06-18',
-    event: 'That Luang Cultural Workshop',
-    amount: 8200000,
-    status: 'Completed',
-    account: 'BCEL *6701',
-    accountName: 'Somsack Xayarath'
-  },
-  {
-    id: 'TXN-21049-LA',
-    date: '2026-05-30',
-    event: 'Luang Prabang Film & Food Experience',
-    amount: 12400000,
-    status: 'Completed',
-    account: 'BCEL *6701',
-    accountName: 'Somsack Xayarath'
-  },
-  {
-    id: 'TXN-11590-LA',
-    date: '2026-05-15',
-    event: 'Kip Exchange Artisan Bazaar',
-    amount: 3500000,
-    status: 'Completed',
-    account: 'BCEL *2209',
-    accountName: 'Somsack Xayarath'
-  }
-];
-
 interface BankAccount {
   bankName: string;
   accountName: string;
@@ -195,31 +156,25 @@ export default function PaymentMethods() {
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [isHoldActive, setIsHoldActive] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [payouts] = useState(MOCK_PAYOUTS);
+  // Payout history and bank-account storage are not implemented server-side.
+  const [payouts] = useState<any[]>([]);
 
-  // Pre-populate realistic Lao bank account so user can immediately test changing/editing
-  const [bankAccount, setBankAccount] = useState<BankAccount | null>({
-    bankName: 'BCEL Bank',
-    accountName: 'Somsack Xayarath',
-    accountNumber: '120-11-00-1234567-001'
-  });
+  const [bankAccount] = useState<BankAccount | null>(null);
 
   // Form state
   const [formData, setFormData] = useState<BankAccount>({
-    bankName: 'BCEL Bank',
-    accountName: 'Somsack Xayarath',
-    accountNumber: '120-11-00-1234567-001'
+    bankName: '',
+    accountName: '',
+    accountNumber: ''
   });
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    const isChanging = bankAccount !== null;
-    setBankAccount(formData);
-    setIsEditing(false);
-    if (isChanging) {
-      setIsHoldActive(true);
-    }
-    triggerSuccess(t.payoutUpdated);
+    setToastMessage(lang === 'lo'
+      ? 'ຍັງບໍ່ສາມາດບັນທຶກບັນຊີຮັບເງິນໄດ້: backend payout ຍັງບໍ່ພ້ອມ.'
+      : 'Bank details were not saved: backend payout support is not configured.');
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 5000);
   };
 
   const startEditing = () => {

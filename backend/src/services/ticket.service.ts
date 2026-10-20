@@ -163,6 +163,10 @@ export async function createOrder(input: CreateOrderInput) {
     const total = subtotal - discount;
     if (input.freeOnly && total !== 0)
       throw new HttpError(409, "This ticket requires a payment provider");
+    // Never reserve paid tickets as if checkout were available. The payment
+    // adapter currently has no configured provider/session verification path.
+    // Free orders remain supported and are confirmed below.
+    if (total > 0) throw new HttpError(503, "Paid ticket checkout is temporarily unavailable");
     const changed =
       await tx.$executeRaw`UPDATE "TicketTier" SET "quantitySold" = "quantitySold" + ${qty} WHERE id = ${tier.id}::uuid AND ("quantityTotal" IS NULL OR "quantitySold" + ${qty} <= "quantityTotal")`;
     if (!changed) throw new HttpError(409, "Not enough tickets left");
