@@ -12,9 +12,10 @@ export interface NewNotification {
   data?: Record<string, string>;
 }
 const toApi = (row: Notification) => {
-  const data = row.data && typeof row.data === "object" && !Array.isArray(row.data)
-    ? row.data as Record<string, unknown>
-    : {};
+  const data =
+    row.data && typeof row.data === "object" && !Array.isArray(row.data)
+      ? (row.data as Record<string, unknown>)
+      : {};
   return {
     ...row,
     userId: undefined,
