@@ -7096,7 +7096,7 @@ export default function CreateEvent() {
                     <button
                       onClick={() => {
                         setShowSuccessModal(false);
-                        navigate("/admin");
+                        navigate("/PskAdmin");
                       }}
                       className="w-full py-4 rounded-2xl bg-adv-orange hover:bg-orange-600 text-white font-bold transition-all shadow-xl shadow-orange-100 text-lg"
                     >

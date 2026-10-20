@@ -58,7 +58,7 @@ function AnimatedRoutes() {
   const location = useLocation();
   
   // Define which paths are standalone (they don't use the main Layout component)
-  const standalonePaths = ['/admin', '/create', '/staff-scanner', '/login', '/register'];
+  const standalonePaths = ['/PskAdmin', '/admin', '/create', '/staff-scanner', '/login', '/register'];
   
   // Keep the same key for all layout routes so that the top-level AnimatePresence
   // doesn't unmount the entire layout, allowing the inner AnimatePresence in Layout.tsx to handle it.
@@ -106,7 +106,8 @@ function AnimatedRoutes() {
         </Route>
         
         {/* Standalone Pages */}
-        <Route path="/admin" element={<PageTransition><ApprovalCenter admin /></PageTransition>} />
+        <Route path="/PskAdmin" element={<PageTransition><ApprovalCenter admin /></PageTransition>} />
+        <Route path="/admin" element={<Navigate to="/PskAdmin" replace />} />
         <Route path="/create" element={<PageTransition><OrganizerCreateGate /></PageTransition>} />
         <Route path="/staff-scanner" element={<PageTransition><StaffScanner /></PageTransition>} />
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -7,7 +7,7 @@ import Footer from './Footer';
 
 export default function Layout() {
   const location = useLocation();
-  const isAdminDashboard = location.pathname === '/admin';
+  const isAdminDashboard = location.pathname === '/PskAdmin';
   const isEventDetailsPage = location.pathname.startsWith('/event/');
   const [showScrollTop, setShowScrollTop] = useState(false);
 

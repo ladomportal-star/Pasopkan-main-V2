@@ -293,7 +293,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  to="/admin"
+                  to="/PskAdmin"
                   className="text-sm font-medium text-gray-500 hover:text-adv-orange transition-colors inline-flex items-center gap-1.5"
                 >
                   <Shield className="w-3.5 h-3.5 text-adv-orange" />
