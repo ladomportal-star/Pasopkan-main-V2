@@ -63,7 +63,6 @@ import { EventMapPicker } from "../components/EventMapPicker";
 import { AdaptiveImage } from "../components/AdaptiveImage";
 
 import DotsLoader from "../components/DotsLoader";
-import { safeStorage } from "../lib/storage";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
 import SEO from "../components/SEO";
@@ -766,77 +765,6 @@ export default function EventDetails({
     const checkDate = event.endDate || event.date;
     return checkDate ? checkDate < todayStr : false;
   }, [event, todayStr]);
-
-  const [isContactFormOpen, setIsContactFormOpen] = useState(false);
-  const [contactName, setContactName] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [contactSubject, setContactSubject] = useState("General");
-  const [contactMessage, setContactMessage] = useState("");
-  const [isSubmittingContact, setIsSubmittingContact] = useState(false);
-  const [contactSuccess, setContactSuccess] = useState(false);
-  const [contactError, setContactError] = useState("");
-
-  useEffect(() => {
-    if (user) {
-      setContactName(user.displayName || "");
-      setContactEmail(user.email || "");
-    }
-  }, [user]);
-
-  const handleSendContactMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!event) return;
-    if (!contactName.trim() || !contactEmail.trim() || !contactMessage.trim()) {
-      setContactError(
-        lang === "en"
-          ? "Please fill in all required fields."
-          : "ກະລຸນາປ້ອນຂໍ້ມູນໃນຊ່ອງທີ່ຕ້ອງການໃຫ້ຄົບຖ້ວນ.",
-      );
-      return;
-    }
-
-    setIsSubmittingContact(true);
-    setContactError("");
-
-    try {
-      // Create message data
-      const messageData = {
-        eventId: event.id,
-        eventTitle: event.title,
-        organizer: event.organizer || "Pasopkan Partner",
-        senderName: contactName.trim(),
-        senderEmail: contactEmail.trim(),
-        subject: contactSubject,
-        message: contactMessage.trim(),
-        timestamp: new Date().toISOString(),
-        userId: user?.id || "anonymous",
-      };
-
-      // Local storage backup
-      const savedInquiries = JSON.parse(
-        safeStorage.getItem("pasopkan_local_inquiries") || "[]",
-      );
-      savedInquiries.push({ id: `inq_${Date.now()}`, ...messageData });
-      safeStorage.setItem(
-        "pasopkan_local_inquiries",
-        JSON.stringify(savedInquiries),
-      );
-
-      // Simulate a bit of network latency for polished feel
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-
-      setContactSuccess(true);
-      setContactMessage("");
-    } catch (err: any) {
-      setContactError(
-        lang === "en"
-          ? "Failed to send message. Please try again."
-          : "ບໍ່ສາມາດສົ່ງຂໍ້ຄວາມໄດ້. ກະລຸນາລອງໃໝ່.",
-      );
-    } finally {
-      setIsSubmittingContact(false);
-    }
-  };
 
   const galleryImages = event ? getGalleryImages(event) : [];
 

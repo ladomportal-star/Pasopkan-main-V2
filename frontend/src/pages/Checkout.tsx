@@ -23,8 +23,6 @@ import { QRCodeSVG } from "qrcode.react";
 import { api } from "../lib/api";
 import { showErrorAlert } from "../lib/alerts";
 
-import { addEventAttendee } from "../lib/checkinsStore";
-import { safeStorage } from "../lib/storage";
 import SEO from "../components/SEO";
 
 const translations = {
@@ -327,7 +325,6 @@ export default function Checkout() {
   const [countdown, setCountdown] = useState(900);
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
   const [creditCardUrl, setCreditCardUrl] = useState<string | null>(null);
-  const [transactionId, setTransactionId] = useState<string | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
@@ -638,168 +635,6 @@ export default function Checkout() {
       void handleFreeCheckout();
     }
   };
-
-  useEffect(() => {
-    if (step === "success" && event?.id) {
-      // 1. Local storage tracking
-      try {
-        const purchased =
-          safeStorage.getItem("pasopkan_purchased_event_ids") ||
-          localStorage.getItem("pasopkan_purchased_event_ids");
-        const list = purchased ? JSON.parse(purchased) : [];
-        if (!list.includes(event.id)) {
-          list.push(event.id);
-          safeStorage.setItem(
-            "pasopkan_purchased_event_ids",
-            JSON.stringify(list),
-          );
-        }
-
-        // Also save to user tickets for the Dashboard
-        const existingTicketsRaw =
-          safeStorage.getItem("pasopkan_user_tickets") ||
-          localStorage.getItem("pasopkan_user_tickets");
-        let userTickets = [];
-        try {
-          if (existingTicketsRaw) userTickets = JSON.parse(existingTicketsRaw);
-        } catch (e) {}
-        const newTicketObj = {
-          id: transactionId || `tk_${Math.random().toString(36).substr(2, 9)}`,
-          event,
-          tier: selectedTiersList.length > 0 ? selectedTiersList[0].tier : tier,
-          quantity: totalQuantity,
-          selectedTiers: selectedTiersList,
-          selectedDate: state.selectedDate || event?.date,
-          selectedTime: state.selectedTime || event?.time,
-          status: "upcoming",
-          bookingDate: new Date().toISOString(),
-          purchaseDate: new Date().toISOString(),
-        };
-        userTickets.push(newTicketObj);
-        safeStorage.setItem(
-          "pasopkan_user_tickets",
-          JSON.stringify(userTickets),
-        );
-
-        // Save detailed attendee registration records with questionnaire answers for the Organizer
-        try {
-          ticketOwners.forEach((owner, idx) => {
-            const currentTicketId =
-              totalQuantity > 1
-                ? `${transactionId || "tk"}-${idx + 1}`
-                : transactionId ||
-                  `tk_${Math.random().toString(36).substr(2, 9)}`;
-            const attendeeFirstName =
-              owner.firstName.trim() ||
-              (user?.name ? user.name.split(" ")[0] : "Attendee");
-            const attendeeLastName =
-              owner.lastName.trim() ||
-              (user?.name
-                ? user.name.split(" ").slice(1).join(" ")
-                : `${idx + 1}`);
-            const tierInfo =
-              selectedTiersList.length > 0
-                ? selectedTiersList[idx % selectedTiersList.length]?.tier ||
-                  tier
-                : tier;
-
-            addEventAttendee({
-              id: `att_${Date.now()}_${idx + 1}_${Math.random().toString(36).substr(2, 5)}`,
-              ticketId: currentTicketId,
-              orderId: transactionId || `ord_${Date.now()}`,
-              eventId: String(event.id),
-              firstName: attendeeFirstName,
-              lastName: attendeeLastName,
-              attendeeName:
-                `${attendeeFirstName} ${attendeeLastName}`.trim() ||
-                user?.name ||
-                `Attendee ${idx + 1}`,
-              email:
-                owner.email.trim() || user?.email || "attendee@pasopkan.la",
-              phone:
-                owner.phone.trim() ||
-                (user as any)?.phone ||
-                "+856 20 5555 1234",
-              gender: owner.gender,
-              dob: owner.dob,
-              ticketType: tierInfo?.name || "Standard Pass",
-              tierId: tierInfo?.id,
-              zone:
-                zone?.name ||
-                (event.hasSeating
-                  ? `Zone ${String.fromCharCode(65 + (idx % 3))}`
-                  : "General Access"),
-              seat: event.hasSeating
-                ? `Row ${(idx % 8) + 1}, Seat ${(idx % 15) + 1}`
-                : `Ticket #${idx + 1}`,
-              price: `${total.toLocaleString()} LAK`,
-              purchaseDate: new Date().toISOString(),
-              visitDate: state.selectedDate || event?.date,
-              timeSlot: state.selectedTime || event?.time,
-              isCheckedIn: false,
-              customAnswers: owner.customAnswers || {},
-            });
-          });
-        } catch (attErr) {
-          console.error("Error saving attendee answers:", attErr);
-        }
-
-        // Save coupon redemption details if a coupon was applied
-        if (appliedCoupon) {
-          try {
-            const existingRedemptionsRaw = localStorage.getItem(
-              "pasopkan_coupon_redemptions",
-            );
-            const redemptionsList = existingRedemptionsRaw
-              ? JSON.parse(existingRedemptionsRaw)
-              : [];
-            const activeUsr = user;
-            redemptionsList.push({
-              id: `red_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-              couponId: String(appliedCoupon.id || appliedCoupon.code),
-              couponCode: appliedCoupon.code,
-              eventId: String(event.id),
-              eventTitle:
-                typeof event.title === "string" ? event.title : "Event",
-              userId: activeUsr?.id || "usr_guest",
-              userName:
-                activeUsr?.displayName ||
-                user?.name ||
-                (activeUsr?.email ? activeUsr.email.split("@")[0] : "Attendee"),
-              userEmail:
-                activeUsr?.email || user?.email || "attendee@pasopkan.la",
-              userPhone:
-                (activeUsr as any)?.phoneNumber ||
-                user?.phone ||
-                "+856 20 5555 1234",
-              userAvatar: (activeUsr as any)?.photoURL || user?.avatar,
-              orderId: transactionId || `ord_${Date.now()}`,
-              tierName:
-                selectedTiersList.length > 0
-                  ? selectedTiersList
-                      .map((i) => `${i.quantity}x ${i.tier.name}`)
-                      .join(", ")
-                  : tier?.name || "Standard",
-              discountSaved: discount,
-              totalPaid: total,
-              usedAt: new Date().toISOString(),
-            });
-            safeStorage.setItem(
-              "pasopkan_coupon_redemptions",
-              JSON.stringify(redemptionsList),
-            );
-          } catch (err) {
-            console.error("Error saving coupon redemption:", err);
-          }
-        }
-      } catch (e) {
-        console.error("Error saving purchased event ID:", e);
-      }
-
-      // The real order was already created in the backend by createRealOrder()
-      // before this step was reached (see handleFreeCheckout / handlePaymentSuccess).
-    }
-  }, [step, event, tier, quantity, state?.selectedDate, state?.selectedTime]);
 
   const renderActivitySummary = () => (
     <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-150/60 space-y-4">

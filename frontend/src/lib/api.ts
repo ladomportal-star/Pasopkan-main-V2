@@ -377,8 +377,8 @@ export const api = {
   clearNotifications: (opts?: RequestOptions) =>
     request("DELETE", "/notifications", undefined, opts),
 
-  // Backend 400s without `userUid`; most callers don't have it yet (see
-  // lib/notificationHelper.ts), so this stays best-effort and non-fatal.
+  // Optional notification creation is best-effort; callers should supply the
+  // authenticated recipient UID and rely on the server as the source of truth.
   createNotification: (
     data: Partial<import("../types").AppNotification> & { userUid?: string },
     opts?: RequestOptions,

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Calendar as CalendarIcon, MapPin, ChevronRight, Inbox, RefreshCw, Sparkles } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, Calendar as CalendarIcon, MapPin, Inbox, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LaoEvent } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
@@ -13,27 +13,19 @@ const translations = {
   en: {
     back: 'Back',
     title: 'Past Events Attended',
-    clearHistory: 'Clear History',
-    restoreHistory: 'Restore Sample History',
     noPastEventsTitle: 'No Past Events Yet',
     noPastEventsDesc: 'Your past event history is currently empty. Once you purchase tickets and attend an experience, it will be beautifully recorded here.',
     exploreUpcoming: 'Explore Upcoming Events',
     loading: 'Loading your event history...',
-    clearedSuccess: 'History cleared',
-    restoredSuccess: 'Sample history restored',
     viewEvent: 'View Event',
   },
   lo: {
     back: 'ກັບຄືນ',
     title: 'ກິດຈະກຳທີ່ຜ່ານມາ',
-    clearHistory: 'ລຶບປະຫວັດ',
-    restoreHistory: 'ກູ້ຄືນປະຫວັດຕົວຢ່າງ',
     noPastEventsTitle: 'ຍັງບໍ່ມີກິດຈະກຳທີ່ຜ່ານມາ',
     noPastEventsDesc: 'ປະຫວັດການເຂົ້າຮ່ວມກິດຈະກຳຂອງທ່ານແມ່ນວ່າງເປົ່າ. ເມື່ອທ່ານຊື້ປີ້ ແລະ ເຂົ້າຮ່ວມກິດຈະກຳ, ມັນຈະຖືກບັນທຶກໄວ້ຢູ່ນີ້.',
     exploreUpcoming: 'ຄົ້ນຫາກິດຈະກຳທີ່ຈະມາເຖິງ',
     loading: 'ກຳລັງໂຫຼດປະຫວັດກິດຈະກຳ...',
-    clearedSuccess: 'ລຶບປະຫວັດສຳເລັດແລ້ວ',
-    restoredSuccess: 'ກູ້ຄືນປະຫວັດຕົວຢ່າງສຳເລັດແລ້ວ',
     viewEvent: 'ເບິ່ງກິດຈະກຳ',
   }
 };
@@ -41,13 +33,11 @@ const translations = {
 export default function PastEvents() {
   const navigate = useNavigate();
   
-  const location = useLocation();
   const { lang } = useLanguage();
   const t = translations[lang];
   
   const [isLoading, setIsLoading] = useState(true);
   const [pastEvents, setPastEvents] = useState<LaoEvent[]>([]);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -189,7 +179,7 @@ export default function PastEvents() {
                     {/* Action Button: View Event */}
                     <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 pl-20 sm:pl-0">
                       <button
-                        onClick={() => navigate(`/event/${event.id}`, { state: { from: location.pathname + location.search } })}
+                        onClick={() => navigate(`/event/${event.id}`)}
                         className="h-9 px-3.5 sm:px-4 rounded-xl text-xs font-black bg-slate-800 text-black hover:bg-slate-900 transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-95 shrink-0"
                       >
                         <span>{t.viewEvent}</span>
@@ -244,21 +234,6 @@ export default function PastEvents() {
         </AnimatePresence>
       </div>
 
-      {/* Success Toast */}
-      <AnimatePresence>
-        {toastMessage && (
-          <div className="fixed bottom-24 sm:bottom-12 right-1/2 translate-x-1/2 z-[300] flex flex-col gap-3 w-full max-w-sm px-6 pointer-events-none">
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-              className="p-4 sm:p-5 rounded-2xl sm:rounded-[1.5rem] shadow-2xl flex items-center gap-3.5 border relative overflow-hidden pointer-events-auto bg-white border-gray-200 text-black"
-            >
-              <span className="font-bold text-xs sm:text-sm flex-1 leading-snug">{toastMessage}</span>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

@@ -14,8 +14,6 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
 import { useLanguage } from "../context/LanguageContext";
-import { useAuth } from "../context/AuthContext";
-import { safeStorage } from "../lib/storage";
 import SEO from "../components/SEO";
 
 const translations = {
@@ -72,45 +70,22 @@ const translations = {
   },
 };
 
-function generateBase32Secret(length = 32) {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  let secret = "";
-  for (let i = 0; i < length; i++) {
-    secret += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return secret;
-}
-
 export default function UpdatePassword() {
   const navigate = useNavigate();
   const { lang } = useLanguage();
   const t = translations[lang];
 
-  const [is2FAEnabled, setIs2FAEnabled] = useState(() => {
-    return safeStorage.getItem("user_2fa_enabled") === "true";
-  });
+  const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [code, setCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const { user } = useAuth();
   // Client-only TOTP state is not an authentication factor. Keep setup disabled
   // until enrollment, verification, and recovery codes are persisted server-side.
   const twoFactorAvailable = false;
 
   const [secretKey, setSecretKey] = useState("");
   const [qrUri, setQrUri] = useState("");
-
-  React.useEffect(() => {
-    if (!is2FAEnabled && !secretKey) {
-      const newSecret = generateBase32Secret(32);
-      setSecretKey(newSecret);
-      const email = user?.email || "user@example.com";
-      const issuer = "Pasopkan";
-      const uri = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(email)}?secret=${newSecret}&issuer=${encodeURIComponent(issuer)}`;
-      setQrUri(uri);
-    }
-  }, [is2FAEnabled, user, secretKey]);
 
   const handleCopyKey = () => {
     navigator.clipboard.writeText(secretKey);
@@ -122,26 +97,19 @@ export default function UpdatePassword() {
     e.preventDefault();
     if (code.trim().length < 6) return;
 
-    setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setIs2FAEnabled(true);
-      safeStorage.setItem("user_2fa_enabled", "true");
-      setToastMessage(t.successMessage);
-      setTimeout(() => setToastMessage(null), 5000);
-    }, 1000);
+    setToastMessage(
+      lang === "lo"
+        ? "2FA ຍັງບໍ່ພ້ອມ. ບໍ່ໄດ້ເປີດໃຊ້ງານ."
+        : "2FA is not available yet and was not enabled.",
+    );
   };
 
   const handleDisable = () => {
-    setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setIs2FAEnabled(false);
-      setCode("");
-      safeStorage.setItem("user_2fa_enabled", "false");
-      setToastMessage(t.disabledMessage);
-      setTimeout(() => setToastMessage(null), 5000);
-    }, 800);
+    setToastMessage(
+      lang === "lo"
+        ? "2FA ຈັດການບໍ່ໄດ້ໃນຂະນະນີ້."
+        : "2FA cannot be changed until server-side support is available.",
+    );
   };
 
   return (

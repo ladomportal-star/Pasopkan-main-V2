@@ -120,13 +120,6 @@ const translations = {
     festival: "Festivals",
     voucher: "Voucher and Booking",
     eventInfo: "Event Information",
-    sampleTitle: "Template: Event Details",
-    sampleDesc:
-      "What the event is about, highlights, and reasons not to miss it",
-    sampleActivity: "Activities: ......",
-    sampleLocationTime: "Location & Time: ......",
-    sampleRequirements: "What to bring: .....",
-    sampleProhibitions: "Restrictions: .......",
     intro: "Event Introduction:",
     introPlaceholder:
       "[Brief summary of the event: Main content, highlights, and reasons why attendees should not miss it]",
@@ -420,12 +413,6 @@ const translations = {
     festival: "ເທດສະການ",
     voucher: "Voucher ແລະ ການຈອງ",
     eventInfo: "ຂໍ້ມູນ event",
-    sampleTitle: "ແບບຢ່າງ: ລາຍລະອຽດກຽວກັບງານ",
-    sampleDesc: "ເນື້ອຫາກກ່ຽວກັບຍັງ, ມີຈຸດເດັ່ນຍັງ ແລະ ເຫດຜົນທີ່ບໍ່ຄວນພາດ",
-    sampleActivity: "ກິດຈະກຳ:......",
-    sampleLocationTime: "ສະຖານທີ່ ເວລາ:......",
-    sampleRequirements: "ສິ່ງຈຳເປັນ:.....",
-    sampleProhibitions: "ຂໍ້ຫ້າມ:.......",
     intro: "ແນະນຳ event:",
     introPlaceholder:
       "[ສະຫຼຸບຫຍໍ້ຂອງ event: ເນື້ອໃນຫຼັກ, ຈຸດເດັ່ນ, ແລະ ເຫດຜົນທີ່ຜູ້ເຂົ້າຮ່ວມບໍ່ຄວນພາດ]",
@@ -4743,22 +4730,6 @@ export default function CreateEvent() {
                               className="min-h-[300px] text-base text-black outline-none rich-text max-w-none prose prose-sm prose-slate"
                               suppressContentEditableWarning
                             >
-                              <p className="font-bold mb-1">{t.sampleTitle}</p>
-                              <p className="mb-2 text-gray-700">
-                                {t.sampleDesc}
-                              </p>
-                              <p className="text-gray-700 mb-1">
-                                - {t.sampleActivity}
-                              </p>
-                              <p className="text-gray-700 mb-1">
-                                - {t.sampleLocationTime}
-                              </p>
-                              <p className="text-gray-700 mb-1">
-                                - {t.sampleRequirements}
-                              </p>
-                              <p className="text-gray-700">
-                                - {t.sampleProhibitions}
-                              </p>
                             </div>
 
                             {/* Real-Time Drop Position Indicator */}

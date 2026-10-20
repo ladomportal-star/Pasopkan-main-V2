@@ -9,7 +9,6 @@ import {
   DEFAULT_TICKET_SPONSOR_SETTINGS,
   resolveTicketAd
 } from '../lib/siteSettings';
-import { useCheckins } from '../lib/checkinsStore';
 
 export interface PurchasedTicket {
   id: string;
@@ -123,44 +122,6 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
   const totalQuantity = ticket?.quantity || 1;
   const currentTicketId = totalQuantity > 1 ? `${ticket?.id}-${currentTicketIndex + 1}` : (ticket?.id || '');
 
-  // Connect to live check-ins store to see if this ticket (or specific sub-ticket) is already scanned
-  const { allCheckins } = useCheckins(ticket?.event?.id ? String(ticket.event.id) : undefined);
-
-  const scannedRecord = useMemo(() => {
-    if (!ticket) return null;
-    const currentId = currentTicketId.toLowerCase();
-    const baseId = ticket.id.toLowerCase();
-
-    // Check if recorded in check-ins store
-    const found = allCheckins.find((c) => {
-      const recTicketId = (c.ticketId || c.id || '').toLowerCase();
-      return (
-        recTicketId === currentId ||
-        (totalQuantity === 1 && recTicketId === baseId) ||
-        (String(c.eventId) === String(ticket.event.id) && (recTicketId === currentId || recTicketId === baseId))
-      );
-    });
-
-    if (found) return found;
-
-    // Fallback if marked scanned on ticket object
-    if (ticket.scanned === true) {
-      return {
-        id: `chk_${ticket.id}`,
-        ticketId: currentTicketId,
-        eventId: String(ticket.event.id),
-        attendeeName: user?.displayName || 'Attendee',
-        email: user?.email || '',
-        ticketType: ticket.tier.name,
-        zone: 'Verified',
-        seat: 'N/A',
-        time: ticket.selectedTime || 'Verified',
-      };
-    }
-
-    return null;
-  }, [ticket, currentTicketId, totalQuantity, allCheckins, user]);
-
   const isPast = useMemo(() => {
     if (!ticket) return false;
     if (ticket.status === 'past') return true;
@@ -189,14 +150,9 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
     return false;
   }, [ticket]);
 
-  const isRefunded = ticket?.status === 'pending_refund' || ticket?.status === 'refunded' || (typeof window !== 'undefined' && (() => {
-    try {
-      const refunded = localStorage.getItem('pasopkan_refunded_tickets');
-      return refunded ? JSON.parse(refunded).includes(ticket?.id) : false;
-    } catch { return false; }
-  })());
+  const isRefunded = ticket?.status === 'pending_refund' || ticket?.status === 'refunded';
 
-  const isScanned = !isRefunded && (!!scannedRecord || ticket?.scanned === true);
+  const isScanned = !isRefunded && ticket?.scanned === true;
   const isExpired = !isRefunded && !isScanned && isPast;
 
   if (!ticket) return null;
@@ -421,11 +377,6 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                   <span className="inline-flex items-center gap-1.5 px-3 py-0.5 sm:px-4 sm:py-1.5 bg-emerald-600 dark:bg-emerald-500 text-white rounded-full text-[10.5px] sm:text-xs font-black uppercase tracking-wider shadow-xs animate-in fade-in zoom-in-95 duration-200">
                     <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
                     <span>{lang === 'lo' ? 'ສະແກນແລ້ວ' : 'ALREADY SCANNED'}</span>
-                    {scannedRecord?.time && (
-                      <span className="text-emerald-100 font-mono text-[10px] pl-1.5 border-l border-emerald-400/60">
-                        {scannedRecord.time}
-                      </span>
-                    )}
                   </span>
                 </div>
               ) : isExpired ? (

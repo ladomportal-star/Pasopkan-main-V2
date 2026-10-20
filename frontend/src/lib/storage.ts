@@ -41,8 +41,7 @@ class SafeStorage {
     const disposableKeys = [
       '__storage_test__',
       'eventDraft',
-      'pasopkan_notif_last_refresh',
-      'pasopkan_local_inquiries'
+      'pasopkan_notif_last_refresh'
     ];
 
     for (const dKey of disposableKeys) {
@@ -80,40 +79,15 @@ class SafeStorage {
       return true;
     } catch (_) {}
 
-    // 3. Compact attendees or tickets if quota is still exceeded
-    // If saving another key or if pasopkan_event_attendees itself is large
-    if (targetKey !== 'pasopkan_event_attendees') {
-      try {
-        const existingAtt = window.localStorage.getItem('pasopkan_event_attendees');
-        if (existingAtt) {
-          const parsed = JSON.parse(existingAtt);
-          if (Array.isArray(parsed) && parsed.length > 50) {
-            const trimmed = parsed.slice(-50);
-            window.localStorage.setItem('pasopkan_event_attendees', JSON.stringify(trimmed));
-          }
-        }
-      } catch (_) {}
-
-      try {
-        window.localStorage.setItem(targetKey, targetValue);
-        return true;
-      } catch (_) {}
-    } else {
-      // targetKey IS pasopkan_event_attendees
-      try {
-        const parsed = JSON.parse(targetValue);
-        if (Array.isArray(parsed) && parsed.length > 40) {
-          // Keep newest 40 attendees to guarantee fit within mobile browser storage quotas
-          const trimmed = parsed.slice(-40);
-          const trimmedStr = JSON.stringify(trimmed);
-          window.localStorage.setItem(targetKey, trimmedStr);
-          this.memoryStorage[targetKey] = trimmedStr;
-          return true;
-        }
-      } catch (_) {}
+    // Browser storage is for small preferences/session values only. Business
+    // records (attendees, tickets, notifications) must never be compacted or
+    // silently rewritten here; those belong in the backend database.
+    try {
+      window.localStorage.setItem(targetKey, targetValue);
+      return true;
+    } catch (_) {
+      return false;
     }
-
-    return false;
   }
 
   setItem(key: string, value: string): void {

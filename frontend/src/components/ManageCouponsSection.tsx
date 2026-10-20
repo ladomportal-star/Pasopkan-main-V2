@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Ticket, 
@@ -25,7 +25,6 @@ import {
   Sparkles
 } from 'lucide-react';
 import { Coupon } from '../data/events';
-import { safeStorage } from '../lib/storage';
 import { formatToDDMMYYYY } from './DateInputDDMMYYYY';
 
 export interface CouponRedemption {
@@ -55,95 +54,6 @@ interface ManageCouponsSectionProps {
   currency?: string;
 }
 
-// Initial seed redemptions for sample events so organizers see realistic account usage
-const INITIAL_MOCK_REDEMPTIONS: CouponRedemption[] = [
-  {
-    id: 'red_1',
-    couponId: 'c1',
-    couponCode: 'FESTIVAL20',
-    eventId: '1',
-    eventTitle: 'Vang Vieng Music Festival 2026',
-    userId: 'usr_001',
-    userName: 'Somchai Keomany',
-    userEmail: 'somchai.k@gmail.com',
-    userPhone: '+856 20 5541 8921',
-    userAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop',
-    orderId: 'ORD-89214',
-    tierName: '2x VIP Seating (Grandstand)',
-    discountSaved: 399600,
-    totalPaid: 1598400,
-    usedAt: new Date(Date.now() - 3600 * 1000 * 24 * 2).toISOString()
-  },
-  {
-    id: 'red_2',
-    couponId: 'c1',
-    couponCode: 'FESTIVAL20',
-    eventId: '1',
-    eventTitle: 'Vang Vieng Music Festival 2026',
-    userId: 'usr_002',
-    userName: 'Anousone Phommachanh',
-    userEmail: 'anousone.p@outlook.com',
-    userPhone: '+856 20 9988 2314',
-    userAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&auto=format&fit=crop',
-    orderId: 'ORD-89215',
-    tierName: '1x VIP Seating (Grandstand)',
-    discountSaved: 199800,
-    totalPaid: 799200,
-    usedAt: new Date(Date.now() - 3600 * 1000 * 18).toISOString()
-  },
-  {
-    id: 'red_3',
-    couponId: 'c1',
-    couponCode: 'FESTIVAL20',
-    eventId: '1',
-    eventTitle: 'Vang Vieng Music Festival 2026',
-    userId: 'usr_003',
-    userName: 'Kelly Vance',
-    userEmail: 'kelly.vance@company.com',
-    userPhone: '+856 20 7712 9081',
-    userAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop',
-    orderId: 'ORD-89219',
-    tierName: '4x Ceremony Participation',
-    discountSaved: 120000,
-    totalPaid: 480000,
-    usedAt: new Date(Date.now() - 3600 * 1000 * 8).toISOString()
-  },
-  {
-    id: 'red_4',
-    couponId: 'c2',
-    couponCode: 'WELCOME50',
-    eventId: '1',
-    eventTitle: 'Vang Vieng Music Festival 2026',
-    userId: 'usr_004',
-    userName: 'Vilaphone Sengsouvanh',
-    userEmail: 'vilaphone.s@gmail.com',
-    userPhone: '+856 20 5234 1109',
-    userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop',
-    orderId: 'ORD-89301',
-    tierName: '1x VIP Seating (Grandstand)',
-    discountSaved: 50000,
-    totalPaid: 949000,
-    usedAt: new Date(Date.now() - 3600 * 1000 * 30).toISOString()
-  },
-  {
-    id: 'red_5',
-    couponId: 'c3',
-    couponCode: 'DEV10',
-    eventId: '2',
-    eventTitle: 'AI Developer Summit 2026',
-    userId: 'usr_005',
-    userName: 'Sengphet Louangrath',
-    userEmail: 'sengphet.dev@laotech.la',
-    userPhone: '+856 20 2234 5678',
-    userAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop',
-    orderId: 'ORD-90112',
-    tierName: '1x VIP Developer Pass',
-    discountSaved: 300000,
-    totalPaid: 2700000,
-    usedAt: new Date(Date.now() - 3600 * 1000 * 12).toISOString()
-  }
-];
-
 export const ManageCouponsSection: React.FC<ManageCouponsSectionProps> = ({
   eventId,
   coupons = [],
@@ -155,45 +65,9 @@ export const ManageCouponsSection: React.FC<ManageCouponsSectionProps> = ({
   const [selectedCouponForDetails, setSelectedCouponForDetails] = useState<Coupon | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [redemptions, setRedemptions] = useState<CouponRedemption[]>(() => {
-    try {
-      const stored = safeStorage.getItem('pasopkan_coupon_redemptions');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-      return INITIAL_MOCK_REDEMPTIONS;
-    } catch (e) {
-      console.error('Error loading coupon redemptions:', e);
-      return INITIAL_MOCK_REDEMPTIONS;
-    }
-  });
-
-  // Seed storage once in effect if empty, avoiding side-effects during render
-  useEffect(() => {
-    try {
-      const stored = safeStorage.getItem('pasopkan_coupon_redemptions');
-      if (!stored) {
-        safeStorage.setItem('pasopkan_coupon_redemptions', JSON.stringify(INITIAL_MOCK_REDEMPTIONS));
-      }
-    } catch (e) {}
-  }, []);
-
-  // Reload redemptions on focus or storage change
-  useEffect(() => {
-    const handleStorage = () => {
-      try {
-        const stored = safeStorage.getItem('pasopkan_coupon_redemptions');
-        if (stored) {
-          setRedemptions(JSON.parse(stored));
-        }
-      } catch (e) {}
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
+  // Redemption history is intentionally empty until the backend provides a
+  // persisted, event-scoped redemption endpoint. Never read browser records.
+  const redemptions: CouponRedemption[] = [];
 
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);

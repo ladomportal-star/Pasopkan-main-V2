@@ -1333,8 +1333,8 @@ export default function Account() {
                             ) {
                               setScannerError(
                                 lang === "en"
-                                  ? "Camera permission is restricted or denied in this frame. Please use our instant scan simulator or enter the ticket code below!"
-                                  : "ການເຂົ້າເຖິງກ້ອງຖ່າຍຮູບຖືກຈຳກັດ. ກະລຸນາໃຊ້ເຄື່ອງຈຳລອງການສະແກນ ຫຼື ປ້ອນລະຫັດປີ້ຢູ່ດ້ານລຸ່ມ!",
+                                  ? "Camera access is restricted or denied in this browser. Allow camera access or enter the ticket code below."
+                                  : "ການເຂົ້າເຖິງກ້ອງຖືກຈຳກັດ. ກະລຸນາອະນຸຍາດໃຫ້ໃຊ້ກ້ອງ ຫຼືປ້ອນລະຫັດປີ້ຢູ່ດ້ານລຸ່ມ.",
                               );
                             } else {
                               setScannerError(errorMessage || t.accessDenied);
@@ -1544,7 +1544,7 @@ export default function Account() {
                   )}
                 </AnimatePresence>
 
-                {/* Manual Check-in and Simulator Controls */}
+                {/* Manual ticket-code entry uses the same server-side verification as camera scanning. */}
                 <div
                   className={`mt-6 pt-6 border-t ${theme === "dark" ? "border-zinc-800" : "border-gray-100"}`}
                 >
