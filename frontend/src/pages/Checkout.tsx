@@ -21,6 +21,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
 import { QRCodeSVG } from "qrcode.react";
 import { api } from "../lib/api";
+import { showErrorAlert } from "../lib/alerts";
 
 import { addEventAttendee } from "../lib/checkinsStore";
 import { safeStorage } from "../lib/storage";
@@ -451,7 +452,11 @@ export default function Checkout() {
     } else if (countdown === 0 && step === "qr") {
       setStep("details");
       setCountdown(900);
-      alert("Payment window expired. Please try again.");
+      void showErrorAlert(
+        lang === "lo" ? "ເວລາຊຳລະໝົດແລ້ວ. ກະລຸນາລອງໃໝ່." : "The payment session expired. Please try again.",
+        lang,
+        lang === "lo" ? "ການຊຳລະໝົດເວລາ" : "Payment session expired",
+      );
     }
     return () => clearInterval(timer);
   }, [step, countdown]);
@@ -490,20 +495,24 @@ export default function Checkout() {
 
       const phoneRegex = /^\+?[0-9]{7,15}$/;
       if (phone.includes(" ") || !phoneRegex.test(phone)) {
-        alert(
+        void showErrorAlert(
           lang === "lo"
             ? `ກະລຸນາປ້ອນເບີໂທລະສັບໃຫ້ຖືກຕ້ອງ ສຳລັບຜູ້ເຂົ້າຮ່ວມທີ ${i + 1} (ຫ້າມຍະຫວ່າງ).`
             : `Please enter a valid phone number for Guest ${i + 1} without spaces.`,
+          lang,
+          lang === "lo" ? "ກວດສອບເບີໂທ" : "Check phone number",
         );
         return false;
       }
 
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (email.includes(" ") || !emailRegex.test(email)) {
-        alert(
+        void showErrorAlert(
           lang === "lo"
             ? `ກະລຸນາປ້ອນອີເມວໃຫ້ຖືກຕ້ອງ ສຳລັບຜູ້ເຂົ້າຮ່ວມທີ ${i + 1} (ຫ້າມຍະຫວ່າງ).`
             : `Please enter a valid email for Guest ${i + 1} without spaces.`,
+          lang,
+          lang === "lo" ? "ກວດສອບອີເມວ" : "Check email address",
         );
         return false;
       }
@@ -524,15 +533,17 @@ export default function Checkout() {
           : [];
     if (groups.length === 0) return false;
     if (currentCoupon && groups.length > 1) {
-      alert(lang === "lo" ? "ກະລຸນາໃຊ້ Coupon ກັບປີ້ປະເພດດຽວຕໍ່ການສັ່ງຊື້." :
-        "Use a coupon with one ticket type per checkout.");
+      void showErrorAlert(lang === "lo" ? "ກະລຸນາໃຊ້ Coupon ກັບປີ້ປະເພດດຽວຕໍ່ການສັ່ງຊື້." :
+        "Use a coupon with one ticket type per checkout.", lang, lang === "lo" ? "Coupon ໃຊ້ບໍ່ໄດ້" : "Coupon not applicable");
       return false;
     }
     if (!currentCoupon && groups.some((group) => Number(group.tier.price) > 0)) {
-      alert(
+      void showErrorAlert(
         lang === "lo"
           ? "ການຊຳລະເງິນຍັງບໍ່ເປີດໃຊ້ສຳລັບປີ້ນີ້."
-          : "Payments are not available for these tickets yet.",
+          : "Payment isn't available for this ticket yet. Please contact the event organizer or try again later.",
+        lang,
+        lang === "lo" ? "ຍັງຊື້ປີ້ບໍ່ໄດ້" : "Ticket purchase unavailable",
       );
       return false;
     }
@@ -564,12 +575,16 @@ export default function Checkout() {
         attendees,
       });
       if (!res.ok) {
-        alert(
-          res.error ||
-            (lang === "lo"
-              ? "ບໍ່ສາມາດສ້າງປີ້ໄດ້. ກະລຸນາລອງໃໝ່."
-              : "Could not create your ticket order. Please try again."),
-        );
+        const message = res.status === 409
+          ? (lang === "lo" ? "ປີ້ອາດຈະໝົດ ຫຼືຂໍ້ມູນການຈອງປ່ຽນແປງ. ກະລຸນາເລືອກອີກຄັ້ງ." : "Tickets may have sold out or the booking changed. Please review your selection.")
+          : res.status === 429
+            ? (lang === "lo" ? "ມີການຈອງຫຼາຍເກີນໄປ. ກະລຸນາລໍຖ້າແລ້ວລອງໃໝ່." : "Too many booking attempts. Please wait and try again.")
+            : res.status === 503
+              ? (lang === "lo" ? "ລະບົບຈອງປີ້ກຳລັງບໍ່ພ້ອມ. ການສັ່ງຊື້ຍັງບໍ່ສຳເລັດ—ກະລຸນາລອງໃໝ່ພາຍຫຼັງ." : "Ticket ordering is temporarily unavailable. Your order was not confirmed; please try again later.")
+              : res.status === 0
+                ? (lang === "lo" ? "ບໍ່ສາມາດເຊື່ອມຕໍ່ລະບົບຈອງປີ້ໄດ້. ກວດອິນເຕີເນັດແລ້ວລອງໃໝ່." : "We couldn't reach the ticket service. Check your connection and try again.")
+                : (lang === "lo" ? "ບໍ່ສາມາດຈອງປີ້ໄດ້. ກະລຸນາກວດຂໍ້ມູນແລ້ວລອງໃໝ່." : "We couldn't complete your ticket order. Please review your details and try again.");
+        void showErrorAlert(message, lang, lang === "lo" ? "ຈອງປີ້ບໍ່ສຳເລັດ" : "Ticket order failed");
         return false;
       }
       // The backend owns the price. A client-side coupon must never make a
@@ -578,10 +593,12 @@ export default function Checkout() {
         res.data?.order?.status !== "confirmed" ||
         res.data.order.totalKip !== 0
       ) {
-        alert(
+        void showErrorAlert(
           lang === "lo"
             ? "ປີ້ນີ້ຕ້ອງຊຳລະເງິນ ແຕ່ລະບົບຊຳລະເງິນຍັງບໍ່ພ້ອມ."
             : "This ticket requires payment, but the payment service is not available yet.",
+          lang,
+          lang === "lo" ? "ການຊຳລະຍັງບໍ່ພ້ອມ" : "Payment unavailable",
         );
         return false;
       }

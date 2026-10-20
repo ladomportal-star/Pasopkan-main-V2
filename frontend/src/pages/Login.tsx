@@ -21,6 +21,7 @@ import { displayLaoPhone, isValidLaoMobilePhone, normalizeLaoPhone } from "../li
 import OtpInput from "../components/OtpInput";
 import SEO from "../components/SEO";
 import { LOGIN_RETURN_KEY, safeLoginReturn } from "../lib/authAccess";
+import { showErrorAlert } from "../lib/alerts";
 
 const GoogleMark = ({ className = "h-5 w-5 shrink-0" }: { className?: string }) => (
   <svg aria-hidden="true" viewBox="0 0 24 24" className={className}>
@@ -115,11 +116,11 @@ export default function Login({
       try { sessionStorage.setItem(LOGIN_RETURN_KEY, destination); } catch {}
       await loginWithGoogle();
     } catch {
-      setError(
-        lo
-          ? "ບໍ່ສາມາດເຊື່ອມຕໍ່ Google ໄດ້. ກະລຸນາກວດການຕັ້ງຄ່າ ແລ້ວລອງໃໝ່."
-          : "Could not connect to Google. Check the authentication setup and try again.",
-      );
+      const message = lo
+        ? "ບໍ່ສາມາດເຂົ້າລະບົບຜ່ານ Google ໄດ້. ກະລຸນາລອງໃໝ່ອີກຄັ້ງ."
+        : "We couldn't sign you in with Google. Please try again.";
+      setError(message);
+      void showErrorAlert(message, lang, lo ? "ເຂົ້າລະບົບບໍ່ສຳເລັດ" : "Sign-in failed");
       setBusy(false);
     }
   }
@@ -127,11 +128,11 @@ export default function Login({
   async function sendOtp() {
     const normalized = normalizeLaoPhone(phone);
     if (!isValidLaoMobilePhone(normalized)) {
-      setError(
-        lo
-          ? "ກະລຸນາໃສ່ເບີ Unitel, Lao Telecom, TPlus ຫຼື ETL ໃນຮູບແບບ 020 5555 5555"
-          : "Enter a Lao mobile number such as 020 5555 5555.",
-      );
+      const message = lo
+        ? "ກະລຸນາໃສ່ເບີ Unitel, Lao Telecom, TPlus ຫຼື ETL ໃນຮູບແບບ 020 5555 5555"
+        : "Enter a Lao mobile number such as 020 5555 5555.";
+      setError(message);
+      void showErrorAlert(message, lang, lo ? "ເບີໂທບໍ່ຖືກຕ້ອງ" : "Check your phone number");
       return;
     }
 
@@ -140,15 +141,16 @@ export default function Login({
     const result = await api.sendPhoneOtp(normalized);
     setBusy(false);
     if (!result.ok) {
-      setError(
+      const message =
         result.status === 429
           ? lo
             ? "ທ່ານຂໍ OTP ຫຼາຍເກີນໄປ. ກະລຸນາລໍຖ້າແລ້ວລອງໃໝ່."
             : "Too many OTP requests. Please wait and try again."
           : lo
             ? "ບໍ່ສາມາດສົ່ງ OTP ໄດ້. ກະລຸນາກວດການຕັ້ງຄ່າ SMS ແລ້ວລອງໃໝ່."
-            : "Could not send the OTP. Check the SMS configuration and try again.",
-      );
+            : "We couldn't send your verification code. Please wait a moment and try again.";
+      setError(message);
+      void showErrorAlert(message, lang, lo ? "ສົ່ງລະຫັດບໍ່ສຳເລັດ" : "Couldn't send code");
       return;
     }
 
@@ -160,7 +162,9 @@ export default function Login({
 
   async function verifyOtp() {
     if (!/^\d{6}$/.test(otp)) {
-      setError(lo ? "ກະລຸນາໃສ່ OTP ໃຫ້ຄົບ 6 ຕົວ" : "Enter all 6 OTP digits.");
+      const message = lo ? "ກະລຸນາໃສ່ OTP ໃຫ້ຄົບ 6 ຕົວ" : "Enter all 6 OTP digits.";
+      setError(message);
+      void showErrorAlert(message, lang, lo ? "ລະຫັດ OTP ບໍ່ຄົບ" : "Incomplete verification code");
       return;
     }
 
@@ -169,15 +173,16 @@ export default function Login({
     const result = await api.verifyPhoneOtp(phone, otp);
     if (!result.ok || !result.data?.session) {
       setBusy(false);
-      setError(
+      const message =
         result.status === 429
           ? lo
             ? "ທ່ານລອງ OTP ຫຼາຍເກີນໄປ. ກະລຸນາລໍຖ້າ."
             : "Too many attempts. Please wait before trying again."
           : lo
             ? "OTP ບໍ່ຖືກຕ້ອງ ຫຼືໝົດອາຍຸແລ້ວ."
-            : "The OTP is invalid or has expired.",
-      );
+            : "The verification code is incorrect or has expired.";
+      setError(message);
+      void showErrorAlert(message, lang, lo ? "ຢືນຢັນບໍ່ສຳເລັດ" : "Verification failed");
       return;
     }
 
@@ -185,7 +190,9 @@ export default function Login({
       await loginWithPhoneSession(result.data.session);
     } catch {
       setBusy(false);
-      setError(lo ? "ບໍ່ສາມາດເປີດ session ໄດ້. ກະລຸນາລອງໃໝ່." : "Could not start your session. Try again.");
+      const message = lo ? "ບໍ່ສາມາດເປີດ session ໄດ້. ກະລຸນາລອງໃໝ່." : "We couldn't start your session. Please try again.";
+      setError(message);
+      void showErrorAlert(message, lang, lo ? "ເຂົ້າລະບົບບໍ່ສຳເລັດ" : "Sign-in failed");
     }
   }
 
@@ -343,17 +350,6 @@ export default function Login({
           >
             {copy.subtitle}
           </p>
-
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              role="alert"
-              className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium leading-6 text-rose-700"
-            >
-              {error}
-            </motion.div>
-          )}
 
           <div
             role="tablist"
