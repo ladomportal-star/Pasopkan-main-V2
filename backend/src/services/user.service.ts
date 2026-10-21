@@ -9,8 +9,7 @@ export interface ProfileInput {
   dateOfBirth?: string;
   avatarUrl?: string;
 }
-export const getOrCreateUser = (uid: string, email?: string) =>
-  upsertUserProfile(uid, {}, email);
+export const getOrCreateUser = (uid: string, email?: string) => upsertUserProfile(uid, {}, email);
 
 const newPublicId = () => `P${randomInt(100_000_000, 1_000_000_000)}`;
 
