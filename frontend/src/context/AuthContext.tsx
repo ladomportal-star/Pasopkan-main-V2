@@ -158,10 +158,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const [firstName, ...rest] = fullName.split(' ');
       const { data, error } = await api.syncAccount(
         {
-          email: supabaseUser.email || undefined,
           firstName: firstName || undefined,
           lastName: rest.length > 0 ? rest.join(' ') : undefined,
-          phone: supabaseUser.phone || undefined,
         },
         { token: accessToken },
       );
@@ -233,7 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  /** Push profile edits (name, phone, gender, date of birth, avatar) to the backend. */
+  /** Push editable profile details to the backend; auth identifiers are token-derived. */
   const syncProfileToSupabase = async (profileData: any) => {
     if (!user || !token) throw new Error('Please sign in before saving your profile.');
 
@@ -247,10 +245,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const requestedAvatar = profileData.profilePic ?? profileData.avatarUrl ?? user.avatar;
       const { data, error } = await api.syncAccount(
         {
-          email: user.email || undefined,
           firstName: profileData.firstName ?? user.firstName,
           lastName: profileData.lastName ?? user.lastName,
-          phone: profileData.phone ?? user.phone,
           gender: gender ?? user.gender,
           dateOfBirth: profileData.dateOfBirth || profileData.dob || user.dateOfBirth,
           avatarUrl: requestedAvatar === user.avatar ? user.avatarReference : requestedAvatar,

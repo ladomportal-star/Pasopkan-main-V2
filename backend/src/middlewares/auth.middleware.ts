@@ -24,6 +24,7 @@ async function verify(token: string): Promise<AuthUser> {
   return {
     uid: payload.sub,
     email: typeof payload.email === "string" && payload.email ? payload.email : undefined,
+    phone: typeof payload.phone === "string" && payload.phone ? payload.phone : undefined,
     isAnonymous: payload.is_anonymous === true,
   };
 }

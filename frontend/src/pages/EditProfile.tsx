@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { DateInputDDMMYYYY } from '../components/DateInputDDMMYYYY';
 import SEO from '../components/SEO';
 import { prepareProfilePhoto } from '../lib/profilePhoto';
+import AccountIdentityLinks from '../components/AccountIdentityLinks';
 
 const translations = {
   en: {
@@ -17,8 +18,6 @@ const translations = {
     personalInfo: 'Personal Information',
     firstName: 'First Name',
     lastName: 'Last Name',
-    email: 'Email Address',
-    phone: 'Phone Number',
     gender: 'Gender',
     male: 'Male',
     female: 'Female',
@@ -39,8 +38,6 @@ const translations = {
     personalInfo: 'ຂໍ້ມູນສ່ວນຕົວ',
     firstName: 'ຊື່',
     lastName: 'ນາມສະກຸນ',
-    email: 'ທີ່ຢູ່ອີເມວ',
-    phone: 'ເບີໂທລະສັບ',
     gender: 'ເພດ',
     male: 'ຊາຍ',
     female: 'ຍິງ',
@@ -68,8 +65,6 @@ export default function EditProfile() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    email: '',
-    phone: '',
     gender: '' as 'male' | 'female' | 'other' | '',
     dateOfBirth: '',
     dob: '',
@@ -81,8 +76,6 @@ export default function EditProfile() {
     setFormData({
       firstName: user.firstName || '',
       lastName: user.lastName || '',
-      email: user.email || '',
-      phone: user.phone || '',
       gender: (user.gender as 'male' | 'female' | 'other' | undefined) || '',
       dateOfBirth: user.dateOfBirth || '',
       dob: user.dateOfBirth || '',
@@ -115,14 +108,6 @@ export default function EditProfile() {
     // Apply input restrictions: names cannot have numbers, phone numbers only numbers
     if (name === 'firstName' || name === 'lastName') {
       processedValue = value.replace(/[0-9]/g, '');
-    } else if (name === 'phone') {
-      const digitsOnly = value.replace(/\D/g, '');
-      const maxLen = 
-        digitsOnly.startsWith('856020') ? 14 :
-        digitsOnly.startsWith('85620') ? 13 :
-        digitsOnly.startsWith('856') ? 14 :
-        digitsOnly.startsWith('020') ? 11 : 10;
-      processedValue = digitsOnly.slice(0, maxLen);
     }
     
     setFormData(prev => ({ ...prev, [name]: processedValue }));
@@ -236,25 +221,7 @@ export default function EditProfile() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 sm:gap-5">
-              <div className="space-y-1.5">
-                <label htmlFor="phone" className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.phone}</label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  maxLength={
-                    formData.phone?.startsWith('856020') ? 14 :
-                    formData.phone?.startsWith('85620') ? 13 :
-                    formData.phone?.startsWith('856') ? 14 :
-                    formData.phone?.startsWith('020') ? 11 : 10
-                  }
-                  value={formData.phone || ""}
-                  onChange={handleChange}
-                  placeholder="+856 20 ..."
-                  className="w-full bg-[#F9FAFB] border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-adv-slate font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
-                />
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
               <div className="space-y-1.5">
                 <label htmlFor="gender" className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.gender}</label>
                 <div className="relative">
@@ -276,18 +243,6 @@ export default function EditProfile() {
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="email" className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.email}</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email || ""}
-                onChange={handleChange}
-                className="w-full bg-[#F9FAFB] border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-adv-slate font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange transition-all"
-              />
-            </div>
-
-            <div className="space-y-1.5">
               <label htmlFor="dateOfBirth" className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.dateOfBirth}</label>
               <div className="relative w-full" onClick={(e) => e.stopPropagation()}>
                 <DateInputDDMMYYYY
@@ -302,6 +257,8 @@ export default function EditProfile() {
               </div>
             </div>
           </div>
+
+          <AccountIdentityLinks />
 
           <div className="flex flex-col sm:flex-row justify-end gap-3 pt-2">
             <button

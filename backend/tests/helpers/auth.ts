@@ -54,6 +54,7 @@ export async function startAuthServer() {
 export interface TokenOptions {
   sub?: string;
   email?: string;
+  phone?: string;
   anonymous?: boolean;
   issuer?: string;
   audience?: string;
@@ -65,6 +66,7 @@ export interface TokenOptions {
 export async function tokenFor(sub: string, opts: TokenOptions = {}) {
   return new SignJWT({
     email: opts.anonymous ? undefined : (opts.email ?? `${sub}@test.local`),
+    phone: opts.phone,
     is_anonymous: opts.anonymous ?? false,
     role: "authenticated",
   })

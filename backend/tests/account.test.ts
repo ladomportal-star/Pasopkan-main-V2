@@ -41,4 +41,37 @@ describe("account profile", () => {
     expect(response.body.user.publicId).toMatch(/^P\d{9}$/);
     expect(response.body.user.firstName).toBe("Noy");
   });
+
+  it("uses only verified auth identifiers, never contact values supplied in profile data", async () => {
+    const auth = await as("identity-source-of-truth", {
+      email: "verified@example.test",
+      phone: "+8562091234567",
+    });
+    const response = await request(app)
+      .post("/api/account/sync")
+      .set(auth)
+      .send({ email: "attacker@example.test", phone: "+8562099999999", firstName: "Noy" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.user.email).toBe("verified@example.test");
+    expect(response.body.user.authEmail).toBe("verified@example.test");
+    expect(response.body.user.phone).toBe("+8562091234567");
+    expect(response.body.user.firstName).toBe("Noy");
+  });
+
+  it("does not create a second profile when a verified phone is already owned by another auth ID", async () => {
+    const phone = "+8562098765432";
+    const first = await request(app)
+      .post("/api/account/sync")
+      .set(await as("phone-owner-one", { phone }))
+      .send({});
+    const duplicate = await request(app)
+      .post("/api/account/sync")
+      .set(await as("phone-owner-two", { phone }))
+      .send({});
+
+    expect(first.status).toBe(200);
+    expect(duplicate.status).toBe(409);
+    expect(await db.user.count({ where: { phone } })).toBe(1);
+  });
 });

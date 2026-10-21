@@ -3,16 +3,14 @@ import { randomInt } from "node:crypto";
 import type { Prisma } from "../lib/prisma.ts";
 import { assertMediaReferences } from "./media.service.ts";
 export interface ProfileInput {
-  email?: string;
   firstName?: string;
   lastName?: string;
-  phone?: string;
   gender?: "male" | "female" | "other";
   dateOfBirth?: string;
   avatarUrl?: string;
 }
 export const getOrCreateUser = (uid: string, email?: string) =>
-  upsertUserProfile(uid, { email }, email);
+  upsertUserProfile(uid, {}, email);
 
 const newPublicId = () => `P${randomInt(100_000_000, 1_000_000_000)}`;
 
@@ -26,12 +24,19 @@ export async function upsertUserProfile(
   uid: string,
   profile: ProfileInput,
   verifiedAuthEmail?: string,
+  verifiedAuthPhone?: string,
 ) {
   assertMediaReferences(profile.avatarUrl, uid, "private");
   const { dateOfBirth, ...fields } = profile;
   const data = {
     ...fields,
-    ...(verifiedAuthEmail ? { authEmail: verifiedAuthEmail.trim().toLowerCase() } : {}),
+    ...(verifiedAuthEmail
+      ? {
+          email: verifiedAuthEmail.trim().toLowerCase(),
+          authEmail: verifiedAuthEmail.trim().toLowerCase(),
+        }
+      : {}),
+    ...(verifiedAuthPhone ? { phone: verifiedAuthPhone.trim() } : {}),
     ...(dateOfBirth !== undefined ? { dateOfBirth: new Date(dateOfBirth) } : {}),
   };
   // The public ID is for display only. Keep the UUID/auth ID as the internal identity.

@@ -9,9 +9,9 @@ export async function syncAccount(req: Request, res: Response) {
     req.user!.uid,
     {
       ...req.body,
-      email: req.body.email || req.user!.email,
     },
     req.user!.email,
+    req.user!.phone,
   );
   return ok(res, { success: true, user });
 }
