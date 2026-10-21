@@ -94,37 +94,38 @@ describe("admin moderation boundaries", () => {
       .send({ name: "New host" });
     expect(application.status).toBe(201);
     expect(
-      (await request(app).post("/api/organizer-applications").set(headers).send({ name: "New host" })).status,
+      (
+        await request(app)
+          .post("/api/organizer-applications")
+          .set(headers)
+          .send({ name: "New host" })
+      ).status,
     ).toBe(409);
     expect(
-      await db.organizerApplication.count({ where: { user: { authId: "new-applicant" }, status: "pending" } }),
+      await db.organizerApplication.count({
+        where: { user: { authId: "new-applicant" }, status: "pending" },
+      }),
     ).toBe(1);
     expect(
-      await db.notification.count({ where: { user: { authId: "review-admin" }, title: "Organizer application awaiting review" } }),
+      await db.notification.count({
+        where: { user: { authId: "review-admin" }, title: "Organizer application awaiting review" },
+      }),
     ).toBeGreaterThan(0);
     expect((await db.user.findUnique({ where: { authId: "new-applicant" } }))?.phone).toMatch(
       /^\+85620\d{8}$/,
     );
     const path = `/api/admin/organizer-applications/${application.body.application.id}/review`;
     expect((await request(app).post(path).set(headers).send({ approve: true })).status).toBe(403);
+    expect((await request(app).post(path).set(adminHeaders).send({ approve: true })).status).toBe(
+      200,
+    );
+    expect((await request(app).post(path).set(adminHeaders).send({ approve: true })).status).toBe(
+      409,
+    );
     expect(
-      (
-        await request(app)
-          .post(path)
-          .set(adminHeaders)
-          .send({ approve: true })
-      ).status,
-    ).toBe(200);
-    expect(
-      (
-        await request(app)
-          .post(path)
-          .set(adminHeaders)
-          .send({ approve: true })
-      ).status,
-    ).toBe(409);
-    expect(
-      await db.notification.count({ where: { user: { authId: "new-applicant" }, title: "Organizer application approved" } }),
+      await db.notification.count({
+        where: { user: { authId: "new-applicant" }, title: "Organizer application approved" },
+      }),
     ).toBe(1);
     expect(
       (
