@@ -31,7 +31,7 @@ export default function OrganizerPhoneModal({
   onClose: () => void;
   onEligible?: () => void;
 }) {
-  const { user, token } = useAuth();
+  const { user, token, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [checking, setChecking] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -70,9 +70,12 @@ export default function OrganizerPhoneModal({
     if (!access.data) throw new Error("Could not check organizer status");
     setEligibility(access.data);
     setApplications(ownApplications.data?.applications ?? []);
-    if (access.data.canCreateEvent) continueToEvent();
+    if (access.data.canCreateEvent) {
+      await refreshProfile();
+      continueToEvent();
+    }
     return access.data;
-  }, [token, continueToEvent]);
+  }, [token, refreshProfile, continueToEvent]);
 
   useEffect(() => {
     const onEscape = (event: KeyboardEvent) => {
@@ -199,6 +202,20 @@ export default function OrganizerPhoneModal({
 
   const latest = applications[0];
 
+  useEffect(() => {
+    if (checking || latest?.status !== "pending" || eligibility?.canCreateEvent) return;
+    let polling = false;
+    const interval = window.setInterval(() => {
+      if (polling) return;
+      polling = true;
+      void refresh()
+        .then(() => setError(""))
+        .catch((err) => setError(err instanceof Error ? err.message : "Could not check organizer status"))
+        .finally(() => { polling = false; });
+    }, 15000);
+    return () => window.clearInterval(interval);
+  }, [checking, latest?.status, eligibility?.canCreateEvent, refresh]);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -233,7 +250,9 @@ export default function OrganizerPhoneModal({
           className="text-center text-xl font-bold"
         >
           {eligibility?.phoneVerified
-            ? "ສະໝັກເປັນ Organizer"
+            ? latest?.status === "pending"
+              ? "ຄຳຂໍ Organizer ລໍຖ້າອະນຸມັດ"
+              : "ສະໝັກເປັນ Organizer"
             : sentPhone
               ? "ຢືນຢັນລະຫັດ OTP"
               : "ຢືນຢັນເບີໂທກ່ອນສ້າງກິດຈະກຳ"}
@@ -289,7 +308,11 @@ export default function OrganizerPhoneModal({
           <div className="mt-7 space-y-4">
             {latest?.status === "pending" ? (
               <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
-                ຄຳຂໍ Organizer ກຳລັງລໍ PskAdmin ອະນຸມັດ. ຍັງສ້າງ Event ບໍ່ໄດ້.
+                ຄຳຂໍ Organizer ກຳລັງລໍ PskAdmin ອະນຸມັດ. ຍັງສ້າງ Event ບໍ່ໄດ້. ໜ້ານີ້ຈະກວດສອບສະຖານະໃຫ້ອັດຕະໂນມັດ.
+              </p>
+            ) : latest?.status === "approved" ? (
+              <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
+                PskAdmin ອະນຸມັດແລ້ວ. ກະລຸນາກົດ Refresh status ເພື່ອໂຫຼດສິດໃໝ່.
               </p>
             ) : (
               <form

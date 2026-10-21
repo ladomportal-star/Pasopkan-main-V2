@@ -2,17 +2,41 @@ import { db } from "../config/database.ts";
 import { HttpError } from "../middlewares/error.middleware.ts";
 import { getOrCreateUser } from "./user.service.ts";
 import { requireVerifiedPhone } from "./verified-phone.service.ts";
+import { createNotification } from "./notification.service.ts";
 
 export async function applyAsOrganizer(uid: string, name: string, description?: string) {
   const phone = await requireVerifiedPhone(uid);
   const user = await getOrCreateUser(uid);
-  if (await db.organizer.findUnique({ where: { userId: user.id } }))
-    throw new HttpError(409, "Already an organizer");
-  if (await db.organizerApplication.count({ where: { userId: user.id, status: "pending" } }))
-    throw new HttpError(409, "Organizer application is already pending");
   return db.$transaction(async (tx) => {
+    // Serialize submissions for one account so rapid retries cannot create two pending requests.
+    await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${user.id}::uuid FOR UPDATE`;
+    if (await tx.organizer.findUnique({ where: { userId: user.id } }))
+      throw new HttpError(409, "Already an organizer");
+    if (await tx.organizerApplication.count({ where: { userId: user.id, status: "pending" } }))
+      throw new HttpError(409, "Organizer application is already pending");
     await tx.user.update({ where: { id: user.id }, data: { phone } });
-    return tx.organizerApplication.create({ data: { userId: user.id, name, description } });
+    const application = await tx.organizerApplication.create({
+      data: { userId: user.id, name, description },
+    });
+    const admins = await tx.user.findMany({
+      where: { role: "admin" },
+      select: { authId: true },
+    });
+    for (const admin of admins) {
+      await createNotification(
+        admin.authId,
+        {
+          type: "noted",
+          title: "Organizer application awaiting review",
+          titleLo: "ມີຄຳຂໍ Organizer ລໍຖ້າກວດສອບ",
+          message: `${name} applied to become an Organizer.`,
+          messageLo: `${name} ໄດ້ສົ່ງຄຳຂໍເປັນ Organizer.`,
+          data: { applicationId: application.id, status: "pending" },
+        },
+        tx,
+      );
+    }
+    return application;
   });
 }
 
@@ -55,6 +79,32 @@ export async function reviewOrganizer(uid: string, id: string, approve: boolean,
         entityId: id,
       },
     });
+    const applicant = await tx.user.findUnique({
+      where: { id: application.userId },
+      select: { authId: true },
+    });
+    if (applicant) {
+      await createNotification(
+        applicant.authId,
+        {
+          type: approve ? "verified" : "system",
+          title: approve ? "Organizer application approved" : "Organizer application rejected",
+          titleLo: approve ? "ຄຳຂໍ Organizer ໄດ້ຮັບອະນຸມັດ" : "ຄຳຂໍ Organizer ຖືກປະຕິເສດ",
+          message: approve
+            ? "You can now create an Event."
+            : `Your Organizer application was rejected: ${reason?.trim()}`,
+          messageLo: approve
+            ? "ທ່ານສາມາດສ້າງກິດຈະກຳໄດ້ແລ້ວ."
+            : `ຄຳຂໍ Organizer ຖືກປະຕິເສດ: ${reason?.trim()}`,
+          data: {
+            applicationId: application.id,
+            status: approve ? "approved" : "rejected",
+            ...(!approve && reason?.trim() ? { rejectionReason: reason.trim() } : {}),
+          },
+        },
+        tx,
+      );
+    }
     return row;
   });
 }

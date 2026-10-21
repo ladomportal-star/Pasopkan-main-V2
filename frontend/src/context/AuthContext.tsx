@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useCallback, useContext, useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
@@ -32,6 +32,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   loading: boolean;
   syncProfileToSupabase: (profileData: any) => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,6 +48,26 @@ function removeEmptyOAuthFragment() {
       window.location.pathname + window.location.search,
     );
   }
+}
+
+/** Keep the Supabase identity and the backend-owned role/profile on one user object. */
+function mergeBackendUser(supabaseUser: User, backendUser: BackendUser): AppUser {
+  const name = [backendUser.firstName, backendUser.lastName].filter(Boolean).join(' ');
+  return {
+    ...supabaseUser,
+    publicId: backendUser.publicId ?? undefined,
+    name: name || undefined,
+    firstName: backendUser.firstName ?? undefined,
+    lastName: backendUser.lastName ?? undefined,
+    phone: backendUser.phone ?? undefined,
+    gender: backendUser.gender ?? undefined,
+    dateOfBirth: backendUser.dateOfBirth ?? undefined,
+    avatar: backendUser.avatarUrlDisplay ?? backendUser.avatarUrl ?? undefined,
+    avatarReference: backendUser.avatarUrl ?? undefined,
+    role: backendUser.role,
+    displayName: name || supabaseUser.email,
+    photoURL: backendUser.avatarUrlDisplay ?? backendUser.avatarUrl ?? undefined,
+  };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -129,26 +150,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  /** Map the backend's `users` row onto the `AppUser` shape the UI reads. */
-  const mergeBackendUser = (supabaseUser: User, backendUser: BackendUser): AppUser => {
-    const name = [backendUser.firstName, backendUser.lastName].filter(Boolean).join(' ');
-    return {
-      ...supabaseUser,
-      publicId: backendUser.publicId ?? undefined,
-      name: name || undefined,
-      firstName: backendUser.firstName ?? undefined,
-      lastName: backendUser.lastName ?? undefined,
-      phone: backendUser.phone ?? undefined,
-      gender: backendUser.gender ?? undefined,
-      dateOfBirth: backendUser.dateOfBirth ?? undefined,
-      avatar: backendUser.avatarUrlDisplay ?? backendUser.avatarUrl ?? undefined,
-      avatarReference: backendUser.avatarUrl ?? undefined,
-      role: backendUser.role,
-      displayName: name || supabaseUser.email,
-      photoURL: backendUser.avatarUrlDisplay ?? backendUser.avatarUrl ?? undefined,
-    };
-  };
-
   /** Sync the Supabase session into our own `users` table (source of truth
    *  for `role` and profile fields) and load the result into state. */
   const fetchAndSetUserProfile = async (supabaseUser: User, accessToken: string) => {
@@ -172,6 +173,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (version === profileVersion.current) setLoading(false);
     }
   };
+
+  /** Reload a role changed by PskAdmin without asking the user to sign out. */
+  const refreshProfile = useCallback(async () => {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session || session.user.is_anonymous) {
+      throw new Error('Please sign in again to check your account status.');
+    }
+    const version = ++profileVersion.current;
+    const { data, error } = await api.syncAccount({}, {
+      token: session.access_token,
+      throwOnError: true,
+    });
+    if (error || !data) throw new Error(error || 'Could not refresh your profile.');
+    if (version === profileVersion.current && activeAccountId.current === session.user.id) {
+      setToken(session.access_token);
+      safeStorage.setItem('token', session.access_token);
+      setUser(mergeBackendUser(session.user, data.user));
+    }
+  }, []);
 
   const login = (newToken: string) => {
     safeStorage.setItem('token', newToken);
@@ -275,6 +295,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: hasAccountSession(user, token),
       loading,
       syncProfileToSupabase,
+      refreshProfile,
     }}>
       {loading ? (
         <div className="min-h-screen bg-white flex flex-col items-center justify-center">

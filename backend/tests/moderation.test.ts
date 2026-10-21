@@ -84,6 +84,7 @@ describe("admin moderation boundaries", () => {
   it("requires organizer approval before event creation", async () => {
     const headers = await as("new-applicant");
     await db.user.create({ data: { authId: "new-applicant" } });
+    const adminHeaders = await admin();
     expect(
       (await request(app).post("/api/events").set(headers).send({ title: "Unapproved" })).status,
     ).toBe(403);
@@ -92,6 +93,15 @@ describe("admin moderation boundaries", () => {
       .set(headers)
       .send({ name: "New host" });
     expect(application.status).toBe(201);
+    expect(
+      (await request(app).post("/api/organizer-applications").set(headers).send({ name: "New host" })).status,
+    ).toBe(409);
+    expect(
+      await db.organizerApplication.count({ where: { user: { authId: "new-applicant" }, status: "pending" } }),
+    ).toBe(1);
+    expect(
+      await db.notification.count({ where: { user: { authId: "review-admin" }, title: "Organizer application awaiting review" } }),
+    ).toBeGreaterThan(0);
     expect((await db.user.findUnique({ where: { authId: "new-applicant" } }))?.phone).toMatch(
       /^\+85620\d{8}$/,
     );
@@ -101,7 +111,7 @@ describe("admin moderation boundaries", () => {
       (
         await request(app)
           .post(path)
-          .set(await admin())
+          .set(adminHeaders)
           .send({ approve: true })
       ).status,
     ).toBe(200);
@@ -109,10 +119,13 @@ describe("admin moderation boundaries", () => {
       (
         await request(app)
           .post(path)
-          .set(await admin())
+          .set(adminHeaders)
           .send({ approve: true })
       ).status,
     ).toBe(409);
+    expect(
+      await db.notification.count({ where: { user: { authId: "new-applicant" }, title: "Organizer application approved" } }),
+    ).toBe(1);
     expect(
       (
         await request(app)
