@@ -68,7 +68,6 @@ function AnimatedRoutes() {
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={routeKey}>
-        <Route element={<RequireAccount />}>
         <Route 
           path="/" 
           element={
@@ -84,6 +83,7 @@ function AnimatedRoutes() {
           }
         >
           <Route index element={<Home />} />
+          <Route element={<RequireAccount />}>
           <Route path="event/:id" element={<EventDetails />} />
           <Route path="checkout" element={<Checkout />} />
           <Route path="dashboard" element={<Dashboard />} />
@@ -103,15 +103,17 @@ function AnimatedRoutes() {
           <Route path="about" element={<About />} />
           <Route path="terms" element={<Terms />} />
           <Route path="privacy" element={<Privacy />} />
+          </Route>
         </Route>
         
         {/* Standalone Pages */}
+        <Route element={<RequireAccount />}>
         <Route path="/PskAdmin" element={<PageTransition><ApprovalCenter admin /></PageTransition>} />
         <Route path="/admin" element={<Navigate to="/PskAdmin" replace />} />
         <Route path="/create" element={<PageTransition><OrganizerCreateGate /></PageTransition>} />
         <Route path="/staff-scanner" element={<PageTransition><StaffScanner /></PageTransition>} />
-        <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
         <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
         <Route path="/register" element={<PageTransition><Register /></PageTransition>} />
       </Routes>
@@ -136,7 +138,7 @@ function SessionContent() {
   }, [isAuthenticated, location.pathname, navigate]);
   return (
     <NotificationsProvider key={isAuthenticated ? user!.id : 'signed-out'}>
-      <div className={`${isAuthenticated ? 'pb-16 md:pb-0 ' : ''}min-h-screen flex flex-col bg-white text-adv-slate transition-colors duration-300`}>
+      <div className="pb-16 md:pb-0 min-h-screen flex flex-col bg-white text-adv-slate transition-colors duration-300">
         <AnimatedRoutes />
         <BottomNav />
         <OfflineIndicator />
