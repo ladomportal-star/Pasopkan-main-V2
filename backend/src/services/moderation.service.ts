@@ -40,6 +40,35 @@ export async function applyAsOrganizer(uid: string, name: string, description?: 
   });
 }
 
+/** Self-service organizer setup lets a signed-in user save drafts immediately. */
+export async function activateOrganizer(uid: string) {
+  const user = await getOrCreateUser(uid);
+  return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${user.id}::uuid FOR UPDATE`;
+    const current = await tx.user.findUnique({ where: { id: user.id }, include: { organizer: true } });
+    if (!current) throw new HttpError(403, "A registered account is required");
+    if (current.role === "admin") return { role: current.role, organizer: current.organizer };
+    const name = [current.firstName, current.lastName].filter(Boolean).join(" ").trim() || "Organizer";
+    const organizer = await tx.organizer.upsert({
+      where: { userId: current.id },
+      create: { userId: current.id, name },
+      update: {},
+    });
+    if (current.role !== "organizer") {
+      await tx.user.update({ where: { id: current.id }, data: { role: "organizer" } });
+      await tx.auditLog.create({
+        data: {
+          actorId: current.id,
+          action: "organizer.self_activated",
+          entityType: "User",
+          entityId: current.id,
+        },
+      });
+    }
+    return { role: "organizer", organizer };
+  });
+}
+
 export async function reviewOrganizer(uid: string, id: string, approve: boolean, reason?: string) {
   return db.$transaction(async (tx) => {
     const admin = await tx.user.findUnique({ where: { authId: uid } });
@@ -59,12 +88,14 @@ export async function reviewOrganizer(uid: string, id: string, approve: boolean,
       },
     });
     if (approve) {
-      await tx.organizer.create({
-        data: {
+      await tx.organizer.upsert({
+        where: { userId: application.userId },
+        create: {
           userId: application.userId,
           name: application.name,
           description: application.description,
         },
+        update: { name: application.name, description: application.description },
       });
       await tx.user.updateMany({
         where: { id: application.userId, role: "user" },

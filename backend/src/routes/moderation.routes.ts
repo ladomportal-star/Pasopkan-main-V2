@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
 import { db } from "../config/database.ts";
-import { getVerifiedPhone } from "../services/verified-phone.service.ts";
 import {
   requireAuth,
   requireRegisteredUser,
@@ -10,6 +9,7 @@ import {
 import { validate } from "../middlewares/validate.middleware.ts";
 import {
   applyAsOrganizer,
+  activateOrganizer,
   reviewOrganizer,
   cancelEvent,
   approveRefund,
@@ -141,15 +141,16 @@ router.get("/organizer/eligibility", requireAuth, requireRegisteredUser, async (
     where: { authId: req.user!.uid },
     include: { organizer: true },
   });
-  const phone = user?.role === "admin" ? null : await getVerifiedPhone(req.user!.uid);
   res.setHeader("Cache-Control", "no-store");
   res.json({
     role: user?.role ?? "user",
-    phoneVerified: Boolean(phone),
-    phone,
     canCreateEvent:
       user?.role === "admin" || (user?.role === "organizer" && Boolean(user.organizer)),
   });
+});
+router.post("/organizer/activate", requireAuth, requireRegisteredUser, async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json(await activateOrganizer(req.user!.uid));
 });
 router.get(
   "/admin/events",

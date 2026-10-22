@@ -26,7 +26,8 @@ describe("admin moderation boundaries", () => {
 
     const eligibility = await request(app).get("/api/organizer/eligibility").set(headers);
     expect(eligibility.status).toBe(200);
-    expect(eligibility.body).toMatchObject({ phoneVerified: false, canCreateEvent: true });
+    expect(eligibility.body).toMatchObject({ canCreateEvent: true });
+    expect(eligibility.body.phoneVerified).toBeUndefined();
     expect(
       (await request(app).post("/api/organizer-applications").set(headers).send({ name: "Host" }))
         .status,
@@ -81,60 +82,56 @@ describe("admin moderation boundaries", () => {
       .set(await admin());
     expect(queue.body.events.some((e: { id: string }) => e.id === event.id)).toBe(true);
   });
-  it("requires organizer approval before event creation", async () => {
+  it("lets registered users create drafts and requires admin review before publication", async () => {
     const headers = await as("new-applicant");
     await db.user.create({ data: { authId: "new-applicant" } });
     const adminHeaders = await admin();
+    const activate = await request(app).post("/api/organizer/activate").set(headers);
+    expect(activate.status).toBe(200);
+    expect(activate.body.role).toBe("organizer");
+    const activateAgain = await request(app).post("/api/organizer/activate").set(headers);
+    expect(activateAgain.status).toBe(200);
+    expect(activateAgain.body.organizer.id).toBe(activate.body.organizer.id);
     expect(
-      (await request(app).post("/api/events").set(headers).send({ title: "Unapproved" })).status,
-    ).toBe(403);
-    const application = await request(app)
-      .post("/api/organizer-applications")
+      await db.user.findUnique({ where: { authId: "new-applicant" }, include: { organizer: true } }),
+    ).toMatchObject({ role: "organizer", organizer: { name: "Organizer" } });
+    const eligibility = await request(app).get("/api/organizer/eligibility").set(headers);
+    expect(eligibility.body.canCreateEvent).toBe(true);
+
+    const draft = await request(app)
+      .post("/api/events")
       .set(headers)
-      .send({ name: "New host" });
-    expect(application.status).toBe(201);
+      .send({ title: "My first draft", termsAccepted: true });
+    expect(draft.status).toBe(201);
+    expect(draft.body.event.status).toBe("draft");
+    const eventId = draft.body.event.id;
     expect(
       (
         await request(app)
-          .post("/api/organizer-applications")
+          .put(`/api/events/${eventId}`)
           .set(headers)
-          .send({ name: "New host" })
+          .send({ status: "published" })
       ).status,
-    ).toBe(409);
-    expect(
-      await db.organizerApplication.count({
-        where: { user: { authId: "new-applicant" }, status: "pending" },
-      }),
-    ).toBe(1);
-    expect(
-      await db.notification.count({
-        where: { user: { authId: "review-admin" }, title: "Organizer application awaiting review" },
-      }),
-    ).toBeGreaterThan(0);
-    expect((await db.user.findUnique({ where: { authId: "new-applicant" } }))?.phone).toMatch(
-      /^\+85620\d{8}$/,
-    );
-    const path = `/api/admin/organizer-applications/${application.body.application.id}/review`;
-    expect((await request(app).post(path).set(headers).send({ approve: true })).status).toBe(403);
-    expect((await request(app).post(path).set(adminHeaders).send({ approve: true })).status).toBe(
-      200,
-    );
-    expect((await request(app).post(path).set(adminHeaders).send({ approve: true })).status).toBe(
-      409,
-    );
-    expect(
-      await db.notification.count({
-        where: { user: { authId: "new-applicant" }, title: "Organizer application approved" },
-      }),
-    ).toBe(1);
+    ).toBe(403);
+
+    const submission = await request(app)
+      .put(`/api/events/${eventId}`)
+      .set(headers)
+      .send({
+        status: "pending_review",
+        termsAccepted: true,
+        submissionOtp: await submissionProofFor(headers),
+      });
+    expect(submission.status).toBe(200);
+    expect(submission.body.event.status).toBe("pending_review");
     expect(
       (
         await request(app)
-          .post("/api/events")
-          .set(headers)
-          .send({ title: "Approved host draft", termsAccepted: true })
+          .put(`/api/events/${eventId}`)
+          .set(adminHeaders)
+          .send({ status: "published" })
       ).status,
-    ).toBe(201);
+    ).toBe(200);
   });
 
   it("publishes only after submission and admin approval", async () => {
