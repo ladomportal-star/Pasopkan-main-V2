@@ -45,10 +45,14 @@ export async function activateOrganizer(uid: string) {
   const user = await getOrCreateUser(uid);
   return db.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${user.id}::uuid FOR UPDATE`;
-    const current = await tx.user.findUnique({ where: { id: user.id }, include: { organizer: true } });
+    const current = await tx.user.findUnique({
+      where: { id: user.id },
+      include: { organizer: true },
+    });
     if (!current) throw new HttpError(403, "A registered account is required");
     if (current.role === "admin") return { role: current.role, organizer: current.organizer };
-    const name = [current.firstName, current.lastName].filter(Boolean).join(" ").trim() || "Organizer";
+    const name =
+      [current.firstName, current.lastName].filter(Boolean).join(" ").trim() || "Organizer";
     const organizer = await tx.organizer.upsert({
       where: { userId: current.id },
       create: { userId: current.id, name },

@@ -93,7 +93,10 @@ describe("admin moderation boundaries", () => {
     expect(activateAgain.status).toBe(200);
     expect(activateAgain.body.organizer.id).toBe(activate.body.organizer.id);
     expect(
-      await db.user.findUnique({ where: { authId: "new-applicant" }, include: { organizer: true } }),
+      await db.user.findUnique({
+        where: { authId: "new-applicant" },
+        include: { organizer: true },
+      }),
     ).toMatchObject({ role: "organizer", organizer: { name: "Organizer" } });
     const eligibility = await request(app).get("/api/organizer/eligibility").set(headers);
     expect(eligibility.body.canCreateEvent).toBe(true);
@@ -106,12 +109,8 @@ describe("admin moderation boundaries", () => {
     expect(draft.body.event.status).toBe("draft");
     const eventId = draft.body.event.id;
     expect(
-      (
-        await request(app)
-          .put(`/api/events/${eventId}`)
-          .set(headers)
-          .send({ status: "published" })
-      ).status,
+      (await request(app).put(`/api/events/${eventId}`).set(headers).send({ status: "published" }))
+        .status,
     ).toBe(403);
 
     const submission = await request(app)
