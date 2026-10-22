@@ -162,7 +162,7 @@ function StatusBadge({ status }: { status: string }) {
         : "bg-amber-50 text-amber-800 ring-amber-600/20";
   return (
     <span
-      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize ring-1 ring-inset ${tone}`}
+      className={`inline-flex rounded-full px-2.5 py-1 text-sm font-semibold capitalize ring-1 ring-inset ${tone}`}
     >
       {status.replaceAll("_", " ")}
     </span>
@@ -183,7 +183,7 @@ function SectionHeading({
       <div className="flex items-center gap-2">
         <h2 className="text-lg font-bold text-slate-900">{title}</h2>
         {count !== undefined && (
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-sm font-semibold text-slate-600">
             {count}
           </span>
         )}
@@ -526,7 +526,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
 
   return (
     <main className="min-h-screen bg-[#f7f8fa] lg:flex">
-      <aside className="sticky top-0 hidden h-screen w-[210px] shrink-0 flex-col border-r border-slate-100 bg-white shadow-sm lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r border-slate-100 bg-white shadow-sm lg:flex">
         <div className="border-b border-slate-50 px-4 py-5">
           <Link to="/" className="flex justify-center">
             <img
@@ -535,7 +535,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
               className="h-24 w-auto max-w-full object-contain"
             />
           </Link>
-          <p className="mt-2 text-[9px] font-bold tracking-widest text-slate-400">
+          <p className="mt-2 text-xs font-bold tracking-wide text-slate-500">
             ລະບົບຈັດການຂໍ້ມູນ · PSKADMIN
           </p>
         </div>
@@ -549,9 +549,9 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
               type="button"
               onClick={() => selectTab(id)}
               aria-current={activeTab === id ? "page" : undefined}
-              className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left text-xs font-bold transition-colors ${activeTab === id ? "border-adv-orange bg-adv-orange text-white shadow-md shadow-orange-100" : "border-slate-100 bg-white text-slate-500 hover:border-orange-200 hover:text-adv-orange"}`}
+              className={`flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left text-[15px] font-bold leading-snug transition-colors ${activeTab === id ? "border-adv-orange bg-adv-orange text-white shadow-md shadow-orange-100" : "border-slate-100 bg-white text-slate-600 hover:border-orange-200 hover:text-adv-orange"}`}
             >
-              <Icon className="h-3.5 w-3.5 shrink-0" />
+              <Icon className="h-4 w-4 shrink-0" />
               {label}
             </button>
           ))}
@@ -561,16 +561,16 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
               type="button"
               disabled
               title="ຍັງບໍ່ມີ API ຮອງຮັບ"
-              className="flex w-full items-center gap-2.5 rounded-xl border border-slate-100 bg-white px-3 py-2.5 text-left text-xs font-bold text-slate-300"
+              className="flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-white px-3.5 py-3 text-left text-[15px] font-bold leading-snug text-slate-400"
             >
-              <Icon className="h-3.5 w-3.5 shrink-0" />
+              <Icon className="h-4 w-4 shrink-0" />
               {label}
             </button>
           ))}
         </nav>
         <Link
           to="/account"
-          className="flex items-center justify-between border-t border-slate-100 px-5 py-4 text-xs font-bold text-slate-600"
+          className="flex items-center justify-between border-t border-slate-100 px-5 py-4 text-sm font-bold text-slate-600"
         >
           <span>PskAdmin</span>
           <LogOut className="h-4 w-4" />
@@ -580,10 +580,10 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
         <div className="mx-auto max-w-[1140px] space-y-5 rounded-[30px] border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
           <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-black text-slate-950">
+              <h1 className="text-2xl font-black text-slate-950">
                 {navigation.find((item) => item.id === activeTab)?.label}
               </h1>
-              <span className="rounded-full bg-slate-50 px-2 py-1 text-[9px] font-bold uppercase text-slate-400">
+              <span className="rounded-full bg-slate-50 px-2.5 py-1 text-[13px] font-bold uppercase text-slate-500">
                 {new Intl.DateTimeFormat("en-US", {
                   month: "long",
                   year: "numeric",
@@ -595,7 +595,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                 type="button"
                 onClick={() => void refresh(true)}
                 disabled={refreshing || loadingPage}
-                className="inline-flex items-center gap-1 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600 disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-600 disabled:opacity-50"
               >
                 <RefreshCw
                   className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`}
@@ -607,7 +607,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                   type="button"
                   onClick={exportOverview}
                   disabled={loadingPage}
-                  className="rounded-xl bg-adv-orange px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                  className="rounded-xl bg-adv-orange px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
                 >
                   ↧ ສົ່ງອອກ CSV
                 </button>
@@ -615,13 +615,13 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white"
+                className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-bold text-white"
               >
                 ພິມ
               </button>
               <Link
                 to="/account"
-                className="rounded-xl border border-slate-100 px-3 py-2 text-xs font-bold text-slate-600"
+                className="rounded-xl border border-slate-100 px-3 py-2 text-sm font-bold text-slate-600"
               >
                 ບັນຊີ
               </Link>
@@ -636,7 +636,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                 key={id}
                 type="button"
                 onClick={() => selectTab(id)}
-                className={`shrink-0 rounded-xl px-3 py-2 text-xs font-bold ${activeTab === id ? "bg-adv-orange text-white" : "bg-slate-50 text-slate-600"}`}
+                className={`shrink-0 rounded-xl px-3 py-2 text-sm font-bold ${activeTab === id ? "bg-adv-orange text-white" : "bg-slate-50 text-slate-600"}`}
               >
                 {label}
               </button>
@@ -690,7 +690,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                         ຢ່າຢືນຢັນກັບລູກຄ້າວ່າຄືນເງິນສຳເລັດ ຈົນກວ່າ provider
                         ຢືນຢັນ.
                       </p>
-                      <p className="text-xs">
+                      <p className="text-sm">
                         Readiness:{" "}
                         {paymentReadiness?.configured
                           ? "credentials present"
@@ -733,7 +733,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                                 )}{" "}
                                 · {application.user.email}
                               </p>
-                              <p className="mt-1 text-xs text-slate-500">
+                              <p className="mt-1 text-sm text-slate-500">
                                 ID {application.user.publicId ?? "—"} ·{" "}
                                 {dateTime(application.createdAt, locale)}
                               </p>
@@ -838,13 +838,13 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                                 {event.organizer.name} ·{" "}
                                 {event.organizer.user.email}
                               </p>
-                              <p className="mt-1 text-xs text-slate-500">
+                              <p className="mt-1 text-sm text-slate-500">
                                 {event.venueName || "—"} ·{" "}
                                 {event.startDate
                                   ? dateTime(event.startDate, locale)
                                   : `Created ${dateTime(event.createdAt, locale)}`}
                               </p>
-                              <p className="mt-1 text-xs text-slate-500">
+                              <p className="mt-1 text-sm text-slate-500">
                                 {event.tiers.length} ticket tiers ·{" "}
                                 {event.tiers
                                   .map(
@@ -1021,7 +1021,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                   )}
                   <div className="mt-4 overflow-x-auto">
                     <table className="w-full min-w-[680px] text-left text-sm">
-                      <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                      <thead className="bg-slate-50 text-sm uppercase tracking-wide text-slate-500">
                         <tr>
                           <th className="px-3 py-3">Account</th>
                           <th className="px-3 py-3">Role</th>
@@ -1036,12 +1036,12 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                               <p className="font-semibold text-slate-900">
                                 {displayName(item.firstName, item.lastName)}
                               </p>
-                              <p className="text-xs text-slate-500">
+                              <p className="text-sm text-slate-500">
                                 {item.email || "No email"} ·{" "}
                                 {item.publicId || "No public ID"}
                               </p>
                               {item.organizer && (
-                                <p className="text-xs text-slate-500">
+                                <p className="text-sm text-slate-500">
                                   {item.organizer.name}
                                 </p>
                               )}
@@ -1119,11 +1119,11 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                               <p className="mt-1 text-sm text-slate-700">
                                 {refund.payment.order.eventTitle}
                               </p>
-                              <p className="mt-1 text-xs text-slate-500">
+                              <p className="mt-1 text-sm text-slate-500">
                                 Order {refund.payment.order.orderNumber} ·{" "}
                                 {refund.payment.order.user.email}
                               </p>
-                              <p className="mt-1 text-xs text-slate-500">
+                              <p className="mt-1 text-sm text-slate-500">
                                 Provider {refund.payment.provider} ·{" "}
                                 {refund.payment.providerTransactionId ??
                                   "No transaction ID"}
@@ -1134,7 +1134,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                           <p className="mt-3 text-sm text-slate-700">
                             {refund.reason}
                           </p>
-                          <p className="mt-2 text-xs text-slate-500">
+                          <p className="mt-2 text-sm text-slate-500">
                             Requested {dateTime(refund.createdAt, locale)}
                           </p>
                           {refund.status === "pending_approval" && (
@@ -1191,7 +1191,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                               <p className="font-semibold text-slate-800">
                                 {log.action.replaceAll(".", " · ")}
                               </p>
-                              <p className="text-xs text-slate-500">
+                              <p className="text-sm text-slate-500">
                                 {log.entityType} · {log.entityId} ·{" "}
                                 {displayName(
                                   log.actor?.firstName,
@@ -1200,7 +1200,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                               </p>
                             </div>
                           </div>
-                          <time className="text-xs text-slate-500">
+                          <time className="text-sm text-slate-500">
                             {dateTime(log.createdAt, locale)}
                           </time>
                         </article>
@@ -1211,7 +1211,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
               )}
             </>
           )}
-          <footer className="flex items-center justify-center gap-2 py-2 text-xs text-slate-500">
+          <footer className="flex items-center justify-center gap-2 py-2 text-sm text-slate-500">
             <ShieldCheck className="h-4 w-4" /> PskAdmin-only data · Server
             verifies every privileged action
           </footer>

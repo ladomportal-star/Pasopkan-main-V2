@@ -119,7 +119,7 @@ export default function AdminLiveOverview({
         ].map((card) => (
           <article
             key={card.label}
-            className="relative overflow-hidden rounded-2xl border border-orange-100 bg-orange-50/30 p-5 min-h-28"
+            className="relative min-h-32 overflow-hidden rounded-2xl border border-orange-100 bg-orange-50/30 p-5"
           >
             <span
               aria-hidden
@@ -127,13 +127,13 @@ export default function AdminLiveOverview({
             >
               {card.icon}
             </span>
-            <p className="relative text-[11px] font-bold text-slate-400">
+            <p className="relative text-sm font-bold leading-relaxed text-slate-500">
               {card.label}
             </p>
-            <p className="relative mt-2 text-2xl font-black text-slate-950">
+            <p className="relative mt-2 text-3xl font-black text-slate-950">
               {card.value}
             </p>
-            <p className="relative mt-1 text-xs font-semibold text-orange-600">
+            <p className="relative mt-1 text-sm font-semibold leading-relaxed text-orange-600">
               {card.note}
             </p>
           </article>
@@ -144,11 +144,11 @@ export default function AdminLiveOverview({
         <section className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm xl:col-span-2">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="flex items-center gap-2 text-sm font-black text-slate-900">
+              <h2 className="flex items-center gap-2 text-base font-black text-slate-900">
                 <Ticket className="h-4 w-4 text-orange-600" />{" "}
                 ແນວໂນ້ມການຂາຍປີ້ປະຈຳວັນ
               </h2>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-sm leading-relaxed text-slate-500">
                 ສະເພາະການຊຳລະທີ່ provider ຢືນຢັນ
               </p>
             </div>
@@ -159,7 +159,7 @@ export default function AdminLiveOverview({
                     key={range}
                     type="button"
                     onClick={() => setDays(range)}
-                    className={`rounded-lg px-2.5 py-1 text-[11px] font-bold ${days === range ? "bg-orange-600 text-white" : "text-slate-500"}`}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-bold ${days === range ? "bg-orange-600 text-white" : "text-slate-500"}`}
                   >
                     {range}D
                   </button>
@@ -169,18 +169,18 @@ export default function AdminLiveOverview({
                 type="button"
                 onClick={exportCsv}
                 disabled={!analytics}
-                className="inline-flex items-center gap-1 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-bold text-orange-700 disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-bold text-orange-700 disabled:opacity-50"
               >
                 <Download className="h-3.5 w-3.5" /> CSV
               </button>
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
+          <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-slate-100 pt-3 text-sm text-slate-600">
             <span className="h-2 w-2 rounded-full bg-orange-600" /> ປີ້ທີ່ຂາຍໄດ້{" "}
             <span className="h-2 w-2 rounded-full bg-emerald-500" />{" "}
             ຂໍ້ມູນຈິງຈາກ API
           </div>
-          <div className="mt-3 rounded-2xl bg-orange-50/30 px-4 py-3 text-xs text-slate-500">
+          <div className="mt-3 rounded-2xl bg-orange-50/30 px-4 py-3 text-sm text-slate-600">
             ປີ້ຢືນຢັນຊ່ວງ {days} ວັນ:{" "}
             <strong className="text-orange-600">
               {formatNumber(series.reduce((sum, row) => sum + row.tickets, 0))}{" "}
@@ -202,18 +202,19 @@ export default function AdminLiveOverview({
                   <XAxis
                     dataKey="day"
                     tickFormatter={(day: string) => day.slice(5)}
-                    fontSize={10}
+                    fontSize={12}
                     tickLine={false}
                     axisLine={false}
                     minTickGap={14}
                   />
                   <YAxis
                     allowDecimals={false}
-                    fontSize={10}
+                    fontSize={12}
                     tickLine={false}
                     axisLine={false}
                   />
                   <Tooltip
+                    contentStyle={{ fontSize: 14, borderRadius: 12 }}
                     formatter={(value) =>
                       `${formatNumber(Number(value ?? 0))} ໃບ`
                     }
@@ -237,12 +238,12 @@ export default function AdminLiveOverview({
         </section>
 
         <section className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
-          <h2 className="flex items-center justify-between text-sm font-black">
+          <h2 className="flex items-center justify-between gap-2 text-base font-black">
             <span className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Live
               Sales Counter
             </span>
-            <span className="rounded-full bg-slate-50 px-2 py-1 text-[9px] text-slate-400">
+            <span className="rounded-full bg-slate-50 px-2 py-1 text-[13px] text-slate-500">
               REAL DATA
             </span>
           </h2>
@@ -251,13 +252,13 @@ export default function AdminLiveOverview({
               analytics.recentSales.map((sale) => (
                 <article
                   key={sale.id}
-                  className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2.5 text-xs"
+                  className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-3 text-sm"
                 >
                   <div className="min-w-0">
                     <p className="truncate font-bold text-slate-800">
                       {sale.title}
                     </p>
-                    <p className="mt-1 text-[10px] text-slate-400">
+                    <p className="mt-1 text-[13px] text-slate-500">
                       {sale.tickets} ປີ້
                     </p>
                   </div>
@@ -265,14 +266,14 @@ export default function AdminLiveOverview({
                     <p className="font-bold text-orange-600">
                       {formatNumber(sale.amountKip)} ₭
                     </p>
-                    <p className="mt-1 text-[10px] text-slate-400">
+                    <p className="mt-1 text-[13px] text-slate-500">
                       {new Date(sale.verifiedAt).toLocaleString("lo-LA")}
                     </p>
                   </div>
                 </article>
               ))
             ) : (
-              <p className="py-16 text-center text-xs text-slate-400">
+              <p className="py-16 text-center text-sm text-slate-500">
                 ຍັງບໍ່ມີຍອດຂາຍທີ່ຢືນຢັນ
               </p>
             )}
@@ -282,7 +283,7 @@ export default function AdminLiveOverview({
 
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
-          <h2 className="flex items-center gap-2 text-sm font-black">
+          <h2 className="flex items-center gap-2 text-base font-black">
             <TrendingUp className="h-4 w-4 text-blue-500" /> Category
             Distribution
           </h2>
@@ -304,18 +305,18 @@ export default function AdminLiveOverview({
                       />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={{ fontSize: 14, borderRadius: 12 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="py-20 text-center text-xs text-slate-400">
+            <p className="py-20 text-center text-sm text-slate-500">
               ຍັງບໍ່ມີໝວດ Event
             </p>
           )}
         </section>
         <section className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm lg:col-span-2">
-          <h2 className="flex items-center gap-2 text-sm font-black">
+          <h2 className="flex items-center gap-2 text-base font-black">
             <CalendarDays className="h-4 w-4 text-orange-500" /> Event
             Categories Overview
           </h2>
@@ -324,7 +325,7 @@ export default function AdminLiveOverview({
               {analytics?.categories.map((row, index) => (
                 <div
                   key={row.name}
-                  className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-xs"
+                  className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-sm"
                 >
                   <span className="flex items-center gap-2 font-semibold">
                     <span
@@ -341,7 +342,7 @@ export default function AdminLiveOverview({
               ))}
             </div>
           ) : (
-            <p className="py-20 text-center text-xs text-slate-400">
+            <p className="py-20 text-center text-sm text-slate-500">
               ຍັງບໍ່ມີ Event ໃນ database
             </p>
           )}
