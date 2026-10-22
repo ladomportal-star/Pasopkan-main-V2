@@ -194,6 +194,25 @@ export default function EditProfile() {
           {/* Personal Information */}
           <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 space-y-5 shadow-sm">
             <h2 className="text-lg font-bold text-adv-slate mb-2">{t.personalInfo}</h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  {lang === 'lo' ? 'ອີເມວ' : 'Email'}
+                </label>
+                <div className="w-full bg-[#F9FAFB] border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-adv-slate font-bold min-h-[42px] break-all">
+                  {user?.email || (lang === 'lo' ? 'ບໍ່ມີອີເມວ' : 'No email on account')}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  {lang === 'lo' ? 'ເບີໂທ' : 'Phone number'}
+                </label>
+                <div className="w-full bg-[#F9FAFB] border border-gray-100 rounded-xl px-4 py-2.5 text-sm text-adv-slate font-bold min-h-[42px]">
+                  {user?.phone || (lang === 'lo' ? 'ບໍ່ມີເບີໂທ' : 'No phone on account')}
+                </div>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
               <div className="space-y-1.5">
