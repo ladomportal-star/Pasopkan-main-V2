@@ -155,13 +155,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchAndSetUserProfile = async (supabaseUser: User, accessToken: string) => {
     const version = ++profileVersion.current;
     try {
-      const fullName: string = supabaseUser.user_metadata?.full_name || '';
-      const [firstName, ...rest] = fullName.split(' ');
       const { data, error } = await api.syncAccount(
-        {
-          firstName: firstName || undefined,
-          lastName: rest.length > 0 ? rest.join(' ') : undefined,
-        },
+        {},
         { token: accessToken },
       );
       if (error || !data) throw new Error(error || 'No data returned');
