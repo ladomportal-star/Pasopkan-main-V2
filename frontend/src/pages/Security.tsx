@@ -2,6 +2,7 @@ import { ArrowLeft, Shield, Smartphone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import SEO from '../components/SEO';
+import AccountIdentityLinks from '../components/AccountIdentityLinks';
 
 const translations = {
   en: {
@@ -49,6 +50,7 @@ export default function Security() {
         </div>
 
         <div className="space-y-6">
+          <AccountIdentityLinks />
           {/* 2FA Authenticator Section */}
           <div className="bg-white border border-gray-100 rounded-[2.5rem] p-8 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
