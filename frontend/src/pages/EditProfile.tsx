@@ -7,7 +7,6 @@ import { useAuth } from '../context/AuthContext';
 import { DateInputDDMMYYYY } from '../components/DateInputDDMMYYYY';
 import SEO from '../components/SEO';
 import { prepareProfilePhoto } from '../lib/profilePhoto';
-import AccountIdentityLinks from '../components/AccountIdentityLinks';
 
 const translations = {
   en: {
@@ -257,8 +256,6 @@ export default function EditProfile() {
               </div>
             </div>
           </div>
-
-          <AccountIdentityLinks />
 
           <div className="flex flex-col sm:flex-row justify-end gap-3 pt-2">
             <button
