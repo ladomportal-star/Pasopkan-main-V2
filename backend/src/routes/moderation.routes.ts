@@ -74,6 +74,63 @@ router.get("/admin/overview", requireAuth, requireAdmin, async (_req, res) => {
   });
 });
 
+// Only verified provider payments contribute to sales analytics. Never synthesize sales.
+router.get("/admin/analytics", requireAuth, requireAdmin, async (_req, res) => {
+  const since = new Date();
+  since.setUTCDate(since.getUTCDate() - 89);
+  since.setUTCHours(0, 0, 0, 0);
+  const [dailyRows, categories, recentPayments] = await Promise.all([
+    db.$queryRaw<Array<{ day: Date; tickets: bigint; revenueKip: bigint }>>`
+      SELECT date_trunc('day', p."verifiedAt" AT TIME ZONE 'Asia/Vientiane') AS day,
+             COALESCE(SUM(CASE WHEN p.order_rank = 1 THEN item_count.tickets ELSE 0 END), 0)::bigint AS tickets,
+             COALESCE(SUM(p."amountKip"), 0)::bigint AS "revenueKip"
+      FROM (
+        SELECT p0.*, ROW_NUMBER() OVER (
+          PARTITION BY p0."orderId" ORDER BY p0."verifiedAt", p0.id
+        ) AS order_rank
+        FROM "Payment" p0
+        WHERE p0.state = 'completed' AND p0."verifiedAt" IS NOT NULL
+          AND p0."verifiedAt" >= ${since}
+      ) p
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*)::bigint AS tickets FROM "OrderItem" oi WHERE oi."orderId" = p."orderId"
+      ) item_count ON true
+      GROUP BY 1 ORDER BY 1 ASC
+    `,
+    db.event.groupBy({ by: ["category"], _count: { _all: true } }),
+    db.payment.findMany({
+      where: { state: "completed", verifiedAt: { not: null } },
+      orderBy: { verifiedAt: "desc" },
+      take: 8,
+      select: {
+        id: true,
+        amountKip: true,
+        verifiedAt: true,
+        order: { select: { eventTitle: true, _count: { select: { items: true } } } },
+      },
+    }),
+  ]);
+  res.setHeader("Cache-Control", "private, no-store");
+  res.json({
+    daily: dailyRows.map((row) => ({
+      day: row.day.toISOString().slice(0, 10),
+      tickets: Number(row.tickets),
+      revenueKip: Number(row.revenueKip),
+    })),
+    categories: categories.map((row) => ({
+      name: row.category || "Uncategorized",
+      count: row._count._all,
+    })),
+    recentSales: recentPayments.map((payment) => ({
+      id: payment.id,
+      title: payment.order.eventTitle,
+      tickets: payment.order._count.items,
+      amountKip: payment.amountKip,
+      verifiedAt: payment.verifiedAt,
+    })),
+  });
+});
+
 router.get(
   "/admin/users",
   requireAuth,
@@ -170,6 +227,7 @@ router.get(
         id: true,
         title: true,
         status: true,
+        dateType: true,
         venueName: true,
         description: true,
         rejectionReason: true,
