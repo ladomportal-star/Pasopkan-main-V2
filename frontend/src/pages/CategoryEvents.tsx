@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Filter, Calendar, Tag, MapPin, History, ChevronDown, X } from 'lucide-react';
+import { ArrowLeft, Filter, Calendar, Tag, MapPin, History, ChevronDown } from 'lucide-react';
 import { LaoEvent } from '../data/events';
 import EventCard from '../components/EventCard';
 import { useLanguage } from '../context/LanguageContext';
-import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { fromBackendEvent } from '../lib/eventPayload';
 import SEO from '../components/SEO';
@@ -24,7 +23,6 @@ const translations = {
     price100k_500k: '100k - 500k LAK',
     priceOver500k: 'Over 500k LAK',
     noMatchingTitle: 'No matching events',
-    clearFilters: 'Clear Filters',
     locationAll: 'All Locations',
     activeUpcomingTitle: 'Active & Upcoming Events',
     pastEventsTitle: 'Past Events',
@@ -44,7 +42,6 @@ const translations = {
     price100k_500k: '100k - 500k ກີບ',
     priceOver500k: 'ຫຼາຍກວ່າ 500,000 ກີບ',
     noMatchingTitle: 'ບໍ່ພົບກິດຈະກຳ',
-    clearFilters: 'ລຶບຕົວກັ່ນຕອງ',
     locationAll: 'ທຸກສະຖານທີ່',
     activeUpcomingTitle: 'ກິດຈະກຳທີ່ກຳລັງດຳເນີນ / ຈະມາເຖິງ',
     pastEventsTitle: 'ກິດຈະກຳທີ່ຜ່ານມາແລ້ວ',
@@ -58,7 +55,6 @@ type PriceFilter = 'all' | 'free' | 'under100k' | '100k-500k' | 'over500k';
 export default function CategoryEvents() {
   const { categoryId } = useParams<{ categoryId: string }>();
   const { lang } = useLanguage();
-  const { isAuthenticated } = useAuth();
   const t = translations[lang];
   const [isLoading, setIsLoading] = useState(true);
   const [categoryEvents, setCategoryEvents] = useState<LaoEvent[]>([]);
@@ -283,16 +279,6 @@ export default function CategoryEvents() {
               <ChevronDown className={`w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${locationFilter !== 'all' ? 'text-white' : 'text-gray-400'}`} />
             </div>
 
-            {/* Clear Filters Button */}
-            {isAuthenticated && (priceFilter !== 'all' || locationFilter !== 'all') && (
-              <button
-                onClick={() => { setPriceFilter('all'); setLocationFilter('all'); }}
-                className="flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-adv-orange bg-white hover:bg-gray-50 px-2.5 py-1.5 rounded-full border border-gray-200 transition-colors cursor-pointer shrink-0"
-              >
-                <X className="w-3.5 h-3.5" />
-                <span>{t.clearFilters}</span>
-              </button>
-            )}
           </div>
         </div>
 
@@ -357,12 +343,6 @@ export default function CategoryEvents() {
             </div>
             <h3 className="text-lg font-bold text-adv-slate mb-1">{t.noMatchingTitle}</h3>
             <p className="text-gray-500 text-xs max-w-md mx-auto">{t.noEvents}</p>
-            {isAuthenticated && <button
-              onClick={() => { setDateFilter('all'); setPriceFilter('all'); setLocationFilter('all'); }}
-              className="mt-5 px-5 py-2 rounded-full bg-adv-orange/10 text-adv-orange hover:bg-adv-orange/20 transition-colors text-xs font-black uppercase tracking-wider cursor-pointer"
-            >
-              {t.clearFilters}
-            </button>}
           </div>
         )}
       </div>
