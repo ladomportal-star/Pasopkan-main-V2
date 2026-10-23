@@ -5,9 +5,9 @@ import {
   AlertTriangle,
   Banknote,
   Bell,
+  BookOpen,
   CalendarDays,
   Check,
-  Clock3,
   Gift,
   LayoutDashboard,
   LogOut,
@@ -444,22 +444,20 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
       label: "ກິດຈະກຳຈອງ (Booking Type)",
       icon: CalendarDays,
     },
-    { id: "pending", label: "Event ລໍຖ້າອະນຸມັດ", icon: Clock3 },
     { id: "past", label: "Event ສຳເລັດແລ້ວ", icon: Check },
     { id: "payments", label: "ການຊຳລະເງິນ", icon: Banknote },
     { id: "refunds", label: "ການຄືນເງິນ", icon: RotateCcw },
     { id: "activity", label: "Activity Log", icon: Activity },
   ];
   const unavailableNavigation = [
-    { label: "ການໂອນເງິນ", icon: Banknote },
     { label: "ການແຈ້ງເຕືອນ", icon: Bell },
     { label: "ຕັ້ງຄ່າລະບົບ", icon: Settings },
+    { label: "ຈັດການບົດຄວາມ", icon: BookOpen },
     { label: "ປີ້ຂອງຂວັນ (Gift Tickets)", icon: Gift },
   ];
 
   function selectTab(id: string) {
-    if (id === "pending") setEventStatus("pending_review");
-    else if (["events", "event-booking", "past"].includes(id))
+    if (["events", "event-booking", "past"].includes(id))
       setEventStatus("all");
     if (id === "organizers") setUserRole("organizer");
     else if (id === "users") setUserRole("all");
@@ -784,12 +782,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                 </section>
               )}
 
-              {[
-                "events",
-                "pending",
-                "event-booking",
-                "past",
-              ].includes(activeTab) && (
+              {["events", "event-booking", "past"].includes(activeTab) && (
                 <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                   <SectionHeading
                     title="Event moderation · ກວດສອບ Event"
