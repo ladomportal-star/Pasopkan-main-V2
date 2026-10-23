@@ -5,7 +5,7 @@
  */
 
 // Bump when cache behavior changes so old, incorrectly cached module responses are removed.
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const STATIC_CACHE_NAME = `pasopkan-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE_NAME = `pasopkan-runtime-${CACHE_VERSION}`;
 const IMAGE_CACHE_NAME = `pasopkan-images-${CACHE_VERSION}`;
