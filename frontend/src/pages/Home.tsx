@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { LaoEvent, getEventStatus } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import LandscapeEventCard from '../components/LandscapeEventCard';
 import { api } from '../lib/api';
 import { fromBackendEvent } from '../lib/eventPayload';
@@ -360,6 +361,7 @@ export default function Home() {
   const [eventsError, setEventsError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const { lang } = useLanguage();
+  const { isAuthenticated } = useAuth();
   const t = translations[lang];
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -540,7 +542,7 @@ export default function Home() {
                 : (lang === 'lo' ? 'ຍັງບໍ່ມີກິດຈະກຳທີ່ເປີດໃຫ້ຈອງ' : 'No published events yet')}
             </p>
           </div>}
-          {eventsError && <button type="button" onClick={() => setRetryCount(value => value + 1)} className="relative z-20 mt-5 rounded-full bg-white px-5 py-2 text-sm font-bold text-slate-900 hover:bg-orange-50">
+          {eventsError && isAuthenticated && <button type="button" onClick={() => setRetryCount(value => value + 1)} className="relative z-20 mt-5 rounded-full bg-white px-5 py-2 text-sm font-bold text-slate-900 hover:bg-orange-50">
             {lang === 'lo' ? 'ລອງໃໝ່' : 'Try again'}
           </button>}
 
