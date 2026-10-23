@@ -222,31 +222,72 @@ router.get(
   async (req, res) => {
     const limit = Number(req.query.limit);
     const cursor = req.query.cursor as string | undefined;
-    const rows = await db.event.findMany({
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        dateType: true,
-        venueName: true,
-        description: true,
-        rejectionReason: true,
-        startDate: true,
-        createdAt: true,
-        organizer: {
-          select: { id: true, name: true, user: { select: { publicId: true, email: true } } },
+    const urgentFrom = new Date();
+    urgentFrom.setUTCHours(0, 0, 0, 0);
+    const urgentUntil = new Date(urgentFrom);
+    urgentUntil.setUTCDate(urgentUntil.getUTCDate() + 14);
+    const [rows, pendingReview, urgentPendingReview] = await Promise.all([
+      db.event.findMany({
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          dateType: true,
+          eventType: true,
+          category: true,
+          venueName: true,
+          addressText: true,
+          province: true,
+          district: true,
+          description: true,
+          rejectionReason: true,
+          startDate: true,
+          startTime: true,
+          endDate: true,
+          endTime: true,
+          coverImageUrl: true,
+          viewsCount: true,
+          createdAt: true,
+          organizer: {
+            select: {
+              id: true,
+              name: true,
+              contactEmail: true,
+              contactPhone: true,
+              user: { select: { publicId: true, email: true, phone: true } },
+            },
+          },
+          privateDetails: {
+            select: { bankName: true, accountNumber: true, accountHolder: true },
+          },
+          tiers: {
+            select: {
+              id: true,
+              name: true,
+              priceKip: true,
+              quantityTotal: true,
+              quantitySold: true,
+            },
+          },
         },
-        tiers: { select: { id: true, name: true, priceKip: true, quantityTotal: true } },
-      },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: limit + 1,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-    });
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: limit + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      }),
+      db.event.count({ where: { status: "pending_review" } }),
+      db.event.count({
+        where: {
+          status: "pending_review",
+          startDate: { gte: urgentFrom, lte: urgentUntil },
+        },
+      }),
+    ]);
     const more = rows.length > limit;
     const events = rows.slice(0, limit);
     res.json({
       events,
       nextCursor: more ? events.at(-1)?.id : null,
+      pendingReviewSummary: { total: pendingReview, urgent: urgentPendingReview },
     });
   },
 );

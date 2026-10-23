@@ -8,9 +8,13 @@ import {
   BookOpen,
   CalendarDays,
   Check,
+  Eye,
+  ExternalLink,
   Gift,
   LayoutDashboard,
   LogOut,
+  MapPin,
+  Phone,
   RotateCcw,
   RefreshCw,
   Search,
@@ -44,23 +48,43 @@ type Event = {
   title: string;
   status: string;
   dateType: string;
+  eventType?: string | null;
+  category?: string | null;
   venueName?: string | null;
+  addressText?: string | null;
+  province?: string | null;
+  district?: string | null;
   description?: string | null;
   rejectionReason?: string | null;
   startDate?: string | null;
+  startTime?: string | null;
+  endDate?: string | null;
+  endTime?: string | null;
+  coverImageUrl?: string | null;
+  coverImageUrlDisplay?: string | null;
+  viewsCount?: number;
   createdAt: string;
   organizer: {
     id: string;
     name: string;
-    user: { publicId: string | null; email: string };
+    contactEmail?: string | null;
+    contactPhone?: string | null;
+    user: { publicId: string | null; email: string; phone?: string | null };
   };
+  privateDetails?: {
+    bankName?: string | null;
+    accountNumber?: string | null;
+    accountHolder?: string | null;
+  } | null;
   tiers: {
     id: string;
     name: string;
     priceKip: number;
     quantityTotal: number | null;
+    quantitySold?: number;
   }[];
 };
+type PendingReviewSummary = { total: number; urgent: number };
 type Refund = {
   id: string;
   amountKip: number;
@@ -208,6 +232,8 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
   const [applications, setApplications] = useState<Application[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [eventCursor, setEventCursor] = useState<string | null>(null);
+  const [pendingReviewSummary, setPendingReviewSummary] =
+    useState<PendingReviewSummary>({ total: 0, urgent: 0 });
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [paymentReadiness, setPaymentReadiness] =
@@ -218,6 +244,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
   const [userRole, setUserRole] = useState("all");
   const [eventStatus, setEventStatus] = useState("all");
   const [reasons, setReasons] = useState<Record<string, string>>({});
+  const [rejectingEventId, setRejectingEventId] = useState<string | null>(null);
   const [loadingPage, setLoadingPage] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -254,7 +281,11 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
             "/admin/organizer-applications",
             authOptions,
           ),
-          api.get<{ events: Event[]; nextCursor?: string | null }>(
+          api.get<{
+            events: Event[];
+            nextCursor?: string | null;
+            pendingReviewSummary?: PendingReviewSummary;
+          }>(
             "/admin/events?limit=50",
             authOptions,
           ),
@@ -277,6 +308,12 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
         setApplications(apps.data.applications ?? []);
         setEvents(eventPage.data.events ?? []);
         setEventCursor(eventPage.data.nextCursor ?? null);
+        setPendingReviewSummary(
+          eventPage.data.pendingReviewSummary ?? {
+            total: summary.data.events.pendingReview,
+            urgent: 0,
+          },
+        );
         setRefunds(refundData.data.refunds ?? []);
         setAuditLogs(logData.data.logs ?? []);
         setPaymentReadiness(readiness.data);
@@ -344,6 +381,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
     try {
       await action();
       setMessage(success);
+      setRejectingEventId(null);
       await refresh(true);
       await loadUsers(null, false);
     } catch (err) {
@@ -404,6 +442,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
       const page = await api.get<{
         events: Event[];
         nextCursor: string | null;
+        pendingReviewSummary?: PendingReviewSummary;
       }>(
         `/admin/events?limit=50&cursor=${encodeURIComponent(eventCursor)}`,
         authOptions,
@@ -411,6 +450,8 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
       if (!page.data) throw new Error("Empty events response");
       setEvents((current) => [...current, ...page.data!.events]);
       setEventCursor(page.data.nextCursor ?? null);
+      if (page.data.pendingReviewSummary)
+        setPendingReviewSummary(page.data.pendingReviewSummary);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Could not load more events",
@@ -789,7 +830,243 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                 </section>
               )}
 
-              {["events", "pending", "event-booking", "past"].includes(activeTab) && (
+              {activeTab === "pending" && (
+                <section className="space-y-5">
+                  <div className="flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                      <h2 className="text-xl font-black text-slate-950">
+                        ກວດສອບກິດຈະກຳທີ່ລໍຖ້າອະນຸມັດ
+                      </h2>
+                      <p className="mt-1 text-sm text-slate-500">
+                        ຂໍ້ມູນ, ຜູ້ຈັດງານ, ປີ້ ແລະບັນຊີຮັບເງິນມາຈາກຖານຂໍ້ມູນຈິງ
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="flex items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
+                      <span className="grid h-12 w-12 place-items-center rounded-xl border border-amber-200 bg-white text-amber-600">
+                        <CalendarDays className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <p className="text-2xl font-black text-slate-950">
+                          {pendingReviewSummary.total}
+                        </p>
+                        <p className="font-bold text-amber-800">ລໍຖ້າການອະນຸມັດ</p>
+                        <p className="text-xs text-slate-500">ກວດສອບກ່ອນເຜີຍແຜ່</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 rounded-2xl border border-rose-200 bg-rose-50/60 p-5">
+                      <span className="grid h-12 w-12 place-items-center rounded-xl border border-rose-200 bg-white text-rose-600">
+                        <AlertTriangle className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <p className="text-2xl font-black text-slate-950">
+                          {pendingReviewSummary.urgent}
+                        </p>
+                        <p className="font-bold text-rose-700">ຈັດງານໃນ 14 ມື້</p>
+                        <p className="text-xs text-slate-500">ຕ້ອງກວດສອບໂດຍໄວ</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {visibleEvents.length === 0 ? (
+                    <EmptyState>ບໍ່ມີ Event ທີ່ລໍຖ້າການອະນຸມັດ.</EmptyState>
+                  ) : (
+                    <div className="grid gap-4 xl:grid-cols-2">
+                      {visibleEvents.map((event) => {
+                        const totalCapacity = event.tiers.reduce(
+                          (sum, tier) => sum + (tier.quantityTotal ?? 0),
+                          0,
+                        );
+                        const sold = event.tiers.reduce(
+                          (sum, tier) => sum + (tier.quantitySold ?? 0),
+                          0,
+                        );
+                        const minPrice = event.tiers.length
+                          ? Math.min(...event.tiers.map((tier) => tier.priceKip))
+                          : 0;
+                        const contact =
+                          event.organizer.contactPhone ||
+                          event.organizer.user.phone ||
+                          event.organizer.contactEmail ||
+                          event.organizer.user.email;
+                        const location = [
+                          event.venueName,
+                          event.district,
+                          event.province,
+                        ]
+                          .filter(Boolean)
+                          .join(", ");
+                        const startAt = event.startDate
+                          ? new Date(event.startDate)
+                          : null;
+                        const daysUntil = startAt
+                          ? Math.ceil(
+                              (startAt.getTime() - Date.now()) /
+                                (24 * 60 * 60 * 1000),
+                            )
+                          : null;
+                        const urgent =
+                          daysUntil !== null && daysUntil >= 0 && daysUntil <= 14;
+                        return (
+                          <article
+                            key={event.id}
+                            className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                          >
+                            <div className="space-y-4 p-4 sm:p-5">
+                              <div className="flex gap-4">
+                                <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+                                  {event.coverImageUrlDisplay ? (
+                                    <img
+                                      src={event.coverImageUrlDisplay}
+                                      alt=""
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <span className="grid h-full place-items-center text-slate-300">
+                                      <CalendarDays className="h-8 w-8" />
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap gap-1.5">
+                                    <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold uppercase text-blue-700 ring-1 ring-blue-200">
+                                      {event.eventType || event.dateType || "EVENT"}
+                                    </span>
+                                    {event.category && (
+                                      <span className="rounded-full bg-slate-50 px-2.5 py-1 text-xs font-bold uppercase text-slate-600 ring-1 ring-slate-200">
+                                        {event.category}
+                                      </span>
+                                    )}
+                                    {urgent && (
+                                      <span className="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700 ring-1 ring-rose-200">
+                                        ເຫຼືອ {daysUntil} ມື້
+                                      </span>
+                                    )}
+                                  </div>
+                                  <h3 className="mt-2 line-clamp-2 text-lg font-black text-slate-950">
+                                    {event.title}
+                                  </h3>
+                                  <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-600">
+                                    <CalendarDays className="h-4 w-4 shrink-0 text-orange-500" />
+                                    {event.startDate
+                                      ? dateTime(event.startDate, locale)
+                                      : `ສ້າງ ${dateTime(event.createdAt, locale)}`}
+                                  </p>
+                                  <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
+                                    <MapPin className="h-4 w-4 shrink-0" />
+                                    <span className="truncate">{location || "ບໍ່ໄດ້ລະບຸສະຖານທີ່"}</span>
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
+                                  <p className="text-xs font-bold uppercase text-slate-400">ຜູ້ຈັດງານ</p>
+                                  <p className="mt-1 font-bold text-slate-800">{event.organizer.name}</p>
+                                  <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
+                                    <Phone className="h-3.5 w-3.5" /> {contact || "ບໍ່ໄດ້ລະບຸ"}
+                                  </p>
+                                </div>
+                                <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
+                                  <p className="text-xs font-bold uppercase text-slate-400">ບັນຊີຮັບເງິນ</p>
+                                  <p className="mt-1 font-bold text-slate-800">
+                                    {event.privateDetails?.bankName || "ບໍ່ໄດ້ລະບຸ"}
+                                  </p>
+                                  <p className="mt-1 truncate text-xs text-slate-500">
+                                    {event.privateDetails?.accountHolder || "—"}
+                                    {event.privateDetails?.accountNumber
+                                      ? ` · ${event.privateDetails.accountNumber}`
+                                      : ""}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-100 bg-amber-50/50 px-3 py-2.5 text-sm">
+                                <p className="font-bold text-slate-800">
+                                  {minPrice > 0 ? money(minPrice, locale) : "Free Entry"}
+                                  <span className="ml-1 font-normal text-slate-500">
+                                    ({event.tiers.length} ປະເພດປີ້)
+                                  </span>
+                                </p>
+                                <p className="font-bold text-slate-700">
+                                  {sold}/{totalCapacity || "—"} ປີ້
+                                </p>
+                              </div>
+
+                              {rejectingEventId === event.id && (
+                                <div className="rounded-xl border border-rose-200 bg-rose-50 p-3">
+                                  <label
+                                    htmlFor={`reject-${event.id}`}
+                                    className="text-sm font-bold text-rose-800"
+                                  >
+                                    ເຫດຜົນທີ່ປະຕິເສດ
+                                  </label>
+                                  <textarea
+                                    id={`reject-${event.id}`}
+                                    value={reasons[event.id] ?? ""}
+                                    onChange={(e) =>
+                                      setReasons((current) => ({
+                                        ...current,
+                                        [event.id]: e.target.value,
+                                      }))
+                                    }
+                                    rows={3}
+                                    className="mt-2 w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm outline-none focus:border-rose-400"
+                                    placeholder="ລະບຸຈຸດທີ່ຜູ້ຈັດຕ້ອງແກ້ໄຂ"
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/70 px-4 py-3 sm:px-5">
+                              <Link
+                                to={`/event/${event.id}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 bg-white px-3 py-2 text-sm font-bold text-orange-700"
+                              >
+                                <Eye className="h-4 w-4" /> ເບິ່ງຕົວຢ່າງ
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </Link>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  disabled={!!busyKey}
+                                  onClick={() => {
+                                    if (
+                                      rejectingEventId === event.id &&
+                                      reasons[event.id]?.trim()
+                                    ) {
+                                      void updateEventStatus(event, "rejected");
+                                    } else {
+                                      setRejectingEventId(event.id);
+                                    }
+                                  }}
+                                  className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm font-bold text-rose-700 disabled:opacity-50"
+                                >
+                                  <X className="mr-1 inline h-4 w-4" /> ປະຕິເສດ
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={!!busyKey}
+                                  onClick={() => void updateEventStatus(event, "published")}
+                                  className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
+                                >
+                                  <Check className="mr-1 inline h-4 w-4" /> ອະນຸມັດ
+                                </button>
+                              </div>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {["events", "event-booking", "past"].includes(activeTab) && (
                 <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                   <SectionHeading
                     title="Event moderation · ກວດສອບ Event"
