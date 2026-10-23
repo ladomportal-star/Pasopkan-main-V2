@@ -425,7 +425,6 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
       events.filter(
         (event) =>
           (eventStatus === "all" || event.status === eventStatus) &&
-          (activeTab === "event-fixed" ? event.dateType !== "booking" : true) &&
           (activeTab === "event-booking"
             ? event.dateType === "booking"
             : true) &&
@@ -440,11 +439,6 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
     { id: "users", label: "ຈັດການຜູ້ໃຊ້", icon: Users },
     { id: "organizers", label: "ຈັດການຜູ້ຈັດງານ", icon: Users },
     { id: "events", label: "ຈັດການກິດຈະກຳ", icon: CalendarDays },
-    {
-      id: "event-fixed",
-      label: "Event ທົ່ວໄປ (Event Type)",
-      icon: CalendarDays,
-    },
     {
       id: "event-booking",
       label: "ກິດຈະກຳຈອງ (Booking Type)",
@@ -465,7 +459,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
 
   function selectTab(id: string) {
     if (id === "pending") setEventStatus("pending_review");
-    else if (["events", "event-fixed", "event-booking", "past"].includes(id))
+    else if (["events", "event-booking", "past"].includes(id))
       setEventStatus("all");
     if (id === "organizers") setUserRole("organizer");
     else if (id === "users") setUserRole("all");
@@ -793,7 +787,6 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
               {[
                 "events",
                 "pending",
-                "event-fixed",
                 "event-booking",
                 "past",
               ].includes(activeTab) && (
