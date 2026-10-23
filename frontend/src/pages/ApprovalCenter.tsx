@@ -571,7 +571,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
         </Link>
       </aside>
       <div className="min-w-0 flex-1 px-3 py-5 sm:px-6 lg:px-10 lg:py-7">
-        <div className="mx-auto max-w-[1140px] space-y-5 rounded-[30px] border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
+        <div className="w-full space-y-5 rounded-[30px] border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
           <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-black text-slate-950">
