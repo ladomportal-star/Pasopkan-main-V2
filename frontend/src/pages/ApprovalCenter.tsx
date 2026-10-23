@@ -520,7 +520,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
 
   return (
     <main className="min-h-screen bg-[#f7f8fa] lg:flex">
-      <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col border-r border-slate-100 bg-white shadow-sm lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-[300px] shrink-0 flex-col border-r border-slate-100 bg-white shadow-sm lg:flex">
         <div className="border-b border-slate-50 px-4 py-5">
           <Link to="/" className="flex justify-center">
             <img
@@ -546,7 +546,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
               className={`flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left text-[15px] font-bold leading-snug transition-colors ${activeTab === id ? "border-adv-orange bg-adv-orange text-white shadow-md shadow-orange-100" : "border-slate-100 bg-white text-slate-600 hover:border-orange-200 hover:text-adv-orange"}`}
             >
               <Icon className="h-4 w-4 shrink-0" />
-              {label}
+              <span className="whitespace-nowrap">{label}</span>
             </button>
           ))}
           {unavailableNavigation.map(({ label, icon: Icon }) => (
@@ -558,7 +558,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
               className="flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-white px-3.5 py-3 text-left text-[15px] font-bold leading-snug text-slate-400"
             >
               <Icon className="h-4 w-4 shrink-0" />
-              {label}
+              <span className="whitespace-nowrap">{label}</span>
             </button>
           ))}
         </nav>
