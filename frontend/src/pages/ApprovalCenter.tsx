@@ -9,6 +9,7 @@ import {
   CalendarDays,
   Check,
   Gift,
+  LayoutDashboard,
   LogOut,
   RotateCcw,
   RefreshCw,
@@ -203,7 +204,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
   const locale = "lo-LA";
   const [overview, setOverview] = useState<Overview>(emptyOverview);
   const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
-  const [activeTab, setActiveTab] = useState("pending");
+  const [activeTab, setActiveTab] = useState("overview");
   const [applications, setApplications] = useState<Application[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [eventCursor, setEventCursor] = useState<string | null>(null);
@@ -215,7 +216,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
   const [usersCursor, setUsersCursor] = useState<string | null>(null);
   const [userSearch, setUserSearch] = useState("");
   const [userRole, setUserRole] = useState("all");
-  const [eventStatus, setEventStatus] = useState("pending_review");
+  const [eventStatus, setEventStatus] = useState("all");
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [loadingPage, setLoadingPage] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -433,6 +434,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
   );
 
   const navigation = [
+    { id: "overview", label: "ພາບລວມ", icon: LayoutDashboard },
     { id: "pending", label: "ລໍຖ້າການອະນຸມັດ", icon: Check },
     { id: "users", label: "ຈັດການຜູ້ໃຊ້", icon: Users },
     { id: "organizers", label: "ຈັດການຜູ້ຈັດງານ", icon: Users },
