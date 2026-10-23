@@ -368,7 +368,7 @@ export const DEFAULT_CONTACT_SETTINGS: ContactSettings = {
   contactDesc_lo:
     "ພວກເຮົາຢາກໄດ້ຍິນຈາກທ່ານ. ຕິດຕໍ່ຫາພວກເຮົາຜ່ານເວທີໃດໜຶ່ງລຸ່ມນີ້ ຫຼື ເຂົ້າມາຫາພວກເຮົາທີ່ຫ້ອງການ.",
 
-  facebook: "https://facebook.com/pasopkan",
+  facebook: "https://facebook.com/pasopkan.la",
 
   instagram: "https://instagram.com/pasopkan",
 
