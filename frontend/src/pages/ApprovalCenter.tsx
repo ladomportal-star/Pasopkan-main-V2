@@ -9,7 +9,6 @@ import {
   CalendarDays,
   Check,
   Gift,
-  LayoutDashboard,
   LogOut,
   RotateCcw,
   RefreshCw,
@@ -204,7 +203,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
   const locale = "lo-LA";
   const [overview, setOverview] = useState<Overview>(emptyOverview);
   const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("pending");
   const [applications, setApplications] = useState<Application[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [eventCursor, setEventCursor] = useState<string | null>(null);
@@ -216,7 +215,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
   const [usersCursor, setUsersCursor] = useState<string | null>(null);
   const [userSearch, setUserSearch] = useState("");
   const [userRole, setUserRole] = useState("all");
-  const [eventStatus, setEventStatus] = useState("all");
+  const [eventStatus, setEventStatus] = useState("pending_review");
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [loadingPage, setLoadingPage] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -434,17 +433,16 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
   );
 
   const navigation = [
-    { id: "overview", label: "ພາບລວມ", icon: LayoutDashboard },
-    { id: "applications", label: "ຄຳຂໍ Organizer", icon: ShieldCheck },
+    { id: "pending", label: "ລໍຖ້າການອະນຸມັດ", icon: Check },
     { id: "users", label: "ຈັດການຜູ້ໃຊ້", icon: Users },
     { id: "organizers", label: "ຈັດການຜູ້ຈັດງານ", icon: Users },
-    { id: "events", label: "ຈັດການກິດຈະກຳ", icon: CalendarDays },
+    { id: "events", label: "Event ທົ່ວໄປ (Event Type)", icon: CalendarDays },
     {
       id: "event-booking",
       label: "ກິດຈະກຳຈອງ (Booking Type)",
       icon: CalendarDays,
     },
-    { id: "past", label: "Event ສຳເລັດແລ້ວ", icon: Check },
+    { id: "past", label: "event ທີ່ສຳເລັດແລ້ວ", icon: Check },
     { id: "payments", label: "ການຊຳລະເງິນ", icon: Banknote },
     { id: "refunds", label: "ການຄືນເງິນ", icon: RotateCcw },
     { id: "activity", label: "Activity Log", icon: Activity },
@@ -457,7 +455,8 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
   ];
 
   function selectTab(id: string) {
-    if (["events", "event-booking", "past"].includes(id))
+    if (id === "pending") setEventStatus("pending_review");
+    else if (["events", "event-booking", "past"].includes(id))
       setEventStatus("all");
     if (id === "organizers") setUserRole("organizer");
     else if (id === "users") setUserRole("all");
@@ -520,13 +519,18 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
     <main className="min-h-screen bg-[#f7f8fa] lg:flex">
       <aside className="sticky top-0 hidden h-screen w-[300px] shrink-0 flex-col border-r border-slate-100 bg-white shadow-sm lg:flex">
         <div className="border-b border-slate-50 px-4 py-5">
-          <Link to="/" className="flex justify-center">
+          <button
+            type="button"
+            aria-label="Open PskAdmin overview"
+            onClick={() => setActiveTab("overview")}
+            className="flex w-full justify-center"
+          >
             <img
               src="/pasopkan_logo.png"
               alt="Pasopkan"
               className="h-24 w-auto max-w-full object-contain"
             />
-          </Link>
+          </button>
           <p className="mt-2 text-xs font-bold tracking-wide text-slate-500">
             ລະບົບຈັດການຂໍ້ມູນ · PSKADMIN
           </p>
@@ -573,7 +577,8 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
           <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-black text-slate-950">
-                {navigation.find((item) => item.id === activeTab)?.label}
+                {navigation.find((item) => item.id === activeTab)?.label ??
+                  "ພາບລວມ"}
               </h1>
               <span className="rounded-full bg-slate-50 px-2.5 py-1 text-[13px] font-bold uppercase text-slate-500">
                 {new Intl.DateTimeFormat("en-US", {
@@ -782,7 +787,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                 </section>
               )}
 
-              {["events", "event-booking", "past"].includes(activeTab) && (
+              {["events", "pending", "event-booking", "past"].includes(activeTab) && (
                 <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                   <SectionHeading
                     title="Event moderation · ກວດສອບ Event"
