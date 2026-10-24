@@ -665,18 +665,90 @@ router.delete(
 );
 
 router.get("/admin/audit-logs", requireAuth, requireAdmin, async (_req, res) => {
-  const logs = await db.auditLog.findMany({
-    take: 50,
+  const rawLogs = await db.auditLog.findMany({
+    take: 100,
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     select: {
       id: true,
       action: true,
       entityType: true,
       entityId: true,
+      metadata: true,
       createdAt: true,
-      actor: { select: { publicId: true, firstName: true, lastName: true } },
+      actor: { select: { publicId: true, email: true, firstName: true, lastName: true } },
     },
   });
+
+  const idsByType = (type: string) => [
+    ...new Set(
+      rawLogs
+        .filter((log) => log.entityType === type && /^[0-9a-f-]{36}$/i.test(log.entityId))
+        .map((log) => log.entityId),
+    ),
+  ];
+
+  const [users, events, organizers, applications, orders, refunds] = await Promise.all([
+    db.user.findMany({
+      where: { id: { in: idsByType("User") } },
+      select: { id: true, firstName: true, lastName: true, email: true },
+    }),
+    db.event.findMany({
+      where: { id: { in: idsByType("Event") } },
+      select: { id: true, title: true },
+    }),
+    db.organizer.findMany({
+      where: { id: { in: idsByType("Organizer") } },
+      select: { id: true, name: true },
+    }),
+    db.organizerApplication.findMany({
+      where: { id: { in: idsByType("OrganizerApplication") } },
+      select: { id: true, name: true },
+    }),
+    db.order.findMany({
+      where: { id: { in: idsByType("Order") } },
+      select: { id: true, orderNumber: true, eventTitle: true },
+    }),
+    db.refund.findMany({
+      where: { id: { in: idsByType("Refund") } },
+      select: { id: true, amountKip: true, payment: { select: { order: { select: { orderNumber: true, eventTitle: true } } } } },
+    }),
+  ]);
+
+  const userMap = new Map(
+    users.map((u) => [
+      u.id,
+      [u.firstName, u.lastName].filter(Boolean).join(" ").trim() || u.email,
+    ]),
+  );
+  const eventMap = new Map(events.map((e) => [e.id, e.title]));
+  const organizerMap = new Map(organizers.map((o) => [o.id, o.name]));
+  const appMap = new Map(applications.map((a) => [a.id, a.name]));
+  const orderMap = new Map(orders.map((o) => [o.id, `${o.orderNumber} (${o.eventTitle})`]));
+  const refundMap = new Map(
+    refunds.map((r) => [
+      r.id,
+      `${r.payment.order.eventTitle} · ${r.amountKip.toLocaleString("en-US")} LAK`,
+    ]),
+  );
+
+  const logs = rawLogs.map((log) => {
+    const targetName =
+      log.entityType === "User"
+        ? userMap.get(log.entityId)
+        : log.entityType === "Event"
+          ? eventMap.get(log.entityId)
+          : log.entityType === "Organizer"
+            ? organizerMap.get(log.entityId)
+            : log.entityType === "OrganizerApplication"
+              ? appMap.get(log.entityId)
+              : log.entityType === "Order"
+                ? orderMap.get(log.entityId)
+                : log.entityType === "Refund"
+                  ? refundMap.get(log.entityId)
+                  : null;
+    return { ...log, targetName: targetName ?? null };
+  });
+
   res.setHeader("Cache-Control", "private, no-store");
   res.json({ logs });
 });

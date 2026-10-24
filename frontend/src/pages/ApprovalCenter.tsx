@@ -40,6 +40,9 @@ import AdminLiveOverview, {
 } from "../components/AdminLiveOverview";
 import AdminPayouts from "../components/AdminPayouts";
 import AdminRefunds, { type AdminRefundItem } from "../components/AdminRefunds";
+import AdminActivityLog, {
+  type AdminAuditLogItem,
+} from "../components/AdminActivityLog";
 
 type Application = {
   id: string;
@@ -155,18 +158,7 @@ type OrganizerDetail = Omit<AdminOrganizer, "_count"> & {
     createdAt: string;
   }>;
 };
-type AuditLog = {
-  id: string;
-  action: string;
-  entityType: string;
-  entityId: string;
-  createdAt: string;
-  actor: {
-    publicId: string | null;
-    firstName: string | null;
-    lastName: string | null;
-  } | null;
-};
+type AuditLog = AdminAuditLogItem;
 type Overview = {
   users: number;
   organizers: number;
@@ -1682,43 +1674,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
               )}
 
               {activeTab === "activity" && (
-                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-                  <SectionHeading
-                    title="Audit trail · ປະຫວັດການດຳເນີນການ"
-                    count={auditLogs.length}
-                  />
-                  {auditLogs.length === 0 ? (
-                    <EmptyState>ຍັງບໍ່ມີ audit records.</EmptyState>
-                  ) : (
-                    <div className="mt-4 divide-y divide-slate-100">
-                      {auditLogs.map((log) => (
-                        <article
-                          key={log.id}
-                          className="flex flex-wrap items-center justify-between gap-3 py-3"
-                        >
-                          <div className="flex items-center gap-3">
-                            <Activity className="h-4 w-4 text-slate-400" />
-                            <div>
-                              <p className="font-semibold text-slate-800">
-                                {log.action.replaceAll(".", " · ")}
-                              </p>
-                              <p className="text-sm text-slate-500">
-                                {log.entityType} · {log.entityId} ·{" "}
-                                {displayName(
-                                  log.actor?.firstName,
-                                  log.actor?.lastName,
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                          <time className="text-sm text-slate-500">
-                            {dateTime(log.createdAt, locale)}
-                          </time>
-                        </article>
-                      ))}
-                    </div>
-                  )}
-                </section>
+                <AdminActivityLog token={token} initialLogs={auditLogs} />
               )}
             </>
           )}
