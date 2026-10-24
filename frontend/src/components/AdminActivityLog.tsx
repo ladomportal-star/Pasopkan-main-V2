@@ -157,6 +157,11 @@ function formatActionAndDetails(log: AdminAuditLogItem): {
         actionLabel: "Order expired",
         details: target,
       };
+    case "notification.broadcast":
+      return {
+        actionLabel: "Notification sent",
+        details: target,
+      };
     default: {
       const words = log.action
         .replace(/[._]/g, " ")

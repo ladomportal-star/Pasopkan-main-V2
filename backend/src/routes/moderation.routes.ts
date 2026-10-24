@@ -1,6 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
 import { db } from "../config/database.ts";
+import { uploadImage, resolveImage } from "../services/media.service.ts";
 import {
   requireAuth,
   requireRegisteredUser,
@@ -710,15 +712,16 @@ router.get("/admin/audit-logs", requireAuth, requireAdmin, async (_req, res) => 
     }),
     db.refund.findMany({
       where: { id: { in: idsByType("Refund") } },
-      select: { id: true, amountKip: true, payment: { select: { order: { select: { orderNumber: true, eventTitle: true } } } } },
+      select: {
+        id: true,
+        amountKip: true,
+        payment: { select: { order: { select: { orderNumber: true, eventTitle: true } } } },
+      },
     }),
   ]);
 
   const userMap = new Map(
-    users.map((u) => [
-      u.id,
-      [u.firstName, u.lastName].filter(Boolean).join(" ").trim() || u.email,
-    ]),
+    users.map((u) => [u.id, [u.firstName, u.lastName].filter(Boolean).join(" ").trim() || u.email]),
   );
   const eventMap = new Map(events.map((e) => [e.id, e.title]));
   const organizerMap = new Map(organizers.map((o) => [o.id, o.name]));
@@ -732,6 +735,10 @@ router.get("/admin/audit-logs", requireAuth, requireAdmin, async (_req, res) => 
   );
 
   const logs = rawLogs.map((log) => {
+    const meta =
+      log.metadata && typeof log.metadata === "object" && !Array.isArray(log.metadata)
+        ? (log.metadata as Record<string, unknown>)
+        : {};
     const targetName =
       log.entityType === "User"
         ? userMap.get(log.entityId)
@@ -745,7 +752,9 @@ router.get("/admin/audit-logs", requireAuth, requireAdmin, async (_req, res) => 
                 ? orderMap.get(log.entityId)
                 : log.entityType === "Refund"
                   ? refundMap.get(log.entityId)
-                  : null;
+                  : log.entityType === "NotificationBroadcast" && typeof meta.title === "string"
+                    ? meta.title
+                    : null;
     return { ...log, targetName: targetName ?? null };
   });
 
@@ -1020,6 +1029,140 @@ router.post(
   async (req, res) => {
     res.json({
       refund: await rejectRefund(req.user!.uid, req.params.id),
+    });
+  },
+);
+
+router.get("/admin/notifications", requireAuth, requireAdmin, async (_req, res) => {
+  const logs = await db.auditLog.findMany({
+    where: { action: "notification.broadcast" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 50,
+  });
+
+  const broadcasts = await Promise.all(
+    logs.map(async (log) => {
+      const meta =
+        log.metadata && typeof log.metadata === "object" && !Array.isArray(log.metadata)
+          ? (log.metadata as Record<string, unknown>)
+          : {};
+      const broadcastId = typeof meta.broadcastId === "string" ? meta.broadcastId : log.entityId;
+      const readCount = await db.notification.count({
+        where: {
+          readAt: { not: null },
+          data: { path: ["broadcastId"], equals: broadcastId },
+        },
+      });
+      return {
+        id: broadcastId,
+        title: typeof meta.title === "string" ? meta.title : "Notification",
+        message: typeof meta.message === "string" ? meta.message : "",
+        category: meta.category === "urgent" ? "urgent" : "new_event",
+        audience: meta.audience === "organizers" ? "organizers" : "all",
+        imageUrl: typeof meta.imageUrl === "string" ? meta.imageUrl : null,
+        scheduledAt: typeof meta.scheduledAt === "string" ? meta.scheduledAt : null,
+        recipientCount: typeof meta.recipientCount === "number" ? meta.recipientCount : 0,
+        readCount,
+        createdAt: log.createdAt.toISOString(),
+      };
+    }),
+  );
+
+  res.setHeader("Cache-Control", "private, no-store");
+  res.json({ broadcasts });
+});
+
+router.post(
+  "/admin/notifications/broadcast",
+  requireAuth,
+  requireAdmin,
+  validate({
+    body: z.object({
+      title: z.string().trim().min(1).max(200),
+      message: z.string().trim().min(1).max(2000),
+      category: z.enum(["new_event", "urgent"]).default("new_event"),
+      audience: z.enum(["all", "organizers"]).default("all"),
+      imageDataUrl: z.string().max(7 * 1024 * 1024).nullable().optional(),
+      scheduledAt: z.string().trim().max(64).nullable().optional(),
+    }),
+  }),
+  async (req, res) => {
+    const admin = await db.user.findUnique({ where: { authId: req.user!.uid } });
+    if (!admin || admin.role !== "admin") throw new HttpError(403, "Admins only");
+
+    let imageUrl: string | null = null;
+    if (req.body.imageDataUrl) {
+      const ref = await uploadImage(req.user!.uid, req.body.imageDataUrl, "public");
+      imageUrl = await resolveImage(req.user!.uid, ref);
+    }
+
+    const recipients = await db.user.findMany({
+      where: {
+        deletedAt: null,
+        isSuspended: false,
+        ...(req.body.audience === "organizers" ? { role: "organizer" } : {}),
+      },
+      select: { id: true },
+    });
+
+    const broadcastId = randomUUID();
+    const notificationType = req.body.category === "urgent" ? "system" : "upcomingEvent";
+    const payloadData = {
+      broadcastId,
+      category: req.body.category,
+      audience: req.body.audience,
+      ...(imageUrl ? { imageUrl } : {}),
+      ...(req.body.scheduledAt ? { scheduledAt: req.body.scheduledAt } : {}),
+    };
+
+    await db.$transaction(async (tx) => {
+      if (recipients.length > 0) {
+        await tx.notification.createMany({
+          data: recipients.map((recipient) => ({
+            userId: recipient.id,
+            type: notificationType,
+            title: req.body.title,
+            titleLo: req.body.title,
+            message: req.body.message,
+            messageLo: req.body.message,
+            data: payloadData,
+          })),
+        });
+      }
+      await tx.auditLog.create({
+        data: {
+          actorId: admin.id,
+          action: "notification.broadcast",
+          entityType: "NotificationBroadcast",
+          entityId: broadcastId,
+          metadata: {
+            broadcastId,
+            title: req.body.title,
+            message: req.body.message,
+            category: req.body.category,
+            audience: req.body.audience,
+            imageUrl,
+            scheduledAt: req.body.scheduledAt ?? null,
+            recipientCount: recipients.length,
+          },
+        },
+      });
+    });
+
+    res.setHeader("Cache-Control", "private, no-store");
+    res.status(201).json({
+      broadcast: {
+        id: broadcastId,
+        title: req.body.title,
+        message: req.body.message,
+        category: req.body.category,
+        audience: req.body.audience,
+        imageUrl,
+        scheduledAt: req.body.scheduledAt ?? null,
+        recipientCount: recipients.length,
+        readCount: 0,
+        createdAt: new Date().toISOString(),
+      },
     });
   },
 );

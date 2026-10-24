@@ -43,6 +43,7 @@ import AdminRefunds, { type AdminRefundItem } from "../components/AdminRefunds";
 import AdminActivityLog, {
   type AdminAuditLogItem,
 } from "../components/AdminActivityLog";
+import AdminNotifications from "../components/AdminNotifications";
 
 type Application = {
   id: string;
@@ -753,9 +754,9 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
     { id: "payments", label: "ການເບີກຈ່າຍເງິນ", icon: Banknote },
     { id: "refunds", label: "ການຄືນເງິນ", icon: RotateCcw },
     { id: "activity", label: "Activity Log", icon: Activity },
+    { id: "notifications", label: "ການແຈ້ງເຕືອນ", icon: Bell },
   ];
   const unavailableNavigation = [
-    { label: "ການແຈ້ງເຕືອນ", icon: Bell },
     { label: "ຕັ້ງຄ່າລະບົບ", icon: Settings },
     { label: "ຈັດການບົດຄວາມ", icon: BookOpen },
     { label: "ປີ້ຂອງຂວັນ (Gift Tickets)", icon: Gift },
@@ -1675,6 +1676,10 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
 
               {activeTab === "activity" && (
                 <AdminActivityLog token={token} initialLogs={auditLogs} />
+              )}
+
+              {activeTab === "notifications" && (
+                <AdminNotifications token={token} />
               )}
             </>
           )}
