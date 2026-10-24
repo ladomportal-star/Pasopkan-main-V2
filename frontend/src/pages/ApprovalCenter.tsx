@@ -309,6 +309,8 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
   const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null);
   const [editDraft, setEditDraft] = useState<UserEditDraft | null>(null);
   const [eventStatus, setEventStatus] = useState("all");
+  const [eventMonth, setEventMonth] = useState("all");
+  const [eventYear, setEventYear] = useState("all");
   const [eventSearch, setEventSearch] = useState("");
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [rejectingEventId, setRejectingEventId] = useState<string | null>(null);
@@ -651,9 +653,30 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
     }
   }
 
+  const eventYearOptions = useMemo(() => {
+    const years = new Set<string>([String(new Date().getFullYear())]);
+    for (const event of events) {
+      const year = (event.startDate ?? event.createdAt ?? "").slice(0, 4);
+      if (/^\d{4}$/.test(year)) years.add(year);
+    }
+    return [...years].sort((a, b) => Number(b) - Number(a));
+  }, [events]);
+  /** Events narrowed by the month/year filter (applies to the event tabs only). */
+  const periodEvents = useMemo(
+    () =>
+      events.filter((event) => {
+        const date = event.startDate ?? event.createdAt ?? "";
+        return (
+          (eventYear === "all" || date.slice(0, 4) === eventYear) &&
+          (eventMonth === "all" || date.slice(5, 7) === eventMonth)
+        );
+      }),
+    [events, eventMonth, eventYear],
+  );
+
   const visibleEvents = useMemo(
     () =>
-      events.filter(
+      (["events", "event-booking", "past"].includes(activeTab) ? periodEvents : events).filter(
         (event) =>
           event.status !== "draft" &&
           (eventStatus === "all" || event.status === eventStatus) &&
@@ -670,10 +693,10 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
               )) &&
           (activeTab === "past" ? event.status === "completed" : true),
       ),
-    [activeTab, eventSearch, eventStatus, events],
+    [activeTab, eventSearch, eventStatus, events, periodEvents],
   );
   const bookingSummary = useMemo(() => {
-    const bookingEvents = events.filter(
+    const bookingEvents = periodEvents.filter(
       (event) => event.dateType === "booking" && event.status !== "draft",
     );
     return bookingEvents.reduce(
@@ -691,9 +714,9 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
       },
       { total: bookingEvents.length, pending: 0, tickets: 0, valueKip: 0 },
     );
-  }, [events]);
+  }, [periodEvents]);
   const pastSummary = useMemo(() => {
-    const completedEvents = events.filter((event) => event.status === "completed");
+    const completedEvents = periodEvents.filter((event) => event.status === "completed");
     const tickets = completedEvents.reduce(
       (total, event) =>
         total + event.tiers.reduce((sum, tier) => sum + (tier.quantitySold ?? 0), 0),
@@ -711,7 +734,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
       salesKip,
       payoutKip: Math.round(salesKip * (1 - PLATFORM_FEE_RATE)),
     };
-  }, [events]);
+  }, [periodEvents]);
 
   function exportEvents() {
     const csvCell = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
@@ -762,8 +785,11 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
 
   function selectTab(id: string) {
     if (id === "pending") setEventStatus("pending_review");
-    else if (["events", "event-booking", "past"].includes(id))
+    else if (["events", "event-booking", "past"].includes(id)) {
       setEventStatus("all");
+      setEventMonth("all");
+      setEventYear("all");
+    }
     if (id === "organizers") setUserRole("organizer");
     else if (id === "users") setUserRole("all");
     setActiveTab(id);
@@ -895,17 +921,6 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => void refresh(true)}
-                disabled={refreshing || loadingPage}
-                className="inline-flex items-center gap-1 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-600 disabled:opacity-50"
-              >
-                <RefreshCw
-                  className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`}
-                />{" "}
-                ທົບທວນ
-              </button>
               {activeTab === "overview" && (
                 <button
                   type="button"
@@ -916,19 +931,6 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                   ↧ ສົ່ງອອກ CSV
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-bold text-white"
-              >
-                ພິມ
-              </button>
-              <Link
-                to="/account"
-                className="rounded-xl border border-slate-100 px-3 py-2 text-sm font-bold text-slate-600"
-              >
-                ບັນຊີ
-              </Link>
             </div>
           </header>
           <nav
@@ -1347,16 +1349,33 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <select
-                        aria-label="Filter events by status"
-                        value={eventStatus}
-                        onChange={(event) => setEventStatus(event.target.value)}
+                        aria-label="Filter events by month"
+                        value={eventMonth}
+                        onChange={(event) => setEventMonth(event.target.value)}
                         className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-600"
                       >
-                        <option value="all">ທຸກສະຖານະ</option>
-                        <option value="pending_review">ລໍຖ້າກວດ</option>
-                        <option value="published">ເຜີຍແຜ່</option>
-                        <option value="rejected">ປະຕິເສດ</option>
-                        <option value="cancelled">ຍົກເລີກ</option>
+                        <option value="all">ທຸກເດືອນ</option>
+                        {Array.from({ length: 12 }, (_, index) => {
+                          const month = String(index + 1).padStart(2, "0");
+                          return (
+                            <option key={month} value={month}>
+                              {new Intl.DateTimeFormat("en-US", { month: "long" }).format(new Date(2000, index, 1))}
+                            </option>
+                          );
+                        })}
+                      </select>
+                      <select
+                        aria-label="Filter events by year"
+                        value={eventYear}
+                        onChange={(event) => setEventYear(event.target.value)}
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-600"
+                      >
+                        <option value="all">ທຸກປີ</option>
+                        {eventYearOptions.map((year) => (
+                          <option key={year} value={year}>
+                            {year}
+                          </option>
+                        ))}
                       </select>
                       <button type="button" onClick={() => void refresh(true)} disabled={refreshing} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-bold text-slate-600 disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /> ໂຫຼດໃໝ່</button>
                       <button type="button" onClick={exportEvents} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2.5 text-sm font-bold text-white"><Download className="h-4 w-4" /> ສົ່ງອອກ CSV</button>
