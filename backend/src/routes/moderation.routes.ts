@@ -7,6 +7,7 @@ import {
   requireAdmin,
 } from "../middlewares/auth.middleware.ts";
 import { validate } from "../middlewares/validate.middleware.ts";
+import { HttpError } from "../middlewares/error.middleware.ts";
 import {
   applyAsOrganizer,
   activateOrganizer,
@@ -21,7 +22,9 @@ const adminListQuery = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(25),
   search: z.string().trim().max(100).optional(),
   role: z.enum(["user", "organizer", "admin"]).optional(),
+  status: z.enum(["active", "suspended"]).optional(),
 });
+const adminExportQuery = adminListQuery.omit({ cursor: true, limit: true });
 
 router.get("/admin/overview", requireAuth, requireAdmin, async (_req, res) => {
   const [users, organizers, eventGroups, pendingApplications, orders, paidPayments, refundGroups] =
@@ -137,10 +140,13 @@ router.get(
   requireAdmin,
   validate({ query: adminListQuery }),
   async (req, res) => {
-    const { cursor, limit, search, role } = req.query as unknown as z.infer<typeof adminListQuery>;
+    const { cursor, limit, search, role, status } = req.query as unknown as z.infer<
+      typeof adminListQuery
+    >;
     const term = search?.trim();
     const where = {
       ...(role ? { role } : {}),
+      ...(status ? { isSuspended: status === "suspended" } : {}),
       ...(term
         ? {
             OR: [
@@ -148,6 +154,7 @@ router.get(
               { firstName: { contains: term, mode: "insensitive" as const } },
               { lastName: { contains: term, mode: "insensitive" as const } },
               { publicId: { contains: term, mode: "insensitive" as const } },
+              { phone: { contains: term, mode: "insensitive" as const } },
             ],
           }
         : {}),
@@ -160,7 +167,10 @@ router.get(
         email: true,
         firstName: true,
         lastName: true,
+        phone: true,
         role: true,
+        isSuspended: true,
+        suspendedAt: true,
         createdAt: true,
         organizer: { select: { name: true } },
         _count: { select: { orders: true } },
@@ -171,8 +181,154 @@ router.get(
     });
     const hasMore = rows.length > limit;
     const users = rows.slice(0, limit);
+    const [total, suspended] = await Promise.all([
+      db.user.count(),
+      db.user.count({ where: { isSuspended: true } }),
+    ]);
     res.setHeader("Cache-Control", "private, no-store");
-    res.json({ users, nextCursor: hasMore ? (users.at(-1)?.id ?? null) : null });
+    res.json({
+      users,
+      nextCursor: hasMore ? (users.at(-1)?.id ?? null) : null,
+      summary: { total, active: total - suspended, suspended },
+    });
+  },
+);
+
+router.get(
+  "/admin/users/export",
+  requireAuth,
+  requireAdmin,
+  validate({ query: adminExportQuery }),
+  async (req, res) => {
+    const { search, role, status } = req.query as unknown as z.infer<typeof adminExportQuery>;
+    const term = search?.trim();
+    const users = await db.user.findMany({
+      where: {
+        ...(role ? { role } : {}),
+        ...(status ? { isSuspended: status === "suspended" } : {}),
+        ...(term
+          ? {
+              OR: [
+                { email: { contains: term, mode: "insensitive" as const } },
+                { firstName: { contains: term, mode: "insensitive" as const } },
+                { lastName: { contains: term, mode: "insensitive" as const } },
+                { publicId: { contains: term, mode: "insensitive" as const } },
+                { phone: { contains: term, mode: "insensitive" as const } },
+              ],
+            }
+          : {}),
+      },
+      select: {
+        publicId: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        role: true,
+        isSuspended: true,
+        createdAt: true,
+        _count: { select: { orders: true } },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 5000,
+    });
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json({ users });
+  },
+);
+
+router.patch(
+  "/admin/users/:id",
+  requireAuth,
+  requireAdmin,
+  validate({
+    params: id,
+    body: z
+      .object({
+        role: z.enum(["user", "organizer", "admin"]).optional(),
+        suspended: z.boolean().optional(),
+      })
+      .refine((value) => value.role !== undefined || value.suspended !== undefined, {
+        message: "Provide a role or suspended state",
+      }),
+  }),
+  async (req, res) => {
+    const result = await db.$transaction(async (tx) => {
+      const [actor, target] = await Promise.all([
+        tx.user.findUnique({ where: { authId: req.user!.uid } }),
+        tx.user.findUnique({
+          where: { id: req.params.id },
+          include: { organizer: true },
+        }),
+      ]);
+      if (!actor || actor.role !== "admin") throw new HttpError(403, "Admins only");
+      if (!target) return null;
+
+      const nextRole = req.body.role ?? target.role;
+      const nextSuspended = req.body.suspended ?? target.isSuspended;
+      if (actor.id === target.id && (nextRole !== "admin" || nextSuspended)) {
+        throw new HttpError(400, "You cannot remove or suspend your own admin access");
+      }
+      if (
+        target.role === "admin" &&
+        (nextRole !== "admin" || nextSuspended) &&
+        (await tx.user.count({ where: { role: "admin", isSuspended: false } })) <= 1
+      ) {
+        throw new HttpError(409, "At least one active PskAdmin account is required");
+      }
+
+      if (nextRole === "organizer" && !target.organizer) {
+        await tx.organizer.create({
+          data: {
+            userId: target.id,
+            name:
+              [target.firstName, target.lastName].filter(Boolean).join(" ") ||
+              target.email ||
+              target.publicId ||
+              target.id,
+            contactEmail: target.email || null,
+            contactPhone: target.phone || null,
+          },
+        });
+      }
+      const updated = await tx.user.update({
+        where: { id: target.id },
+        data: {
+          role: nextRole,
+          isSuspended: nextSuspended,
+          suspendedAt: nextSuspended ? (target.suspendedAt ?? new Date()) : null,
+        },
+        select: {
+          id: true,
+          publicId: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          role: true,
+          isSuspended: true,
+          suspendedAt: true,
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: actor.id,
+          action: "user.access_updated",
+          entityType: "User",
+          entityId: target.id,
+          metadata: {
+            previousRole: target.role,
+            role: updated.role,
+            previousSuspended: target.isSuspended,
+            suspended: updated.isSuspended,
+          },
+        },
+      });
+      return updated;
+    });
+    if (!result) return res.status(404).json({ error: "User not found" });
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json({ user: result });
   },
 );
 

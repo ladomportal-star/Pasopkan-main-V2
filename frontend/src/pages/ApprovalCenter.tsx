@@ -5,9 +5,12 @@ import {
   AlertTriangle,
   Banknote,
   Bell,
+  Ban,
   BookOpen,
   CalendarDays,
   Check,
+  CircleCheck,
+  Download,
   Eye,
   ExternalLink,
   Gift,
@@ -20,6 +23,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  UserPlus,
   Users,
   X,
 } from "lucide-react";
@@ -108,11 +112,15 @@ type AdminUser = {
   email: string;
   firstName: string | null;
   lastName: string | null;
+  phone: string | null;
   role: "user" | "organizer" | "admin";
+  isSuspended: boolean;
+  suspendedAt: string | null;
   createdAt: string;
   organizer: { name: string } | null;
   _count: { orders: number };
 };
+type UserSummary = { total: number; active: number; suspended: number };
 type AuditLog = {
   id: string;
   action: string;
@@ -240,8 +248,14 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
     useState<PaymentReadiness | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [usersCursor, setUsersCursor] = useState<string | null>(null);
+  const [userSummary, setUserSummary] = useState<UserSummary>({
+    total: 0,
+    active: 0,
+    suspended: 0,
+  });
   const [userSearch, setUserSearch] = useState("");
   const [userRole, setUserRole] = useState("all");
+  const [userStatus, setUserStatus] = useState("all");
   const [eventStatus, setEventStatus] = useState("all");
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [rejectingEventId, setRejectingEventId] = useState<string | null>(null);
@@ -338,16 +352,25 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
       if (cursor) params.set("cursor", cursor);
       if (userSearch.trim()) params.set("search", userSearch.trim());
       if (userRole !== "all") params.set("role", userRole);
+      if (userStatus !== "all") params.set("status", userStatus);
       try {
         const result = await api.get<{
           users: AdminUser[];
           nextCursor: string | null;
+          summary?: UserSummary;
         }>(`/admin/users?${params.toString()}`, authOptions);
         if (!result.data) throw new Error("Empty user list response");
         setUsers((current) =>
           append ? [...current, ...result.data!.users] : result.data!.users,
         );
         setUsersCursor(result.data.nextCursor ?? null);
+        setUserSummary(
+          result.data.summary ?? {
+            total: result.data.users.length,
+            active: result.data.users.length,
+            suspended: 0,
+          },
+        );
       } catch (err) {
         setUsersError(
           err instanceof Error ? err.message : "Could not load users",
@@ -356,7 +379,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
         setUsersLoading(false);
       }
     },
-    [authOptions, token, userRole, userSearch],
+    [authOptions, token, userRole, userSearch, userStatus],
   );
 
   useEffect(() => {
@@ -433,6 +456,74 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
           ? "ສົ່ງຄຳປະຕິເສດແລ້ວ"
           : "ສົ່ງ Event ເຂົ້າກວດແລ້ວ",
     );
+  }
+
+  async function updateUserAccess(
+    item: AdminUser,
+    patch: { role?: AdminUser["role"]; suspended?: boolean },
+  ) {
+    await runAction(
+      `user:${item.id}`,
+      () => api.patch(`/admin/users/${item.id}`, patch, authOptions),
+      patch.role
+        ? "ປັບສິດຜູ້ໃຊ້ສຳເລັດ"
+        : patch.suspended
+          ? "ລະງັບບັນຊີສຳເລັດ"
+          : "ຄືນສະຖານະບັນຊີສຳເລັດ",
+    );
+  }
+
+  async function exportUsers() {
+    setBusyKey("users:export");
+    setError("");
+    try {
+      const params = new URLSearchParams();
+      if (userSearch.trim()) params.set("search", userSearch.trim());
+      if (userRole !== "all") params.set("role", userRole);
+      if (userStatus !== "all") params.set("status", userStatus);
+      const result = await api.get<{
+        users: Array<{
+          publicId: string | null;
+          firstName: string | null;
+          lastName: string | null;
+          email: string;
+          phone: string | null;
+          role: string;
+          isSuspended: boolean;
+          createdAt: string;
+          _count: { orders: number };
+        }>;
+      }>(`/admin/users/export?${params.toString()}`, authOptions);
+      if (!result.data) throw new Error("Could not export users");
+      const csvCell = (value: unknown) =>
+        `"${String(value ?? "").replaceAll('"', '""')}"`;
+      const rows = [
+        ["public_id", "name", "email", "phone", "role", "status", "orders", "joined_at"],
+        ...result.data.users.map((item) => [
+          item.publicId,
+          displayName(item.firstName, item.lastName),
+          item.email,
+          item.phone,
+          item.role,
+          item.isSuspended ? "suspended" : "active",
+          item._count.orders,
+          item.createdAt,
+        ]),
+      ];
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(
+        new Blob([rows.map((row) => row.map(csvCell).join(",")).join("\r\n")], {
+          type: "text/csv;charset=utf-8",
+        }),
+      );
+      link.download = `pasopkan-users-${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not export users");
+    } finally {
+      setBusyKey("");
+    }
   }
 
   async function loadMoreEvents() {
@@ -1238,49 +1329,119 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
               )}
 
               {(activeTab === "users" || activeTab === "organizers") && (
-                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-                  <SectionHeading
-                    title="User directory · ລາຍຊື່ຜູ້ໃຊ້"
-                    count={users.length}
-                    action={
-                      <form
-                        className="flex flex-wrap gap-2"
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          void loadUsers(null, false);
-                        }}
+                <section className="space-y-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-xl font-black text-slate-950">
+                        {activeTab === "organizers" ? "ຈັດການຜູ້ຈັດງານ" : "ຈັດການຜູ້ໃຊ້"}
+                      </h2>
+                      <p className="mt-1 text-sm text-slate-500">
+                        ຂໍ້ມູນສົດຈາກ API ແລະຖານຂໍ້ມູນ — ບໍ່ມີລາຍການຕົວຢ່າງ
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void loadUsers(null, false)}
+                        disabled={usersLoading}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 disabled:opacity-50"
                       >
-                        <div className="relative">
-                          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                          <input
-                            value={userSearch}
-                            onChange={(event) =>
-                              setUserSearch(event.target.value)
-                            }
-                            placeholder="ຄົ້ນຫາຊື່, email, ID"
-                            className="w-56 rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm"
-                          />
-                        </div>
-                        <select
-                          value={userRole}
-                          onChange={(event) => setUserRole(event.target.value)}
-                          disabled={activeTab === "organizers"}
-                          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        >
-                          <option value="all">All roles</option>
-                          <option value="user">Users</option>
-                          <option value="organizer">Organizers</option>
-                          <option value="admin">PskAdmins</option>
-                        </select>
+                        <RefreshCw className={`h-4 w-4 ${usersLoading ? "animate-spin" : ""}`} />
+                        ໂຫຼດໃໝ່
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void exportUsers()}
+                        disabled={busyKey === "users:export"}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
+                      >
+                        <Download className="h-4 w-4" /> ສົ່ງອອກ CSV
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="flex items-center gap-4 rounded-2xl border border-orange-200 bg-orange-50/40 p-5">
+                      <span className="grid h-12 w-12 place-items-center rounded-xl bg-white text-orange-600 shadow-sm">
+                        <Users className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <p className="text-2xl font-black text-slate-950">{userSummary.total}</p>
+                        <p className="text-sm font-bold text-slate-600">ຜູ້ໃຊ້ທັງໝົດ</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5">
+                      <span className="grid h-12 w-12 place-items-center rounded-xl bg-white text-emerald-600 shadow-sm">
+                        <CircleCheck className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <p className="text-2xl font-black text-slate-950">{userSummary.active}</p>
+                        <p className="text-sm font-bold text-slate-600">ບັນຊີທີ່ໃຊ້ງານ</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 rounded-2xl border border-rose-200 bg-rose-50/50 p-5">
+                      <span className="grid h-12 w-12 place-items-center rounded-xl bg-white text-rose-600 shadow-sm">
+                        <Ban className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <p className="text-2xl font-black text-slate-950">{userSummary.suspended}</p>
+                        <p className="text-sm font-bold text-slate-600">ບັນຊີທີ່ຖືກລະງັບ</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
+                    <form
+                      className="relative min-w-64 flex-1"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        void loadUsers(null, false);
+                      }}
+                    >
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                      <input
+                        value={userSearch}
+                        onChange={(event) => setUserSearch(event.target.value)}
+                        placeholder="ຄົ້ນຫາຊື່, email, ເບີໂທ ຫຼື ID"
+                        className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-orange-300"
+                      />
+                    </form>
+                    {activeTab === "users" && (
+                      <div className="flex rounded-xl border border-slate-200 bg-white p-1">
+                        {[
+                          ["all", "ທຸກ role"],
+                          ["user", "User"],
+                          ["organizer", "Organizer"],
+                          ["admin", "PskAdmin"],
+                        ].map(([value, label]) => (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => setUserRole(value)}
+                            className={`rounded-lg px-3 py-1.5 text-xs font-bold ${userRole === value ? "bg-slate-900 text-white" : "text-slate-500"}`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex rounded-xl border border-slate-200 bg-white p-1">
+                      {[
+                        ["all", "ທຸກສະຖານະ"],
+                        ["active", "ໃຊ້ງານ"],
+                        ["suspended", "ລະງັບ"],
+                      ].map(([value, label]) => (
                         <button
-                          type="submit"
-                          className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold"
+                          key={value}
+                          type="button"
+                          onClick={() => setUserStatus(value)}
+                          className={`rounded-lg px-3 py-1.5 text-xs font-bold ${userStatus === value ? "bg-adv-orange text-white" : "text-slate-500"}`}
                         >
-                          Search
+                          {label}
                         </button>
-                      </form>
-                    }
-                  />
+                      ))}
+                    </div>
+                  </div>
                   {usersError && (
                     <p
                       role="alert"
@@ -1289,49 +1450,83 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                       {usersError}
                     </p>
                   )}
-                  <div className="mt-4 overflow-x-auto">
-                    <table className="w-full min-w-[680px] text-left text-sm">
-                      <thead className="bg-slate-50 text-sm uppercase tracking-wide text-slate-500">
+                  <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <table className="w-full min-w-[980px] text-left text-sm">
+                      <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
                         <tr>
-                          <th className="px-3 py-3">Account</th>
-                          <th className="px-3 py-3">Role</th>
-                          <th className="px-3 py-3">Orders</th>
-                          <th className="px-3 py-3">Joined</th>
+                          <th className="px-5 py-4">ຜູ້ໃຊ້</th>
+                          <th className="px-4 py-4">Email</th>
+                          <th className="px-4 py-4">ເບີໂທ</th>
+                          <th className="px-4 py-4">Role</th>
+                          <th className="px-4 py-4">ສະຖານະ</th>
+                          <th className="px-5 py-4 text-right">ການຈັດການ</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {users.map((item) => (
-                          <tr key={item.id}>
-                            <td className="px-3 py-3">
-                              <p className="font-semibold text-slate-900">
-                                {displayName(item.firstName, item.lastName)}
-                              </p>
-                              <p className="text-sm text-slate-500">
-                                {item.email || "No email"} ·{" "}
-                                {item.publicId || "No public ID"}
-                              </p>
-                              {item.organizer && (
-                                <p className="text-sm text-slate-500">
-                                  {item.organizer.name}
-                                </p>
-                              )}
+                          <tr key={item.id} className="hover:bg-slate-50/50">
+                            <td className="px-5 py-3.5">
+                              <div className="flex items-center gap-3">
+                                <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full border border-orange-100 bg-orange-50 font-bold text-orange-600">
+                                  {(item.firstName?.[0] || item.email?.[0] || "U").toUpperCase()}
+                                </span>
+                                <div>
+                                  <p className="font-bold text-slate-900">
+                                    {displayName(item.firstName, item.lastName)}
+                                  </p>
+                                  <p className="text-xs text-slate-500">
+                                    {item.publicId || "—"} · {new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(item.createdAt))}
+                                  </p>
+                                </div>
+                              </div>
                             </td>
-                            <td className="px-3 py-3">
+                            <td className="px-4 py-3.5 text-slate-600">{item.email || "—"}</td>
+                            <td className="px-4 py-3.5 text-slate-600">{item.phone || "—"}</td>
+                            <td className="px-4 py-3.5">
                               <StatusBadge status={item.role} />
                             </td>
-                            <td className="px-3 py-3">{item._count.orders}</td>
-                            <td className="px-3 py-3 text-slate-600">
-                              {dateTime(item.createdAt, locale)}
+                            <td className="px-4 py-3.5">
+                              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-inset ${item.isSuspended ? "bg-rose-50 text-rose-700 ring-rose-200" : "bg-emerald-50 text-emerald-700 ring-emerald-200"}`}>
+                                <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                                {item.isSuspended ? "SUSPENDED" : "ACTIVE"}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <div className="flex justify-end gap-2">
+                                {item.role === "user" && (
+                                  <button
+                                    type="button"
+                                    disabled={!!busyKey}
+                                    onClick={() => void updateUserAccess(item, { role: "organizer" })}
+                                    className="inline-flex items-center gap-1 rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1.5 text-xs font-bold text-orange-700 disabled:opacity-50"
+                                  >
+                                    <UserPlus className="h-3.5 w-3.5" /> ເປັນ Organizer
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  disabled={!!busyKey}
+                                  title={item.isSuspended ? "Restore account" : "Suspend account"}
+                                  onClick={() => {
+                                    const action = item.isSuspended ? "restore" : "suspend";
+                                    if (window.confirm(`${action} ${item.email || item.publicId || "this account"}?`))
+                                      void updateUserAccess(item, { suspended: !item.isSuspended });
+                                  }}
+                                  className={`grid h-8 w-8 place-items-center rounded-lg border disabled:opacity-50 ${item.isSuspended ? "border-emerald-200 text-emerald-600" : "border-rose-200 text-rose-500"}`}
+                                >
+                                  {item.isSuspended ? <CircleCheck className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
                         {users.length === 0 && !usersLoading && (
                           <tr>
                             <td
-                              colSpan={4}
+                              colSpan={6}
                               className="px-3 py-8 text-center text-slate-500"
                             >
-                              No users found.
+                              ບໍ່ພົບຜູ້ໃຊ້ໃນຖານຂໍ້ມູນ.
                             </td>
                           </tr>
                         )}
@@ -1340,7 +1535,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                   </div>
                   {usersLoading && (
                     <p className="mt-3 text-sm text-slate-500">
-                      Loading users…
+                      ກຳລັງໂຫຼດຜູ້ໃຊ້ຈາກ API…
                     </p>
                   )}
                   {usersCursor && (
@@ -1350,7 +1545,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                       onClick={() => void loadUsers(usersCursor, true)}
                       className="mt-4 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold disabled:opacity-50"
                     >
-                      Load more users
+                      ໂຫຼດເພີ່ມ
                     </button>
                   )}
                 </section>

@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { env } from "../config/env.ts";
-import { getUserRole } from "../services/user.service.ts";
+import { getUserRole, isUserSuspended } from "../services/user.service.ts";
 import { logger } from "../utils/logger.ts";
 
 // Tokens are verified against Supabase's public JWKS — no shared secret,
@@ -63,6 +63,9 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   }
   const user = await authenticate(req, res, token);
   if (!user) return;
+  if (await isUserSuspended(user.uid)) {
+    return res.status(403).json({ error: "This account has been suspended" });
+  }
   req.user = user;
   next();
 }
@@ -75,6 +78,9 @@ export async function optionalAuth(req: Request, res: Response, next: NextFuncti
   if (!token) return next();
   const user = await authenticate(req, res, token);
   if (!user) return;
+  if (await isUserSuspended(user.uid)) {
+    return res.status(403).json({ error: "This account has been suspended" });
+  }
   req.user = user;
   next();
 }
