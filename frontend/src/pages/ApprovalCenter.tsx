@@ -28,6 +28,7 @@ import {
   ShieldCheck,
   Ticket,
   Trash2,
+  TrendingUp,
   UserPlus,
   Users,
   X,
@@ -690,6 +691,26 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
       },
       { total: bookingEvents.length, pending: 0, tickets: 0, valueKip: 0 },
     );
+  }, [events]);
+  const pastSummary = useMemo(() => {
+    const completedEvents = events.filter((event) => event.status === "completed");
+    const tickets = completedEvents.reduce(
+      (total, event) =>
+        total + event.tiers.reduce((sum, tier) => sum + (tier.quantitySold ?? 0), 0),
+      0,
+    );
+    const salesKip = completedEvents.reduce(
+      (total, event) =>
+        total +
+        event.tiers.reduce((sum, tier) => sum + tier.priceKip * (tier.quantitySold ?? 0), 0),
+      0,
+    );
+    return {
+      total: completedEvents.length,
+      tickets,
+      salesKip,
+      payoutKip: Math.round(salesKip * (1 - PLATFORM_FEE_RATE)),
+    };
   }, [events]);
 
   function exportEvents() {
@@ -1356,6 +1377,22 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                       ))}
                     </div>
                   )}
+                  {activeTab === "past" && (
+                    <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                      {[
+                        { value: pastSummary.total, label: "EVENT ທີ່ສຳເລັດແລ້ວ", detail: "ກິດຈະກຳທີ່ຈົບແລ້ວ", icon: CircleCheck, tone: "text-slate-500 bg-slate-50", valueTone: "text-slate-950" },
+                        { value: pastSummary.tickets, label: "ບັດທີ່ຂາຍແລ້ວທັງໝົດ", detail: "ຈຳນວນບັດທີ່ຂາຍທັງໝົດ", icon: Ticket, tone: "text-orange-600 bg-orange-50", valueTone: "text-orange-600" },
+                        { value: money(pastSummary.salesKip, locale), label: "ຍອດຂາຍລວມ", detail: "ລາຍຮັບກ່ອນຫັກຄ່າທຳນຽມ", icon: TrendingUp, tone: "text-blue-600 bg-blue-50", valueTone: "text-slate-950" },
+                      ].map((card) => (
+                        <div key={card.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                          <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold text-slate-500">{card.label}</p><p className={`mt-4 text-2xl font-black ${card.valueTone}`}>{card.value}</p><p className="mt-1 text-xs text-slate-400">{card.detail}</p></div><span className={`grid h-10 w-10 place-items-center rounded-xl ${card.tone}`}><card.icon className="h-5 w-5" /></span></div>
+                        </div>
+                      ))}
+                      <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 p-5 text-white shadow-sm">
+                        <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold text-emerald-100">ເງິນທີ່ຈະໂອນຄືນ (PAYOUT)</p><p className="mt-4 text-2xl font-black">{money(pastSummary.payoutKip, locale)}</p><p className="mt-1 text-xs font-bold text-emerald-100">ຫຼັງຫັກຄ່າທຳນຽມ {Math.round(PLATFORM_FEE_RATE * 100)}%</p></div><span className="grid h-10 w-10 place-items-center rounded-xl bg-white/15"><Banknote className="h-5 w-5" /></span></div>
+                      </div>
+                    </div>
+                  )}
                   {visibleEvents.length === 0 ? (
                     activeTab === "event-booking" ? (
                       <div className="mt-6 flex min-h-80 flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-slate-50/40 px-6 py-12 text-center">
@@ -1363,6 +1400,11 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                         <h3 className="mt-5 text-lg font-black text-slate-950">ຍັງບໍ່ມີກິດຈະກຳຈອງ</h3>
                         <p className="mt-2 max-w-lg text-sm text-slate-500">ສ້າງກິດຈະກຳແບບ Booking ເພື່ອກຳນົດມື້, ເວລາ ແລະຈຳນວນທີ່ຮັບຈອງ.</p>
                         <Link to="/create?new=1&type=booking" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-adv-orange px-5 py-3 text-sm font-black text-white shadow-lg shadow-orange-100"><span className="text-lg leading-none">+</span> ສ້າງກິດຈະກຳຈອງໃໝ່</Link>
+                      </div>
+                    ) : activeTab === "past" ? (
+                      <div className="mt-6 flex min-h-64 flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 px-6 py-12 text-center">
+                        <CalendarDays className="h-8 w-8 text-slate-300" />
+                        <p className="mt-4 text-sm font-semibold text-slate-500">ບໍ່ພົບ Event ທີ່ສຳເລັດແລ້ວ.</p>
                       </div>
                     ) : (
                       <EmptyState>ບໍ່ມີ Event ໃນສະຖານະນີ້.</EmptyState>
@@ -2352,6 +2394,9 @@ function OrganizerField({
     </label>
   );
 }
+
+/** Platform fee deducted from ticket sales when estimating organizer payout (10%). */
+const PLATFORM_FEE_RATE = 0.1;
 
 function EmptyState({ children }: { children: React.ReactNode }) {
   return (
