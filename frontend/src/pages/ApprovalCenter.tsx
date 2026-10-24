@@ -132,6 +132,41 @@ type UserEditDraft = {
   role: AdminUser["role"];
   status: "active" | "suspended";
 };
+type AdminOrganizer = {
+  id: string;
+  name: string;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  bankName: string | null;
+  accountNumber: string | null;
+  accountHolder: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    publicId: string | null;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    phone: string | null;
+    isSuspended: boolean;
+    suspendedAt: string | null;
+  };
+  _count: { events: number };
+};
+type OrganizerSummary = { total: number; active: number; suspended: number; events: number };
+type OrganizerDetail = Omit<AdminOrganizer, "_count"> & {
+  events: Array<{
+    id: string;
+    title: string;
+    status: string;
+    category: string | null;
+    eventType: string | null;
+    startDate: string | null;
+    venueName: string | null;
+    coverImageUrl: string | null;
+    createdAt: string;
+  }>;
+};
 type AuditLog = {
   id: string;
   action: string;
@@ -1390,12 +1425,12 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                 </section>
               )}
 
-              {(activeTab === "users" || activeTab === "organizers") && (
+              {activeTab === "users" && (
                 <section className="space-y-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h2 className="text-xl font-black text-slate-950">
-                        {activeTab === "organizers" ? "ຈັດການຜູ້ຈັດງານ" : "ຈັດການຜູ້ໃຊ້"}
+                        ຈັດການຜູ້ໃຊ້
                       </h2>
                       <p className="mt-1 text-sm text-slate-500">
                         ຂໍ້ມູນສົດຈາກ API ແລະຖານຂໍ້ມູນ — ບໍ່ມີລາຍການຕົວຢ່າງ
@@ -1616,6 +1651,13 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                     </button>
                   )}
                 </section>
+              )}
+
+              {activeTab === "organizers" && token && (
+                <OrganizerManagement
+                  token={token}
+                  onChanged={() => void refresh(true)}
+                />
               )}
 
               {activeTab === "refunds" && (
@@ -1957,6 +1999,369 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
         </AdminModal>
       )}
     </>
+  );
+}
+
+function OrganizerManagement({
+  token,
+  onChanged,
+}: {
+  token: string;
+  onChanged: () => void;
+}) {
+  const locale = "lo-LA";
+  const authOptions = useMemo(
+    () => ({ token, throwOnError: true as const }),
+    [token],
+  );
+  const [organizers, setOrganizers] = useState<AdminOrganizer[]>([]);
+  const [summary, setSummary] = useState<OrganizerSummary>({
+    total: 0,
+    active: 0,
+    suspended: 0,
+    events: 0,
+  });
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [viewing, setViewing] = useState<AdminOrganizer | null>(null);
+  const [detail, setDetail] = useState<OrganizerDetail | null>(null);
+  const [editing, setEditing] = useState<AdminOrganizer | null>(null);
+  const [demoting, setDemoting] = useState<AdminOrganizer | null>(null);
+  const [deleting, setDeleting] = useState<AdminOrganizer | null>(null);
+  const [draft, setDraft] = useState({
+    name: "",
+    contactEmail: "",
+    contactPhone: "",
+    bankName: "",
+    accountNumber: "",
+    accountHolder: "",
+    status: "active" as "active" | "suspended",
+  });
+
+  const loadOrganizers = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    const params = new URLSearchParams();
+    if (search.trim()) params.set("search", search.trim());
+    if (status !== "all") params.set("status", status);
+    try {
+      const result = await api.get<{
+        organizers: AdminOrganizer[];
+        summary: OrganizerSummary;
+      }>(`/admin/organizers?${params.toString()}`, authOptions);
+      if (!result.data) throw new Error("Empty organizer list response");
+      setOrganizers(result.data.organizers);
+      setSummary(result.data.summary);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load organizers");
+    } finally {
+      setLoading(false);
+    }
+  }, [authOptions, search, status]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadOrganizers(), 250);
+    return () => window.clearTimeout(timer);
+  }, [loadOrganizers]);
+
+  async function runOrganizerAction(
+    key: string,
+    action: () => Promise<unknown>,
+    success: string,
+  ) {
+    setBusy(key);
+    setError("");
+    setMessage("");
+    try {
+      await action();
+      setMessage(success);
+      await loadOrganizers();
+      onChanged();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The action could not be completed");
+      return false;
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function openDetails(item: AdminOrganizer) {
+    setViewing(item);
+    setDetail(null);
+    setBusy(`detail:${item.id}`);
+    setError("");
+    try {
+      const result = await api.get<{ organizer: OrganizerDetail }>(
+        `/admin/organizers/${item.id}`,
+        authOptions,
+      );
+      if (!result.data) throw new Error("Empty organizer detail response");
+      setDetail(result.data.organizer);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load organizer details");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  function openEditor(item: AdminOrganizer) {
+    setEditing(item);
+    setDraft({
+      name: item.name,
+      contactEmail: item.contactEmail || item.user.email,
+      contactPhone: item.contactPhone || item.user.phone || "",
+      bankName: item.bankName || "",
+      accountNumber: item.accountNumber || "",
+      accountHolder: item.accountHolder || "",
+      status: item.user.isSuspended ? "suspended" : "active",
+    });
+  }
+
+  async function saveOrganizer() {
+    if (!editing || !draft.name.trim() || !draft.contactEmail.trim()) return;
+    const saved = await runOrganizerAction(
+      `edit:${editing.id}`,
+      () =>
+        api.patch(
+          `/admin/organizers/${editing.id}`,
+          {
+            name: draft.name.trim(),
+            contactEmail: draft.contactEmail.trim(),
+            contactPhone: draft.contactPhone.trim() || null,
+            bankName: draft.bankName.trim() || null,
+            accountNumber: draft.accountNumber.trim() || null,
+            accountHolder: draft.accountHolder.trim() || null,
+            suspended: draft.status === "suspended",
+          },
+          authOptions,
+        ),
+      "ບັນທຶກຂໍ້ມູນຜູ້ຈັດງານສຳເລັດ",
+    );
+    if (saved) setEditing(null);
+  }
+
+  async function demoteOrganizer(item: AdminOrganizer) {
+    const saved = await runOrganizerAction(
+      `demote:${item.id}`,
+      () => api.patch(`/admin/users/${item.user.id}`, { role: "user" }, authOptions),
+      "ປ່ຽນຜູ້ຈັດງານເປັນ User ສຳເລັດ",
+    );
+    if (saved) setDemoting(null);
+  }
+
+  async function deleteOrganizer(item: AdminOrganizer) {
+    const saved = await runOrganizerAction(
+      `delete:${item.id}`,
+      () => api.delete(`/admin/users/${item.user.id}`, authOptions),
+      "ລົບບັນຊີຜູ້ຈັດງານສຳເລັດ",
+    );
+    if (saved) setDeleting(null);
+  }
+
+  async function exportOrganizers() {
+    setBusy("export");
+    setError("");
+    try {
+      const params = new URLSearchParams();
+      if (search.trim()) params.set("search", search.trim());
+      if (status !== "all") params.set("status", status);
+      const result = await api.get<{ organizers: AdminOrganizer[] }>(
+        `/admin/organizers/export?${params.toString()}`,
+        authOptions,
+      );
+      if (!result.data) throw new Error("Could not export organizers");
+      const cell = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+      const rows = [
+        ["name", "email", "phone", "bank", "account_holder", "account_number", "events", "status", "joined_at"],
+        ...result.data.organizers.map((item) => [
+          item.name,
+          item.contactEmail || item.user.email,
+          item.contactPhone || item.user.phone,
+          item.bankName,
+          item.accountHolder,
+          item.accountNumber,
+          item._count.events,
+          item.user.isSuspended ? "suspended" : "active",
+          item.createdAt,
+        ]),
+      ];
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(
+        new Blob([rows.map((row) => row.map(cell).join(",")).join("\r\n")], {
+          type: "text/csv;charset=utf-8",
+        }),
+      );
+      link.download = `pasopkan-organizers-${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not export organizers");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  return (
+    <section className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-black text-slate-950">ຈັດການຜູ້ຈັດງານ</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            ຂໍ້ມູນ Organizer, ບັນຊີທະນາຄານ ແລະ Event ຈາກ API ຈິງ
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => void loadOrganizers()}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> ໂຫຼດໃໝ່
+          </button>
+          <button
+            type="button"
+            onClick={() => void exportOrganizers()}
+            disabled={busy === "export"}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" /> ສົ່ງອອກ CSV
+          </button>
+        </div>
+      </div>
+
+      {message && <p className="rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{message}</p>}
+      {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          { value: summary.total, label: "ຜູ້ຈັດງານທັງໝົດ", icon: Building2, tone: "border-orange-200 bg-orange-50/40 text-orange-600" },
+          { value: summary.active, label: "ຜູ້ຈັດງານທີ່ໃຊ້ງານ", icon: CircleCheck, tone: "border-emerald-200 bg-emerald-50/50 text-emerald-600" },
+          { value: summary.suspended, label: "ຜູ້ຈັດງານທີ່ຖືກລະງັບ", icon: Ban, tone: "border-rose-200 bg-rose-50/50 text-rose-600" },
+          { value: summary.events, label: "Event ທີ່ສ້າງ", icon: CalendarDays, tone: "border-blue-200 bg-blue-50/50 text-blue-600" },
+        ].map((card) => (
+          <div key={card.label} className={`flex items-center gap-4 rounded-2xl border p-5 ${card.tone}`}>
+            <span className="grid h-12 w-12 place-items-center rounded-xl bg-white shadow-sm"><card.icon className="h-5 w-5" /></span>
+            <div><p className="text-2xl font-black text-slate-950">{card.value}</p><p className="text-sm font-bold text-slate-600">{card.label}</p></div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
+        <div className="relative min-w-64 flex-1">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="ຄົ້ນຫາຊື່, email, ເບີໂທ ຫຼືບັນຊີ"
+            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-orange-300"
+          />
+        </div>
+        <div className="flex rounded-xl border border-slate-200 bg-white p-1">
+          {[["all", "ທຸກສະຖານະ"], ["active", "ໃຊ້ງານ"], ["suspended", "ລະງັບ"]].map(([value, label]) => (
+            <button key={value} type="button" onClick={() => setStatus(value)} className={`rounded-lg px-3 py-1.5 text-xs font-bold ${status === value ? "bg-adv-orange text-white" : "text-slate-500"}`}>{label}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <table className="w-full min-w-[1120px] text-left text-sm">
+          <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
+            <tr>
+              <th className="px-5 py-4">ຜູ້ຈັດງານ</th><th className="px-4 py-4">Email & ເບີໂທ</th><th className="px-4 py-4">ບັນຊີທະນາຄານ</th><th className="px-4 py-4">Event ທີ່ສ້າງ</th><th className="px-4 py-4">ສະຖານະ</th><th className="px-5 py-4 text-right">ການຈັດການ</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {organizers.map((item) => (
+              <tr key={item.id} className="hover:bg-slate-50/50">
+                <td className="px-5 py-3.5"><div className="flex items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-orange-100 bg-orange-50 text-orange-600"><Building2 className="h-4 w-4" /></span><div><p className="font-bold text-slate-900">{item.name}</p><p className="text-xs text-slate-500">ເຂົ້າຮ່ວມ {new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(item.createdAt))}</p></div></div></td>
+                <td className="px-4 py-3.5"><p className="font-semibold text-slate-700">{item.contactEmail || item.user.email}</p><p className="mt-1 text-xs text-slate-500">{item.contactPhone || item.user.phone || "—"}</p></td>
+                <td className="px-4 py-3.5"><p className="font-bold text-slate-700">{item.bankName || "—"}</p><p className="mt-1 text-xs text-slate-500">{item.accountNumber || "ຍັງບໍ່ຕັ້ງຄ່າ"}</p></td>
+                <td className="px-4 py-3.5"><button type="button" onClick={() => void openDetails(item)} className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">{item._count.events} ງານ</button></td>
+                <td className="px-4 py-3.5"><span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-inset ${item.user.isSuspended ? "bg-rose-50 text-rose-700 ring-rose-200" : "bg-emerald-50 text-emerald-700 ring-emerald-200"}`}><span className="h-1.5 w-1.5 rounded-full bg-current" />{item.user.isSuspended ? "SUSPENDED" : "ACTIVE"}</span></td>
+                <td className="px-5 py-3.5"><div className="flex justify-end gap-1.5">
+                  <button type="button" title="ເບິ່ງ Event" onClick={() => void openDetails(item)} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-orange-50 hover:text-orange-600"><Eye className="h-4 w-4" /></button>
+                  <button type="button" title="ແກ້ໄຂ" onClick={() => openEditor(item)} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-orange-50 hover:text-orange-600"><Pencil className="h-4 w-4" /></button>
+                  <button type="button" title="ປ່ຽນເປັນ User" onClick={() => setDemoting(item)} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-blue-50 hover:text-blue-600"><Users className="h-4 w-4" /></button>
+                  <button type="button" title="ລົບ" onClick={() => setDeleting(item)} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button>
+                </div></td>
+              </tr>
+            ))}
+            {!loading && organizers.length === 0 && <tr><td colSpan={6} className="px-5 py-10 text-center text-slate-500">ບໍ່ພົບຜູ້ຈັດງານຈາກຖານຂໍ້ມູນ.</td></tr>}
+          </tbody>
+        </table>
+        {loading && <p className="p-5 text-sm text-slate-500">ກຳລັງໂຫຼດຂໍ້ມູນຈາກ API…</p>}
+      </div>
+
+      {viewing && (
+        <AdminModal title={viewing.name} subtitle={viewing.contactEmail || viewing.user.email} icon={<Building2 className="h-5 w-5" />} onClose={() => { setViewing(null); setDetail(null); }} size="lg">
+          <div className="p-5 sm:p-6">
+            <p className="mb-3 text-xs font-black uppercase tracking-wide text-slate-400">Event ທີ່ຜູ້ຈັດງານນີ້ສ້າງ</p>
+            {busy === `detail:${viewing.id}` && <p className="rounded-xl bg-slate-50 p-8 text-center text-sm text-slate-500">ກຳລັງໂຫຼດ Event…</p>}
+            {detail && detail.events.length === 0 && <EmptyState>ຍັງບໍ່ມີ Event ສຳລັບຜູ້ຈັດງານນີ້.</EmptyState>}
+            {detail && detail.events.length > 0 && <div className="max-h-[55vh] space-y-3 overflow-y-auto pr-1">{detail.events.map((event) => <article key={event.id} className="flex items-start gap-3 rounded-2xl border border-slate-200 p-3"><span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-orange-50 text-orange-600">{event.coverImageUrl ? <img src={event.coverImageUrl} alt="" className="h-full w-full object-cover" /> : <CalendarDays className="h-5 w-5" />}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-black text-slate-900">{event.title}</p><StatusBadge status={event.status} /></div><p className="mt-1 text-xs text-slate-500">{event.category || event.eventType || "Event"}{event.startDate ? ` · ${new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(event.startDate))}` : ""}{event.venueName ? ` · ${event.venueName}` : ""}</p></div></article>)}</div>}
+          </div>
+        </AdminModal>
+      )}
+
+      {editing && (
+        <AdminModal title="ແກ້ໄຂຜູ້ຈັດງານ" subtitle={editing.user.publicId || editing.user.id} icon={<Users className="h-5 w-5" />} onClose={() => setEditing(null)} size="lg">
+          <form onSubmit={(event) => { event.preventDefault(); void saveOrganizer(); }}>
+            <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-7">
+              <OrganizerField label="ຊື່ຜູ້ຈັດງານ" value={draft.name} onChange={(value) => setDraft({ ...draft, name: value })} className="sm:col-span-2" required />
+              <OrganizerField label="Email" type="email" value={draft.contactEmail} onChange={(value) => setDraft({ ...draft, contactEmail: value })} className="sm:col-span-2" required />
+              <label className="space-y-2"><span className="text-sm font-bold text-slate-500">ບົດບາດ</span><input value="Organizer" disabled className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 font-bold text-slate-500" /></label>
+              <label className="space-y-2"><span className="text-sm font-bold text-slate-500">ສະຖານະ</span><select value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value as "active" | "suspended" })} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-bold outline-none focus:border-orange-300"><option value="active">Active</option><option value="suspended">Suspended</option></select></label>
+              <OrganizerField label="ເບີໂທ" value={draft.contactPhone} onChange={(value) => setDraft({ ...draft, contactPhone: value })} className="sm:col-span-2" />
+              <div className="space-y-4 rounded-2xl border border-orange-200 bg-orange-50/40 p-4 sm:col-span-2"><p className="flex items-center gap-2 text-sm font-black text-orange-700"><Building2 className="h-4 w-4" /> ຂໍ້ມູນບັນຊີຜູ້ຈັດງານ</p><OrganizerField label="ຊື່ບັນຊີ / ບໍລິສັດ" value={draft.accountHolder} onChange={(value) => setDraft({ ...draft, accountHolder: value })} /><div className="grid gap-4 sm:grid-cols-2"><OrganizerField label="ທະນາຄານ" value={draft.bankName} onChange={(value) => setDraft({ ...draft, bankName: value })} /><OrganizerField label="ເລກບັນຊີ" value={draft.accountNumber} onChange={(value) => setDraft({ ...draft, accountNumber: value })} /></div></div>
+            </div>
+            <div className="flex justify-end gap-3 border-t border-slate-100 px-5 py-4 sm:px-7"><button type="button" onClick={() => setEditing(null)} className="rounded-xl px-5 py-2.5 text-sm font-bold text-slate-500">ຍົກເລີກ</button><button type="submit" disabled={busy === `edit:${editing.id}` || !draft.name.trim() || !draft.contactEmail.trim()} className="rounded-xl bg-adv-orange px-6 py-2.5 text-sm font-black text-white disabled:opacity-50">ບັນທຶກການປ່ຽນແປງ</button></div>
+          </form>
+        </AdminModal>
+      )}
+
+      {demoting && (
+        <AdminModal title="ປ່ຽນຜູ້ຈັດງານເປັນຜູ້ໃຊ້ທົ່ວໄປ (User)" subtitle="ປິດສິດຈັດການ Event" icon={<Users className="h-5 w-5" />} onClose={() => setDemoting(null)}>
+          <div className="space-y-4 p-5 sm:p-6"><div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className="font-black text-slate-950">{demoting.name}</p><p className="mt-1 text-sm text-slate-500">{demoting.contactEmail || demoting.user.email}</p><div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4"><span className="rounded-lg bg-orange-50 px-3 py-1 text-xs font-black text-orange-600">ORGANIZER</span><span className="text-slate-400">→</span><span className="rounded-lg bg-blue-50 px-3 py-1 text-xs font-black text-blue-600">USER</span></div></div><div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><p>ສິດການສ້າງ ແລະຈັດການ Event ຈະຖືກປິດ; ຂໍ້ມູນ Event ແລະປະຫວັດເກົ່າຈະຍັງຖືກເກັບໄວ້.</p></div></div>
+          <div className="flex justify-end gap-3 border-t border-slate-100 px-5 py-4"><button type="button" onClick={() => setDemoting(null)} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-600">ຍົກເລີກ</button><button type="button" disabled={busy === `demote:${demoting.id}`} onClick={() => void demoteOrganizer(demoting)} className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-black text-white disabled:opacity-50">ຢືນຢັນການປ່ຽນ</button></div>
+        </AdminModal>
+      )}
+
+      {deleting && (
+        <AdminModal title="ລົບຜູ້ຈັດງານ" subtitle="ບັນຊີຈະຖືກປິດໃຊ້ງານ" icon={<Trash2 className="h-5 w-5" />} onClose={() => setDeleting(null)}>
+          <div className="p-5 sm:p-6"><div className="rounded-2xl border border-rose-200 bg-rose-50 p-4"><p className="font-black text-slate-950">{deleting.name}</p><p className="mt-1 text-sm text-slate-600">{deleting.contactEmail || deleting.user.email}</p><p className="mt-3 text-sm leading-6 text-rose-700">ບັນຊີຈະຖືກນຳອອກຈາກລາຍການ ແລະບໍ່ສາມາດເຂົ້າລະບົບ; ປະຫວັດ Event ຈະຍັງຖືກເກັບໄວ້.</p></div></div>
+          <div className="flex justify-end gap-3 border-t border-slate-100 px-5 py-4"><button type="button" onClick={() => setDeleting(null)} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-600">ຍົກເລີກ</button><button type="button" disabled={busy === `delete:${deleting.id}`} onClick={() => void deleteOrganizer(deleting)} className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-black text-white disabled:opacity-50"><Trash2 className="h-4 w-4" /> ຢືນຢັນລົບ</button></div>
+        </AdminModal>
+      )}
+    </section>
+  );
+}
+
+function OrganizerField({
+  label,
+  value,
+  onChange,
+  type = "text",
+  className = "",
+  required = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  className?: string;
+  required?: boolean;
+}) {
+  return (
+    <label className={`space-y-2 ${className}`}>
+      <span className="text-sm font-bold text-slate-500">{label}</span>
+      <input required={required} type={type} value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-semibold outline-none focus:border-orange-300" />
+    </label>
   );
 }
 

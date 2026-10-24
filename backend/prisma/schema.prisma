@@ -126,6 +126,9 @@ model Organizer {
   description String?
   contactEmail String?
   contactPhone String?
+  bankName String?
+  accountNumber String?
+  accountHolder String?
   logoUrl String?
   socialLinks Json?
   createdAt DateTime @default(now()) @db.Timestamptz(3)

@@ -25,6 +25,23 @@ const adminListQuery = z.object({
   status: z.enum(["active", "suspended"]).optional(),
 });
 const adminExportQuery = adminListQuery.omit({ cursor: true, limit: true });
+const adminOrganizerListQuery = z.object({
+  search: z.string().trim().max(100).optional(),
+  status: z.enum(["active", "suspended"]).optional(),
+});
+const organizerUpdateBody = z
+  .object({
+    name: z.string().trim().min(1).max(160).optional(),
+    contactEmail: z.string().trim().email().max(254).nullable().optional(),
+    contactPhone: z.string().trim().max(30).nullable().optional(),
+    bankName: z.string().trim().max(100).nullable().optional(),
+    accountNumber: z.string().trim().max(100).nullable().optional(),
+    accountHolder: z.string().trim().max(160).nullable().optional(),
+    suspended: z.boolean().optional(),
+  })
+  .refine((value) => Object.values(value).some((field) => field !== undefined), {
+    message: "Provide at least one organizer field",
+  });
 
 router.get("/admin/overview", requireAuth, requireAdmin, async (_req, res) => {
   const [users, organizers, eventGroups, pendingApplications, orders, paidPayments, refundGroups] =
@@ -236,6 +253,244 @@ router.get(
     });
     res.setHeader("Cache-Control", "private, no-store");
     res.json({ users });
+  },
+);
+
+router.get(
+  "/admin/organizers",
+  requireAuth,
+  requireAdmin,
+  validate({ query: adminOrganizerListQuery }),
+  async (req, res) => {
+    const { search, status } = req.query as unknown as z.infer<typeof adminOrganizerListQuery>;
+    const term = search?.trim();
+    const where = {
+      user: {
+        deletedAt: null,
+        role: "organizer" as const,
+        ...(status ? { isSuspended: status === "suspended" } : {}),
+      },
+      ...(term
+        ? {
+            OR: [
+              { name: { contains: term, mode: "insensitive" as const } },
+              { contactEmail: { contains: term, mode: "insensitive" as const } },
+              { contactPhone: { contains: term, mode: "insensitive" as const } },
+              { bankName: { contains: term, mode: "insensitive" as const } },
+              { accountNumber: { contains: term, mode: "insensitive" as const } },
+              { user: { email: { contains: term, mode: "insensitive" as const } } },
+            ],
+          }
+        : {}),
+    };
+    const [organizers, total, suspended, eventCount] = await Promise.all([
+      db.organizer.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          contactEmail: true,
+          contactPhone: true,
+          bankName: true,
+          accountNumber: true,
+          accountHolder: true,
+          createdAt: true,
+          user: {
+            select: {
+              id: true,
+              publicId: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              phone: true,
+              isSuspended: true,
+              suspendedAt: true,
+            },
+          },
+          _count: { select: { events: true } },
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 5000,
+      }),
+      db.organizer.count({ where: { user: { deletedAt: null, role: "organizer" } } }),
+      db.organizer.count({
+        where: { user: { deletedAt: null, role: "organizer", isSuspended: true } },
+      }),
+      db.event.count({
+        where: { organizer: { user: { deletedAt: null, role: "organizer" } } },
+      }),
+    ]);
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json({
+      organizers,
+      summary: { total, active: total - suspended, suspended, events: eventCount },
+    });
+  },
+);
+
+router.get(
+  "/admin/organizers/export",
+  requireAuth,
+  requireAdmin,
+  validate({ query: adminOrganizerListQuery }),
+  async (req, res) => {
+    const { search, status } = req.query as unknown as z.infer<typeof adminOrganizerListQuery>;
+    const term = search?.trim();
+    const organizers = await db.organizer.findMany({
+      where: {
+        user: {
+          deletedAt: null,
+          role: "organizer",
+          ...(status ? { isSuspended: status === "suspended" } : {}),
+        },
+        ...(term
+          ? {
+              OR: [
+                { name: { contains: term, mode: "insensitive" as const } },
+                { contactEmail: { contains: term, mode: "insensitive" as const } },
+                { contactPhone: { contains: term, mode: "insensitive" as const } },
+              ],
+            }
+          : {}),
+      },
+      select: {
+        name: true,
+        contactEmail: true,
+        contactPhone: true,
+        bankName: true,
+        accountNumber: true,
+        accountHolder: true,
+        createdAt: true,
+        user: { select: { publicId: true, email: true, isSuspended: true } },
+        _count: { select: { events: true } },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 5000,
+    });
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json({ organizers });
+  },
+);
+
+router.get(
+  "/admin/organizers/:id",
+  requireAuth,
+  requireAdmin,
+  validate({ params: id }),
+  async (req, res) => {
+    const organizer = await db.organizer.findFirst({
+      where: { id: req.params.id, user: { deletedAt: null } },
+      select: {
+        id: true,
+        name: true,
+        contactEmail: true,
+        contactPhone: true,
+        bankName: true,
+        accountNumber: true,
+        accountHolder: true,
+        createdAt: true,
+        user: {
+          select: {
+            id: true,
+            publicId: true,
+            email: true,
+            phone: true,
+            isSuspended: true,
+          },
+        },
+        events: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            category: true,
+            eventType: true,
+            startDate: true,
+            venueName: true,
+            coverImageUrl: true,
+            createdAt: true,
+          },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        },
+      },
+    });
+    if (!organizer) return res.status(404).json({ error: "Organizer not found" });
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json({ organizer });
+  },
+);
+
+router.patch(
+  "/admin/organizers/:id",
+  requireAuth,
+  requireAdmin,
+  validate({ params: id, body: organizerUpdateBody }),
+  async (req, res) => {
+    const organizer = await db.$transaction(async (tx) => {
+      const [actor, target] = await Promise.all([
+        tx.user.findUnique({ where: { authId: req.user!.uid } }),
+        tx.organizer.findFirst({
+          where: { id: req.params.id, user: { deletedAt: null } },
+          include: { user: true },
+        }),
+      ]);
+      if (!actor || actor.role !== "admin") throw new HttpError(403, "Admins only");
+      if (!target) return null;
+      const updatedUser = await tx.user.update({
+        where: { id: target.userId },
+        data: {
+          email:
+            req.body.contactEmail === undefined
+              ? target.user.email
+              : req.body.contactEmail || target.user.email,
+          phone:
+            req.body.contactPhone === undefined ? target.user.phone : req.body.contactPhone || null,
+          isSuspended: req.body.suspended ?? target.user.isSuspended,
+          suspendedAt:
+            req.body.suspended === undefined
+              ? target.user.suspendedAt
+              : req.body.suspended
+                ? (target.user.suspendedAt ?? new Date())
+                : null,
+        },
+      });
+      const updated = await tx.organizer.update({
+        where: { id: target.id },
+        data: {
+          name: req.body.name ?? target.name,
+          contactEmail:
+            req.body.contactEmail === undefined
+              ? target.contactEmail
+              : req.body.contactEmail || null,
+          contactPhone:
+            req.body.contactPhone === undefined
+              ? target.contactPhone
+              : req.body.contactPhone || null,
+          bankName: req.body.bankName === undefined ? target.bankName : req.body.bankName || null,
+          accountNumber:
+            req.body.accountNumber === undefined
+              ? target.accountNumber
+              : req.body.accountNumber || null,
+          accountHolder:
+            req.body.accountHolder === undefined
+              ? target.accountHolder
+              : req.body.accountHolder || null,
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: actor.id,
+          action: "organizer.profile_updated",
+          entityType: "Organizer",
+          entityId: target.id,
+          metadata: { userId: updatedUser.id },
+        },
+      });
+      return updated;
+    });
+    if (!organizer) return res.status(404).json({ error: "Organizer not found" });
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json({ organizer });
   },
 );
 
