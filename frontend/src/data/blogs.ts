@@ -10,6 +10,7 @@ export interface BlogPost {
   content: string;
   contentLao?: string;
   coverImage: string;
+  coverImageDisplay?: string;
   author: {
     name: string;
     role?: string;
@@ -248,34 +249,22 @@ By introducing instant QR tickets, festivalgoers skip printing paper receipts, w
 
 const STORAGE_KEY = 'pasopkan_blogs';
 
-function backfillLao(posts: BlogPost[]): BlogPost[] {
-  return posts.map(p => {
-    const initialMatch = INITIAL_BLOG_POSTS.find(i => i.id === p.id);
-    return {
-      ...p,
-      titleLao: p.titleLao || initialMatch?.titleLao,
-      excerptLao: p.excerptLao || initialMatch?.excerptLao,
-      contentLao: p.contentLao || initialMatch?.contentLao
-    };
-  });
+const demoCoverById = new Map(INITIAL_BLOG_POSTS.map(post => [post.id, post.coverImage]));
+
+function withoutDemoPosts(posts: BlogPost[]): BlogPost[] {
+  return posts.filter(post => demoCoverById.get(post.id) !== post.coverImage);
 }
 
 export function getBlogs(): BlogPost[] {
-  if (typeof window === 'undefined') return INITIAL_BLOG_POSTS;
+  if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_BLOG_POSTS));
-      return INITIAL_BLOG_POSTS;
-    }
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      return INITIAL_BLOG_POSTS;
-    }
-    return backfillLao(parsed);
+    return Array.isArray(parsed) ? withoutDemoPosts(parsed as BlogPost[]) : [];
   } catch (err) {
     console.error('Failed to get blogs from localStorage:', err);
-    return INITIAL_BLOG_POSTS;
+    return [];
   }
 }
 
@@ -290,17 +279,11 @@ export function saveBlogs(blogs: BlogPost[]): void {
 }
 
 export async function fetchBlogs(): Promise<BlogPost[]> {
-  try {
-    const res = await api.get<{ blogs: BlogPost[] }>('/blogs');
-    if (res.ok && Array.isArray(res.data?.blogs)) {
-      const normalized = backfillLao(res.data.blogs);
-      saveBlogs(normalized);
-      return normalized;
-    }
-  } catch (err) {
-    console.warn('Failed to fetch blogs from backend API:', err);
-  }
-  return getBlogs();
+  const res = await api.get<{ blogs: BlogPost[] }>('/blogs', { throwOnError: true });
+  if (!Array.isArray(res.data?.blogs)) throw new Error('Backend returned an invalid blog list');
+  const normalized = withoutDemoPosts(res.data.blogs);
+  saveBlogs(normalized);
+  return normalized;
 }
 
 export async function addBlog(
@@ -313,7 +296,7 @@ export async function addBlog(
   );
   if (!res.data?.blog) throw new Error('Failed to create blog post');
   if (Array.isArray(res.data.blogs)) {
-    saveBlogs(backfillLao(res.data.blogs));
+    saveBlogs(withoutDemoPosts(res.data.blogs));
   }
   return res.data.blog;
 }
@@ -329,7 +312,7 @@ export async function updateBlog(
   );
   if (!res.data?.blog) return null;
   if (Array.isArray(res.data.blogs)) {
-    saveBlogs(backfillLao(res.data.blogs));
+    saveBlogs(withoutDemoPosts(res.data.blogs));
   }
   return res.data.blog;
 }
@@ -340,7 +323,7 @@ export async function deleteBlog(id: string): Promise<boolean> {
     { throwOnError: true }
   );
   if (Array.isArray(res.data?.blogs)) {
-    saveBlogs(backfillLao(res.data.blogs));
+    saveBlogs(withoutDemoPosts(res.data.blogs));
     return true;
   }
   return false;
@@ -354,7 +337,7 @@ export async function toggleBlogPublish(id: string): Promise<BlogPost | null> {
   );
   if (!res.data?.blog) return null;
   if (Array.isArray(res.data.blogs)) {
-    saveBlogs(backfillLao(res.data.blogs));
+    saveBlogs(withoutDemoPosts(res.data.blogs));
   }
   return res.data.blog;
 }

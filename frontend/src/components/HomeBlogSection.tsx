@@ -43,7 +43,9 @@ export default function HomeBlogSection() {
 
   useEffect(() => {
     loadBlogs();
-    void fetchBlogs();
+    void fetchBlogs().catch((error) => {
+      console.warn('Could not load blog articles from the backend:', error);
+    });
 
     const handleUpdate = () => {
       loadBlogs();
@@ -128,7 +130,7 @@ export default function HomeBlogSection() {
           >
             {/* Background Cover Image */}
             <img
-              src={heroBlog.coverImage}
+              src={heroBlog.coverImageDisplay || heroBlog.coverImage}
               alt={heroTitle}
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
               loading="lazy"
@@ -167,7 +169,7 @@ export default function HomeBlogSection() {
                 {/* Horizontal Thumbnail */}
                 <div className="relative w-32 sm:w-44 lg:w-36 xl:w-44 aspect-[16/10] shrink-0 rounded-xl sm:rounded-2xl overflow-hidden bg-gray-100 shadow-2xs">
                   <img
-                    src={blog.coverImage}
+                    src={blog.coverImageDisplay || blog.coverImage}
                     alt={displayTitle}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
@@ -223,7 +225,7 @@ export default function HomeBlogSection() {
                     >
                       <div className="relative aspect-[16/10] overflow-hidden bg-gray-100">
                         <img
-                          src={blog.coverImage}
+                          src={blog.coverImageDisplay || blog.coverImage}
                           alt={displayTitle}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                           loading="lazy"
@@ -380,7 +382,7 @@ export default function HomeBlogSection() {
                 {/* Cover Image */}
                 <div className="relative rounded-2xl overflow-hidden aspect-[16/9] bg-gray-100">
                   <img
-                    src={readingBlog.coverImage}
+                    src={readingBlog.coverImageDisplay || readingBlog.coverImage}
                     alt={isLao && readingBlog.titleLao ? readingBlog.titleLao : readingBlog.title}
                     className="w-full h-full object-cover"
                   />

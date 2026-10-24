@@ -22,18 +22,9 @@ import {
   Loader2,
   RotateCcw
 } from 'lucide-react';
-import { BlogPost, fetchBlogs, getBlogs, addBlog, updateBlog, deleteBlog, toggleBlogPublish } from '../data/blogs';
+import { BlogPost, fetchBlogs, addBlog, updateBlog, deleteBlog, toggleBlogPublish } from '../data/blogs';
 import { useLanguage } from '../context/LanguageContext';
 import { compressImage } from '../lib/imageCompression';
-
-const PRESET_COVERS = [
-  { label: 'Concert & Festival', url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80' },
-  { label: 'Creative Workshop', url: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80' },
-  { label: 'Cultural Celebration', url: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1200&q=80' },
-  { label: 'Night Market & Food', url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=80' },
-  { label: 'Outdoor & Adventure', url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80' },
-  { label: 'Conference & Stage', url: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&w=1200&q=80' }
-];
 
 export default function AdminBlogsTab({ onChanged }: { onChanged?: () => void } = {}) {
   const { lang } = useLanguage();
@@ -50,13 +41,17 @@ export default function AdminBlogsTab({ onChanged }: { onChanged?: () => void } 
   const [previewBlog, setPreviewBlog] = useState<BlogPost | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingBlogs, setIsLoadingBlogs] = useState(true);
+  const [blogsLoadError, setBlogsLoadError] = useState<string | null>(null);
+  const [coverImageLoadError, setCoverImageLoadError] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
     title: '',
     excerpt: '',
     content: '',
-    coverImage: PRESET_COVERS[0].url,
+    coverImage: '',
+    coverImagePreview: '',
     isPublished: true
   });
 
@@ -69,14 +64,28 @@ export default function AdminBlogsTab({ onChanged }: { onChanged?: () => void } 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const contentFileInputRef = useRef<HTMLInputElement>(null);
 
-  const loadBlogs = () => {
-    setBlogs(getBlogs());
+  const loadBlogs = async () => {
+    setIsLoadingBlogs(true);
+    setBlogsLoadError(null);
+    try {
+      setBlogs(await fetchBlogs());
+    } catch (error) {
+      setBlogs([]);
+      setBlogsLoadError(error instanceof Error ? error.message : (isLao ? 'ໂຫຼດບົດຄວາມບໍ່ສຳເລັດ' : 'Could not load articles from the backend.'));
+    } finally {
+      setIsLoadingBlogs(false);
+    }
   };
 
   useEffect(() => {
-    loadBlogs();
-    void fetchBlogs().then(setBlogs);
-    const handleUpdate = () => loadBlogs();
+    void loadBlogs();
+    const handleUpdate = (event: Event) => {
+      const updatedBlogs = (event as CustomEvent<BlogPost[]>).detail;
+      if (Array.isArray(updatedBlogs)) {
+        setBlogs(updatedBlogs);
+        setBlogsLoadError(null);
+      }
+    };
     window.addEventListener('pasopkan_blogs_updated', handleUpdate);
     return () => window.removeEventListener('pasopkan_blogs_updated', handleUpdate);
   }, []);
@@ -92,9 +101,11 @@ export default function AdminBlogsTab({ onChanged }: { onChanged?: () => void } 
       title: '',
       excerpt: '',
       content: '',
-      coverImage: PRESET_COVERS[0].url,
+      coverImage: '',
+      coverImagePreview: '',
       isPublished: true
     });
+    setCoverImageLoadError(false);
     setShowUrlInput(false);
     setIsEditorOpen(true);
   };
@@ -106,8 +117,10 @@ export default function AdminBlogsTab({ onChanged }: { onChanged?: () => void } 
       excerpt: (isLao && blog.excerptLao) ? blog.excerptLao : blog.excerpt,
       content: (isLao && blog.contentLao) ? blog.contentLao : blog.content,
       coverImage: blog.coverImage,
+      coverImagePreview: blog.coverImageDisplay || blog.coverImage,
       isPublished: blog.isPublished ?? true
     });
+    setCoverImageLoadError(false);
     setShowUrlInput(false);
     setIsEditorOpen(true);
   };
@@ -122,7 +135,8 @@ export default function AdminBlogsTab({ onChanged }: { onChanged?: () => void } 
     try {
       const compressed = await compressImage(file, 1280, 1280, 0.8);
       if (compressed) {
-        setFormData(prev => ({ ...prev, coverImage: compressed }));
+        setFormData(prev => ({ ...prev, coverImage: compressed, coverImagePreview: compressed }));
+        setCoverImageLoadError(false);
         showToast(isLao ? 'ອັບໂຫຼດຮູບປົກສຳເລັດແລ້ວ' : 'Cover image uploaded successfully!');
       }
     } catch (err) {
@@ -165,6 +179,10 @@ export default function AdminBlogsTab({ onChanged }: { onChanged?: () => void } 
     e.preventDefault();
     if (!formData.title.trim() || !formData.content.trim()) {
       alert(isLao ? 'ກະລຸນາປ້ອນຫົວຂໍ້ ແລະ ເນື້ອຫາບົດຄວາມ' : 'Please provide a title and article content.');
+      return;
+    }
+    if (!formData.coverImage.trim()) {
+      alert(isLao ? 'ກະລຸນາອັບໂຫຼດ ຫຼື ໃສ່ URL ຮູບໜ້າປົກ' : 'Please upload or provide a cover image URL.');
       return;
     }
 
@@ -377,11 +395,27 @@ export default function AdminBlogsTab({ onChanged }: { onChanged?: () => void } 
                   <td colSpan={4} className="py-12 text-center text-gray-400">
                     <BookOpen className="w-10 h-10 mx-auto text-gray-300 mb-2" />
                     <p className="font-bold text-sm text-gray-500">
-                      {isLao ? 'ບໍ່ພົບບົດຄວາມທີ່ກົງກັບເງື່ອນໄຂ' : 'No blog articles found.'}
+                      {isLoadingBlogs
+                        ? (isLao ? 'ກຳລັງໂຫຼດບົດຄວາມ...' : 'Loading articles...')
+                        : blogsLoadError
+                          ? (isLao ? 'ໂຫຼດຂໍ້ມູນຈາກ Backend ບໍ່ສຳເລັດ' : 'Could not load articles from the backend.')
+                          : (isLao ? 'ບໍ່ພົບບົດຄວາມທີ່ກົງກັບເງື່ອນໄຂ' : 'No blog articles found.')}
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
-                      {isLao ? 'ລອງປ່ຽນຄຳຄົ້ນຫາ ຫຼື ກົດ "ສ້າງບົດຄວາມໃໝ່"' : 'Try changing your search or click "New Blog Post" to add one.'}
+                      {blogsLoadError
+                        ? blogsLoadError
+                        : (isLao ? 'ລອງປ່ຽນຄຳຄົ້ນຫາ ຫຼື ກົດ "ສ້າງບົດຄວາມໃໝ່"' : 'Try changing your search or click "New Blog Post" to add one.')}
                     </p>
+                    {blogsLoadError && !isLoadingBlogs && (
+                      <button
+                        type="button"
+                        onClick={() => { void loadBlogs(); }}
+                        className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-adv-slate hover:border-adv-orange hover:text-adv-orange"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        {isLao ? 'ລອງໃໝ່' : 'Retry'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -390,11 +424,17 @@ export default function AdminBlogsTab({ onChanged }: { onChanged?: () => void } 
                     {/* Cover & Title */}
                     <td className="py-2.5 px-6">
                       <div className="flex items-center gap-3.5 min-w-[280px]">
-                        <img
-                          src={blog.coverImage}
-                          alt={blog.title}
-                          className="w-16 h-12 rounded-xl object-cover border border-gray-200 shrink-0 bg-gray-100"
-                        />
+                        {blog.coverImageDisplay || blog.coverImage ? (
+                          <img
+                            src={blog.coverImageDisplay || blog.coverImage}
+                            alt={blog.title}
+                            className="w-16 h-12 rounded-xl object-cover border border-gray-200 shrink-0 bg-gray-100"
+                          />
+                        ) : (
+                          <div className="w-16 h-12 rounded-xl border border-gray-200 shrink-0 bg-gray-100 flex items-center justify-center">
+                            <ImageIcon className="w-5 h-5 text-gray-400" />
+                          </div>
+                        )}
                         <div className="min-w-0">
                           <div className="font-black text-adv-slate text-sm line-clamp-1 hover:text-adv-orange cursor-pointer" onClick={() => setPreviewBlog(blog)}>
                             {blog.title}
@@ -537,14 +577,23 @@ export default function AdminBlogsTab({ onChanged }: { onChanged?: () => void } 
                           : 'border-gray-200 bg-gray-100'
                       }`}
                     >
-                      <img
-                        src={formData.coverImage}
-                        alt="Article Cover"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = PRESET_COVERS[0].url;
-                        }}
-                      />
+                      {formData.coverImagePreview && !coverImageLoadError ? (
+                        <img
+                          src={formData.coverImagePreview}
+                          alt="Article Cover"
+                          className="w-full h-full object-cover"
+                          onError={() => setCoverImageLoadError(true)}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-400">
+                          <ImageIcon className="w-8 h-8" />
+                          <span className="text-[11px] font-bold">
+                            {coverImageLoadError
+                              ? (isLao ? 'ຮູບນີ້ໂຫຼດບໍ່ໄດ້' : 'Image could not be loaded')
+                              : (isLao ? 'ຍັງບໍ່ມີຮູບໜ້າປົກ' : 'No cover image selected')}
+                          </span>
+                        </div>
+                      )}
 
                       {isUploadingCover && (
                         <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center text-white text-xs font-bold gap-2">
@@ -617,9 +666,12 @@ export default function AdminBlogsTab({ onChanged }: { onChanged?: () => void } 
                     >
                       <input
                         type="url"
-                        value={formData.coverImage}
-                        onChange={e => setFormData({ ...formData, coverImage: e.target.value })}
-                        placeholder="https://images.unsplash.com/..."
+                        value={formData.coverImagePreview}
+                        onChange={e => {
+                          setFormData({ ...formData, coverImage: e.target.value, coverImagePreview: e.target.value });
+                          setCoverImageLoadError(false);
+                        }}
+                        placeholder="https://example.com/image.jpg"
                         className="w-full px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs text-adv-slate font-mono focus:border-adv-orange focus:outline-none"
                       />
                     </motion.div>
@@ -819,7 +871,9 @@ export default function AdminBlogsTab({ onChanged }: { onChanged?: () => void } 
               </div>
 
               <div className="aspect-[16/9] rounded-2xl overflow-hidden mb-4 bg-gray-100">
-                <img src={previewBlog.coverImage} alt={previewBlog.title} className="w-full h-full object-cover" />
+                {(previewBlog.coverImageDisplay || previewBlog.coverImage) && (
+                  <img src={previewBlog.coverImageDisplay || previewBlog.coverImage} alt={previewBlog.title} className="w-full h-full object-cover" />
+                )}
               </div>
 
               <h2 className="text-xl sm:text-2xl font-black text-adv-slate mt-2 mb-4">

@@ -1191,17 +1191,14 @@ async function loadStoredBlogs(client: {
   const row = await client.siteSetting.findUnique({ where: { id: "blogs" } });
   const rawItems = (row?.data as { items?: unknown } | null)?.items;
   if (Array.isArray(rawItems)) {
-    return (rawItems as BlogPost[]).map((post) => {
-      const initialMatch = INITIAL_BLOG_POSTS.find((i) => i.id === post.id);
-      return {
-        ...post,
-        titleLao: post.titleLao || initialMatch?.titleLao,
-        excerptLao: post.excerptLao || initialMatch?.excerptLao,
-        contentLao: post.contentLao || initialMatch?.contentLao,
-      };
-    });
+    return (rawItems as BlogPost[])
+      // Ignore the known starter/demo posts if an earlier version stored them.
+      // This does not delete database content; it keeps sample content out of the API/UI.
+      .filter((post) => INITIAL_BLOG_POSTS.every(
+        (sample) => sample.id !== post.id || sample.coverImage !== post.coverImage,
+      ));
   }
-  return INITIAL_BLOG_POSTS;
+  return [];
 }
 
 const blogPostInputSchema = z.object({
@@ -1212,7 +1209,7 @@ const blogPostInputSchema = z.object({
   excerptLao: z.string().trim().max(1000).optional(),
   content: z.string().trim().min(1).max(100000),
   contentLao: z.string().trim().max(100000).optional(),
-  coverImage: z.string().trim().max(2000000).optional(),
+  coverImage: z.string().trim().min(1).max(2000000),
   isPublished: z.boolean().optional(),
   featured: z.boolean().optional(),
   tags: z.array(z.string().trim().max(60)).max(20).optional(),
@@ -1257,9 +1254,7 @@ router.post(
       excerptLao: req.body.excerptLao || req.body.excerpt || defaultExcerpt,
       content: req.body.content,
       contentLao: req.body.contentLao ?? req.body.content,
-      coverImage:
-        req.body.coverImage ||
-        "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80",
+      coverImage: req.body.coverImage,
       author: {
         name:
           [admin.firstName, admin.lastName].filter(Boolean).join(" ").trim() ||
