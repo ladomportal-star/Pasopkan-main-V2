@@ -32,7 +32,6 @@ import {
 } from "lucide-react";
 import { api } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
-import EventStaffManager from "../components/EventStaffManager";
 import AdminLiveOverview, {
   type AdminAnalytics,
 } from "../components/AdminLiveOverview";
@@ -653,6 +652,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
     () =>
       events.filter(
         (event) =>
+          event.status !== "draft" &&
           (eventStatus === "all" || event.status === eventStatus) &&
           (activeTab === "event-booking"
             ? event.dateType === "booking"
@@ -1312,7 +1312,6 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                         <option value="all">ທຸກສະຖານະ</option>
                         <option value="pending_review">ລໍຖ້າກວດ</option>
                         <option value="published">ເຜີຍແຜ່</option>
-                        <option value="draft">ຮ່າງ</option>
                         <option value="rejected">ປະຕິເສດ</option>
                         <option value="cancelled">ຍົກເລີກ</option>
                       </select>
@@ -1347,103 +1346,9 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                               </div>
                             </div>
                             <div className="flex shrink-0 items-center justify-end gap-2">
-                              <Link to={`/event/${event.id}`} target="_blank" rel="noreferrer" title="ເບິ່ງໜ້າ Event" className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 text-slate-500 transition-colors hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"><Eye className="h-4 w-4" /></Link>
-                              <Link to={`/create?adminEdit=${encodeURIComponent(event.id)}`} title="ແກ້ໄຂ Event" className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 text-slate-500 transition-colors hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"><Pencil className="h-4 w-4" /></Link>
+                              <Link to={`/event/${event.id}`} target="_blank" rel="noreferrer" aria-label="ເບິ່ງໜ້າ Event" className="group relative grid h-10 w-10 place-items-center rounded-xl border border-slate-200 text-slate-500 transition-colors hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"><Eye className="h-4 w-4" /><span role="tooltip" className="pointer-events-none absolute right-0 top-full z-20 mt-2 whitespace-nowrap rounded-md bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">ເບິ່ງ Event</span></Link>
+                              <Link to={`/create?adminEdit=${encodeURIComponent(event.id)}`} aria-label="ແກ້ໄຂ Event" className="group relative grid h-10 w-10 place-items-center rounded-xl border border-slate-200 text-slate-500 transition-colors hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"><Pencil className="h-4 w-4" /><span role="tooltip" className="pointer-events-none absolute right-0 top-full z-20 mt-2 whitespace-nowrap rounded-md bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">ແກ້ໄຂ Event</span></Link>
                             </div>
-                          </div>
-                          {event.rejectionReason && (
-                            <p className="mt-2 rounded-lg bg-rose-50 p-2 text-sm text-rose-800">
-                              Previous reason: {event.rejectionReason}
-                            </p>
-                          )}
-                          <div className="mt-3 flex flex-wrap items-center gap-2">
-                            {event.status === "pending_review" && (
-                              <>
-                                <button
-                                  type="button"
-                                  disabled={!!busyKey}
-                                  onClick={() =>
-                                    void updateEventStatus(event, "published")
-                                  }
-                                  className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                                >
-                                  Approve & publish
-                                </button>
-                                <input
-                                  aria-label="Event rejection reason"
-                                  value={reasons[event.id] ?? ""}
-                                  onChange={(e) =>
-                                    setReasons((current) => ({
-                                      ...current,
-                                      [event.id]: e.target.value,
-                                    }))
-                                  }
-                                  placeholder="Rejection reason"
-                                  className="min-w-48 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                                />
-                                <button
-                                  type="button"
-                                  disabled={
-                                    !!busyKey || !reasons[event.id]?.trim()
-                                  }
-                                  onClick={() =>
-                                    void updateEventStatus(event, "rejected")
-                                  }
-                                  className="rounded-lg border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-700 disabled:opacity-50"
-                                >
-                                  Reject
-                                </button>
-                              </>
-                            )}
-                            {(["draft", "rejected"] as string[]).includes(
-                              event.status,
-                            ) && (
-                              <button
-                                type="button"
-                                disabled={!!busyKey}
-                                onClick={() =>
-                                  void updateEventStatus(
-                                    event,
-                                    "pending_review",
-                                  )
-                                }
-                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold disabled:opacity-50"
-                              >
-                                Move to review
-                              </button>
-                            )}
-                            {!(["cancelled", "completed"] as string[]).includes(
-                              event.status,
-                            ) && (
-                              <button
-                                type="button"
-                                disabled={!!busyKey}
-                                onClick={() => {
-                                  if (
-                                    window.confirm(
-                                      `Cancel “${event.title}”? Existing paid orders will create refund requests, not automatic transfers.`,
-                                    )
-                                  )
-                                    void runAction(
-                                      `cancel:${event.id}`,
-                                      () =>
-                                        api.post(
-                                          `/admin/events/${event.id}/cancel`,
-                                          undefined,
-                                          authOptions,
-                                        ),
-                                      "Event cancelled; any refund records still require provider execution.",
-                                    );
-                                }}
-                                className="rounded-lg border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-700 disabled:opacity-50"
-                              >
-                                Cancel event
-                              </button>
-                            )}
-                            <EventStaffManager
-                              eventId={event.id}
-                              token={token}
-                            />
                           </div>
                         </article>
                         );
