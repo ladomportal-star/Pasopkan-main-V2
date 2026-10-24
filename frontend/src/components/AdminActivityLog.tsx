@@ -162,6 +162,11 @@ function formatActionAndDetails(log: AdminAuditLogItem): {
         actionLabel: "Notification sent",
         details: target,
       };
+    case "site_settings.updated":
+      return {
+        actionLabel: "Site settings updated",
+        details: log.entityId.replace(/_/g, " "),
+      };
     default: {
       const words = log.action
         .replace(/[._]/g, " ")

@@ -1,3 +1,4 @@
+import { api } from "./api";
 import { supabase } from "./supabase";
 
 // ==========================================
@@ -893,6 +894,19 @@ export const DEFAULT_TICKET_SPONSOR_SETTINGS: TicketSponsorSettings = {
 
 async function getSettings<T>(docId: string, defaultValue: T): Promise<T> {
   try {
+    const res = await api.get<{ data: T | null }>(
+      `/site-settings/${encodeURIComponent(docId)}`,
+    );
+    if (res.ok && res.data?.data) {
+      const data = res.data.data as T;
+      localStorage.setItem(`pasopkan_setting_${docId}`, JSON.stringify(data));
+      return data;
+    }
+  } catch (error) {
+    console.warn(`Backend API load failed for site_settings/${docId}:`, error);
+  }
+
+  try {
     // Try to get from Supabase first
 
     const { data: row, error } = await supabase
@@ -940,13 +954,14 @@ async function saveSettings<T extends object>(
   data: T,
 ): Promise<void> {
   try {
-    const { error } = await supabase
-      .from("site_settings")
-      .upsert({ id: docId, data }, { onConflict: "id" });
-    if (error) throw error;
+    await api.put<{ data: T }>(
+      `/admin/site-settings/${encodeURIComponent(docId)}`,
+      { data },
+      { throwOnError: true },
+    );
     localStorage.setItem(`pasopkan_setting_${docId}`, JSON.stringify(data));
   } catch (error) {
-    console.error(`Supabase save failed for site_settings/${docId}:`, error);
+    console.error(`Backend API save failed for site_settings/${docId}:`, error);
     throw error;
   }
 }
@@ -990,16 +1005,13 @@ export async function saveTermsSettings(
 // Privacy
 
 export async function getPrivacySettings(): Promise<PrivacySettings> {
-  // The public legal policy is version-controlled to prevent stale cached versions.
-  return DEFAULT_PRIVACY_SETTINGS;
+  return getSettings<PrivacySettings>("privacy_policy", DEFAULT_PRIVACY_SETTINGS);
 }
 
 export async function savePrivacySettings(
-  _settings: PrivacySettings,
+  settings: PrivacySettings,
 ): Promise<void> {
-  throw new Error(
-    "Privacy Policy is version-controlled. Edit DEFAULT_PRIVACY_SETTINGS and redeploy.",
-  );
+  await saveSettings<PrivacySettings>("privacy_policy", settings);
 }
 
 // Organizer Terms & Conditions

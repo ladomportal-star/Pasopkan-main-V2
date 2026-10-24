@@ -424,3 +424,10 @@ model EventPayout {
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
   @@index([status])
 }
+
+/// Key-value store for admin-configurable site settings (hero slides, sponsors, contact, FAQ, terms, privacy).
+model SiteSetting {
+  id String @id
+  data Json
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}

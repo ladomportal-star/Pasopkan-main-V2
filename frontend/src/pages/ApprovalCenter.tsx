@@ -44,6 +44,7 @@ import AdminActivityLog, {
   type AdminAuditLogItem,
 } from "../components/AdminActivityLog";
 import AdminNotifications from "../components/AdminNotifications";
+import SiteSettingsTab from "../components/SiteSettingsTab";
 
 type Application = {
   id: string;
@@ -755,9 +756,9 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
     { id: "refunds", label: "ການຄືນເງິນ", icon: RotateCcw },
     { id: "activity", label: "Activity Log", icon: Activity },
     { id: "notifications", label: "ການແຈ້ງເຕືອນ", icon: Bell },
+    { id: "settings", label: "ຕັ້ງຄ່າເວັບໄຊ", icon: Settings },
   ];
   const unavailableNavigation = [
-    { label: "ຕັ້ງຄ່າລະບົບ", icon: Settings },
     { label: "ຈັດການບົດຄວາມ", icon: BookOpen },
     { label: "ປີ້ຂອງຂວັນ (Gift Tickets)", icon: Gift },
   ];
@@ -1680,6 +1681,21 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
 
               {activeTab === "notifications" && (
                 <AdminNotifications token={token} />
+              )}
+
+              {activeTab === "settings" && (
+                <section className="min-h-[420px] rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+                  <div className="mb-6 border-b border-slate-100 pb-5">
+                    <h2 className="text-xl font-black text-slate-950">
+                      ຕັ້ງຄ່າເວັບໄຊ
+                    </h2>
+                  </div>
+                  <SiteSettingsTab
+                    lang="lo"
+                    t={{}}
+                    addActivityLog={() => void refresh(true)}
+                  />
+                </section>
               )}
             </>
           )}

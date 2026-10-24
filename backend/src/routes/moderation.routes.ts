@@ -1082,7 +1082,11 @@ router.post(
       message: z.string().trim().min(1).max(2000),
       category: z.enum(["new_event", "urgent"]).default("new_event"),
       audience: z.enum(["all", "organizers"]).default("all"),
-      imageDataUrl: z.string().max(7 * 1024 * 1024).nullable().optional(),
+      imageDataUrl: z
+        .string()
+        .max(7 * 1024 * 1024)
+        .nullable()
+        .optional(),
       scheduledAt: z.string().trim().max(64).nullable().optional(),
     }),
   }),
@@ -1164,6 +1168,64 @@ router.post(
         createdAt: new Date().toISOString(),
       },
     });
+  },
+);
+
+const siteSettingKeyParam = z.object({
+  key: z.enum([
+    "contact_us",
+    "support",
+    "terms_conditions",
+    "privacy_policy",
+    "organizer_terms",
+    "home_hero",
+    "ticket_sponsors",
+  ]),
+});
+
+router.get(
+  "/site-settings/:key",
+  validate({ params: siteSettingKeyParam }),
+  async (req, res) => {
+    const row = await db.siteSetting.findUnique({ where: { id: req.params.key } });
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ data: row?.data ?? null });
+  },
+);
+
+router.put(
+  "/admin/site-settings/:key",
+  requireAuth,
+  requireAdmin,
+  validate({
+    params: siteSettingKeyParam,
+    body: z.object({
+      data: z.record(z.string(), z.unknown()),
+    }),
+  }),
+  async (req, res) => {
+    const admin = await db.user.findUnique({ where: { authId: req.user!.uid } });
+    if (!admin || admin.role !== "admin") throw new HttpError(403, "Admins only");
+
+    const saved = await db.$transaction(async (tx) => {
+      const row = await tx.siteSetting.upsert({
+        where: { id: req.params.key },
+        create: { id: req.params.key, data: req.body.data as object },
+        update: { data: req.body.data as object },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: admin.id,
+          action: "site_settings.updated",
+          entityType: "SiteSetting",
+          entityId: req.params.key,
+        },
+      });
+      return row;
+    });
+
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json({ data: saved.data });
   },
 );
 export default router;
