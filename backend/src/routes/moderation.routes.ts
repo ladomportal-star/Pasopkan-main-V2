@@ -305,7 +305,8 @@ router.patch(
           role: nextRole,
           isSuspended: nextSuspended,
           suspendedAt: nextSuspended ? (target.suspendedAt ?? new Date()) : null,
-          firstName: req.body.firstName === undefined ? target.firstName : req.body.firstName || null,
+          firstName:
+            req.body.firstName === undefined ? target.firstName : req.body.firstName || null,
           lastName: req.body.lastName === undefined ? target.lastName : req.body.lastName || null,
           email: req.body.email === undefined ? target.email : req.body.email,
           phone: req.body.phone === undefined ? target.phone : req.body.phone || null,
