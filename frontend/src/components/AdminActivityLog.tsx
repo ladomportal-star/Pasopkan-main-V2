@@ -167,6 +167,26 @@ function formatActionAndDetails(log: AdminAuditLogItem): {
         actionLabel: "Site settings updated",
         details: log.entityId.replace(/_/g, " "),
       };
+    case "blog.created":
+      return {
+        actionLabel: "Blog article created",
+        details: typeof meta.title === "string" ? meta.title : target,
+      };
+    case "blog.updated":
+      return {
+        actionLabel: "Blog article updated",
+        details: typeof meta.title === "string" ? meta.title : target,
+      };
+    case "blog.status_changed":
+      return {
+        actionLabel: "Blog status changed",
+        details: `${typeof meta.title === "string" ? meta.title : target} (${meta.isPublished ? "Published" : "Draft"})`,
+      };
+    case "blog.deleted":
+      return {
+        actionLabel: "Blog article deleted",
+        details: typeof meta.title === "string" ? meta.title : target,
+      };
     default: {
       const words = log.action
         .replace(/[._]/g, " ")

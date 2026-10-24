@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookOpen, Calendar, X, Tag, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
-import { BlogPost, getBlogs } from '../data/blogs';
+import { BlogPost, fetchBlogs, getBlogs } from '../data/blogs';
 import { useLanguage } from '../context/LanguageContext';
 import ShareArticleButton from './ShareArticleButton';
 
@@ -43,6 +43,7 @@ export default function HomeBlogSection() {
 
   useEffect(() => {
     loadBlogs();
+    void fetchBlogs();
 
     const handleUpdate = () => {
       loadBlogs();

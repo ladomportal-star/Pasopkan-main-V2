@@ -45,6 +45,7 @@ import AdminActivityLog, {
 } from "../components/AdminActivityLog";
 import AdminNotifications from "../components/AdminNotifications";
 import SiteSettingsTab from "../components/SiteSettingsTab";
+import AdminBlogsTab from "../components/AdminBlogsTab";
 
 type Application = {
   id: string;
@@ -757,9 +758,9 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
     { id: "activity", label: "Activity Log", icon: Activity },
     { id: "notifications", label: "ການແຈ້ງເຕືອນ", icon: Bell },
     { id: "settings", label: "ຕັ້ງຄ່າເວັບໄຊ", icon: Settings },
+    { id: "blogs", label: "ຈັດການບົດຄວາມ", icon: BookOpen },
   ];
   const unavailableNavigation = [
-    { label: "ຈັດການບົດຄວາມ", icon: BookOpen },
     { label: "ປີ້ຂອງຂວັນ (Gift Tickets)", icon: Gift },
   ];
 
@@ -1695,6 +1696,17 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                     t={{}}
                     addActivityLog={() => void refresh(true)}
                   />
+                </section>
+              )}
+
+              {activeTab === "blogs" && (
+                <section className="min-h-[420px] rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+                  <div className="mb-6 border-b border-slate-100 pb-5">
+                    <h2 className="text-xl font-black text-slate-950">
+                      ຈັດການບົດຄວາມ
+                    </h2>
+                  </div>
+                  <AdminBlogsTab onChanged={() => void refresh(true)} />
                 </section>
               )}
             </>

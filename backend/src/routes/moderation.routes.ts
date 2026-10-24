@@ -19,6 +19,7 @@ import {
   rejectRefund,
   createAdminRefund,
 } from "../services/moderation.service.ts";
+import { INITIAL_BLOG_POSTS, type BlogPost } from "../data/defaultBlogs.ts";
 const router = Router();
 const id = z.object({ id: z.string().uuid() });
 const adminListQuery = z.object({
@@ -1180,18 +1181,283 @@ const siteSettingKeyParam = z.object({
     "organizer_terms",
     "home_hero",
     "ticket_sponsors",
+    "blogs",
   ]),
 });
 
-router.get(
-  "/site-settings/:key",
-  validate({ params: siteSettingKeyParam }),
+async function loadStoredBlogs(client: {
+  siteSetting: typeof db.siteSetting;
+}): Promise<BlogPost[]> {
+  const row = await client.siteSetting.findUnique({ where: { id: "blogs" } });
+  const rawItems = (row?.data as { items?: unknown } | null)?.items;
+  if (Array.isArray(rawItems)) {
+    return (rawItems as BlogPost[]).map((post) => {
+      const initialMatch = INITIAL_BLOG_POSTS.find((i) => i.id === post.id);
+      return {
+        ...post,
+        titleLao: post.titleLao || initialMatch?.titleLao,
+        excerptLao: post.excerptLao || initialMatch?.excerptLao,
+        contentLao: post.contentLao || initialMatch?.contentLao,
+      };
+    });
+  }
+  return INITIAL_BLOG_POSTS;
+}
+
+const blogPostInputSchema = z.object({
+  title: z.string().trim().min(1).max(300),
+  titleLao: z.string().trim().max(300).optional(),
+  slug: z.string().trim().max(300).optional(),
+  excerpt: z.string().trim().max(1000).optional(),
+  excerptLao: z.string().trim().max(1000).optional(),
+  content: z.string().trim().min(1).max(100000),
+  contentLao: z.string().trim().max(100000).optional(),
+  coverImage: z.string().trim().max(2000000).optional(),
+  isPublished: z.boolean().optional(),
+  featured: z.boolean().optional(),
+  tags: z.array(z.string().trim().max(60)).max(20).optional(),
+});
+
+const blogIdParam = z.object({
+  id: z.string().trim().min(1).max(120),
+});
+
+router.get("/blogs", async (_req, res) => {
+  const blogs = await loadStoredBlogs(db);
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ blogs });
+});
+
+router.post(
+  "/admin/blogs",
+  requireAuth,
+  requireAdmin,
+  validate({ body: blogPostInputSchema }),
   async (req, res) => {
-    const row = await db.siteSetting.findUnique({ where: { id: req.params.key } });
-    res.setHeader("Cache-Control", "no-store");
-    res.json({ data: row?.data ?? null });
+    const admin = await db.user.findUnique({ where: { authId: req.user!.uid } });
+    if (!admin || admin.role !== "admin") throw new HttpError(403, "Admins only");
+
+    const nowIso = new Date().toISOString();
+    const todayDate = nowIso.split("T")[0];
+    const slug =
+      req.body.slug ||
+      req.body.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)+/g, "") ||
+      `post-${Date.now()}`;
+    const defaultExcerpt = `${req.body.content.slice(0, 160)}...`;
+
+    const newBlog: BlogPost = {
+      id: `blog-${Date.now()}`,
+      title: req.body.title,
+      titleLao: req.body.titleLao ?? req.body.title,
+      slug,
+      excerpt: req.body.excerpt || defaultExcerpt,
+      excerptLao: req.body.excerptLao || req.body.excerpt || defaultExcerpt,
+      content: req.body.content,
+      contentLao: req.body.contentLao ?? req.body.content,
+      coverImage:
+        req.body.coverImage ||
+        "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80",
+      author: {
+        name:
+          [admin.firstName, admin.lastName].filter(Boolean).join(" ").trim() ||
+          "Pasopkan Admin",
+        role: "Administrator",
+      },
+      publishedAt: todayDate,
+      updatedAt: nowIso,
+      isPublished: req.body.isPublished ?? true,
+      featured: req.body.featured ?? false,
+      tags: req.body.tags ?? [],
+    };
+
+    const blogs = await db.$transaction(async (tx) => {
+      const current = await loadStoredBlogs(tx);
+      const next = [newBlog, ...current];
+      await tx.siteSetting.upsert({
+        where: { id: "blogs" },
+        create: { id: "blogs", data: { items: next } as unknown as object },
+        update: { data: { items: next } as unknown as object },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: admin.id,
+          action: "blog.created",
+          entityType: "Blog",
+          entityId: newBlog.id,
+          metadata: { title: newBlog.title },
+        },
+      });
+      return next;
+    });
+
+    res.setHeader("Cache-Control", "private, no-store");
+    res.status(201).json({ blog: newBlog, blogs });
   },
 );
+
+router.put(
+  "/admin/blogs/:id",
+  requireAuth,
+  requireAdmin,
+  validate({ params: blogIdParam, body: blogPostInputSchema }),
+  async (req, res) => {
+    const admin = await db.user.findUnique({ where: { authId: req.user!.uid } });
+    if (!admin || admin.role !== "admin") throw new HttpError(403, "Admins only");
+
+    const nowIso = new Date().toISOString();
+    const todayDate = nowIso.split("T")[0];
+
+    const result = await db.$transaction(async (tx) => {
+      const current = await loadStoredBlogs(tx);
+      const existing = current.find((b) => b.id === req.params.id);
+      if (!existing) return null;
+
+      const defaultExcerpt = `${req.body.content.slice(0, 160)}...`;
+      const updatedBlog: BlogPost = {
+        ...existing,
+        title: req.body.title,
+        titleLao: req.body.titleLao ?? req.body.title,
+        slug:
+          req.body.slug ||
+          req.body.title
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/(^-|-$)+/g, "") ||
+          existing.slug,
+        excerpt: req.body.excerpt || defaultExcerpt,
+        excerptLao: req.body.excerptLao || req.body.excerpt || defaultExcerpt,
+        content: req.body.content,
+        contentLao: req.body.contentLao ?? req.body.content,
+        coverImage: req.body.coverImage || existing.coverImage,
+        isPublished: req.body.isPublished ?? existing.isPublished,
+        tags: req.body.tags ?? existing.tags ?? [],
+        publishedAt: todayDate,
+        updatedAt: nowIso,
+      };
+
+      const remaining = current.filter((b) => b.id !== req.params.id);
+      const next = [updatedBlog, ...remaining];
+
+      await tx.siteSetting.upsert({
+        where: { id: "blogs" },
+        create: { id: "blogs", data: { items: next } as unknown as object },
+        update: { data: { items: next } as unknown as object },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: admin.id,
+          action: "blog.updated",
+          entityType: "Blog",
+          entityId: updatedBlog.id,
+          metadata: { title: updatedBlog.title },
+        },
+      });
+      return { blog: updatedBlog, blogs: next };
+    });
+
+    if (!result) throw new HttpError(404, "Blog article not found");
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json(result);
+  },
+);
+
+router.patch(
+  "/admin/blogs/:id/toggle",
+  requireAuth,
+  requireAdmin,
+  validate({ params: blogIdParam }),
+  async (req, res) => {
+    const admin = await db.user.findUnique({ where: { authId: req.user!.uid } });
+    if (!admin || admin.role !== "admin") throw new HttpError(403, "Admins only");
+
+    const result = await db.$transaction(async (tx) => {
+      const current = await loadStoredBlogs(tx);
+      let updatedItem: BlogPost | null = null;
+      const next = current.map((b) => {
+        if (b.id === req.params.id) {
+          updatedItem = {
+            ...b,
+            isPublished: !b.isPublished,
+            updatedAt: new Date().toISOString(),
+          };
+          return updatedItem;
+        }
+        return b;
+      });
+      if (!updatedItem) return null;
+
+      await tx.siteSetting.upsert({
+        where: { id: "blogs" },
+        create: { id: "blogs", data: { items: next } as unknown as object },
+        update: { data: { items: next } as unknown as object },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: admin.id,
+          action: "blog.status_changed",
+          entityType: "Blog",
+          entityId: (updatedItem as BlogPost).id,
+          metadata: {
+            title: (updatedItem as BlogPost).title,
+            isPublished: (updatedItem as BlogPost).isPublished,
+          },
+        },
+      });
+      return { blog: updatedItem as BlogPost, blogs: next };
+    });
+
+    if (!result) throw new HttpError(404, "Blog article not found");
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json(result);
+  },
+);
+
+router.delete(
+  "/admin/blogs/:id",
+  requireAuth,
+  requireAdmin,
+  validate({ params: blogIdParam }),
+  async (req, res) => {
+    const admin = await db.user.findUnique({ where: { authId: req.user!.uid } });
+    if (!admin || admin.role !== "admin") throw new HttpError(403, "Admins only");
+
+    const result = await db.$transaction(async (tx) => {
+      const current = await loadStoredBlogs(tx);
+      const removed = current.find((b) => b.id === req.params.id);
+      if (!removed) return null;
+      const next = current.filter((b) => b.id !== req.params.id);
+
+      await tx.siteSetting.upsert({
+        where: { id: "blogs" },
+        create: { id: "blogs", data: { items: next } as unknown as object },
+        update: { data: { items: next } as unknown as object },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: admin.id,
+          action: "blog.deleted",
+          entityType: "Blog",
+          entityId: removed.id,
+          metadata: { title: removed.title },
+        },
+      });
+      return { blogs: next };
+    });
+
+    if (!result) throw new HttpError(404, "Blog article not found");
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json(result);
+  },
+);
+
+router.get("/site-settings/:key", validate({ params: siteSettingKeyParam }), async (req, res) => {
+  const row = await db.siteSetting.findUnique({ where: { id: req.params.key } });
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ data: row?.data ?? null });
+});
 
 router.put(
   "/admin/site-settings/:key",
