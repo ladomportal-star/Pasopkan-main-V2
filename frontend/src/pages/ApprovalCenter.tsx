@@ -39,6 +39,7 @@ import AdminLiveOverview, {
   type AdminAnalytics,
 } from "../components/AdminLiveOverview";
 import AdminPayouts from "../components/AdminPayouts";
+import AdminRefunds, { type AdminRefundItem } from "../components/AdminRefunds";
 
 type Application = {
   id: string;
@@ -95,23 +96,7 @@ type Event = {
   }[];
 };
 type PendingReviewSummary = { total: number; urgent: number };
-type Refund = {
-  id: string;
-  amountKip: number;
-  currency: string;
-  status: string;
-  reason: string;
-  createdAt: string;
-  payment: {
-    provider: string;
-    providerTransactionId: string | null;
-    order: {
-      orderNumber: string;
-      eventTitle: string;
-      user: { publicId: string | null; email: string };
-    };
-  };
-};
+type Refund = AdminRefundItem;
 type AdminUser = {
   id: string;
   publicId: string | null;
@@ -1683,87 +1668,11 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
               )}
 
               {activeTab === "refunds" && (
-                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-                  <SectionHeading
-                    title="Refunds · ຄຳຂໍຄືນເງິນ"
-                    count={refunds.length}
-                  />
-                  <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                    <p>
-                      Approve ຈະບັນທຶກສະຖານະໃນ database ເທົ່ານັ້ນ.
-                      ບໍ່ມີການໂອນ/refund ເງິນຈິງຈົນກວ່າ payment provider
-                      ຈະເຊື່ອມຕໍ່.
-                    </p>
-                  </div>
-                  {refunds.length === 0 ? (
-                    <EmptyState>
-                      ຍັງບໍ່ມີ refund records ໃນ database.
-                    </EmptyState>
-                  ) : (
-                    <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                      {refunds.map((refund) => (
-                        <article
-                          key={refund.id}
-                          className="rounded-xl border border-slate-200 p-4"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="font-bold text-slate-900">
-                                {money(refund.amountKip, locale)}
-                              </p>
-                              <p className="mt-1 text-sm text-slate-700">
-                                {refund.payment.order.eventTitle}
-                              </p>
-                              <p className="mt-1 text-sm text-slate-500">
-                                Order {refund.payment.order.orderNumber} ·{" "}
-                                {refund.payment.order.user.email}
-                              </p>
-                              <p className="mt-1 text-sm text-slate-500">
-                                Provider {refund.payment.provider} ·{" "}
-                                {refund.payment.providerTransactionId ??
-                                  "No transaction ID"}
-                              </p>
-                            </div>
-                            <StatusBadge status={refund.status} />
-                          </div>
-                          <p className="mt-3 text-sm text-slate-700">
-                            {refund.reason}
-                          </p>
-                          <p className="mt-2 text-sm text-slate-500">
-                            Requested {dateTime(refund.createdAt, locale)}
-                          </p>
-                          {refund.status === "pending_approval" && (
-                            <button
-                              type="button"
-                              disabled={!!busyKey}
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    `Approve ${money(refund.amountKip, locale)} refund for order ${refund.payment.order.orderNumber}? This will not transfer funds.`,
-                                  )
-                                )
-                                  void runAction(
-                                    `refund:${refund.id}`,
-                                    () =>
-                                      api.post(
-                                        `/admin/refunds/${refund.id}/approve`,
-                                        undefined,
-                                        authOptions,
-                                      ),
-                                    "Refund approved in the database; no money was transferred.",
-                                  );
-                              }}
-                              className="mt-3 rounded-lg border border-amber-300 px-3 py-2 text-sm font-semibold text-amber-900 disabled:opacity-50"
-                            >
-                              Approve request (no transfer)
-                            </button>
-                          )}
-                        </article>
-                      ))}
-                    </div>
-                  )}
-                </section>
+                <AdminRefunds
+                  token={token}
+                  initialRefunds={refunds}
+                  onUpdated={() => void refresh(true)}
+                />
               )}
 
               {activeTab === "activity" && (

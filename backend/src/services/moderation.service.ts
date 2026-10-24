@@ -215,3 +215,79 @@ export async function approveRefund(uid: string, id: string) {
     return result;
   });
 }
+
+export async function rejectRefund(uid: string, id: string) {
+  return db.$transaction(async (tx) => {
+    const admin = await tx.user.findUnique({ where: { authId: uid } });
+    if (admin?.role !== "admin") throw new HttpError(403, "Admins only");
+    const refund = await tx.refund.findUnique({ where: { id } });
+    if (!refund) throw new HttpError(404, "Refund not found");
+    if (refund.status !== "pending_approval") throw new HttpError(409, "Refund already reviewed");
+    const result = await tx.refund.update({
+      where: { id },
+      data: { status: "rejected", reviewedAt: new Date(), reviewedByUserId: admin.id },
+    });
+    await tx.auditLog.create({
+      data: { actorId: admin.id, action: "refund.rejected", entityType: "Refund", entityId: id },
+    });
+    return result;
+  });
+}
+
+export async function createAdminRefund(
+  uid: string,
+  input: { reference: string; amountKip?: number; reason: string },
+) {
+  const code = input.reference.trim();
+  return db.$transaction(async (tx) => {
+    const admin = await tx.user.findUnique({ where: { authId: uid } });
+    if (admin?.role !== "admin") throw new HttpError(403, "Admins only");
+    const order = await tx.order.findFirst({
+      where: {
+        OR: [{ orderNumber: code }, { items: { some: { ticketCode: code } } }],
+      },
+      include: {
+        payments: {
+          where: { state: "completed" },
+          orderBy: { createdAt: "desc" },
+        },
+      },
+    });
+    if (!order) throw new HttpError(404, "Order or ticket code not found");
+    const payment = order.payments[0];
+    if (!payment) throw new HttpError(409, "Order has no settled payment to refund");
+    await tx.$queryRaw`SELECT id FROM "Payment" WHERE id = ${payment.id}::uuid FOR UPDATE`;
+    const reserved = await tx.refund.aggregate({
+      where: {
+        paymentId: payment.id,
+        status: { in: ["pending_approval", "approved", "processing", "succeeded"] },
+      },
+      _sum: { amountKip: true },
+    });
+    const remaining = payment.amountKip - (reserved._sum.amountKip ?? 0);
+    if (remaining <= 0)
+      throw new HttpError(409, "This payment already has a full refund requested or approved");
+    const amountKip = input.amountKip ?? remaining;
+    if (!Number.isSafeInteger(amountKip) || amountKip <= 0 || amountKip > remaining)
+      throw new HttpError(409, "Refund amount exceeds remaining paid amount");
+    const refund = await tx.refund.create({
+      data: {
+        paymentId: payment.id,
+        amountKip,
+        currency: payment.currency,
+        reason: input.reason.trim(),
+        status: "pending_approval",
+      },
+    });
+    await tx.auditLog.create({
+      data: {
+        actorId: admin.id,
+        action: "refund.created",
+        entityType: "Refund",
+        entityId: refund.id,
+        metadata: { orderNumber: order.orderNumber, amountKip },
+      },
+    });
+    return refund;
+  });
+}

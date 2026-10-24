@@ -14,6 +14,8 @@ import {
   reviewOrganizer,
   cancelEvent,
   approveRefund,
+  rejectRefund,
+  createAdminRefund,
 } from "../services/moderation.service.ts";
 const router = Router();
 const id = z.object({ id: z.string().uuid() });
@@ -849,15 +851,37 @@ router.get("/admin/refunds", requireAuth, requireAdmin, async (_req, res) => {
       take: 100,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       include: {
+        reviewer: { select: { firstName: true, lastName: true, email: true } },
         payment: {
           select: {
             provider: true,
             providerTransactionId: true,
+            amountKip: true,
             order: {
               select: {
                 orderNumber: true,
                 eventTitle: true,
-                user: { select: { publicId: true, email: true } },
+                buyerName: true,
+                buyerEmail: true,
+                buyerPhone: true,
+                user: {
+                  select: {
+                    publicId: true,
+                    email: true,
+                    firstName: true,
+                    lastName: true,
+                    phone: true,
+                  },
+                },
+                items: {
+                  select: {
+                    id: true,
+                    tierName: true,
+                    unitPriceKip: true,
+                    ticketCode: true,
+                    status: true,
+                  },
+                },
               },
             },
           },
@@ -867,6 +891,44 @@ router.get("/admin/refunds", requireAuth, requireAdmin, async (_req, res) => {
   });
 });
 router.post(
+  "/admin/refunds",
+  requireAuth,
+  requireAdmin,
+  validate({
+    body: z.object({
+      reference: z.string().trim().min(1).max(160),
+      amountKip: z.number().int().positive().max(2147483647).optional(),
+      reason: z.string().trim().min(1).max(500),
+    }),
+  }),
+  async (req, res) => {
+    res.setHeader("Cache-Control", "private, no-store");
+    res.status(201).json({
+      refund: await createAdminRefund(req.user!.uid, req.body),
+    });
+  },
+);
+router.post(
+  "/admin/refunds/batch",
+  requireAuth,
+  requireAdmin,
+  validate({
+    body: z.object({
+      ids: z.array(z.string().uuid()).min(1).max(100),
+      action: z.enum(["approve", "reject"]),
+    }),
+  }),
+  async (req, res) => {
+    const handler = req.body.action === "approve" ? approveRefund : rejectRefund;
+    const results = [];
+    for (const refundId of req.body.ids) {
+      results.push(await handler(req.user!.uid, refundId));
+    }
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json({ refunds: results, providerExecution: "not_configured" });
+  },
+);
+router.post(
   "/admin/refunds/:id/approve",
   requireAuth,
   requireAdmin,
@@ -875,6 +937,17 @@ router.post(
     res.json({
       refund: await approveRefund(req.user!.uid, req.params.id),
       providerExecution: "not_configured",
+    });
+  },
+);
+router.post(
+  "/admin/refunds/:id/reject",
+  requireAuth,
+  requireAdmin,
+  validate({ params: id }),
+  async (req, res) => {
+    res.json({
+      refund: await rejectRefund(req.user!.uid, req.params.id),
     });
   },
 );
