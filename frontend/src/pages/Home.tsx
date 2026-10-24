@@ -27,6 +27,7 @@ import { useLanguage } from '../context/LanguageContext';
 import LandscapeEventCard from '../components/LandscapeEventCard';
 import { api } from '../lib/api';
 import { fromBackendEvent } from '../lib/eventPayload';
+import { getHomeHeroSettings, type HomeHeroSettings } from '../lib/siteSettings';
 import SEO from '../components/SEO';
 
 const translations = {
@@ -43,7 +44,9 @@ const translations = {
     vouchers: 'Voucher and Booking',
     popularEvents: 'Popular Events',
     popularEventsSub: 'Top 5 best-selling events',
-    notifications: 'Notifications'
+    notifications: 'Notifications',
+    loadingSlides: 'Loading homepage slides...',
+    noSlides: 'No homepage slides configured'
   },
   lo: {
     heroSub: 'ຄົ້ນພົບປະສົບການທີ່ດີເລີດ',
@@ -58,7 +61,9 @@ const translations = {
     vouchers: 'Voucher ແລະ ການຈອງ',
     popularEvents: 'ກິດຈະກຳຍອດນິຍົມ',
     popularEventsSub: '5 ອັນດັບທີ່ຂາຍປີ້ໄດ້ຫຼາຍທີ່ສຸດ',
-    notifications: 'ການແຈ້ງເຕືອນ'
+    notifications: 'ການແຈ້ງເຕືອນ',
+    loadingSlides: 'ກຳລັງໂຫຼດຮູບສະໄລດ໌ໜ້າຫຼັກ...',
+    noSlides: 'ຍັງບໍ່ໄດ້ຕັ້ງຄ່າຮູບສະໄລດ໌ໜ້າຫຼັກ'
   }
 };
 
@@ -357,16 +362,23 @@ const PopularEventsRow: React.FC<{
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [fetchedEvents, setFetchedEvents] = useState<LaoEvent[]>([]);
-  const [eventsError, setEventsError] = useState(false);
+  const [homeHeroSettings, setHomeHeroSettings] = useState<HomeHeroSettings | null>(null);
   const { lang } = useLanguage();
   const t = translations[lang];
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [failedHeroImage, setFailedHeroImage] = useState<string | null>(null);
-  // The homepage must never advertise sample events or browser-local content.
+  // The homepage hero is managed in PskAdmin Site Settings. Event cover images
+  // belong to event cards and must never be used as hero slides.
   const heroSlides = React.useMemo(
-    () => fetchedEvents.filter(event => event.image && !event.image.startsWith('storage://')).slice(0, 5),
-    [fetchedEvents],
+    () => (homeHeroSettings?.slides ?? [])
+      .filter((slide) => typeof slide.imageUrl === 'string' && slide.imageUrl.trim().length > 0)
+      .map((slide) => ({
+        id: slide.id,
+        image: slide.imageUrl.trim(),
+        title: lang === 'lo' ? (slide.title_lo || slide.title_en || 'Pasopkan') : (slide.title_en || slide.title_lo || 'Pasopkan'),
+      })),
+    [homeHeroSettings?.slides, lang],
   );
 
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
@@ -404,7 +416,32 @@ export default function Home() {
     setTouchEndX(null);
   };
 
-  // Preload only published events returned by the backend.
+  // Load the configured homepage hero slides from the site-settings API and
+  // keep the carousel in sync when an admin saves settings in this tab.
+  useEffect(() => {
+    let cancelled = false;
+    const loadHomeHeroSettings = async () => {
+      const settings = await getHomeHeroSettings();
+      if (!cancelled) setHomeHeroSettings(settings);
+    };
+    void loadHomeHeroSettings();
+
+    const handleHomeHeroUpdated = (event: Event) => {
+      const settings = (event as CustomEvent<HomeHeroSettings>).detail;
+      if (settings && Array.isArray(settings.slides)) {
+        setHomeHeroSettings(settings);
+      } else {
+        void loadHomeHeroSettings();
+      }
+    };
+    window.addEventListener('pasopkan_home_hero_updated', handleHomeHeroUpdated);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('pasopkan_home_hero_updated', handleHomeHeroUpdated);
+    };
+  }, []);
+
+  // Preload only configured homepage slides.
   useEffect(() => {
     const isMobile = window.innerWidth <= 768;
     const width = isMobile ? '600' : '2070';
@@ -420,24 +457,28 @@ export default function Home() {
     });
   }, [heroSlides]);
 
-  // Image slider timer based on configurable slideIntervalSeconds
+  // Rotate slides using the interval configured in PskAdmin.
   useEffect(() => {
     if (heroSlides.length <= 1) return;
+    const intervalSeconds = Number(homeHeroSettings?.slideIntervalSeconds) || 5;
     const timer = setInterval(() => {
       setCurrentImageIndex((prev) => (prev + 1) % heroSlides.length);
-    }, 5000);
+    }, Math.max(1, intervalSeconds) * 1000);
     return () => clearInterval(timer);
-  }, [heroSlides.length]);
+  }, [heroSlides.length, homeHeroSettings?.slideIntervalSeconds]);
+
+  useEffect(() => {
+    setCurrentImageIndex((index) => heroSlides.length > 0 ? index % heroSlides.length : 0);
+    setFailedHeroImage(null);
+  }, [heroSlides]);
 
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
-    setEventsError(false);
     api.listEvents().then((res) => {
       if (cancelled) return;
       if (!res.ok) {
         setFetchedEvents([]);
-        setEventsError(true);
         setIsLoading(false);
         return;
       }
@@ -485,7 +526,7 @@ export default function Home() {
 
   const categories = ['Workshop', 'Sports', 'Festival', 'Voucher'];
 
-  const currentSlide = heroSlides[currentImageIndex % heroSlides.length];
+  const currentSlide = heroSlides.length > 0 ? heroSlides[currentImageIndex % heroSlides.length] : undefined;
   const isUnsplash = currentSlide?.image?.includes('images.unsplash.com');
 
   return (
@@ -534,9 +575,7 @@ export default function Home() {
           {!currentSlide && <div className="relative z-10 px-6 text-center text-white pointer-events-none">
             <Compass className="mx-auto mb-4 h-10 w-10 text-orange-300" />
             <p className="text-sm sm:text-lg text-white/80">
-              {isLoading ? (lang === 'lo' ? 'ກຳລັງໂຫຼດກິດຈະກຳ...' : 'Loading events...')
-                : eventsError ? (lang === 'lo' ? 'ບໍ່ສາມາດໂຫຼດກິດຈະກຳໄດ້' : 'Events are temporarily unavailable')
-                : (lang === 'lo' ? 'ຍັງບໍ່ມີກິດຈະກຳທີ່ເປີດໃຫ້ຈອງ' : 'No published events yet')}
+              {homeHeroSettings === null ? t.loadingSlides : t.noSlides}
             </p>
           </div>}
           {/* Carousel Pagination Dots inside image */}
