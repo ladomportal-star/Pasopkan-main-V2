@@ -879,11 +879,24 @@ export default function CreateEvent() {
   const [eventsLoading, setEventsLoading] = useState(true);
   useEffect(() => {
     let cancelled = false;
+    const adminEditId = searchParams.get("adminEdit");
     setLocalEvents([]);
     setEventsLoadError(false);
     setEventsLoading(Boolean(user && token));
     if (user && token) {
-      listAllMyEvents({ token })
+      const request =
+        adminEditId && user.role === "admin"
+          ? api
+              .get<{ event: Record<string, unknown> }>(
+                `/events/${encodeURIComponent(adminEditId)}`,
+                { token, throwOnError: true },
+              )
+              .then((result) => {
+                if (!result.data?.event) throw new Error("Could not load event for admin edit");
+                return [result.data.event];
+              })
+          : listAllMyEvents({ token });
+      request
         .then((rows) => {
           if (!cancelled) {
             setLocalEvents(rows.map(fromBackendEvent));
@@ -901,7 +914,7 @@ export default function CreateEvent() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, token]);
+  }, [searchParams, user, token]);
 
   // Edit restriction states
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
