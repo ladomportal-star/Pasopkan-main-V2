@@ -804,7 +804,9 @@ export default function CreateEvent() {
     next.splice(toIdx, 0, removed);
     setAttendeeQuestions(next);
   };
-  const [dateType, setDateType] = useState("flexible"); // 'fixed' or 'flexible' or 'booking'
+  const [dateType, setDateType] = useState(
+    openingNewEvent && searchParams.get("type") === "booking" ? "booking" : "flexible",
+  ); // 'fixed' or 'flexible' or 'booking'
   const [flexibleDateDesc, setFlexibleDateDesc] = useState("");
 
   // Booking specific states
