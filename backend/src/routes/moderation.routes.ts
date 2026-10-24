@@ -29,8 +29,8 @@ const adminExportQuery = adminListQuery.omit({ cursor: true, limit: true });
 router.get("/admin/overview", requireAuth, requireAdmin, async (_req, res) => {
   const [users, organizers, eventGroups, pendingApplications, orders, paidPayments, refundGroups] =
     await Promise.all([
-      db.user.count(),
-      db.organizer.count(),
+      db.user.count({ where: { deletedAt: null } }),
+      db.organizer.count({ where: { user: { deletedAt: null } } }),
       db.event.groupBy({ by: ["status"], _count: { _all: true } }),
       db.organizerApplication.count({ where: { status: "pending" } }),
       db.order.groupBy({ by: ["status"], _count: { _all: true } }),
@@ -145,6 +145,7 @@ router.get(
     >;
     const term = search?.trim();
     const where = {
+      deletedAt: null,
       ...(role ? { role } : {}),
       ...(status ? { isSuspended: status === "suspended" } : {}),
       ...(term
@@ -182,8 +183,8 @@ router.get(
     const hasMore = rows.length > limit;
     const users = rows.slice(0, limit);
     const [total, suspended] = await Promise.all([
-      db.user.count(),
-      db.user.count({ where: { isSuspended: true } }),
+      db.user.count({ where: { deletedAt: null } }),
+      db.user.count({ where: { isSuspended: true, deletedAt: null } }),
     ]);
     res.setHeader("Cache-Control", "private, no-store");
     res.json({
@@ -204,6 +205,7 @@ router.get(
     const term = search?.trim();
     const users = await db.user.findMany({
       where: {
+        deletedAt: null,
         ...(role ? { role } : {}),
         ...(status ? { isSuspended: status === "suspended" } : {}),
         ...(term
@@ -247,9 +249,13 @@ router.patch(
       .object({
         role: z.enum(["user", "organizer", "admin"]).optional(),
         suspended: z.boolean().optional(),
+        firstName: z.string().trim().max(100).nullable().optional(),
+        lastName: z.string().trim().max(100).nullable().optional(),
+        email: z.string().trim().email().max(254).optional(),
+        phone: z.string().trim().max(30).nullable().optional(),
       })
-      .refine((value) => value.role !== undefined || value.suspended !== undefined, {
-        message: "Provide a role or suspended state",
+      .refine((value) => Object.values(value).some((field) => field !== undefined), {
+        message: "Provide at least one user field",
       }),
   }),
   async (req, res) => {
@@ -262,7 +268,7 @@ router.patch(
         }),
       ]);
       if (!actor || actor.role !== "admin") throw new HttpError(403, "Admins only");
-      if (!target) return null;
+      if (!target || target.deletedAt) return null;
 
       const nextRole = req.body.role ?? target.role;
       const nextSuspended = req.body.suspended ?? target.isSuspended;
@@ -272,7 +278,9 @@ router.patch(
       if (
         target.role === "admin" &&
         (nextRole !== "admin" || nextSuspended) &&
-        (await tx.user.count({ where: { role: "admin", isSuspended: false } })) <= 1
+        (await tx.user.count({
+          where: { role: "admin", isSuspended: false, deletedAt: null },
+        })) <= 1
       ) {
         throw new HttpError(409, "At least one active PskAdmin account is required");
       }
@@ -297,6 +305,10 @@ router.patch(
           role: nextRole,
           isSuspended: nextSuspended,
           suspendedAt: nextSuspended ? (target.suspendedAt ?? new Date()) : null,
+          firstName: req.body.firstName === undefined ? target.firstName : req.body.firstName || null,
+          lastName: req.body.lastName === undefined ? target.lastName : req.body.lastName || null,
+          email: req.body.email === undefined ? target.email : req.body.email,
+          phone: req.body.phone === undefined ? target.phone : req.body.phone || null,
         },
         select: {
           id: true,
@@ -310,6 +322,20 @@ router.patch(
           suspendedAt: true,
         },
       });
+      if (updated.role === "organizer") {
+        await tx.organizer.update({
+          where: { userId: target.id },
+          data: {
+            name:
+              [updated.firstName, updated.lastName].filter(Boolean).join(" ") ||
+              updated.email ||
+              target.publicId ||
+              target.id,
+            contactEmail: updated.email || null,
+            contactPhone: updated.phone || null,
+          },
+        });
+      }
       await tx.auditLog.create({
         data: {
           actorId: actor.id,
@@ -321,6 +347,11 @@ router.patch(
             role: updated.role,
             previousSuspended: target.isSuspended,
             suspended: updated.isSuspended,
+            profileUpdated:
+              req.body.firstName !== undefined ||
+              req.body.lastName !== undefined ||
+              req.body.email !== undefined ||
+              req.body.phone !== undefined,
           },
         },
       });
@@ -329,6 +360,49 @@ router.patch(
     if (!result) return res.status(404).json({ error: "User not found" });
     res.setHeader("Cache-Control", "private, no-store");
     res.json({ user: result });
+  },
+);
+
+router.delete(
+  "/admin/users/:id",
+  requireAuth,
+  requireAdmin,
+  validate({ params: id }),
+  async (req, res) => {
+    const result = await db.$transaction(async (tx) => {
+      const [actor, target] = await Promise.all([
+        tx.user.findUnique({ where: { authId: req.user!.uid } }),
+        tx.user.findUnique({ where: { id: req.params.id } }),
+      ]);
+      if (!actor || actor.role !== "admin") throw new HttpError(403, "Admins only");
+      if (!target || target.deletedAt) return null;
+      if (actor.id === target.id) throw new HttpError(400, "You cannot delete your own account");
+      if (
+        target.role === "admin" &&
+        (await tx.user.count({ where: { role: "admin", isSuspended: false, deletedAt: null } })) <=
+          1
+      ) {
+        throw new HttpError(409, "At least one active PskAdmin account is required");
+      }
+      const deletedAt = new Date();
+      await tx.user.update({
+        where: { id: target.id },
+        data: { isSuspended: true, suspendedAt: target.suspendedAt ?? deletedAt, deletedAt },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: actor.id,
+          action: "user.deleted",
+          entityType: "User",
+          entityId: target.id,
+          metadata: { role: target.role, deletedAt: deletedAt.toISOString() },
+        },
+      });
+      return { id: target.id };
+    });
+    if (!result) return res.status(404).json({ error: "User not found" });
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json({ success: true, user: result });
   },
 );
 

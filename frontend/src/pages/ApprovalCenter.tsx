@@ -7,6 +7,7 @@ import {
   Bell,
   Ban,
   BookOpen,
+  Building2,
   CalendarDays,
   Check,
   CircleCheck,
@@ -17,12 +18,14 @@ import {
   LayoutDashboard,
   LogOut,
   MapPin,
+  Pencil,
   Phone,
   RotateCcw,
   RefreshCw,
   Search,
   Settings,
   ShieldCheck,
+  Trash2,
   UserPlus,
   Users,
   X,
@@ -121,6 +124,14 @@ type AdminUser = {
   _count: { orders: number };
 };
 type UserSummary = { total: number; active: number; suspended: number };
+type UserEditDraft = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  role: AdminUser["role"];
+  status: "active" | "suspended";
+};
 type AuditLog = {
   id: string;
   action: string;
@@ -256,6 +267,10 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
   const [userSearch, setUserSearch] = useState("");
   const [userRole, setUserRole] = useState("all");
   const [userStatus, setUserStatus] = useState("all");
+  const [organizerCandidate, setOrganizerCandidate] = useState<AdminUser | null>(null);
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null);
+  const [editDraft, setEditDraft] = useState<UserEditDraft | null>(null);
   const [eventStatus, setEventStatus] = useState("all");
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [rejectingEventId, setRejectingEventId] = useState<string | null>(null);
@@ -407,12 +422,14 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
       setRejectingEventId(null);
       await refresh(true);
       await loadUsers(null, false);
+      return true;
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
           : "The action could not be completed",
       );
+      return false;
     } finally {
       setBusyKey("");
     }
@@ -460,9 +477,16 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
 
   async function updateUserAccess(
     item: AdminUser,
-    patch: { role?: AdminUser["role"]; suspended?: boolean },
+    patch: {
+      role?: AdminUser["role"];
+      suspended?: boolean;
+      firstName?: string | null;
+      lastName?: string | null;
+      email?: string;
+      phone?: string | null;
+    },
   ) {
-    await runAction(
+    return runAction(
       `user:${item.id}`,
       () => api.patch(`/admin/users/${item.id}`, patch, authOptions),
       patch.role
@@ -471,6 +495,43 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
           ? "ລະງັບບັນຊີສຳເລັດ"
           : "ຄືນສະຖານະບັນຊີສຳເລັດ",
     );
+  }
+
+  function openUserEditor(item: AdminUser) {
+    setEditingUser(item);
+    setEditDraft({
+      firstName: item.firstName ?? "",
+      lastName: item.lastName ?? "",
+      email: item.email,
+      phone: item.phone ?? "",
+      role: item.role,
+      status: item.isSuspended ? "suspended" : "active",
+    });
+  }
+
+  async function saveUserEdits() {
+    if (!editingUser || !editDraft || !editDraft.email.trim()) return;
+    const saved = await updateUserAccess(editingUser, {
+      firstName: editDraft.firstName.trim() || null,
+      lastName: editDraft.lastName.trim() || null,
+      email: editDraft.email.trim(),
+      phone: editDraft.phone.trim() || null,
+      role: editDraft.role,
+      suspended: editDraft.status === "suspended",
+    });
+    if (saved) {
+      setEditingUser(null);
+      setEditDraft(null);
+    }
+  }
+
+  async function deleteUserAccount(item: AdminUser) {
+    const deleted = await runAction(
+      `user:${item.id}`,
+      () => api.delete(`/admin/users/${item.id}`, authOptions),
+      "ລົບບັນຊີອອກຈາກລາຍການສຳເລັດ",
+    );
+    if (deleted) setDeletingUser(null);
   }
 
   async function exportUsers() {
@@ -650,7 +711,8 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
     );
 
   return (
-    <main className="min-h-screen bg-[#f7f8fa] lg:flex">
+    <>
+      <main className="min-h-screen bg-[#f7f8fa] lg:flex">
       <aside className="sticky top-0 hidden h-screen w-[300px] shrink-0 flex-col border-r border-slate-100 bg-white shadow-sm lg:flex">
         <div className="border-b border-slate-50 px-4 py-5">
           <button
@@ -1497,7 +1559,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                                   <button
                                     type="button"
                                     disabled={!!busyKey}
-                                    onClick={() => void updateUserAccess(item, { role: "organizer" })}
+                                    onClick={() => setOrganizerCandidate(item)}
                                     className="inline-flex items-center gap-1 rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1.5 text-xs font-bold text-orange-700 disabled:opacity-50"
                                   >
                                     <UserPlus className="h-3.5 w-3.5" /> ເປັນ Organizer
@@ -1506,15 +1568,20 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                                 <button
                                   type="button"
                                   disabled={!!busyKey}
-                                  title={item.isSuspended ? "Restore account" : "Suspend account"}
-                                  onClick={() => {
-                                    const action = item.isSuspended ? "restore" : "suspend";
-                                    if (window.confirm(`${action} ${item.email || item.publicId || "this account"}?`))
-                                      void updateUserAccess(item, { suspended: !item.isSuspended });
-                                  }}
-                                  className={`grid h-8 w-8 place-items-center rounded-lg border disabled:opacity-50 ${item.isSuspended ? "border-emerald-200 text-emerald-600" : "border-rose-200 text-rose-500"}`}
+                                  title="ແກ້ໄຂຜູ້ໃຊ້"
+                                  onClick={() => openUserEditor(item)}
+                                  className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-orange-200 hover:text-orange-600 disabled:opacity-50"
                                 >
-                                  {item.isSuspended ? <CircleCheck className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                                  <Pencil className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={!!busyKey}
+                                  title="ລົບຜູ້ໃຊ້"
+                                  onClick={() => setDeletingUser(item)}
+                                  className="grid h-8 w-8 place-items-center rounded-lg border border-rose-200 text-rose-500 transition-colors hover:bg-rose-50 disabled:opacity-50"
+                                >
+                                  <Trash2 className="h-4 w-4" />
                                 </button>
                               </div>
                             </td>
@@ -1682,7 +1749,214 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
           </footer>
         </div>
       </div>
-    </main>
+      </main>
+
+      {organizerCandidate && (
+        <AdminModal
+          title="ປັບຜູ້ໃຊ້ເປັນຜູ້ຈັດງານ (Organizer)"
+          subtitle="ມອບສິດໃຫ້ສ້າງ ແລະຈັດການ Event"
+          icon={<Building2 className="h-5 w-5" />}
+          onClose={() => setOrganizerCandidate(null)}
+        >
+          <div className="space-y-4 p-5 sm:p-6">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+              <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
+                <span className="grid h-11 w-11 place-items-center rounded-xl bg-slate-900 font-black text-white">
+                  {(organizerCandidate.firstName?.[0] || organizerCandidate.email?.[0] || "U").toUpperCase()}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate font-black text-slate-950">
+                    {displayName(organizerCandidate.firstName, organizerCandidate.lastName)}
+                  </p>
+                  <p className="truncate text-sm text-slate-500">{organizerCandidate.email}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3 pt-4">
+                <div>
+                  <p className="text-xs font-bold text-slate-400">ສິດປັດຈຸບັນ</p>
+                  <span className="mt-1 inline-flex rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold uppercase text-slate-600">
+                    {organizerCandidate.role}
+                  </span>
+                </div>
+                <span className="pb-1 text-xl text-slate-400">→</span>
+                <div className="text-right">
+                  <p className="text-xs font-bold text-slate-400">ສິດໃໝ່</p>
+                  <span className="mt-1 inline-flex rounded-lg border border-orange-300 bg-orange-50 px-3 py-1 text-xs font-black text-orange-600">
+                    ORGANIZER
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>
+                ຫຼັງຈາກຢືນຢັນ ຜູ້ໃຊ້ຈະສາມາດສ້າງ Event, ຈັດການບັດ
+                ແລະຈັດການຄຳສັ່ງຊື້ໄດ້.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 border-t border-slate-100 px-5 py-4 sm:px-6">
+            <button
+              type="button"
+              onClick={() => setOrganizerCandidate(null)}
+              className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-600"
+            >
+              ຍົກເລີກ
+            </button>
+            <button
+              type="button"
+              disabled={busyKey === `user:${organizerCandidate.id}`}
+              onClick={async () => {
+                const updated = await updateUserAccess(organizerCandidate, { role: "organizer" });
+                if (updated) setOrganizerCandidate(null);
+              }}
+              className="inline-flex items-center gap-2 rounded-xl bg-adv-orange px-5 py-2.5 text-sm font-black text-white shadow-lg shadow-orange-100 disabled:opacity-50"
+            >
+              <CircleCheck className="h-4 w-4" /> ຢືນຢັນການປ່ຽນ
+            </button>
+          </div>
+        </AdminModal>
+      )}
+
+      {editingUser && editDraft && (
+        <AdminModal
+          title="ແກ້ໄຂຜູ້ໃຊ້"
+          subtitle={`ID: ${editingUser.publicId || editingUser.id}`}
+          icon={<Users className="h-5 w-5" />}
+          onClose={() => {
+            setEditingUser(null);
+            setEditDraft(null);
+          }}
+          size="lg"
+        >
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void saveUserEdits();
+            }}
+          >
+            <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-7">
+              <label className="space-y-2">
+                <span className="text-sm font-bold text-slate-500">ຊື່</span>
+                <input
+                  value={editDraft.firstName}
+                  onChange={(event) => setEditDraft({ ...editDraft, firstName: event.target.value })}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold outline-none focus:border-orange-300 focus:bg-white"
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-bold text-slate-500">ນາມສະກຸນ</span>
+                <input
+                  value={editDraft.lastName}
+                  onChange={(event) => setEditDraft({ ...editDraft, lastName: event.target.value })}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold outline-none focus:border-orange-300 focus:bg-white"
+                />
+              </label>
+              <label className="space-y-2 sm:col-span-2">
+                <span className="text-sm font-bold text-slate-500">Email ໂປຣໄຟລ໌</span>
+                <input
+                  required
+                  type="email"
+                  value={editDraft.email}
+                  onChange={(event) => setEditDraft({ ...editDraft, email: event.target.value })}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold outline-none focus:border-orange-300 focus:bg-white"
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-bold text-slate-500">ບົດບາດ</span>
+                <select
+                  value={editDraft.role}
+                  onChange={(event) => setEditDraft({ ...editDraft, role: event.target.value as AdminUser["role"] })}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-bold outline-none focus:border-orange-300 focus:bg-white"
+                >
+                  <option value="user">User</option>
+                  <option value="organizer">Organizer</option>
+                  <option value="admin">PskAdmin</option>
+                </select>
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-bold text-slate-500">ສະຖານະ</span>
+                <select
+                  value={editDraft.status}
+                  onChange={(event) => setEditDraft({ ...editDraft, status: event.target.value as UserEditDraft["status"] })}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-bold outline-none focus:border-orange-300 focus:bg-white"
+                >
+                  <option value="active">Active</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+              </label>
+              <label className="space-y-2 sm:col-span-2">
+                <span className="text-sm font-bold text-slate-500">ເບີໂທ</span>
+                <input
+                  value={editDraft.phone}
+                  onChange={(event) => setEditDraft({ ...editDraft, phone: event.target.value })}
+                  placeholder="+856 20 ..."
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold outline-none focus:border-orange-300 focus:bg-white"
+                />
+              </label>
+            </div>
+            <div className="flex justify-end gap-3 border-t border-slate-100 px-5 py-4 sm:px-7">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingUser(null);
+                  setEditDraft(null);
+                }}
+                className="rounded-xl px-5 py-2.5 text-sm font-bold text-slate-500"
+              >
+                ຍົກເລີກ
+              </button>
+              <button
+                type="submit"
+                disabled={busyKey === `user:${editingUser.id}` || !editDraft.email.trim()}
+                className="rounded-xl bg-adv-orange px-6 py-2.5 text-sm font-black text-white shadow-lg shadow-orange-100 disabled:opacity-50"
+              >
+                ບັນທຶກການປ່ຽນແປງ
+              </button>
+            </div>
+          </form>
+        </AdminModal>
+      )}
+
+      {deletingUser && (
+        <AdminModal
+          title="ລົບຜູ້ໃຊ້"
+          subtitle="ການດຳເນີນການນີ້ຈະປິດການເຂົ້າໃຊ້ງານທັນທີ"
+          icon={<Trash2 className="h-5 w-5" />}
+          onClose={() => setDeletingUser(null)}
+        >
+          <div className="space-y-4 p-5 sm:p-6">
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+              <p className="font-black text-slate-950">
+                {displayName(deletingUser.firstName, deletingUser.lastName)}
+              </p>
+              <p className="mt-1 text-sm text-slate-600">{deletingUser.email}</p>
+              <p className="mt-3 text-sm leading-6 text-rose-700">
+                ບັນຊີຈະຖືກນຳອອກຈາກລາຍການ ແລະບໍ່ສາມາດເຂົ້າລະບົບໄດ້.
+                ປະຫວັດ order/event ຈະຖືກເກັບໄວ້ເພື່ອຄວາມຖືກຕ້ອງທາງບັນຊີ.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 border-t border-slate-100 px-5 py-4 sm:px-6">
+            <button
+              type="button"
+              onClick={() => setDeletingUser(null)}
+              className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-600"
+            >
+              ຍົກເລີກ
+            </button>
+            <button
+              type="button"
+              disabled={busyKey === `user:${deletingUser.id}`}
+              onClick={() => void deleteUserAccount(deletingUser)}
+              className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-black text-white disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4" /> ຢືນຢັນລົບ
+            </button>
+          </div>
+        </AdminModal>
+      )}
+    </>
   );
 }
 
@@ -1691,5 +1965,69 @@ function EmptyState({ children }: { children: React.ReactNode }) {
     <p className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
       {children}
     </p>
+  );
+}
+
+function AdminModal({
+  title,
+  subtitle,
+  icon,
+  onClose,
+  children,
+  size = "md",
+}: {
+  title: string;
+  subtitle?: string;
+  icon: React.ReactNode;
+  onClose: () => void;
+  children: React.ReactNode;
+  size?: "md" | "lg";
+}) {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[400] flex items-center justify-center overflow-y-auto bg-slate-950/55 p-4 backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className={`my-auto w-full overflow-hidden rounded-[28px] bg-white shadow-2xl ${size === "lg" ? "max-w-xl" : "max-w-md"}`}
+      >
+        <header className="flex items-start gap-3 border-b border-slate-100 px-5 py-5 sm:px-6">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-orange-200 bg-orange-50 text-orange-600">
+            {icon}
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-black text-slate-950">{title}</h2>
+            {subtitle && <p className="mt-1 text-xs text-slate-500">{subtitle}</p>}
+          </div>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            className="grid h-9 w-9 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </header>
+        {children}
+      </section>
+    </div>
   );
 }

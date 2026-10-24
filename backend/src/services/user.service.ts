@@ -70,12 +70,9 @@ export async function getUserRole(uid: string, exec: Prisma.TransactionClient = 
 }
 
 export async function isUserSuspended(uid: string) {
-  return Boolean(
-    (
-      await db.user.findUnique({
-        where: { authId: uid },
-        select: { isSuspended: true },
-      })
-    )?.isSuspended,
-  );
+  const user = await db.user.findUnique({
+    where: { authId: uid },
+    select: { isSuspended: true, deletedAt: true },
+  });
+  return Boolean(user?.isSuspended || user?.deletedAt);
 }
