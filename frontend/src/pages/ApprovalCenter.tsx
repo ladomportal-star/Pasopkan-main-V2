@@ -38,6 +38,7 @@ import { useAuth } from "../context/AuthContext";
 import AdminLiveOverview, {
   type AdminAnalytics,
 } from "../components/AdminLiveOverview";
+import AdminPayouts from "../components/AdminPayouts";
 
 type Application = {
   id: string;
@@ -772,7 +773,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
       icon: CalendarDays,
     },
     { id: "past", label: "event ທີ່ສຳເລັດແລ້ວ", icon: Check },
-    { id: "payments", label: "ການຊຳລະເງິນ", icon: Banknote },
+    { id: "payments", label: "ການເບີກຈ່າຍເງິນ", icon: Banknote },
     { id: "refunds", label: "ການຄືນເງິນ", icon: RotateCcw },
     { id: "activity", label: "Activity Log", icon: Activity },
   ];
@@ -982,35 +983,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                 <AdminLiveOverview summary={overview} analytics={analytics} />
               )}
 
-              {activeTab === "payments" && (
-                <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
-                    <div className="space-y-1">
-                      <p className="font-bold">
-                        Payment / refund operations are not active
-                      </p>
-                      <p>
-                        ການອະນຸມັດ refund ໃນ dashboard ແມ່ນການອະນຸມັດໃນ database
-                        ເທົ່ານັ້ນ—ບໍ່ໄດ້ໂອນເງິນ.
-                        ຢ່າຢືນຢັນກັບລູກຄ້າວ່າຄືນເງິນສຳເລັດ ຈົນກວ່າ provider
-                        ຢືນຢັນ.
-                      </p>
-                      <p className="text-sm">
-                        Readiness:{" "}
-                        {paymentReadiness?.configured
-                          ? "credentials present"
-                          : "credentials not configured"}
-                        ;{" "}
-                        {paymentReadiness?.adapterRegistered
-                          ? "adapter registered"
-                          : "adapter not registered"}
-                        ; checkout/refunds remain disabled.
-                      </p>
-                    </div>
-                  </div>
-                </section>
-              )}
+              {activeTab === "payments" && <AdminPayouts token={token} />}
 
               {activeTab === "applications" && (
                 <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">

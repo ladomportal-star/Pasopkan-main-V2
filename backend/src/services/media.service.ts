@@ -47,6 +47,18 @@ export async function resolveImage(uid: string | undefined, ref: string) {
   return data.signedUrl;
 }
 
+/** Admin-only: sign a private image regardless of which user uploaded it. */
+export async function resolvePrivateImageAsAdmin(ref: string) {
+  const match =
+    /^storage:\/\/private-media\/([a-zA-Z0-9_-]+)\/([a-f0-9-]+\.(?:png|jpeg|webp))$/.exec(ref);
+  if (!match) throw new HttpError(400, "Invalid media reference");
+  const { data, error } = await storage()
+    .from(buckets.private)
+    .createSignedUrl(`${match[1]}/${match[2]}`, 300);
+  if (error || !data) throw new HttpError(502, "Could not open private image");
+  return data.signedUrl;
+}
+
 export function assertMediaReferences(
   value: unknown,
   uid: string,
