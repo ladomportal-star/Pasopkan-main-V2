@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  AlertCircle, ArrowLeft, BellRing, Check, CircleX, Layers3, LoaderCircle,
-  Mail, Save, ShieldCheck, Smartphone, Wallet,
+  AlertCircle, ArrowLeft, Check, CircleX, Layers3, LoaderCircle,
+  Mail, Save, Settings, ShieldCheck, SlidersHorizontal, Smartphone, Wallet,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -18,10 +18,10 @@ const preferenceKeys = [
 const copy = {
   en: {
     title: 'Notification Settings', subtitle: 'Manage how and which notifications you receive on Pasopkan.', back: 'Back to Account',
-    channels: 'Notification channels', channelsDesc: 'Choose where you want to receive account updates.',
-    push: 'Push Notifications', pushDesc: 'Receive notifications on this device when available.',
+    channels: 'Notification channels', channelsDesc: 'Choose how you want to receive Pasopkan notifications.',
+    push: 'Push Notifications', pushDesc: 'Receive notifications on your device.',
     email: 'Email Notifications', emailDesc: 'Receive account updates and important notices by email.',
-    types: 'Types and content', typesDesc: 'Choose which account activity you want to hear about.',
+    types: 'Notification types and content', typesDesc: 'Choose which activity you want to be notified about.',
     system: 'System updates and announcements', systemDesc: 'Service updates, announcements, and important information.',
     events: 'Event status', eventsDesc: 'Updates about event review, approval, and publishing.',
     refunds: 'Refunds and cancellations', refundsDesc: 'Updates about refund requests and cancelled orders.',
@@ -32,12 +32,12 @@ const copy = {
   },
   lo: {
     title: 'ຕັ້ງຄ່າການແຈ້ງເຕືອນ', subtitle: 'ຈັດການວິທີ ແລະ ເນື້ອຫາການແຈ້ງເຕືອນຂອງທ່ານໃນ Pasopkan.', back: 'ກັບຄືນໄປໜ້າບັນຊີ',
-    channels: 'ຊ່ອງທາງການແຈ້ງເຕືອນ', channelsDesc: 'ເລືອກຊ່ອງທາງທີ່ຕ້ອງການຮັບຂ່າວສານ ແລະ ການແຈ້ງເຕືອນ.',
-    push: 'ການແຈ້ງເຕືອນ Push', pushDesc: 'ຮັບການແຈ້ງເຕືອນໃນອຸປະກອນນີ້ ເມື່ອລະບົບຮອງຮັບ.',
-    email: 'ການແຈ້ງເຕືອນຜ່ານ Email', emailDesc: 'ຮັບຂ່າວສານບັນຊີ ແລະ ຂໍ້ມູນສຳຄັນຜ່ານ Email.',
-    types: 'ປະເພດ ແລະ ເນື້ອຫາການແຈ້ງເຕືອນ', typesDesc: 'ເລືອກກິດຈະກຳບັນຊີທີ່ຕ້ອງການຮັບຂ່າວສານ.',
-    system: 'ອັບເດດລະບົບ ແລະ ປະກາດ', systemDesc: 'ອັບເດດບໍລິການ, ປະກາດ ແລະ ຂໍ້ມູນສຳຄັນ.',
-    events: 'ສະຖານະກິດຈະກຳ', eventsDesc: 'ອັບເດດການກວດສອບ, ອະນຸມັດ ແລະ ເຜີຍແຜ່ກິດຈະກຳ.',
+    channels: 'ຊ່ອງທາງການຮັບແຈ້ງເຕືອນ', channelsDesc: 'ເລືອກຊ່ອງທາງທີ່ທ່ານຕ້ອງການຮັບການແຈ້ງເຕືອນ.',
+    push: 'ການແຈ້ງເຕືອນແບບ Push (Push Notifications)', pushDesc: 'ຮັບການແຈ້ງເຕືອນໃນອຸປະກອນຂອງທ່ານ.',
+    email: 'ການແຈ້ງເຕືອນຜ່ານອີເມວ (Email)', emailDesc: 'ຮັບຂ່າວສານບັນຊີ ແລະ ຂໍ້ມູນສຳຄັນຜ່ານອີເມວ.',
+    types: 'ປະເພດ ແລະ ເນື້ອຫາການແຈ້ງເຕືອນ', typesDesc: 'ເລືອກກິດຈະກຳທີ່ທ່ານຕ້ອງການຮັບການແຈ້ງເຕືອນ.',
+    system: 'ອັບເດດລະບົບ ແລະ ການປະກາດ', systemDesc: 'ການແຈ້ງເຕືອນຂ່າວສານ ແລະ ການອັບເດດຈາກລະບົບ.',
+    events: 'ການອະນຸມັດກິດຈະກຳ', eventsDesc: 'ການແຈ້ງເຕືອນເມື່ອກິດຈະກຳຜ່ານການກວດສອບ ແລະ ອະນຸມັດ.',
     refunds: 'ການຄືນເງິນ ແລະ ການຍົກເລີກ', refundsDesc: 'ອັບເດດຄຳຂໍຄືນເງິນ ແລະ ລາຍການສັ່ງຊື້ທີ່ຍົກເລີກ.',
     payouts: 'ການຈ່າຍເງິນ (Payout)', payoutsDesc: 'ອັບເດດການດຳເນີນການຈ່າຍເງິນໃຫ້ຜູ້ຈັດງານ.',
     save: 'ບັນທຶກການຕັ້ງຄ່າ', loading: 'ກຳລັງໂຫຼດຄ່າການແຈ້ງເຕືອນ…',
@@ -111,11 +111,11 @@ export default function NotificationSettings() {
     const Icon = row.icon;
     const isEnabled = preferences?.[row.key] ?? false;
     return (
-      <div key={row.key} className={`flex items-center gap-3 py-3.5 ${index ? 'border-t border-gray-100' : ''}`}>
-        <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center ${row.tone}`}><Icon className="w-[18px] h-[18px]" /></div>
+      <div key={row.key} className={`flex items-center gap-3 py-3 ${index ? 'border-t border-gray-100' : ''}`}>
+        <div className={`w-9 h-9 shrink-0 rounded-xl flex items-center justify-center ${row.tone}`}><Icon className="w-[18px] h-[18px]" /></div>
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-bold text-slate-900">{row.title}</h3>
-          <p className="mt-0.5 text-xs leading-relaxed text-slate-500">{row.description}</p>
+          <h3 className="text-xs font-bold text-slate-900">{row.title}</h3>
+          <p className="mt-0.5 text-[10px] leading-relaxed text-slate-500">{row.description}</p>
         </div>
         <button
           type="button"
@@ -124,9 +124,9 @@ export default function NotificationSettings() {
           aria-label={row.title}
           disabled={loading || loadError || saving || !preferences}
           onClick={() => toggle(row.key)}
-          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${isEnabled ? 'bg-[#ff5a00]' : 'bg-slate-300'}`}
+          className={`relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${isEnabled ? 'bg-[#ff5a00]' : 'bg-slate-300'}`}
         >
-          <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${isEnabled ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
+          <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${isEnabled ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
         </button>
       </div>
     );
@@ -140,7 +140,7 @@ export default function NotificationSettings() {
           <ArrowLeft className="h-4 w-4" />{t.back}
         </button>
         <div className="mb-6 flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-gray-100 bg-white text-[#ff5a00] shadow-sm"><BellRing className="h-5 w-5" /></div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-100 bg-white text-[#ff5a00] shadow-sm"><Settings className="h-[18px] w-[18px]" /></div>
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">{t.title}</h1>
             <p className="mt-0.5 text-xs text-slate-500">{t.subtitle}</p>
@@ -159,17 +159,17 @@ export default function NotificationSettings() {
           </div>
         ) : (
           <>
-            <section className="mb-5 rounded-3xl border border-gray-100 bg-white px-5 py-5 shadow-sm sm:px-6">
+        <section className="mb-5 rounded-3xl border border-gray-100 bg-white px-5 py-5 shadow-sm sm:px-6">
               <div className="mb-2 flex items-center gap-3 border-b border-gray-100 pb-4">
                 <Smartphone className="h-5 w-5 text-[#ff5a00]" />
-                <div><h2 className="font-bold text-slate-900">{t.channels}</h2><p className="mt-0.5 text-xs text-slate-500">{t.channelsDesc}</p></div>
+            <div><h2 className="text-sm font-bold text-slate-900">{t.channels}</h2><p className="mt-0.5 text-[10px] text-slate-500">{t.channelsDesc}</p></div>
               </div>
               {renderRows(rows)}
             </section>
             <section className="rounded-3xl border border-gray-100 bg-white px-5 py-5 shadow-sm sm:px-6">
               <div className="mb-2 flex items-center gap-3 border-b border-gray-100 pb-4">
-                <Layers3 className="h-5 w-5 text-[#ff5a00]" />
-                <div><h2 className="font-bold text-slate-900">{t.types}</h2><p className="mt-0.5 text-xs text-slate-500">{t.typesDesc}</p></div>
+            <SlidersHorizontal className="h-5 w-5 text-[#ff5a00]" />
+            <div><h2 className="text-sm font-bold text-slate-900">{t.types}</h2><p className="mt-0.5 text-[10px] text-slate-500">{t.typesDesc}</p></div>
               </div>
               {renderRows(categoryRows)}
             </section>
@@ -177,8 +177,8 @@ export default function NotificationSettings() {
               {feedback && <p role={feedback.error ? 'alert' : 'status'} className={`flex items-center gap-2 text-sm ${feedback.error ? 'text-red-600' : 'text-emerald-700'}`}>
                 {feedback.error ? <AlertCircle className="h-4 w-4" /> : <Check className="h-4 w-4" />}{feedback.message}
               </p>}
-              <button onClick={() => void save()} disabled={saving} className="flex items-center gap-2 rounded-2xl bg-[#ff5a00] px-5 py-3 text-sm font-bold text-white shadow-md shadow-orange-200 transition hover:bg-orange-600 disabled:opacity-60">
-                {saving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}{t.save}
+              <button onClick={() => void save()} disabled={saving} className="flex items-center gap-2 rounded-2xl bg-[#ff5a00] px-4 py-2 text-xs font-bold text-white shadow-md shadow-orange-200 transition hover:bg-orange-600 disabled:opacity-60">
+                {saving ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}{t.save}
               </button>
             </div>
           </>
