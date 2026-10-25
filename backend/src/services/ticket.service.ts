@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import { db } from "../config/database.ts";
 import { HttpError } from "../middlewares/error.middleware.ts";
 import { createNotification } from "./notification.service.ts";
@@ -175,7 +175,7 @@ export async function createOrder(input: CreateOrderInput) {
     const [clock] = await tx.$queryRaw<
       Array<{ expiresAt: Date }>
     >`SELECT now() + interval '15 minutes' AS "expiresAt"`;
-    const orderNumber = "PSK-" + randomUUID().toUpperCase();
+    const orderNumber = `PSK${randomInt(100_000_000_000, 1_000_000_000_000)}`;
     const order = await tx.order.create({
       data: {
         orderNumber,
