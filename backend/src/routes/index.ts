@@ -27,6 +27,7 @@ apiRouter.use(async (req, res, next) => {
   const infrastructure =
     (req.method === "GET" && path === "/health") ||
     (req.method === "GET" && path === "/events") ||
+    (req.method === "GET" && path === "/media/url") ||
     (req.method === "POST" &&
       ["/otp/send", "/otp/verify", "/webhook/payment", "/payment/webhook"].includes(path));
   if (infrastructure) return next();

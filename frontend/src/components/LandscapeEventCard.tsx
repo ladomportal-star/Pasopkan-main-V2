@@ -59,16 +59,13 @@ const LandscapeEventCard: React.FC<LandscapeEventCardProps> = ({ event, index, u
   const t = translations[lang];
 
   const getEventDateDisplay = () => {
-    // If flexible date, do not show badge as requested
-    if (event.dateType === 'flexible') {
-      return '';
-    }
     if (event.dateType === 'booking') {
       return lang === 'en' ? 'Booking Available' : 'ເປີດໃຫ້ຈອງ';
     }
-    if (!event.date) return '';
-    const start = formatEventDateDDMMYYYY(event.date);
-    if (event.endDate && event.endDate !== event.date) {
+    const startDate = event.date || event.availableDates?.find(({ date }) => date)?.date;
+    if (!startDate) return '';
+    const start = formatEventDateDDMMYYYY(startDate);
+    if (event.endDate && event.endDate !== startDate) {
       const end = formatEventDateDDMMYYYY(event.endDate);
       return `${start} - ${end}`;
     }
