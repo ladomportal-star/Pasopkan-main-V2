@@ -84,27 +84,28 @@ function AnimatedRoutes() {
           }
         >
           <Route index element={<Home />} />
-          <Route element={<RequireAccount />}>
-          <Route path="event/:id" element={<EventDetails />} />
-          <Route path="checkout" element={<Checkout />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="account" element={<Account />} />
-          <Route path="organizer" element={<ApprovalCenter />} />
-          <Route path="past-events" element={<PastEvents />} />
+          {/* Event catalogs are public. Only opening an individual event requires an account. */}
           <Route path="category/:categoryId" element={<CategoryEvents />} />
-          <Route path="edit-profile" element={<EditProfile />} />
-          <Route path="notifications" element={<Notifications />} />
-          <Route path="notification-settings" element={<NotificationSettings />} />
-          <Route path="language" element={<LanguageSettings />} />
-          <Route path="security" element={<Security />} />
-          <Route path="security/2fa" element={<UpdatePassword />} />
-          <Route path="security/password" element={<UpdatePassword />} />
-          <Route path="payment-methods" element={<PaymentMethods />} />
-          <Route path="help" element={<Help />} />
-          <Route path="contact" element={<Contact />} />
-          <Route path="about" element={<About />} />
-          <Route path="terms" element={<Terms />} />
-          <Route path="privacy" element={<Privacy />} />
+          <Route element={<RequireAccount />}>
+            <Route path="event/:id" element={<EventDetails />} />
+            <Route path="checkout" element={<Checkout />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="account" element={<Account />} />
+            <Route path="organizer" element={<ApprovalCenter />} />
+            <Route path="past-events" element={<PastEvents />} />
+            <Route path="edit-profile" element={<EditProfile />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="notification-settings" element={<NotificationSettings />} />
+            <Route path="language" element={<LanguageSettings />} />
+            <Route path="security" element={<Security />} />
+            <Route path="security/2fa" element={<UpdatePassword />} />
+            <Route path="security/password" element={<UpdatePassword />} />
+            <Route path="payment-methods" element={<PaymentMethods />} />
+            <Route path="help" element={<Help />} />
+            <Route path="contact" element={<Contact />} />
+            <Route path="about" element={<About />} />
+            <Route path="terms" element={<Terms />} />
+            <Route path="privacy" element={<Privacy />} />
           </Route>
         </Route>
         
