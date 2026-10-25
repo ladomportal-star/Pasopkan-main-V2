@@ -15,6 +15,8 @@ export interface PurchasedTicket {
   event: LaoEvent;
   tier: TicketTier;
   quantity: number;
+  ticketCodes: string[];
+  orderNumber: string;
   bookingDate: string;
   status: 'upcoming' | 'past' | 'pending_refund' | 'refunded';
   scanned?: boolean;
@@ -120,7 +122,7 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
   }, [ticket]);
 
   const totalQuantity = ticket?.quantity || 1;
-  const currentTicketId = totalQuantity > 1 ? `${ticket?.id}-${currentTicketIndex + 1}` : (ticket?.id || '');
+  const currentTicketId = ticket?.ticketCodes?.[currentTicketIndex] ?? '';
 
   const isPast = useMemo(() => {
     if (!ticket) return false;
@@ -157,12 +159,7 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
 
   if (!ticket) return null;
 
-  // Format Order ID for display (e.g. EBP139920AC)
-  const formattedOrderId = (ticket.id.startsWith('tkt-') || ticket.id.startsWith('tk_'))
-    ? ticket.id.replace(/^(tkt-|tk_)/, 'EBP').toUpperCase().slice(0, 11)
-    : ticket.id.length > 11 
-      ? `EBP${ticket.id.slice(-8).toUpperCase()}`
-      : ticket.id.toUpperCase();
+  const formattedOrderId = ticket.orderNumber || ticket.id;
 
   // Formatted date
   const formatEventDate = () => {
@@ -177,16 +174,16 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
           });
         }
       }
-      return ticket.event.date || '14 February 2025';
+      return ticket.event.date || '—';
     } catch {
-      return ticket.event.date || '14 February 2025';
+      return ticket.event.date || '—';
     }
   };
 
   // Formatted time
   const formatEventTime = () => {
     let rawTime = ticket.selectedTime || (ticket as any).time || (ticket as any).selected_time || ticket.event?.time;
-    if (!rawTime) return '18:00';
+    if (!rawTime) return '—';
     
     // Extract just the start time if it contains a range (e.g., "18:00 - 23:00")
     if (typeof rawTime === 'string' && rawTime.includes('-')) {
@@ -417,7 +414,7 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                       {lang === 'lo' ? 'ສະຖານະ: ໂມຄະ' : 'STATUS: VOID'}
                     </div>
                   </div>
-                ) : (
+                ) : currentTicketId ? (
                   <>
                     <QRCodeSVG
                       value={currentTicketId}
@@ -469,6 +466,10 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                       </motion.div>
                     )}
                   </>
+                ) : (
+                  <p className="px-5 py-8 text-center text-sm font-semibold text-gray-500">
+                    {lang === 'lo' ? 'ບໍ່ພົບ QR ປີ້ຈາກ Backend' : 'Ticket QR is unavailable from the backend'}
+                  </p>
                 )}
               </div>
             </div>

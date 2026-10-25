@@ -84,6 +84,7 @@ import {
   TermIconOption
 } from '../lib/termIcons';
 import { compressImage } from '../lib/imageCompression';
+import { api } from '../lib/api';
 
 interface SiteSettingsTabProps {
   lang: 'en' | 'lo';
@@ -92,6 +93,28 @@ interface SiteSettingsTabProps {
 }
 
 type SubTab = 'home_hero' | 'ticket_sponsors' | 'contact' | 'support' | 'terms' | 'organizer_terms' | 'privacy';
+
+type BackendTicketPreview = {
+  eventTitle?: string;
+  orderNumber?: string;
+  selectedDate?: string | null;
+  selectedTime?: string | null;
+  status?: string;
+  items?: Array<{
+    ticketCode?: string;
+    tierName?: string;
+    status?: string;
+  }>;
+};
+
+type TicketPreview = {
+  eventTitle: string;
+  orderNumber: string;
+  selectedDate: string;
+  selectedTime: string;
+  tierName: string;
+  ticketCode: string;
+};
 
 export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSettingsTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('home_hero');
@@ -104,6 +127,9 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
   const [homeHeroForm, setHomeHeroForm] = useState<HomeHeroSettings | null>(null);
   const [previewSlideIdx, setPreviewSlideIdx] = useState<number>(0);
   const [ticketSponsorsForm, setTicketSponsorsForm] = useState<TicketSponsorSettings | null>(null);
+  const [ticketPreview, setTicketPreview] = useState<TicketPreview | null>(null);
+  const [ticketPreviewLoading, setTicketPreviewLoading] = useState(true);
+  const [ticketPreviewError, setTicketPreviewError] = useState(false);
   const [adSubTab, setAdSubTab] = useState<'content' | 'schedule' | 'fallback'>('content');
   const [contactForm, setContactForm] = useState<ContactSettings | null>(null);
   const [supportForm, setSupportForm] = useState<SupportSettings | null>(null);
@@ -121,6 +147,7 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
     async function loadAllSettings() {
       try {
         setIsLoading(true);
+        setTicketPreviewLoading(true);
         const [contact, support, terms, privacy, organizerTerms, homeHero] = await Promise.all([
           getContactSettings(),
           getSupportSettings(),
@@ -144,8 +171,38 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
             ? 'Could not load ticket sponsor settings from the backend. Sponsor data is not shown until the API is available.'
             : 'ບໍ່ສາມາດໂຫຼດຂໍ້ມູນຜູ້ສະໜັບສະໜູນຈາກ Backend ໄດ້; ຈະບໍ່ສະແດງຂໍ້ມູນ Sponsor ຈົນກວ່າ API ຈະໃຊ້ງານໄດ້.');
         }
+        try {
+          setTicketPreviewError(false);
+          const response = await api.listOrders({ throwOnError: true });
+          const orders = (response.data?.tickets ?? []) as BackendTicketPreview[];
+          let latestTicket: TicketPreview | null = null;
+          for (const order of orders) {
+            if (order.status !== 'confirmed' || !Array.isArray(order.items)) continue;
+            const item = order.items.find((candidate) =>
+              Boolean(candidate.ticketCode) && ['valid', 'checked_in'].includes(candidate.status ?? ''),
+            );
+            if (!item?.ticketCode) continue;
+            latestTicket = {
+              eventTitle: order.eventTitle || '',
+              orderNumber: order.orderNumber || '',
+              selectedDate: order.selectedDate || '',
+              selectedTime: order.selectedTime || '',
+              tierName: item.tierName || '',
+              ticketCode: item.ticketCode,
+            };
+            break;
+          }
+          setTicketPreview(latestTicket);
+        } catch (error) {
+          console.error('Backend API load failed for ticket preview:', error);
+          setTicketPreview(null);
+          setTicketPreviewError(true);
+        } finally {
+          setTicketPreviewLoading(false);
+        }
       } catch (error) {
         console.error('Error loading site settings:', error);
+        setTicketPreviewLoading(false);
         setErrorMessage(lang === 'en' ? 'Failed to load site settings. Please try again.' : 'ບໍ່ສາມາດໂຫຼດຂໍ້ມູນການຕັ້ງຄ່າເວັບໄຊໄດ້. ກະລຸນາລອງໃໝ່.');
       } finally {
         setIsLoading(false);
@@ -1774,7 +1831,7 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                       <div className="flex items-center gap-2">
                         <Eye className="w-4 h-4 text-adv-orange" />
                         <span className="text-xs font-black uppercase tracking-wider text-adv-slate">
-                          {lang === 'en' ? 'Live E-Ticket Preview' : 'ຕົວຢ່າງສະແດງຜົນເທິງປີ້ E-Ticket ຕົວຈິງ'}
+                          {lang === 'en' ? 'E-Ticket Preview · Backend API' : 'ຕົວຢ່າງປີ້ E-Ticket ຈາກ Backend API'}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5">
@@ -1796,7 +1853,7 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                       </div>
                     </div>
 
-                    {/* Full E-Ticket Mockup Frame Matching ETicketModal */}
+                    {/* Ticket frame uses the current account's real Backend ticket when available. */}
                     <div className="w-full max-w-[340px] sm:max-w-[360px] mx-auto rounded-[28px] bg-gradient-to-b from-[#FF5500] via-[#F24E00] to-[#E04500] text-white p-3.5 shadow-2xl flex flex-col justify-between overflow-hidden border border-orange-400/30">
                       {/* Top Bar Header in Ticket */}
                       <div className="flex items-center justify-between mb-2.5 px-1 pt-0.5 shrink-0">
@@ -1825,7 +1882,9 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
 
                           {/* Event Title */}
                           <h1 className="text-base sm:text-lg md:text-xl font-black text-gray-950 leading-tight mb-2 tracking-tight line-clamp-1">
-                            Senglao Acoustic Night 2026
+                            {ticketPreview?.eventTitle || (ticketPreviewLoading
+                              ? (lang === 'en' ? 'Loading ticket…' : 'ກຳລັງໂຫຼດປີ້…')
+                              : (lang === 'en' ? 'No issued ticket' : 'ບໍ່ມີປີ້ທີ່ອອກແລ້ວ'))}
                           </h1>
 
                           {/* 2-Column Info Grid */}
@@ -1835,7 +1894,9 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                                 {lang === 'lo' ? 'ວັນທີ' : 'Date'}
                               </p>
                               <p className="text-xs font-bold text-gray-950 leading-tight">
-                                28 Aug 2026
+                                {ticketPreview?.selectedDate
+                                  ? new Date(ticketPreview.selectedDate).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+                                  : '—'}
                               </p>
                             </div>
 
@@ -1844,7 +1905,7 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                                 {lang === 'lo' ? 'ເວລາ' : 'Time'}
                               </p>
                               <p className="text-xs font-bold text-gray-950 leading-tight">
-                                19:00
+                                {ticketPreview?.selectedTime || '—'}
                               </p>
                             </div>
 
@@ -1853,7 +1914,7 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                                 {lang === 'lo' ? 'ປະເພດການເຂົ້າ' : 'Check In Type'}
                               </p>
                               <p className="text-xs font-bold text-gray-950 leading-tight truncate">
-                                VIP Access
+                                {ticketPreview?.tierName || '—'}
                               </p>
                             </div>
 
@@ -1862,7 +1923,7 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                                 {lang === 'lo' ? 'ລະຫັດອໍເດີ' : 'Order ID'}
                               </p>
                               <p className="text-xs font-bold text-gray-950 font-mono tracking-tight leading-tight">
-                                EBP948201AC
+                                {ticketPreview?.orderNumber || '—'}
                               </p>
                             </div>
                           </div>
@@ -1883,13 +1944,27 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                         {/* Direct QR Code Section */}
                         <div className="py-1 flex-1 flex flex-col items-center justify-center min-h-0">
                           <div className="p-2 sm:p-4 bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-md flex items-center justify-center shrink-0">
-                            <QRCodeSVG
-                              value="PREVIEW-TICKET-EBP948201AC"
-                              size={360}
-                              className="w-64 h-64 min-[390px]:w-[272px] min-[390px]:h-[272px] sm:w-60 sm:h-60 md:w-64 md:h-64"
-                              level="H"
-                              includeMargin={false}
-                            />
+                            {ticketPreviewLoading ? (
+                              <div className="grid h-64 w-64 place-items-center text-sm font-semibold text-gray-400">
+                                {lang === 'en' ? 'Loading account tickets…' : 'ກຳລັງໂຫຼດປີ້ຂອງບັນຊີ…'}
+                              </div>
+                            ) : ticketPreviewError ? (
+                              <div className="grid h-64 w-64 place-items-center px-6 text-center text-sm font-semibold text-red-600">
+                                {lang === 'en' ? 'Could not load a real ticket from the backend.' : 'ບໍ່ສາມາດໂຫຼດປີ້ຈິງຈາກ Backend ໄດ້'}
+                              </div>
+                            ) : ticketPreview ? (
+                              <QRCodeSVG
+                                value={ticketPreview.ticketCode}
+                                size={360}
+                                className="w-64 h-64 min-[390px]:w-[272px] min-[390px]:h-[272px] sm:w-60 sm:h-60 md:w-64 md:h-64"
+                                level="H"
+                                includeMargin={false}
+                              />
+                            ) : (
+                              <div className="grid h-64 w-64 place-items-center px-6 text-center text-sm font-semibold text-gray-400">
+                                {lang === 'en' ? 'No confirmed ticket is available on this account.' : 'ບັນຊີນີ້ບໍ່ມີປີ້ທີ່ຢືນຢັນຈາກ Backend'}
+                              </div>
+                            )}
                           </div>
                         </div>
 

@@ -175,6 +175,8 @@ interface PurchasedTicket {
   event: LaoEvent;
   tier: TicketTier;
   quantity: number;
+  ticketCodes: string[];
+  orderNumber: string;
   bookingDate: string;
   status: 'upcoming' | 'past' | 'pending_refund' | 'refunded';
   scanned?: boolean;
@@ -252,6 +254,8 @@ export default function Dashboard() {
             event,
             tier,
             quantity: items.length || 1,
+            ticketCodes: items.map((item) => String(item.ticketCode ?? "")).filter(Boolean),
+            orderNumber: String(o.orderNumber ?? o.id),
             bookingDate: o.createdAt,
             status,
             scanned: items.some((it) => it.status === 'checked_in'),
