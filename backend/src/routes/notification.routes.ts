@@ -2,6 +2,11 @@ import { Router } from "express";
 import { requireAdmin, requireAuth } from "../middlewares/auth.middleware.ts";
 import { validate } from "../middlewares/validate.middleware.ts";
 import {
+  getNotificationPreferences,
+  saveNotificationPreferences,
+} from "../controllers/notification-preference.controller.ts";
+import { notificationPreferencesBody } from "../validators/notification-preference.validator.ts";
+import {
   createNotificationBody,
   listNotificationsQuery,
   notificationIdParam,
@@ -16,6 +21,14 @@ import {
 } from "../controllers/notification.controller.ts";
 
 const router = Router();
+
+router.use("/notification-preferences", requireAuth);
+router.get("/notification-preferences", getNotificationPreferences);
+router.put(
+  "/notification-preferences",
+  validate({ body: notificationPreferencesBody }),
+  saveNotificationPreferences,
+);
 
 router.use("/notifications", requireAuth);
 

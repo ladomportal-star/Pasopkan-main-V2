@@ -355,6 +355,25 @@ export const api = {
       unreadCount: number;
     }>("GET", "/notifications", undefined, opts),
 
+  getNotificationPreferences: (opts?: RequestOptions) =>
+    request<{ preferences: import("../types").NotificationPreferences }>(
+      "GET",
+      "/notification-preferences",
+      undefined,
+      opts,
+    ),
+
+  saveNotificationPreferences: (
+    preferences: import("../types").NotificationPreferences,
+    opts?: RequestOptions,
+  ) =>
+    request<{ preferences: import("../types").NotificationPreferences }>(
+      "PUT",
+      "/notification-preferences",
+      preferences,
+      opts,
+    ),
+
   markNotificationRead: (id: string, opts?: RequestOptions) =>
     request(
       "PATCH",

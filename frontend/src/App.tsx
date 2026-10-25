@@ -24,6 +24,7 @@ import Dashboard from './pages/Dashboard';
 import Account from './pages/Account';
 import EditProfile from './pages/EditProfile';
 import Notifications from './pages/Notifications';
+import NotificationSettings from './pages/NotificationSettings';
 import LanguageSettings from './pages/LanguageSettings';
 import Security from './pages/Security';
 import UpdatePassword from './pages/UpdatePassword';
@@ -93,6 +94,7 @@ function AnimatedRoutes() {
           <Route path="category/:categoryId" element={<CategoryEvents />} />
           <Route path="edit-profile" element={<EditProfile />} />
           <Route path="notifications" element={<Notifications />} />
+          <Route path="notification-settings" element={<NotificationSettings />} />
           <Route path="language" element={<LanguageSettings />} />
           <Route path="security" element={<Security />} />
           <Route path="security/2fa" element={<UpdatePassword />} />

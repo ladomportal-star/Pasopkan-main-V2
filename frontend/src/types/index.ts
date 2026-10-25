@@ -84,3 +84,13 @@ export interface AppNotification {
   status?: 'approved' | 'rejected' | 'pending' | string;
   link?: string;
 }
+
+export interface NotificationPreferences {
+  pushEnabled: boolean;
+  emailEnabled: boolean;
+  systemUpdatesEnabled: boolean;
+  eventStatusEnabled: boolean;
+  refundsEnabled: boolean;
+  payoutsEnabled: boolean;
+  updatedAt?: string;
+}

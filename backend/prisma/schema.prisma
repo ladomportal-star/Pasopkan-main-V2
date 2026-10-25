@@ -84,6 +84,7 @@ model User {
   eventReviews Event[] @relation("EventReviewer")
   orders Order[]
   notifications Notification[]
+  notificationPreferences NotificationPreference?
   audits AuditLog[]
   refundReviews Refund[]
   paidPayouts EventPayout[] @relation("PayoutPaidBy")
@@ -382,6 +383,18 @@ model Notification {
   readAt DateTime? @db.Timestamptz(3)
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   @@index([userId, createdAt])
+}
+
+model NotificationPreference {
+  userId String @id @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pushEnabled Boolean @default(true)
+  emailEnabled Boolean @default(true)
+  systemUpdatesEnabled Boolean @default(true)
+  eventStatusEnabled Boolean @default(true)
+  refundsEnabled Boolean @default(true)
+  payoutsEnabled Boolean @default(true)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
 }
 model AuditLog {
   id String @id @default(uuid()) @db.Uuid
