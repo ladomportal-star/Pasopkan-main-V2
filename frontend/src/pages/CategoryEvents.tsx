@@ -4,7 +4,7 @@ import { ArrowLeft, Filter, Calendar, Tag, MapPin, History, ChevronDown } from '
 import { LaoEvent } from '../data/events';
 import EventCard from '../components/EventCard';
 import { useLanguage } from '../context/LanguageContext';
-import { api } from '../lib/api';
+import { listAllPublicEvents } from '../lib/publicEvents';
 import { fromBackendEvent } from '../lib/eventPayload';
 import SEO from '../components/SEO';
 
@@ -76,9 +76,9 @@ export default function CategoryEvents() {
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
-    api.listEvents().then((res) => {
+    listAllPublicEvents().then((res) => {
       if (cancelled) return;
-      const allEvents: LaoEvent[] = (res.data?.events ?? []).map(fromBackendEvent);
+      const allEvents: LaoEvent[] = res.events.map(fromBackendEvent);
       const filtered = allEvents.filter(
         (e) => e.category && e.category.toLowerCase() === categoryId?.toLowerCase(),
       );

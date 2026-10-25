@@ -5,7 +5,7 @@ import { getVerifiedPhone } from "../services/verified-phone.service.ts";
 import { sendTransactionalSms } from "../services/sms-hook.service.ts";
 import { logger } from "../utils/logger.ts";
 
-/** GET /api/events — account-only catalog; `?mine=true` lists the caller's own drafts too. */
+/** GET /api/events — public catalog; `?mine=true` lists the signed-in caller's events. */
 export async function getEvents(req: Request, res: Response) {
   const { status, mine, limit, cursor } = req.query as unknown as {
     status?: string;

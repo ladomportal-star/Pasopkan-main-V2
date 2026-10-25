@@ -18,14 +18,15 @@ import { requireAuth, requireRegisteredUser } from "../middlewares/auth.middlewa
 
 const apiRouter = Router();
 
-// Default-deny access to application data, including future routes. Only login,
-// deployment health checks and provider callbacks may run without an account.
+// Default-deny access to application data, including future routes. The public
+// event catalog is the only application-data read available before sign-in.
 apiRouter.use(async (req, res, next) => {
   res.setHeader("Cache-Control", "private, no-store");
   res.vary("Authorization");
   const path = req.path.replace(/\/+$/, "").toLowerCase();
   const infrastructure =
     (req.method === "GET" && path === "/health") ||
+    (req.method === "GET" && path === "/events") ||
     (req.method === "POST" &&
       ["/otp/send", "/otp/verify", "/webhook/payment", "/payment/webhook"].includes(path));
   if (infrastructure) return next();

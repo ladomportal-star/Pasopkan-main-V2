@@ -25,7 +25,7 @@ import {
 import { LaoEvent, getEventStatus } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
 import LandscapeEventCard from '../components/LandscapeEventCard';
-import { api } from '../lib/api';
+import { listAllPublicEvents } from '../lib/publicEvents';
 import { fromBackendEvent } from '../lib/eventPayload';
 import { getHomeHeroSettings, type HomeHeroSettings } from '../lib/siteSettings';
 import SEO from '../components/SEO';
@@ -475,14 +475,14 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
-    api.listEvents().then((res) => {
+    listAllPublicEvents().then((res) => {
       if (cancelled) return;
       if (!res.ok) {
         setFetchedEvents([]);
         setIsLoading(false);
         return;
       }
-      const allEvents: LaoEvent[] = (res.data?.events ?? []).map(fromBackendEvent);
+      const allEvents: LaoEvent[] = res.events.map(fromBackendEvent);
 
       // Filter out events that are expired or already in the past
       const today = new Date();
