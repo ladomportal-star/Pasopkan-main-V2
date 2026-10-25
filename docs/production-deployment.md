@@ -134,9 +134,10 @@ Run these checks after DNS and TLS are active:
    a Vercel 404.
 5. Test account sync, event listing, media upload/read, order reservation and
    admin approval with a staging account before enabling real payments.
-   Before sign-in, direct application links must redirect to `/login`, and
-   `/api/events` must return HTTP 401 without data. Health and OTP bootstrap
-   remain accessible. See [account-only access](authentication-access.md).
+   Before sign-in, the home page, category catalogs and `GET /api/events` must show
+   public Backend API events. Opening `/event/:id` and `GET /api/events/:id` must
+   require sign-in; writes and private APIs remain protected. Health and OTP bootstrap
+   remain accessible. See [event discovery and account access](authentication-access.md).
 6. With a staging Google account, click Create Event, enter a Lao phone, send
    and verify a real OTP, submit an Organizer application, approve it as Admin,
    and confirm the event editor opens. Also verify an unconfirmed phone or

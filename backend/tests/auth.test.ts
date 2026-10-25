@@ -73,16 +73,24 @@ describe("authentication (real JWT verification, nothing bypassed)", () => {
     expect(res.body.tickets).toEqual([]);
   });
 
-  it("rejects anonymous sessions for browsing and writes", async () => {
+  it("allows anonymous visitors to browse the public catalog but rejects writes", async () => {
     const guest = await as("guest-1", { anonymous: true });
-    expect((await request(app).get("/api/events").set(guest)).status).toBe(403);
+    expect((await request(app).get("/api/events").set(guest)).status).toBe(200);
     expect((await request(app).post("/api/events").set(guest).send({ title: "x" })).status).toBe(
       403,
     );
   });
 
+  it("exposes the public catalog without login but protects event details", async () => {
+    const catalog = await request(app).get("/api/events");
+    expect(catalog.status).toBe(200);
+    expect(catalog.body.events).toEqual(expect.any(Array));
+
+    const detail = await request(app).get("/api/events/example");
+    expect(detail.status).toBe(401);
+  });
+
   it.each([
-    "/events",
     "/events/example",
     "/media/url?reference=x",
     "/resolve-map-url?url=x",

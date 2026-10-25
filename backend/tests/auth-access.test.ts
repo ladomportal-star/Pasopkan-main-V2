@@ -16,7 +16,7 @@ const { createElement: h } = frontendRequire("react");
 const { renderToString } = frontendRequire("react-dom/server");
 const { MemoryRouter, Routes, Route } = frontendRequire("react-router-dom");
 
-describe("account-only application pages", () => {
+describe("protected application pages", () => {
   beforeEach(() => {
     auth.user = null;
     auth.token = null;
@@ -43,7 +43,6 @@ describe("account-only application pages", () => {
     return { html, mounted };
   }
   it.each([
-    "/",
     "/event/one",
     "/checkout",
     "/account",
@@ -53,7 +52,6 @@ describe("account-only application pages", () => {
     "/staff-scanner",
     "/organizer",
     "/past-events",
-    "/category/festival",
     "/edit-profile",
     "/notifications",
     "/language",
@@ -69,6 +67,16 @@ describe("account-only application pages", () => {
     "/unknown-page",
   ])("does not mount data on %s before login", (path) => {
     expect(render(path)).toEqual({ html: "", mounted: false });
+  });
+  it.each(["/", "/category/festival"])("allows public event discovery at %s", (path) => {
+    const html = renderToString(
+      h(
+        MemoryRouter,
+        { initialEntries: [path] },
+        h(Routes, null, h(Route, { path: "*", element: "PUBLIC EVENT CATALOG" })),
+      ),
+    );
+    expect(html).toBe("PUBLIC EVENT CATALOG");
   });
   it("does not flash protected pages while session loading or for anonymous sessions", () => {
     auth.loading = true;
