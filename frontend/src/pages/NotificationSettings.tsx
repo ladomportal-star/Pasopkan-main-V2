@@ -17,7 +17,7 @@ const preferenceKeys = [
 
 const copy = {
   en: {
-    title: 'Notification Settings', back: 'Back to Account',
+    title: 'Notification Settings', subtitle: 'Manage how and which notifications you receive on Pasopkan.', back: 'Back to Account',
     channels: 'Notification channels', channelsDesc: 'Choose where you want to receive account updates.',
     push: 'Push Notifications', pushDesc: 'Receive notifications on this device when available.',
     email: 'Email Notifications', emailDesc: 'Receive account updates and important notices by email.',
@@ -31,7 +31,7 @@ const copy = {
     saveError: 'Could not save your changes. Please try again.', saved: 'Notification settings saved.',
   },
   lo: {
-    title: 'ຕັ້ງຄ່າການແຈ້ງເຕືອນ', back: 'ກັບຄືນໄປໜ້າບັນຊີ',
+    title: 'ຕັ້ງຄ່າການແຈ້ງເຕືອນ', subtitle: 'ຈັດການວິທີ ແລະ ເນື້ອຫາການແຈ້ງເຕືອນຂອງທ່ານໃນ Pasopkan.', back: 'ກັບຄືນໄປໜ້າບັນຊີ',
     channels: 'ຊ່ອງທາງການແຈ້ງເຕືອນ', channelsDesc: 'ເລືອກຊ່ອງທາງທີ່ຕ້ອງການຮັບຂ່າວສານ ແລະ ການແຈ້ງເຕືອນ.',
     push: 'ການແຈ້ງເຕືອນ Push', pushDesc: 'ຮັບການແຈ້ງເຕືອນໃນອຸປະກອນນີ້ ເມື່ອລະບົບຮອງຮັບ.',
     email: 'ການແຈ້ງເຕືອນຜ່ານ Email', emailDesc: 'ຮັບຂ່າວສານບັນຊີ ແລະ ຂໍ້ມູນສຳຄັນຜ່ານ Email.',
@@ -135,13 +135,16 @@ export default function NotificationSettings() {
   return (
     <div className="min-h-screen bg-[#F8F9FB] py-4 md:py-6">
       <SEO title={`${t.title} | Pasopkan`} description={t.title} noindex />
-      <div className="mx-auto max-w-3xl px-4 pb-12 pt-4 sm:px-6 sm:pt-6">
+      <div className="mx-auto max-w-2xl px-4 pb-12 pt-4 sm:px-6 sm:pt-6">
         <button onClick={() => navigate('/account')} className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900">
           <ArrowLeft className="h-4 w-4" />{t.back}
         </button>
         <div className="mb-6 flex items-center gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-gray-100 bg-white text-[#ff5a00] shadow-sm"><BellRing className="h-5 w-5" /></div>
-          <div><h1 className="text-2xl font-extrabold tracking-tight text-slate-900">{t.title}</h1></div>
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">{t.title}</h1>
+            <p className="mt-0.5 text-xs text-slate-500">{t.subtitle}</p>
+          </div>
         </div>
 
         {loadError ? (
