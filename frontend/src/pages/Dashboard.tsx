@@ -9,6 +9,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { api } from '../lib/api';
 import { fromBackendEvent } from '../lib/eventPayload';
+import { formatEventDateDDMMYYYY } from '../lib/dateFormat';
 import SEO from '../components/SEO';
 import ETicketModal from '../components/ETicketModal';
 import { showErrorAlert } from '../lib/alerts';
@@ -278,30 +279,7 @@ export default function Dashboard() {
 
   // Helper to format event date cleanly without UTC timezone shift
   const formatTicketEventDate = (dateStr?: string, fallback = '') => {
-    if (!dateStr) return fallback;
-    try {
-      const clean = dateStr.trim();
-      if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
-        const [year, month, day] = clean.split('-').map(Number);
-        const d = new Date(year, month - 1, day);
-        return d.toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric'
-        });
-      }
-      const d = new Date(clean);
-      if (!isNaN(d.getTime())) {
-        return d.toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric'
-        });
-      }
-      return clean;
-    } catch {
-      return dateStr || fallback;
-    }
+    return dateStr ? formatEventDateDDMMYYYY(dateStr) : fallback;
   };
 
   // Helper to format event start time cleanly (extracting start time from slots, ranges, or event.time)

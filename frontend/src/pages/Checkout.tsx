@@ -22,6 +22,7 @@ import { useAuth } from "../context/AuthContext";
 import { QRCodeSVG } from "qrcode.react";
 import { api } from "../lib/api";
 import { showErrorAlert } from "../lib/alerts";
+import { formatEventDateDDMMYYYY } from "../lib/dateFormat";
 
 import SEO from "../components/SEO";
 
@@ -676,15 +677,7 @@ export default function Checkout() {
             <Calendar className="w-3.5 h-3.5 text-adv-orange shrink-0" />
             <span>
               {displayDate
-                ? new Date(displayDate).toLocaleDateString(
-                    lang === "en" ? "en-US" : "lo-LA",
-                    {
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    },
-                  )
+                ? formatEventDateDDMMYYYY(displayDate)
                 : lang === "en"
                   ? "Flexible"
                   : "ວັນທີປ່ຽນແປງໄດ້"}

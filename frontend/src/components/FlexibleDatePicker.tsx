@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, Clock, Plus, X } from 'lucide-react';
 import { ScrollTimePicker } from './ScrollTimePicker';
+import { formatEventDateDDMMYYYY } from '../lib/dateFormat';
 
 interface AvailableDate {
   date: string; // YYYY-MM-DD
@@ -205,7 +206,7 @@ export function FlexibleDatePicker({ availableDates, onChange, lang, theme }: Fl
               >
                 <div className="flex items-center justify-between mb-4">
                   <h5 className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-adv-slate'}`}>
-                    {new Date(selectedDate).toLocaleDateString(lang === 'en' ? 'en-US' : 'lo-LA', { dateStyle: 'medium' })}
+                    {formatEventDateDDMMYYYY(selectedDate)}
                   </h5>
                   {availableDates.some(d => d.date === selectedDate) && (
                     <button

@@ -6,6 +6,7 @@ import { LaoEvent } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
 import { api } from '../lib/api';
 import { fromBackendEvent } from '../lib/eventPayload';
+import { formatEventDateDDMMYYYY } from '../lib/dateFormat';
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -187,7 +188,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                         <div className="flex items-center gap-4 text-xs text-gray-400 mt-1.5 font-medium">
                           <span className="flex items-center gap-1.5">
                             <Calendar className="w-3.5 h-3.5 text-adv-orange" />
-                            {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            {formatEventDateDDMMYYYY(event.date || event.endDate)}
                             {event.time && ` • ${event.time}`}
                           </span>
                           <span className="flex items-center gap-1.5 truncate">

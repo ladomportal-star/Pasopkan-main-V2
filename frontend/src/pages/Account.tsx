@@ -67,6 +67,7 @@ import { api, listAllMyEvents } from "../lib/api";
 import { motion, AnimatePresence } from "motion/react";
 import { LaoEvent, SeatingZone, Coupon } from "../data/events";
 import { fromBackendEvent, toEventPayload } from "../lib/eventPayload";
+import { formatEventDateDDMMYYYY } from "../lib/dateFormat";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
@@ -995,8 +996,8 @@ export default function Account() {
                       <span className="flex items-center gap-1.5 sm:gap-2">
                         <CalendarIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-adv-orange shrink-0" />
                         {selectedEvent.dateType === "booking"
-                          ? `${selectedEvent.bookingStartDate || selectedEvent.date} to ${selectedEvent.bookingEndDate || "Ongoing"} • Daily Sessions`
-                          : selectedEvent.date}
+                          ? `${formatEventDateDDMMYYYY(selectedEvent.bookingStartDate || selectedEvent.date)} to ${selectedEvent.bookingEndDate ? formatEventDateDDMMYYYY(selectedEvent.bookingEndDate) : "Ongoing"} • Daily Sessions`
+                          : formatEventDateDDMMYYYY(selectedEvent.date)}
                       </span>
                       <span className="flex items-center gap-1.5 sm:gap-2">
                         <MapPin className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-adv-orange shrink-0" />{" "}

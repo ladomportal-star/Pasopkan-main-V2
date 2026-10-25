@@ -34,6 +34,7 @@ import {
   X,
 } from "lucide-react";
 import { api } from "../lib/api";
+import { formatEventDateDDMMYYYY } from "../lib/dateFormat";
 import { useAuth } from "../context/AuthContext";
 import AdminLiveOverview, {
   type AdminAnalytics,
@@ -1176,7 +1177,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                                   <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-600">
                                     <CalendarDays className="h-4 w-4 shrink-0 text-orange-500" />
                                     {event.startDate
-                                      ? dateTime(event.startDate, locale)
+                                      ? formatEventDateDDMMYYYY(event.startDate)
                                       : `ສ້າງ ${dateTime(event.createdAt, locale)}`}
                                   </p>
                                   <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
@@ -1402,7 +1403,7 @@ export default function ApprovalCenter({ admin = false }: { admin?: boolean }) {
                                 <Link to={`/event/${event.id}`} className="mt-1 block truncate text-lg font-black text-slate-950 hover:text-orange-600">{event.title}</Link>
                                 <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold text-slate-500">
                                   <StatusBadge status={event.status} />
-                                  <span className="inline-flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5" />{event.startDate ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(event.startDate)) : new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(event.createdAt))}</span>
+                                  <span className="inline-flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5" />{event.startDate ? formatEventDateDDMMYYYY(event.startDate) : new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(event.createdAt))}</span>
                                   <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{event.venueName || event.province || "—"}</span>
                                   <span className="rounded-lg bg-orange-50 px-2 py-1 text-orange-700">{sold} ບັດທີ່ຂາຍ</span>
                                   <span className="rounded-lg bg-emerald-50 px-2 py-1 text-emerald-700">ມູນຄ່າບັດ {money(ticketValue, locale)}</span>
@@ -2230,7 +2231,7 @@ function OrganizerManagement({
             <p className="mb-3 text-xs font-black uppercase tracking-wide text-slate-400">Event ທີ່ຜູ້ຈັດງານນີ້ສ້າງ</p>
             {busy === `detail:${viewing.id}` && <p className="rounded-xl bg-slate-50 p-8 text-center text-sm text-slate-500">ກຳລັງໂຫຼດ Event…</p>}
             {detail && detail.events.length === 0 && <EmptyState>ຍັງບໍ່ມີ Event ສຳລັບຜູ້ຈັດງານນີ້.</EmptyState>}
-            {detail && detail.events.length > 0 && <div className="max-h-[55vh] space-y-3 overflow-y-auto pr-1">{detail.events.map((event) => <article key={event.id} className="flex items-start gap-3 rounded-2xl border border-slate-200 p-3"><span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-orange-50 text-orange-600">{event.coverImageUrl ? <img src={event.coverImageUrl} alt="" className="h-full w-full object-cover" /> : <CalendarDays className="h-5 w-5" />}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-black text-slate-900">{event.title}</p><StatusBadge status={event.status} /></div><p className="mt-1 text-xs text-slate-500">{event.category || event.eventType || "Event"}{event.startDate ? ` · ${new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(event.startDate))}` : ""}{event.venueName ? ` · ${event.venueName}` : ""}</p></div></article>)}</div>}
+            {detail && detail.events.length > 0 && <div className="max-h-[55vh] space-y-3 overflow-y-auto pr-1">{detail.events.map((event) => <article key={event.id} className="flex items-start gap-3 rounded-2xl border border-slate-200 p-3"><span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-orange-50 text-orange-600">{event.coverImageUrl ? <img src={event.coverImageUrl} alt="" className="h-full w-full object-cover" /> : <CalendarDays className="h-5 w-5" />}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-black text-slate-900">{event.title}</p><StatusBadge status={event.status} /></div><p className="mt-1 text-xs text-slate-500">{event.category || event.eventType || "Event"}{event.startDate ? ` · ${formatEventDateDDMMYYYY(event.startDate)}` : ""}{event.venueName ? ` · ${event.venueName}` : ""}</p></div></article>)}</div>}
           </div>
         </AdminModal>
       )}

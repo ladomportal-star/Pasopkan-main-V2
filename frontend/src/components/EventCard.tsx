@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { Calendar, MapPin, ArrowRight, Clock } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { LaoEvent } from '../data/events';
+import { formatEventDateDDMMYYYY } from '../lib/dateFormat';
 
 interface EventCardProps {
   key?: React.Key;
@@ -99,28 +100,6 @@ export default function EventCard({ event, index = 0, userCoords }: EventCardPro
     return `${minPrice.toLocaleString()} ${currency}`;
   };
 
-  const formatEventDate = (dateStr?: string) => {
-    if (!dateStr) return '';
-    try {
-      const clean = dateStr.trim();
-      let d: Date;
-      if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
-        const [year, month, day] = clean.split('-').map(Number);
-        d = new Date(year, month - 1, day);
-      } else {
-        d = new Date(clean);
-      }
-      if (isNaN(d.getTime())) return dateStr;
-      
-      const dayStr = d.getDate().toString().padStart(2, '0');
-      const monthStr = (d.getMonth() + 1).toString().padStart(2, '0');
-      const yearStr = d.getFullYear();
-      return `${dayStr}/${monthStr}/${yearStr}`;
-    } catch {
-      return dateStr || '';
-    }
-  };
-
   const getEventDateDisplay = () => {
     // If flexible date, do not show badge as requested
     if (event.dateType === 'flexible') {
@@ -130,9 +109,9 @@ export default function EventCard({ event, index = 0, userCoords }: EventCardPro
       return lang === 'en' ? 'Booking Available' : 'ເປີດໃຫ້ຈອງ';
     }
     if (!event.date) return '';
-    const start = formatEventDate(event.date);
+    const start = formatEventDateDDMMYYYY(event.date);
     if (event.endDate && event.endDate !== event.date) {
-      const end = formatEventDate(event.endDate);
+      const end = formatEventDateDDMMYYYY(event.endDate);
       return `${start} - ${end}`;
     }
     return start;

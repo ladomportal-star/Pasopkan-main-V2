@@ -85,6 +85,7 @@ import {
 } from '../lib/termIcons';
 import { compressImage } from '../lib/imageCompression';
 import { api } from '../lib/api';
+import { formatEventDateDDMMYYYY } from '../lib/dateFormat';
 
 interface SiteSettingsTabProps {
   lang: 'en' | 'lo';
@@ -1895,7 +1896,7 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                               </p>
                               <p className="text-xs font-bold text-gray-950 leading-tight">
                                 {ticketPreview?.selectedDate
-                                  ? new Date(ticketPreview.selectedDate).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+                                  ? formatEventDateDDMMYYYY(ticketPreview.selectedDate)
                                   : '—'}
                               </p>
                             </div>

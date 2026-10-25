@@ -58,6 +58,7 @@ import {
 import { LaoEvent, TicketTier } from "../data/events";
 import { api } from "../lib/api";
 import { fromBackendEvent } from "../lib/eventPayload";
+import { formatEventDateDDMMYYYY } from "../lib/dateFormat";
 import { useLanguage } from "../context/LanguageContext";
 import { EventMapPicker } from "../components/EventMapPicker";
 import { AdaptiveImage } from "../components/AdaptiveImage";
@@ -252,30 +253,9 @@ const formatDateString = (year: number, month: number, day: number) => {
 // Helper to format event date cleanly without UTC timezone shift (Dashboard Ticket style)
 const formatEventDetailsDate = (
   dateStr?: string,
-  lang: "en" | "lo" = "en",
+  _lang: "en" | "lo" = "en",
   fallback = "",
-) => {
-  if (!dateStr) return fallback;
-  try {
-    const clean = dateStr.trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
-      const [year, month, day] = clean.split("-").map(Number);
-      const dayStr = day.toString().padStart(2, "0");
-      const monthStr = month.toString().padStart(2, "0");
-      return `${dayStr}/${monthStr}/${year}`;
-    }
-    const d = new Date(clean);
-    if (!isNaN(d.getTime())) {
-      const dayStr = d.getDate().toString().padStart(2, "0");
-      const monthStr = (d.getMonth() + 1).toString().padStart(2, "0");
-      const yearStr = d.getFullYear();
-      return `${dayStr}/${monthStr}/${yearStr}`;
-    }
-    return clean;
-  } catch {
-    return dateStr || fallback;
-  }
-};
+) => (dateStr ? formatEventDateDDMMYYYY(dateStr) : fallback);
 
 // Helper to extract clean start time (Dashboard Ticket style)
 const formatEventStartTime = (timeStr?: string): string => {

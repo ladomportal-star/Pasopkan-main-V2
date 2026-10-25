@@ -4,6 +4,7 @@ import { ArrowLeft, Camera, CheckCircle2, QrCode, RefreshCw, ShieldCheck, Ticket
 import { api, type BackendCheckIn, type ScannerEvent } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import SEO from '../components/SEO';
+import { formatEventDateDDMMYYYY } from '../lib/dateFormat';
 
 type LookupTicket = NonNullable<Awaited<ReturnType<typeof api.lookupTicket>>['data']>['ticket'];
 const Scanner = lazy(() => import('@yudiel/react-qr-scanner').then((module) => ({ default: module.Scanner })));
@@ -148,7 +149,7 @@ export default function StaffScanner() {
           <label className="block text-sm font-semibold">ປະຕູ / Gate
             <input value={gate} onChange={(event) => setGate(event.target.value)} maxLength={100} className="mt-2 w-full rounded-xl border px-3 py-3" />
           </label>
-          <p className="sm:col-span-2 text-sm text-slate-500">{selectedEvent?.venueName || '—'}{selectedEvent?.startDate ? ` · ${new Date(selectedEvent.startDate).toLocaleDateString()}` : ''}</p>
+          <p className="sm:col-span-2 text-sm text-slate-500">{selectedEvent?.venueName || '—'}{selectedEvent?.startDate ? ` · ${formatEventDateDDMMYYYY(selectedEvent.startDate)}` : ''}</p>
         </section>
 
         <div className="grid gap-6 lg:grid-cols-2">

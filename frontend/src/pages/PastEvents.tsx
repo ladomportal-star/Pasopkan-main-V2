@@ -7,6 +7,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { fromBackendEvent } from '../lib/eventPayload';
+import { formatEventDateDDMMYYYY } from '../lib/dateFormat';
 import SEO from '../components/SEO';
 
 const translations = {
@@ -166,7 +167,7 @@ export default function PastEvents() {
                         <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
                           <span className="flex items-center gap-1">
                             <CalendarIcon className="w-3.5 h-3.5 text-gray-400 group-hover:text-adv-orange transition-colors" />
-                            {new Date(event.date).toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            {formatEventDateDDMMYYYY(event.date || event.endDate)}
                           </span>
                           <span className="flex items-center gap-1 truncate">
                             <MapPin className="w-3.5 h-3.5 text-gray-400" />

@@ -51,6 +51,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useLanguage } from "../context/LanguageContext";
 import { api, listAllMyEvents } from "../lib/api";
 import { fromBackendEvent, toEventPayload } from "../lib/eventPayload";
+import { formatEventDateDDMMYYYY } from "../lib/dateFormat";
 import { useAuth } from "../context/AuthContext";
 import EventSubmissionOtpModal from "../components/EventSubmissionOtpModal";
 import { laosProvinces, getDistrictsForProvince } from "../lib/laosLocations";
@@ -7828,32 +7829,14 @@ export default function CreateEvent() {
                             </span>
                           )}
                           <p className="text-sm text-gray-700 font-semibold">
-                            {new Date(selectedEvent.date).toLocaleDateString(
-                              lang === "lo" ? "lo-LA" : "en-US",
-                              {
-                                weekday: "long",
-                                month: "long",
-                                day: "numeric",
-                                year: "numeric",
-                              },
-                            )}
+                            {formatEventDateDDMMYYYY(selectedEvent.date)}
                             {selectedEvent.endDate &&
                               selectedEvent.endDate !== selectedEvent.date && (
                                 <>
                                   <span className="mx-1.5 text-gray-400">
                                     →
                                   </span>
-                                  {new Date(
-                                    selectedEvent.endDate,
-                                  ).toLocaleDateString(
-                                    lang === "lo" ? "lo-LA" : "en-US",
-                                    {
-                                      weekday: "long",
-                                      month: "long",
-                                      day: "numeric",
-                                      year: "numeric",
-                                    },
-                                  )}
+                                  {formatEventDateDDMMYYYY(selectedEvent.endDate)}
                                 </>
                               )}
                           </p>

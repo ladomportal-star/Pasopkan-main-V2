@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { LaoEvent, TicketTier } from '../data/events';
+import { formatEventDateDDMMYYYY } from '../lib/dateFormat';
 import {
   getTicketSponsorSettings,
   TicketSponsorSettings,
@@ -163,21 +164,7 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
 
   // Formatted date
   const formatEventDate = () => {
-    try {
-      if (ticket.selectedDate) {
-        const d = new Date(ticket.selectedDate);
-        if (!isNaN(d.getTime())) {
-          return d.toLocaleDateString(lang === 'lo' ? 'lo-LA' : 'en-US', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-          });
-        }
-      }
-      return ticket.event.date || '—';
-    } catch {
-      return ticket.event.date || '—';
-    }
+    return formatEventDateDDMMYYYY(ticket.selectedDate || ticket.event.date) || '—';
   };
 
   // Formatted time
