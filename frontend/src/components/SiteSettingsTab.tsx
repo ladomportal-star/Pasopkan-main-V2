@@ -121,14 +121,13 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
     async function loadAllSettings() {
       try {
         setIsLoading(true);
-        const [contact, support, terms, privacy, organizerTerms, homeHero, ticketSponsors] = await Promise.all([
+        const [contact, support, terms, privacy, organizerTerms, homeHero] = await Promise.all([
           getContactSettings(),
           getSupportSettings(),
           getTermsSettings(),
           getPrivacySettings(),
           getOrganizerTermsSettings(),
-          getHomeHeroSettings(),
-          getTicketSponsorSettings()
+          getHomeHeroSettings()
         ]);
         setContactForm(contact);
         setSupportForm(support);
@@ -136,7 +135,15 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
         setPrivacyForm(privacy);
         setOrganizerTermsForm(organizerTerms);
         setHomeHeroForm(homeHero);
-        setTicketSponsorsForm(ticketSponsors);
+        try {
+          setTicketSponsorsForm(await getTicketSponsorSettings());
+        } catch (error) {
+          console.error('Backend API load failed for ticket sponsors:', error);
+          setTicketSponsorsForm({ ...DEFAULT_TICKET_SPONSOR_SETTINGS, sponsors: [] });
+          setErrorMessage(lang === 'en'
+            ? 'Could not load ticket sponsor settings from the backend. Sponsor data is not shown until the API is available.'
+            : 'ບໍ່ສາມາດໂຫຼດຂໍ້ມູນຜູ້ສະໜັບສະໜູນຈາກ Backend ໄດ້; ຈະບໍ່ສະແດງຂໍ້ມູນ Sponsor ຈົນກວ່າ API ຈະໃຊ້ງານໄດ້.');
+        }
       } catch (error) {
         console.error('Error loading site settings:', error);
         setErrorMessage(lang === 'en' ? 'Failed to load site settings. Please try again.' : 'ບໍ່ສາມາດໂຫຼດຂໍ້ມູນການຕັ້ງຄ່າເວັບໄຊໄດ້. ກະລຸນາລອງໃໝ່.');
@@ -315,10 +322,10 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
       // Ensure sync between single ad top-level fields and sponsors array for backward compatibility
       const syncedForm: TicketSponsorSettings = {
         ...ticketSponsorsForm,
-        adName: ticketSponsorsForm.adName || ticketSponsorsForm.sponsors?.[0]?.name || 'LOCA Laos',
-        adBannerUrl: ticketSponsorsForm.adBannerUrl || ticketSponsorsForm.sponsors?.[0]?.logoUrl || '/Loca banner.png',
-        adWebsiteUrl: ticketSponsorsForm.adWebsiteUrl || ticketSponsorsForm.sponsors?.[0]?.websiteUrl || 'https://loca.la',
-        isActive: ticketSponsorsForm.isActive !== undefined ? ticketSponsorsForm.isActive : (ticketSponsorsForm.sponsors?.[0]?.isActive ?? true),
+        adName: ticketSponsorsForm.adName || ticketSponsorsForm.sponsors?.[0]?.name || '',
+        adBannerUrl: ticketSponsorsForm.adBannerUrl || ticketSponsorsForm.sponsors?.[0]?.logoUrl || '',
+        adWebsiteUrl: ticketSponsorsForm.adWebsiteUrl || ticketSponsorsForm.sponsors?.[0]?.websiteUrl || '',
+        isActive: ticketSponsorsForm.isActive !== undefined ? ticketSponsorsForm.isActive : (ticketSponsorsForm.sponsors?.[0]?.isActive ?? false),
         hasSchedule: ticketSponsorsForm.hasSchedule ?? false,
         startDate: ticketSponsorsForm.startDate || '',
         endDate: ticketSponsorsForm.endDate || '',
@@ -327,10 +334,10 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
         sponsors: [
           {
             id: ticketSponsorsForm.sponsors?.[0]?.id || 'sp-main',
-            name: ticketSponsorsForm.adName || ticketSponsorsForm.sponsors?.[0]?.name || 'LOCA Laos',
-            logoUrl: ticketSponsorsForm.adBannerUrl || ticketSponsorsForm.sponsors?.[0]?.logoUrl || '/Loca banner.png',
-            websiteUrl: ticketSponsorsForm.adWebsiteUrl || ticketSponsorsForm.sponsors?.[0]?.websiteUrl || 'https://loca.la',
-            isActive: ticketSponsorsForm.isActive !== undefined ? ticketSponsorsForm.isActive : (ticketSponsorsForm.sponsors?.[0]?.isActive ?? true),
+            name: ticketSponsorsForm.adName || ticketSponsorsForm.sponsors?.[0]?.name || '',
+            logoUrl: ticketSponsorsForm.adBannerUrl || ticketSponsorsForm.sponsors?.[0]?.logoUrl || '',
+            websiteUrl: ticketSponsorsForm.adWebsiteUrl || ticketSponsorsForm.sponsors?.[0]?.websiteUrl || '',
+            isActive: ticketSponsorsForm.isActive !== undefined ? ticketSponsorsForm.isActive : (ticketSponsorsForm.sponsors?.[0]?.isActive ?? false),
             hasSchedule: ticketSponsorsForm.hasSchedule ?? false,
             startDate: ticketSponsorsForm.startDate || '',
             endDate: ticketSponsorsForm.endDate || ''
@@ -440,7 +447,7 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
     setTicketSponsorsForm({
       ...DEFAULT_TICKET_SPONSOR_SETTINGS
     });
-    triggerSuccess(lang === 'en' ? 'Reset to default ad banner (Loca Laos / Pasopkan fallback)' : 'ຣີເຊັດເປັນຄ່າມາດຕະຖານແລ້ວ');
+    triggerSuccess(lang === 'en' ? 'Reset to the Pasopkan fallback banner' : 'ຣີເຊັດເປັນຮູບມາດຕະຖານ Pasopkan ແລ້ວ');
   };
 
   const handleSaveContact = async (e: React.FormEvent) => {
@@ -1186,10 +1193,10 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
         {/* TICKET SPONSORS & ADS FORM */}
         {activeSubTab === 'ticket_sponsors' && ticketSponsorsForm && (() => {
           const resolvedPreviewAd = resolveTicketAd(ticketSponsorsForm);
-          const currentAdName = ticketSponsorsForm.adName || ticketSponsorsForm.sponsors?.[0]?.name || 'LOCA Laos';
-          const currentAdBanner = ticketSponsorsForm.adBannerUrl || ticketSponsorsForm.sponsors?.[0]?.logoUrl || '/Loca banner.png';
-          const currentAdLink = ticketSponsorsForm.adWebsiteUrl || ticketSponsorsForm.sponsors?.[0]?.websiteUrl || 'https://loca.la';
-          const isCustomActive = ticketSponsorsForm.isActive !== undefined ? ticketSponsorsForm.isActive : (ticketSponsorsForm.sponsors?.[0]?.isActive ?? true);
+          const currentAdName = ticketSponsorsForm.adName || ticketSponsorsForm.sponsors?.[0]?.name || '';
+          const currentAdBanner = ticketSponsorsForm.adBannerUrl || ticketSponsorsForm.sponsors?.[0]?.logoUrl || '';
+          const currentAdLink = ticketSponsorsForm.adWebsiteUrl || ticketSponsorsForm.sponsors?.[0]?.websiteUrl || '';
+          const isCustomActive = ticketSponsorsForm.isActive !== undefined ? ticketSponsorsForm.isActive : (ticketSponsorsForm.sponsors?.[0]?.isActive ?? false);
 
           return (
             <form onSubmit={handleSaveTicketSponsors} className="space-y-8">
@@ -1323,7 +1330,6 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
 
                         <div className="flex flex-wrap gap-2 pt-1">
                           {[
-                            { name: 'LOCA Laos (Official Ride Partner)', logoUrl: '/Loca banner.png', websiteUrl: 'https://loca.la' },
                             { name: 'Pasopkan Ads (Default)', logoUrl: '/Pasopkan ads.png', websiteUrl: 'https://pasopkan.com' },
                           ].map((preset) => {
                             const isSelected = currentAdBanner === preset.logoUrl;
@@ -1431,7 +1437,7 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                                 ]
                               });
                             }}
-                            placeholder="e.g. LOCA Laos (Official Ride Partner)"
+                            placeholder={lang === 'en' ? 'Enter sponsor name' : 'ປ້ອນຊື່ຜູ້ສະໜັບສະໜູນ'}
                             className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-adv-slate shadow-2xs focus:outline-none focus:border-adv-orange"
                           />
                         </div>
@@ -1464,7 +1470,7 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                                   ]
                                 });
                               }}
-                              placeholder="https://loca.la"
+                              placeholder="https://example.com"
                               className="w-full bg-white border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-medium text-adv-slate shadow-2xs focus:outline-none focus:border-adv-orange"
                             />
                             {currentAdLink && (
@@ -1510,7 +1516,7 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                                   ]
                                 });
                               }}
-                              placeholder="/Loca banner.png or https://..."
+                              placeholder="/sponsor-banner.png or https://..."
                               className="flex-1 bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-mono text-adv-slate shadow-2xs focus:outline-none focus:border-adv-orange"
                             />
 

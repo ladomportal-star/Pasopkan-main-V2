@@ -845,19 +845,21 @@ export const DEFAULT_ORGANIZER_TERMS_SETTINGS: OrganizerTermsSettings = {
 };
 
 export const DEFAULT_TICKET_SPONSOR_SETTINGS: TicketSponsorSettings = {
+  // Safe empty state for the E-Ticket preview. Sponsor data must come from the
+  // backend; do not seed a real partner name/image into the UI as demo data.
   isEnabled: true,
 
   label_en: "Sponsored by",
 
   label_lo: "ສະໜັບສະໜູນໂດຍ",
 
-  adName: "LOCA Laos (Official Ride Partner)",
+  adName: "",
 
-  adBannerUrl: "/Loca banner.png",
+  adBannerUrl: "",
 
-  adWebsiteUrl: "https://loca.la",
+  adWebsiteUrl: "",
 
-  isActive: true,
+  isActive: false,
 
   hasSchedule: false,
 
@@ -869,19 +871,7 @@ export const DEFAULT_TICKET_SPONSOR_SETTINGS: TicketSponsorSettings = {
 
   defaultWebsiteUrl: "https://pasopkan.com",
 
-  sponsors: [
-    {
-      id: "sp-loca",
-
-      name: "LOCA Laos (Official Ride Partner)",
-
-      logoUrl: "/Loca banner.png",
-
-      websiteUrl: "https://loca.la",
-
-      isActive: true,
-    },
-  ],
+  sponsors: [],
 };
 
 // ==========================================
@@ -1050,10 +1040,18 @@ export async function saveHomeHeroSettings(
 // Ticket Sponsors Settings
 
 export async function getTicketSponsorSettings(): Promise<TicketSponsorSettings> {
-  return getSettings<TicketSponsorSettings>(
-    "ticket_sponsors",
-    DEFAULT_TICKET_SPONSOR_SETTINGS,
+  // Unlike general site content, sponsor settings must never silently fall
+  // back to cached or hardcoded partner data when the backend is unavailable.
+  const response = await api.get<{ data: TicketSponsorSettings | null }>(
+    "/site-settings/ticket_sponsors",
+    { throwOnError: true },
   );
+  if (!response.data) throw new Error("Empty ticket sponsor settings response");
+  if (!response.data.data) {
+    localStorage.removeItem("pasopkan_setting_ticket_sponsors");
+    return { ...DEFAULT_TICKET_SPONSOR_SETTINGS, sponsors: [] };
+  }
+  return response.data.data;
 }
 
 export async function saveTicketSponsorSettings(
