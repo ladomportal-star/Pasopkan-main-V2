@@ -22,12 +22,14 @@ export interface BlogPost {
 
 export const INITIAL_BLOG_POSTS: BlogPost[] = [
   {
-    id: 'blog-1',
-    title: 'Vang Vieng Music Fest 2026: The Ultimate Experience & Survival Guide',
-    titleLao: 'ເທດສະການດົນຕີ ວັງວຽງ 2026: ຄູ່ມືການກຽມພ້ອມ ແລະ ປະສົບການທີ່ດີທີ່ສຸດ',
-    slug: 'vang-vieng-music-fest-2026-guide',
-    excerpt: 'Heading to Vang Vieng for the premier outdoor music gathering? Here are essential packing tips, cashless payment advice, and local hotspots you cannot miss.',
-    excerptLao: 'ກຳລັງຈະເດີນທາງໄປວັງວຽງເພື່ອຮ່ວມງານເທດສະການດົນຕີກາງແຈ້ງທີ່ໃຫຍ່ທີ່ສຸດບໍ? ນີ້ຄືຄຳແນະນຳການກຽມຕົວ, ການໃຊ້ຈ່າຍຜ່ານລະບົບດິຈິຕອນ ແລະ ຈຸດເຊັກອິນທີ່ຫ້າມພາດ.',
+    id: "blog-1",
+    title: "Vang Vieng Music Fest 2026: The Ultimate Experience & Survival Guide",
+    titleLao: "ເທດສະການດົນຕີ ວັງວຽງ 2026: ຄູ່ມືການກຽມພ້ອມ ແລະ ປະສົບການທີ່ດີທີ່ສຸດ",
+    slug: "vang-vieng-music-fest-2026-guide",
+    excerpt:
+      "Heading to Vang Vieng for the premier outdoor music gathering? Here are essential packing tips, cashless payment advice, and local hotspots you cannot miss.",
+    excerptLao:
+      "ກຳລັງຈະເດີນທາງໄປວັງວຽງເພື່ອຮ່ວມງານເທດສະການດົນຕີກາງແຈ້ງທີ່ໃຫຍ່ທີ່ສຸດບໍ? ນີ້ຄືຄຳແນະນຳການກຽມຕົວ, ການໃຊ້ຈ່າຍຜ່ານລະບົບດິຈິຕອນ ແລະ ຈຸດເຊັກອິນທີ່ຫ້າມພາດ.",
     content: `Vang Vieng is known for its dramatic limestone karsts, crystal-clear blue lagoons, and vibrant outdoor spirit. When you combine this scenic backdrop with Southeast Asia's top indie and EDM performers, you get an electric atmosphere unlike any other festival in the region.
 
 ### 1. Seamless Cashless Ticketing
@@ -52,24 +54,28 @@ Remember that Vang Vieng's natural beauty depends on responsible visitors. Use t
 
 ### 3. ຮ່ວມກັນຮັກສາສິ່ງແວດລ້ອມ
 ຄວາມງາມຂອງວັງວຽງຂຶ້ນກັບທຸກໆຄົນ. ກະລຸນາຖິ້ມຂີ້ເຫຍື້ອລົງຖັງທີ່ຈັດໄວ້ໃຫ້ ແລະ ຮ່ວມອຸດໜູນຮ້ານຄ້າທ້ອງຖິ່ນ.`,
-    coverImage: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80',
+    coverImage:
+      "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&q=80",
     author: {
-      name: 'Somvang Sisavath',
-      role: 'Festival Reporter',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
+      name: "Somvang Sisavath",
+      role: "Festival Reporter",
+      avatar:
+        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
     },
-    publishedAt: '2026-03-08',
+    publishedAt: "2026-03-08",
     isPublished: true,
     featured: false,
-    tags: ['Music', 'Vang Vieng', 'Travel', 'Festival']
+    tags: ["Music", "Vang Vieng", "Travel", "Festival"],
   },
   {
-    id: 'blog-2',
-    title: 'How to Host a Sold-Out Creative Workshop in Vientiane',
-    titleLao: 'ວິທີການຈັດງານເວີກຊັອບໃຫ້ເຕັມ ແລະ ປະສົບຜົນສຳເລັດໃນນະຄອນຫຼວງວຽງຈັນ',
-    slug: 'host-sold-out-workshop-vientiane',
-    excerpt: 'From venue selection along the Mekong to digital ticket tiers and interactive attendee engagement: here is how top creators build unforgettable workshops.',
-    excerptLao: 'ເລີ່ມຕັ້ງແຕ່ການເລືອກສະຖານທີ່, ການຕັ້ງລາຄາປີ້, ຈົນຮອດການສ້າງປະສົບການທີ່ໜ້າປະທັບໃຈໃຫ້ຜູ້ເຂົ້າຮ່ວມ: ເຄັດລັບຈາກຜູ້ຈັດງານມືອາຊີບ.',
+    id: "blog-2",
+    title: "How to Host a Sold-Out Creative Workshop in Vientiane",
+    titleLao: "ວິທີການຈັດງານເວີກຊັອບໃຫ້ເຕັມ ແລະ ປະສົບຜົນສຳເລັດໃນນະຄອນຫຼວງວຽງຈັນ",
+    slug: "host-sold-out-workshop-vientiane",
+    excerpt:
+      "From venue selection along the Mekong to digital ticket tiers and interactive attendee engagement: here is how top creators build unforgettable workshops.",
+    excerptLao:
+      "ເລີ່ມຕັ້ງແຕ່ການເລືອກສະຖານທີ່, ການຕັ້ງລາຄາປີ້, ຈົນຮອດການສ້າງປະສົບການທີ່ໜ້າປະທັບໃຈໃຫ້ຜູ້ເຂົ້າຮ່ວມ: ເຄັດລັບຈາກຜູ້ຈັດງານມືອາຊີບ.",
     content: `Workshops and micro-events are booming across Laos. Whether you are teaching traditional silk weaving, modern UI/UX design, or coffee cupping, attendees are looking for hands-on, high-value experiences.
 
 ### Key Strategies for Success:
@@ -82,48 +88,56 @@ Remember that Vang Vieng's natural beauty depends on responsible visitors. Use t
 1. **ກຳນົດເປົ້າໝາຍທີ່ຊັດເຈນ**: ຜູ້ເຂົ້າຮ່ວມຕ້ອງການໄດ້ຮັບທັກສະທີ່ນຳໄປໃຊ້ໄດ້ຈິງ.
 2. **ປີ້ລາຄາພິເສດ (Early Bird)**: ຊ່ວຍກະຕຸ້ນການຕັດສິນໃຈຈອງໃນໄລຍະທຳອິດ.
 3. **ການເຊັກອິນທີ່ໄວ**: ນຳໃຊ້ລະບົບສະແກນ QR ຂອງ Pasopkan ເພື່ອຫຼຸດຜ່ອນການຕໍ່ຄິວ.`,
-    coverImage: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80',
+    coverImage:
+      "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80",
     author: {
-      name: 'Noy Phommasone',
-      role: 'Community Lead',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80'
+      name: "Noy Phommasone",
+      role: "Community Lead",
+      avatar:
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
     },
-    publishedAt: '2026-03-02',
+    publishedAt: "2026-03-02",
     isPublished: true,
     featured: false,
-    tags: ['Workshop', 'Business', 'Education']
+    tags: ["Workshop", "Business", "Education"],
   },
   {
-    id: 'blog-3',
-    title: 'Transforming Lao Cultural Festivities with Digital E-Ticketing',
-    titleLao: 'ການຍົກລະດັບງານບຸນປະເພນີລາວດ້ວຍລະບົບປີ້ອີເລັກໂຕຣນິກ E-Ticket',
-    slug: 'digital-eticketing-lao-festivals',
-    excerpt: 'Traditional boat racing festivals and cultural celebrations are embracing modern digital passes, reducing paper waste and improving crowd flow.',
-    excerptLao: 'ງານບຸນຊ່ວງເຮືອ ແລະ ບຸນປະເພນີຕ່າງໆ ກຳລັງກ້າວສູ່ຍຸກດິຈິຕອນ ຊ່ວຍຫຼຸດຜ່ອນຂີ້ເຫຍື້ອເຈ້ຍ ແລະ ເຮັດໃຫ້ການເຂົ້າງານສະດວກສະບາຍຍິ່ງຂຶ້ນ.',
+    id: "blog-3",
+    title: "Transforming Lao Cultural Festivities with Digital E-Ticketing",
+    titleLao: "ການຍົກລະດັບງານບຸນປະເພນີລາວດ້ວຍລະບົບປີ້ອີເລັກໂຕຣນິກ E-Ticket",
+    slug: "digital-eticketing-lao-festivals",
+    excerpt:
+      "Traditional boat racing festivals and cultural celebrations are embracing modern digital passes, reducing paper waste and improving crowd flow.",
+    excerptLao:
+      "ງານບຸນຊ່ວງເຮືອ ແລະ ບຸນປະເພນີຕ່າງໆ ກຳລັງກ້າວສູ່ຍຸກດິຈິຕອນ ຊ່ວຍຫຼຸດຜ່ອນຂີ້ເຫຍື້ອເຈ້ຍ ແລະ ເຮັດໃຫ້ການເຂົ້າງານສະດວກສະບາຍຍິ່ງຂຶ້ນ.",
     content: `Preserving Lao rich cultural heritage while adopting green, modern technology is at the heart of Pasopkan’s mission.
 
 By introducing instant QR tickets, festivalgoers skip printing paper receipts, while local authorities gain real-time visibility into attendance numbers and safety thresholds. It's a win-win for sustainability, heritage, and the modern event economy.`,
     contentLao: `ການອະນຸລັກວັດທະນະທຳອັນດີງາມໄປພ້ອມໆກັບການນຳໃຊ້ເຕັກໂນໂລຊີສີຂຽວ ແມ່ນເປົ້າໝາຍສຳຄັນຂອງ Pasopkan.
 
 ການໃຊ້ປີ້ QR Code ຜ່ານມືຖື ຊ່ວຍຫຼຸດການໃຊ້ເຈ້ຍ, ເຮັດໃຫ້ການຄຸ້ມຄອງຈຳນວນຄົນມີຄວາມປອດໄພ ແລະ ເປັນລະບຽບຮຽບຮ້ອຍຫຼາຍຂຶ້ນ.`,
-    coverImage: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1200&q=80',
+    coverImage:
+      "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1200&q=80",
     author: {
-      name: 'Khamla Sengsouvanh',
-      role: 'Culture Editor',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80'
+      name: "Khamla Sengsouvanh",
+      role: "Culture Editor",
+      avatar:
+        "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80",
     },
-    publishedAt: '2026-02-25',
+    publishedAt: "2026-02-25",
     isPublished: true,
     featured: false,
-    tags: ['Culture', 'Sustainability', 'Technology']
+    tags: ["Culture", "Sustainability", "Technology"],
   },
   {
-    id: 'blog-4',
-    title: 'Comfort Zone, Comfort Tone 🌿 🎧 The Safe Sound Space for Your Heart',
-    titleLao: 'Comfort Zone, Comfort Tone 🌿 🎧 ພື້ນທີ່ປອດໄພ...ກັບສຽງເພງທີ່ພໍດີກັບໃຈ',
-    slug: 'comfort-zone-comfort-tone-laos',
-    excerpt: 'Explore relaxing acoustic cafes, indie listening spots, and weekend music sessions across Vientiane.',
-    excerptLao: 'ສຳຫຼວດພື້ນທີ່ສຽງເພງສະບາຍໆ, ຮ້ານກາເຟສາຍອິນດີ້ ແລະ ບົດເພງຜ່ອນຄາຍໃນຍາມແລງທີ່ຊ່ວຍຮີລໃຈ.',
+    id: "blog-4",
+    title: "Comfort Zone, Comfort Tone 🌿 🎧 The Safe Sound Space for Your Heart",
+    titleLao: "Comfort Zone, Comfort Tone 🌿 🎧 ພື້ນທີ່ປອດໄພ...ກັບສຽງເພງທີ່ພໍດີກັບໃຈ",
+    slug: "comfort-zone-comfort-tone-laos",
+    excerpt:
+      "Explore relaxing acoustic cafes, indie listening spots, and weekend music sessions across Vientiane.",
+    excerptLao:
+      "ສຳຫຼວດພື້ນທີ່ສຽງເພງສະບາຍໆ, ຮ້ານກາເຟສາຍອິນດີ້ ແລະ ບົດເພງຜ່ອນຄາຍໃນຍາມແລງທີ່ຊ່ວຍຮີລໃຈ.",
     content: `Sometimes you need a pause from high-energy bass and crowded festival fields. We curated the best acoustic and chill listening spots in Vientiane where you can unwind with good sound, warm coffee, and great acoustic sets.
 
 ### Top Listening Havens:
@@ -136,23 +150,26 @@ By introducing instant QR tickets, festivalgoers skip printing paper receipts, w
 - **ຮ້ານກາເຟແຄມຂອງ**: ຊົມວິວຕາເວັນຕົກດິນພ້ອມສຽງກີຕ້າໂປ່ງ.
 - **ບາແຜ່ນສຽງ Vinyl**: ຟັງສຽງເພງຄລາສສິກກັບກາເຟດຣິບ.
 - **ສວນດົນຕີວັນອາທິດ**: ພົບກັບສິນລະປິນອິນດີ້ທ້ອງຖິ່ນໃນບັນຍາກາດອົບອຸ່ນ.`,
-    coverImage: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1200&q=80',
+    coverImage:
+      "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1200&q=80",
     author: {
-      name: 'Pasopkan Admin',
-      role: 'Administrator'
+      name: "Pasopkan Admin",
+      role: "Administrator",
     },
-    publishedAt: '2026-02-18',
+    publishedAt: "2026-02-18",
     isPublished: true,
     featured: false,
-    tags: ['Music', 'Lifestyle', 'Chill']
+    tags: ["Music", "Lifestyle", "Chill"],
   },
   {
-    id: 'blog-5',
-    title: 'Luang Prabang Arts & Heritage Showcase: Culture Meets Contemporary Expression',
-    titleLao: 'ເທດສະການສິລະປະ ແລະ ມໍລະດົກ ຫຼວງພະບາງ: ການເຊື່ອມໂຍງວັດທະນະທຳ ແລະ ຍຸກໃໝ່',
-    slug: 'luang-prabang-arts-heritage-showcase',
-    excerpt: 'Discover sacred temple pathways, traditional indigo textile exhibitions, and lantern-lit river ceremonies.',
-    excerptLao: 'ສຳຜັດຄວາມງົດງາມຂອງວັດວາອາຮາມເກົ່າແກ່, ງານວາງສະແດງຜ້າໄໝຍ້ອມຄາມ ແລະ ພິທີໄຫຼເຮືອໄຟແຄມນ້ຳຂອງ.',
+    id: "blog-5",
+    title: "Luang Prabang Arts & Heritage Showcase: Culture Meets Contemporary Expression",
+    titleLao: "ເທດສະການສິລະປະ ແລະ ມໍລະດົກ ຫຼວງພະບາງ: ການເຊື່ອມໂຍງວັດທະນະທຳ ແລະ ຍຸກໃໝ່",
+    slug: "luang-prabang-arts-heritage-showcase",
+    excerpt:
+      "Discover sacred temple pathways, traditional indigo textile exhibitions, and lantern-lit river ceremonies.",
+    excerptLao:
+      "ສຳຜັດຄວາມງົດງາມຂອງວັດວາອາຮາມເກົ່າແກ່, ງານວາງສະແດງຜ້າໄໝຍ້ອມຄາມ ແລະ ພິທີໄຫຼເຮືອໄຟແຄມນ້ຳຂອງ.",
     content: `Luang Prabang is the cultural crown jewel of Laos. As the UNESCO World Heritage town awakens to contemporary artistic expression, local artisans and modern creators come together to showcase photography, heritage crafts, and live musical storytelling.
 
 ### Highlights:
@@ -165,23 +182,25 @@ By introducing instant QR tickets, festivalgoers skip printing paper receipts, w
 - **ການສາທິດການຕ່ຳຫູກ ແລະ ຍ້ອມຄາມແບບບູຮານ**: ຮຽນຮູ້ຈາກຊ່າງຝີມືຕົວຈິງຈາກໝູ່ບ້ານຫັດຖະກຳ.
 - **ພິທີໄຫຼເຮືອໄຟ ແລະ ຈູດທຽນແຄມຂອງ**: ສຳຜັດບັນຍາກາດແສງໄຟສ່ອງສະຫວ່າງຍາມຄ່ຳຄືນ.
 - **ງານວາງສະແດງຮູບພາບຖ່າຍຮ່ວມສະໄໝ**: ເລົ່າເລື່ອງລາວວິຖີຊີວິດຄົນລາວຜ່ານມຸມມອງຊ່າງພາບຄົນຮຸ່ນໃໝ່.`,
-    coverImage: 'https://images.unsplash.com/photo-1528181304800-259b08848526?auto=format&fit=crop&w=1200&q=80',
+    coverImage:
+      "https://images.unsplash.com/photo-1528181304800-259b08848526?auto=format&fit=crop&w=1200&q=80",
     author: {
-      name: 'Pasopkan Admin',
-      role: 'Administrator'
+      name: "Pasopkan Admin",
+      role: "Administrator",
     },
-    publishedAt: '2026-02-10',
+    publishedAt: "2026-02-10",
     isPublished: true,
     featured: false,
-    tags: ['Culture', 'Luang Prabang', 'Heritage']
+    tags: ["Culture", "Luang Prabang", "Heritage"],
   },
   {
-    id: 'blog-6',
-    title: 'Vientiane International Marathon: Runners Guide & Route Highlights',
-    titleLao: 'ງານແລ່ນ ວຽງຈັນ ມາຣາທອນ ສາກົນ: ຄູ່ມືເສັ້ນທາງແລ່ນ ແລະ ຈຸດຊົມວິວທີ່ໜ້າສົນໃຈ',
-    slug: 'vientiane-international-marathon-guide',
-    excerpt: 'Prepare for the most anticipated morning race along That Luang Esplanade and the scenic Mekong riverside.',
-    excerptLao: 'ກຽມພ້ອມສຳລັບການແລ່ນຕອນເຊົ້າສຸດປະທັບໃຈ ຜ່ານເດີ່ນພະທາດຫຼວງ ແລະ ເສັ້ນທາງລຽບແຄມຂອງ.',
+    id: "blog-6",
+    title: "Vientiane International Marathon: Runners Guide & Route Highlights",
+    titleLao: "ງານແລ່ນ ວຽງຈັນ ມາຣາທອນ ສາກົນ: ຄູ່ມືເສັ້ນທາງແລ່ນ ແລະ ຈຸດຊົມວິວທີ່ໜ້າສົນໃຈ",
+    slug: "vientiane-international-marathon-guide",
+    excerpt:
+      "Prepare for the most anticipated morning race along That Luang Esplanade and the scenic Mekong riverside.",
+    excerptLao: "ກຽມພ້ອມສຳລັບການແລ່ນຕອນເຊົ້າສຸດປະທັບໃຈ ຜ່ານເດີ່ນພະທາດຫຼວງ ແລະ ເສັ້ນທາງລຽບແຄມຂອງ.",
     content: `The Vientiane International Marathon brings together thousands of local athletes, amateur joggers, and international distance runners for a race through the historical landmarks of the capital.
 
 ### Course Tips:
@@ -194,53 +213,58 @@ By introducing instant QR tickets, festivalgoers skip printing paper receipts, w
 - **ຈຸດຊົມຕາເວັນຂຶ້ນທີ່ພະທາດຫຼວງ**: ອອກໂຕຕອນເຊົ້າ 05:00 ໂມງ ພ້ອມແສງທຳອິດທີ່ສ່ອງໃສ່ຍອດພະທາດຫຼວງຄຳ.
 - **ການດື່ມນ້ຳ ແລະ ຮັກສາຈັງຫວະ**: ຮັກສາຄວາມໄວໃຫ້ສະໝ່ຳສະເໝີ ເພື່ອຮັບມືກັບອາກາດຍາມເຊົ້າແຄມຂອງ.
 - **ການຮັບຫຼຽນ ແລະ ໃບຢັ້ງຢືນດິຈິຕອນ**: ກວດສອບເວລາ ແລະ ຮັບ Finisher Badge ຜ່ານແອັບ Pasopkan ໄດ້ທັນທີ.`,
-    coverImage: 'https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?auto=format&fit=crop&w=1200&q=80',
+    coverImage:
+      "https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?auto=format&fit=crop&w=1200&q=80",
     author: {
-      name: 'Pasopkan Admin',
-      role: 'Administrator'
+      name: "Pasopkan Admin",
+      role: "Administrator",
     },
-    publishedAt: '2026-01-25',
+    publishedAt: "2026-01-25",
     isPublished: true,
     featured: false,
-    tags: ['Sports', 'Marathon', 'Vientiane']
+    tags: ["Sports", "Marathon", "Vientiane"],
   },
   {
-    id: 'blog-7',
-    title: 'Vang Vieng Eco-Trail Challenge: Kayaking & Cave Exploration',
-    titleLao: 'ການທົດສອບຄວາມກ້າຫານທີ່ວັງວຽງ: ພາຍເຮືອຄາຍັກ ແລະ ສຳຫຼວດຖ້ຳທຳມະຊາດ',
-    slug: 'vang-vieng-eco-trail-challenge',
-    excerpt: 'An adventurous weekend exploring limestone karsts, secret blue lagoons, and Nam Song river rafting.',
-    excerptLao: 'ທຣິບຜະຈົນໄພທ້າຍອາທິດ ສຳຫຼວດພູຫີນປູນ, ວັງນ້ຳຂຽວມໍລະກົດ ແລະ ການລ່ອງເຮືອນ້ຳຊອງ.',
+    id: "blog-7",
+    title: "Vang Vieng Eco-Trail Challenge: Kayaking & Cave Exploration",
+    titleLao: "ການທົດສອບຄວາມກ້າຫານທີ່ວັງວຽງ: ພາຍເຮືອຄາຍັກ ແລະ ສຳຫຼວດຖ້ຳທຳມະຊາດ",
+    slug: "vang-vieng-eco-trail-challenge",
+    excerpt:
+      "An adventurous weekend exploring limestone karsts, secret blue lagoons, and Nam Song river rafting.",
+    excerptLao: "ທຣິບຜະຈົນໄພທ້າຍອາທິດ ສຳຫຼວດພູຫີນປູນ, ວັງນ້ຳຂຽວມໍລະກົດ ແລະ ການລ່ອງເຮືອນ້ຳຊອງ.",
     content: `Experience the breathtaking natural scenery of Vang Vieng with organized outdoor challenges including river kayaking, ziplining through tropical canopy, and mountain trekking.`,
     contentLao: `ສຳຜັດກັບທຳມະຊາດອັນສວຍສົດງົດງາມຂອງເມືອງວັງວຽງ ຜ່ານກິດຈະກຳກາງແຈ້ງ ທັງການພາຍເຮືອຄາຍັກ, ໂຫນສະລິງ ແລະ ການຍ່າງປ່າຂຶ້ນຈຸດຊົມວິວ.`,
-    coverImage: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=1200&q=80',
+    coverImage:
+      "https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=1200&q=80",
     author: {
-      name: 'Pasopkan Admin',
-      role: 'Administrator'
+      name: "Pasopkan Admin",
+      role: "Administrator",
     },
-    publishedAt: '2026-01-18',
+    publishedAt: "2026-01-18",
     isPublished: true,
     featured: false,
-    tags: ['Adventure', 'Vang Vieng', 'Eco']
+    tags: ["Adventure", "Vang Vieng", "Eco"],
   },
   {
-    id: 'blog-8',
-    title: 'Lao Coffee & Craft Roasters Festival: From Bolaven Plateau to Your Cup',
-    titleLao: 'ເທດສະການກາເຟລາວ ແລະ ໂຮງຂົ້ວຫັດຖະກຳ: ຈາກພູພຽງບໍລະເວນສູ່ຈອກກາເຟຂອງທ່ານ',
-    slug: 'lao-coffee-craft-roasters-festival',
-    excerpt: 'Celebrating award-winning Arabica and Robusta beans with artisan baristas and cupping competitions.',
-    excerptLao: 'ສະເຫຼີມສະຫຼອງເມັດກາເຟອາຣາບິກາ ແລະ ໂຣບັສຕາ ຄຸນນະພາບສູງ ພ້ອມການແຂ່ງຂັນ Cupping ຈາກບາຣິສຕ້າຊັ້ນນຳ.',
+    id: "blog-8",
+    title: "Lao Coffee & Craft Roasters Festival: From Bolaven Plateau to Your Cup",
+    titleLao: "ເທດສະການກາເຟລາວ ແລະ ໂຮງຂົ້ວຫັດຖະກຳ: ຈາກພູພຽງບໍລະເວນສູ່ຈອກກາເຟຂອງທ່ານ",
+    slug: "lao-coffee-craft-roasters-festival",
+    excerpt:
+      "Celebrating award-winning Arabica and Robusta beans with artisan baristas and cupping competitions.",
+    excerptLao:
+      "ສະເຫຼີມສະຫຼອງເມັດກາເຟອາຣາບິກາ ແລະ ໂຣບັສຕາ ຄຸນນະພາບສູງ ພ້ອມການແຂ່ງຂັນ Cupping ຈາກບາຣິສຕ້າຊັ້ນນຳ.",
     content: `The Lao Coffee Festival gathers highland coffee growers from Champasak and specialty roasters from across Southeast Asia for workshops, tastings, and equipment demonstrations.`,
     contentLao: `ງານເທດສະການກາເຟລາວ ໄດ້ເຕົ້າໂຮມຊາວກະສິກອນປູກກາເຟຈາກພູພຽງບໍລະເວນ ແລະ ໂຮງຂົ້ວກາເຟພິເສດ ເພື່ອແລກປ່ຽນປະສົບການ ແລະ ຊີມລົດຊາດກາເຟຫຼາກຫຼາຍສາຍພັນ.`,
-    coverImage: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1200&q=80',
+    coverImage:
+      "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1200&q=80",
     author: {
-      name: 'Pasopkan Admin',
-      role: 'Administrator'
+      name: "Pasopkan Admin",
+      role: "Administrator",
     },
-    publishedAt: '2026-01-10',
+    publishedAt: "2026-01-10",
     isPublished: true,
     featured: false,
-    tags: ['Coffee', 'Food', 'Festival']
-  }
+    tags: ["Coffee", "Food", "Festival"],
+  },
 ];
-

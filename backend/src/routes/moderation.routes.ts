@@ -1191,12 +1191,16 @@ async function loadStoredBlogs(client: {
   const row = await client.siteSetting.findUnique({ where: { id: "blogs" } });
   const rawItems = (row?.data as { items?: unknown } | null)?.items;
   if (Array.isArray(rawItems)) {
-    return (rawItems as BlogPost[])
-      // Ignore the known starter/demo posts if an earlier version stored them.
-      // This does not delete database content; it keeps sample content out of the API/UI.
-      .filter((post) => INITIAL_BLOG_POSTS.every(
-        (sample) => sample.id !== post.id || sample.coverImage !== post.coverImage,
-      ));
+    return (
+      (rawItems as BlogPost[])
+        // Ignore the known starter/demo posts if an earlier version stored them.
+        // This does not delete database content; it keeps sample content out of the API/UI.
+        .filter((post) =>
+          INITIAL_BLOG_POSTS.every(
+            (sample) => sample.id !== post.id || sample.coverImage !== post.coverImage,
+          ),
+        )
+    );
   }
   return [];
 }
@@ -1257,8 +1261,7 @@ router.post(
       coverImage: req.body.coverImage,
       author: {
         name:
-          [admin.firstName, admin.lastName].filter(Boolean).join(" ").trim() ||
-          "Pasopkan Admin",
+          [admin.firstName, admin.lastName].filter(Boolean).join(" ").trim() || "Pasopkan Admin",
         role: "Administrator",
       },
       publishedAt: todayDate,
