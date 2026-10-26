@@ -1,5 +1,8 @@
 import type { IncomingHttpHeaders } from "node:http";
 
+export type PaymentCheckoutMethod =
+  "bcel" | "ldb" | "jdb" | "ib" | "stb" | "credit_card" | "payment_link";
+
 /** Provider-neutral, verified webhook data. Implementations MUST verify the
  * exact raw request bytes and reject invalid signatures before returning. */
 export interface VerifiedPaymentWebhook {
@@ -23,7 +26,12 @@ export interface PaymentProvider {
     currency: string;
     idempotencyKey: string;
     returnUrl: string;
-  }): Promise<{ transactionId: string | null; checkoutUrl: string }>;
+    paymentMethod?: PaymentCheckoutMethod;
+  }): Promise<{
+    transactionId: string | null;
+    checkoutUrl: string | null;
+    qrCode?: string | null;
+  }>;
   checkTransaction(transactionId: string): Promise<{
     outcome: "paid" | "failed" | "pending" | "refunded";
     transactionId: string;

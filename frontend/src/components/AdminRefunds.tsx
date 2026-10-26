@@ -23,6 +23,7 @@ export type AdminRefundItem = {
   currency: string;
   status: string;
   reason: string;
+  providerRefundId?: string | null;
   createdAt: string;
   reviewedAt?: string | null;
   reviewer?: {
@@ -220,6 +221,29 @@ export default function AdminRefunds({
       onUpdated?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not process refund");
+    } finally {
+      setBusyKey("");
+    }
+  }
+
+  async function handleProviderRefundAction(
+    refund: AdminRefundItem,
+    action: "execute" | "sync",
+  ) {
+    setBusyKey(`${action}:${refund.id}`);
+    setError("");
+    setMessage("");
+    try {
+      await api.post(`/admin/refunds/${refund.id}/${action}`, undefined, authOptions);
+      setMessage(
+        action === "execute"
+          ? "ສົ່ງຄຳສັ່ງຄືນເງິນໄປຫາ PhaJay ສຳເລັດແລ້ວ"
+          : "ກວດສອບສະຖານະການຄືນເງິນຈາກ PhaJay ສຳເລັດແລ້ວ",
+      );
+      await load();
+      onUpdated?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not sync PhaJay refund");
     } finally {
       setBusyKey("");
     }
@@ -629,13 +653,21 @@ export default function AdminRefunds({
                         <p className="mt-0.5 text-xs text-slate-400">{tier.count} ປີ້</p>
                       </td>
                       <td className="px-4 py-4 align-top">
-                        {approved ? (
+                        {refund.status === "succeeded" ? (
                           <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-600">
                             <CircleCheck className="h-3.5 w-3.5" /> ຄືນເງິນແລ້ວ
                           </span>
+                        ) : refund.status === "processing" ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-black text-blue-600">
+                            <RotateCcw className="h-3.5 w-3.5 animate-spin" /> ກຳລັງໂອນຄືນ PhaJay
+                          </span>
+                        ) : approved ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-600">
+                            <CircleCheck className="h-3.5 w-3.5" /> ອະນຸມັດແລ້ວ
+                          </span>
                         ) : rejected ? (
                           <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-black text-red-600">
-                            <X className="h-3.5 w-3.5" /> ປະຕິເສດ
+                            <X className="h-3.5 w-3.5" /> {refund.status === "failed" ? "ໂອນຄືນລົ້ມເຫຼວ" : "ປະຕິເສດ"}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-700">
@@ -667,6 +699,31 @@ export default function AdminRefunds({
                               </button>
                             </>
                           )}
+                          {refund.status === "approved" &&
+                            Boolean(refund.payment.providerTransactionId) && (
+                              <button
+                                type="button"
+                                title="ສົ່ງຄຳສັ່ງຄືນເງິນໄປຫາ PhaJay"
+                                disabled={Boolean(busyKey)}
+                                onClick={() => void handleProviderRefundAction(refund, "execute")}
+                                className="rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1 text-[11px] font-black text-orange-600 hover:bg-orange-100 disabled:opacity-50"
+                              >
+                                ໂອນຄືນ PhaJay
+                              </button>
+                            )}
+                          {(refund.status === "processing" ||
+                            Boolean(refund.providerRefundId)) &&
+                            refund.status !== "succeeded" && (
+                              <button
+                                type="button"
+                                title="ກວດສະຖານະການຄືນເງິນຈາກ PhaJay"
+                                disabled={Boolean(busyKey)}
+                                onClick={() => void handleProviderRefundAction(refund, "sync")}
+                                className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-black text-blue-600 hover:bg-blue-100 disabled:opacity-50"
+                              >
+                                Sync PhaJay
+                              </button>
+                            )}
                           <button
                             type="button"
                             title="ເບິ່ງລາຍລະອຽດ"
@@ -739,12 +796,53 @@ export default function AdminRefunds({
                 <p className="mt-1 text-xs text-slate-500">
                   Order: {viewing.payment.order.orderNumber}
                 </p>
+                {viewing.payment.providerTransactionId && (
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Transaction ID: {viewing.payment.providerTransactionId}
+                  </p>
+                )}
+                {viewing.providerRefundId && (
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    PhaJay Refund ID: {viewing.providerRefundId}
+                  </p>
+                )}
                 <p className="mt-2 text-xs italic text-slate-600">
                   ເຫດຜົນ: "{viewing.reason}"
                 </p>
               </div>
             </div>
-            <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4">
+            <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-6 py-4">
+              {viewing.status === "approved" &&
+                Boolean(viewing.payment.providerTransactionId) && (
+                  <button
+                    type="button"
+                    disabled={Boolean(busyKey)}
+                    onClick={() => {
+                      const target = viewing;
+                      setViewing(null);
+                      void handleProviderRefundAction(target, "execute");
+                    }}
+                    className="rounded-xl bg-adv-orange px-4 py-2 text-xs font-black text-white"
+                  >
+                    ສົ່ງຄືນເງິນຜ່ານ PhaJay
+                  </button>
+                )}
+              {(viewing.status === "processing" ||
+                Boolean(viewing.providerRefundId)) &&
+                viewing.status !== "succeeded" && (
+                  <button
+                    type="button"
+                    disabled={Boolean(busyKey)}
+                    onClick={() => {
+                      const target = viewing;
+                      setViewing(null);
+                      void handleProviderRefundAction(target, "sync");
+                    }}
+                    className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-black text-white"
+                  >
+                    ກວດສະຖານະຈາກ PhaJay
+                  </button>
+                )}
               {viewing.status === "pending_approval" && (
                 <>
                   <button

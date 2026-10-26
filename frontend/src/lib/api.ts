@@ -272,6 +272,14 @@ export const api = {
       selectedDate?: string;
       selectedTime?: string;
       paymentTxnId?: string;
+      paymentMethod?:
+        | "bcel"
+        | "ldb"
+        | "jdb"
+        | "ib"
+        | "stb"
+        | "credit_card"
+        | "payment_link";
       freeOnly?: boolean;
       couponCode?: string;
       attendees?: Array<{
@@ -291,10 +299,24 @@ export const api = {
       checkout: {
         provider: string;
         transactionId: string | null;
-        checkoutUrl: string;
+        checkoutUrl: string | null;
+        qrCode?: string | null;
         expiresAt: string;
       } | null;
     }>("POST", "/tickets", order, opts),
+
+  getPaymentStatus: (reference: string, opts?: RequestOptions) =>
+    request<{
+      status: string;
+      verified: boolean;
+      orderId?: string;
+      orderNumber?: string;
+    }>(
+      "GET",
+      `/payment/status/${encodeURIComponent(reference)}`,
+      undefined,
+      opts,
+    ),
 
   scanCheckin: (
     scan: {

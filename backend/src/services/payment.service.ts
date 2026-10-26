@@ -3,8 +3,10 @@ import { db } from "../config/database.ts";
 import { env } from "../config/env.ts";
 import { HttpError } from "../middlewares/error.middleware.ts";
 import { createNotification } from "./notification.service.ts";
-import type { PaymentProvider } from "./payment-provider.ts";
+import type { PaymentCheckoutMethod, PaymentProvider } from "./payment-provider.ts";
 import { PhajayProvider } from "./phajay-provider.ts";
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 class PaymentService {
   private provider: PaymentProvider | null = null;
@@ -52,7 +54,7 @@ class PaymentService {
     };
   }
 
-  async createCheckoutForOrder(orderId: string) {
+  async createCheckoutForOrder(orderId: string, paymentMethod?: PaymentCheckoutMethod) {
     const provider = this.requireProvider();
     const payment = await db.payment.findFirst({
       where: { orderId },
@@ -68,6 +70,7 @@ class PaymentService {
       currency: payment.currency,
       idempotencyKey: payment.idempotencyKey,
       returnUrl: "",
+      paymentMethod,
     });
     if (result.transactionId)
       await db.payment.update({
@@ -78,6 +81,7 @@ class PaymentService {
       provider: provider.id,
       transactionId: result.transactionId,
       checkoutUrl: result.checkoutUrl,
+      qrCode: result.qrCode ?? null,
       expiresAt: payment.order.expiresAt.toISOString(),
     };
   }
@@ -283,17 +287,95 @@ class PaymentService {
     if (!uid) throw new HttpError(401, "Sign in to view payment status");
     if (!env.payment.provider)
       throw new HttpError(503, "Payment provider integration is not configured");
+    const isUuid = UUID_REGEX.test(transactionId);
     const payment = await db.payment.findFirst({
       where: {
         provider: env.payment.provider,
-        providerTransactionId: transactionId,
         order: { user: { authId: uid } },
+        OR: [
+          { providerTransactionId: transactionId },
+          { order: { orderNumber: transactionId } },
+          ...(isUuid ? [{ orderId: transactionId }, { id: transactionId }] : []),
+        ],
       },
+      include: { order: { include: { user: true } } },
     });
     if (!payment) throw new HttpError(404, "Payment not found");
+
+    if (payment.state === "pending" && this.provider && payment.providerTransactionId) {
+      try {
+        const checked = await this.provider.checkTransaction(payment.providerTransactionId);
+        const amountMatches =
+          checked.amountKip === undefined || checked.amountKip === payment.amountKip;
+        const currencyMatches =
+          checked.currency === undefined || checked.currency === payment.currency;
+        if (checked.outcome === "paid" && amountMatches && currencyMatches) {
+          const settledTxId = checked.transactionId || payment.providerTransactionId;
+          await db.$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT id FROM "Payment" WHERE id = ${payment.id}::uuid FOR UPDATE`;
+            const fresh = await tx.payment.findUniqueOrThrow({
+              where: { id: payment.id },
+              include: { order: { include: { user: true } } },
+            });
+            if (fresh.state === "completed") return;
+            await tx.payment.update({
+              where: { id: fresh.id },
+              data: {
+                providerTransactionId: settledTxId,
+                state: "completed",
+                verifiedAt: new Date(),
+              },
+            });
+            if (fresh.order.status === "pending" && fresh.order.expiresAt > new Date()) {
+              await tx.order.update({
+                where: { id: fresh.orderId },
+                data: { status: "confirmed", paidAt: new Date() },
+              });
+              await tx.orderItem.updateMany({
+                where: { orderId: fresh.orderId, status: "pending" },
+                data: { status: "valid" },
+              });
+              await createNotification(
+                fresh.order.user.authId,
+                {
+                  type: "ticket",
+                  title: "Payment confirmed",
+                  message: fresh.order.eventTitle,
+                  data: { orderId: fresh.orderId, transactionId: settledTxId },
+                },
+                tx,
+              );
+            }
+            await tx.auditLog.create({
+              data: {
+                action: "payment.verified",
+                entityType: "Payment",
+                entityId: fresh.id,
+                metadata: {
+                  transactionId: settledTxId,
+                  orderNumber: fresh.order.orderNumber,
+                  source: "status_poll",
+                },
+              },
+            });
+          });
+          return {
+            status: "COMPLETED",
+            verified: true,
+            orderId: payment.orderId,
+            orderNumber: payment.order.orderNumber,
+          };
+        }
+      } catch {
+        // Ignore transient provider poll errors and return the stored payment state.
+      }
+    }
+
     return {
       status: payment.state.toUpperCase(),
       verified: payment.state === "completed" && payment.verifiedAt !== null,
+      orderId: payment.orderId,
+      orderNumber: payment.order.orderNumber,
     };
   }
 }

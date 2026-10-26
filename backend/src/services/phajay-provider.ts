@@ -1,6 +1,10 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { HttpError } from "../middlewares/error.middleware.ts";
-import type { PaymentProvider, VerifiedPaymentWebhook } from "./payment-provider.ts";
+import type {
+  PaymentCheckoutMethod,
+  PaymentProvider,
+  VerifiedPaymentWebhook,
+} from "./payment-provider.ts";
 
 type Json = Record<string, unknown>;
 
@@ -11,6 +15,8 @@ const asNumber = (value: unknown) => {
   const number = typeof value === "number" ? value : Number(value);
   return Number.isFinite(number) ? number : NaN;
 };
+
+const BANK_QR_METHODS = new Set(["bcel", "ldb", "jdb", "ib", "stb"]);
 
 function mapPaymentStatus(value: unknown): "paid" | "failed" | "pending" | "refunded" {
   const status = asString(value).toUpperCase();
@@ -28,6 +34,12 @@ function mapRefundStatus(value: unknown): "succeeded" | "processing" | "failed" 
     return "succeeded";
   if (["FAILED", "REJECTED", "CANCEL", "CANCELLED", "CANCELED"].includes(status)) return "failed";
   return "processing";
+}
+
+function safeDigestMatch(supplied: string, expected: string): boolean {
+  const left = Buffer.from(supplied.trim());
+  const right = Buffer.from(expected.trim());
+  return left.length === right.length && timingSafeEqual(left, right);
 }
 
 export class PhajayProvider implements PaymentProvider {
@@ -64,14 +76,11 @@ export class PhajayProvider implements PaymentProvider {
     return payload;
   }
 
-  async createCheckout(input: {
+  private async createPaymentLink(input: {
     merchantReference: string;
     amountKip: number;
-    currency: string;
     idempotencyKey: string;
-    returnUrl: string;
   }) {
-    if (input.currency !== "LAK") throw new HttpError(422, "PhaJay Payment Link requires LAK");
     const path =
       this.config.environment === "sandbox"
         ? "/v1/api/test/payment/get-payment-link"
@@ -90,15 +99,116 @@ export class PhajayProvider implements PaymentProvider {
       },
       "basic",
     );
-    const checkoutUrl = asString(data.redirectURL);
-    if (!checkoutUrl) throw new HttpError(502, "PhaJay did not return a payment link");
+    const row = asObject(data.data);
+    const checkoutUrl =
+      asString(data.redirectURL) ||
+      asString(data.paymentUrl) ||
+      asString(row.redirectURL) ||
+      asString(row.paymentUrl);
+    const qrCode = asString(data.qrCode) || asString(row.qrCode) || null;
+    if (!checkoutUrl && !qrCode) throw new HttpError(502, "PhaJay did not return a payment link");
     return {
       // Payment Link creation returns linkCode rather than the settled
       // transactionId. Persist the actual transactionId only after the signed
-      // callback so a provider that uses different values is not rejected.
-      transactionId: asString(data.transactionId) || null,
-      checkoutUrl,
+      // callback unless transactionId is explicitly returned.
+      transactionId: asString(data.transactionId) || asString(row.transactionId) || null,
+      checkoutUrl: checkoutUrl || null,
+      ...(qrCode ? { qrCode } : {}),
     };
+  }
+
+  async createCheckout(input: {
+    merchantReference: string;
+    amountKip: number;
+    currency: string;
+    idempotencyKey: string;
+    returnUrl: string;
+    paymentMethod?: PaymentCheckoutMethod;
+  }) {
+    if (input.currency !== "LAK") throw new HttpError(422, "PhaJay Payment Link requires LAK");
+
+    const method = input.paymentMethod;
+    const bodyPayload = JSON.stringify({
+      orderNo: input.merchantReference,
+      amount: input.amountKip,
+      description: `Pasopkan order ${input.merchantReference}`,
+      tag1: input.merchantReference,
+      tag2: input.idempotencyKey,
+    });
+
+    if (method && BANK_QR_METHODS.has(method)) {
+      try {
+        const data = await this.request(
+          `/v1/api/payment/generate-${method}-qr`,
+          { method: "POST", body: bodyPayload },
+          "secretKey",
+        );
+        const row = asObject(data.data);
+        const qrCode = asString(data.qrCode) || asString(row.qrCode) || null;
+        const checkoutUrl =
+          asString(data.redirectURL) ||
+          asString(data.paymentUrl) ||
+          asString(row.redirectURL) ||
+          asString(row.paymentUrl) ||
+          null;
+        const transactionId =
+          asString(data.transactionId) ||
+          asString(row.transactionId) ||
+          asString(data.linkCode) ||
+          asString(row.linkCode) ||
+          null;
+        if (qrCode || checkoutUrl) {
+          return {
+            transactionId,
+            checkoutUrl,
+            ...(qrCode ? { qrCode } : {}),
+          };
+        }
+      } catch (err) {
+        if (this.config.environment !== "sandbox") throw err;
+      }
+      if (this.config.environment === "sandbox") {
+        return this.createPaymentLink(input);
+      }
+      throw new HttpError(502, "PhaJay did not return a QR code");
+    }
+
+    if (method === "credit_card") {
+      try {
+        const data = await this.request(
+          "/v1/api/jdb2c2p/payment/payment-link",
+          { method: "POST", body: bodyPayload },
+          "basic",
+        );
+        const row = asObject(data.data);
+        const checkoutUrl =
+          asString(data.paymentUrl) ||
+          asString(data.redirectURL) ||
+          asString(row.paymentUrl) ||
+          asString(row.redirectURL) ||
+          null;
+        const transactionId =
+          asString(data.transactionId) ||
+          asString(row.transactionId) ||
+          asString(data.linkCode) ||
+          asString(row.linkCode) ||
+          null;
+        if (checkoutUrl) {
+          return {
+            transactionId,
+            checkoutUrl,
+          };
+        }
+      } catch (err) {
+        if (this.config.environment !== "sandbox") throw err;
+      }
+      if (this.config.environment === "sandbox") {
+        return this.createPaymentLink(input);
+      }
+      throw new HttpError(502, "PhaJay did not return a credit card payment link");
+    }
+
+    return this.createPaymentLink(input);
   }
 
   async verifyWebhook(input: {
@@ -106,15 +216,20 @@ export class PhajayProvider implements PaymentProvider {
     headers: import("node:http").IncomingHttpHeaders;
     webhookSecret: string;
   }): Promise<VerifiedPaymentWebhook> {
-    const header = input.headers["x-signature"];
-    const supplied = Array.isArray(header) ? header[0] : header;
+    const header =
+      input.headers["x-signature"] ??
+      input.headers["x-phajay-signature"] ??
+      input.headers["x-webhook-signature"];
+    const suppliedRaw = Array.isArray(header) ? header[0] : header;
+    const supplied = asString(suppliedRaw).replace(/^sha256=/i, "");
     if (!supplied) throw new HttpError(401, "Missing PhaJay webhook signature");
-    const expected = createHmac("sha256", input.webhookSecret)
+    const expectedBase64 = createHmac("sha256", input.webhookSecret)
       .update(input.rawBody)
       .digest("base64");
-    const left = Buffer.from(supplied);
-    const right = Buffer.from(expected);
-    if (left.length !== right.length || !timingSafeEqual(left, right))
+    const expectedHex = createHmac("sha256", input.webhookSecret)
+      .update(input.rawBody)
+      .digest("hex");
+    if (!safeDigestMatch(supplied, expectedBase64) && !safeDigestMatch(supplied, expectedHex))
       throw new HttpError(401, "Invalid PhaJay webhook signature");
 
     let payload: Json;
@@ -123,10 +238,26 @@ export class PhajayProvider implements PaymentProvider {
     } catch {
       throw new HttpError(400, "Invalid PhaJay webhook JSON");
     }
-    const transactionId = asString(payload.transactionId) || asString(payload.linkCode);
-    const merchantReference = asString(payload.orderNo) || asString(payload.tag1);
-    const amountKip = asNumber(payload.txnAmount ?? payload.amount);
-    const currency = (asString(payload.sourceCurrency ?? payload.currency) || "LAK").toUpperCase();
+    const nested = asObject(payload.data);
+    const transactionId =
+      asString(payload.transactionId) ||
+      asString(nested.transactionId) ||
+      asString(payload.linkCode) ||
+      asString(nested.linkCode);
+    const merchantReference =
+      asString(payload.orderNo) ||
+      asString(nested.orderNo) ||
+      asString(payload.tag1) ||
+      asString(nested.tag1) ||
+      transactionId;
+    const amountKip = asNumber(
+      payload.txnAmount ?? payload.amount ?? nested.txnAmount ?? nested.amount,
+    );
+    const currency = (
+      asString(
+        payload.sourceCurrency ?? payload.currency ?? nested.sourceCurrency ?? nested.currency,
+      ) || "LAK"
+    ).toUpperCase();
     if (!transactionId || !merchantReference || !Number.isSafeInteger(amountKip) || amountKip <= 0)
       throw new HttpError(400, "Incomplete PhaJay webhook payload");
     return {
@@ -134,25 +265,40 @@ export class PhajayProvider implements PaymentProvider {
       merchantReference,
       amountKip,
       currency,
-      outcome: mapPaymentStatus(payload.status),
+      outcome: mapPaymentStatus(payload.status ?? nested.status ?? payload.message),
     };
   }
 
   async checkTransaction(transactionId: string) {
-    const data = await this.request(
-      `/v1/api/payment/check-transaction/status/${encodeURIComponent(transactionId)}`,
-      { method: "GET" },
-      "basic",
-    );
+    let data: Json;
+    try {
+      data = await this.request(
+        `/v1/api/payment/check-transaction/status/${encodeURIComponent(transactionId)}`,
+        { method: "GET" },
+        "basic",
+      );
+    } catch {
+      data = await this.request(
+        `/v1/api/payment/status/${encodeURIComponent(transactionId)}`,
+        { method: "GET" },
+        "secretKey",
+      );
+    }
     const row = asObject(data.data);
     const source = Object.keys(row).length ? row : data;
     return {
       transactionId: asString(source.transactionId) || transactionId,
-      outcome: mapPaymentStatus(source.status ?? (source.isPaid === true ? "PAID" : "PENDING")),
-      amountKip: Number.isSafeInteger(asNumber(source.txnAmount ?? source.amount))
-        ? asNumber(source.txnAmount ?? source.amount)
+      outcome: mapPaymentStatus(
+        source.status ??
+          data.status ??
+          (source.isPaid === true || data.isPaid === true ? "PAID" : "PENDING"),
+      ),
+      amountKip: Number.isSafeInteger(asNumber(source.txnAmount ?? source.amount ?? data.amount))
+        ? asNumber(source.txnAmount ?? source.amount ?? data.amount)
         : undefined,
-      currency: asString(source.sourceCurrency ?? source.currency).toUpperCase() || undefined,
+      currency:
+        asString(source.sourceCurrency ?? source.currency ?? data.currency).toUpperCase() ||
+        undefined,
     };
   }
 

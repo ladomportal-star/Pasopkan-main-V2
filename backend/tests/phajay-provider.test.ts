@@ -50,6 +50,73 @@ describe("PhaJay provider", () => {
     });
   });
 
+  it("creates a bank QR code with secretKey header", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          message: "SUCCESS",
+          transactionId: "txn-qr-1",
+          qrCode: "000201010212...",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await provider("production").createCheckout({
+      merchantReference: "PSK456",
+      amountKip: 120_000,
+      currency: "LAK",
+      idempotencyKey: "idem-qr-1",
+      returnUrl: "",
+      paymentMethod: "bcel",
+    });
+
+    expect(result).toEqual({
+      transactionId: "txn-qr-1",
+      checkoutUrl: null,
+      qrCode: "000201010212...",
+    });
+    const [url, request] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(url.pathname).toBe("/v1/api/payment/generate-bcel-qr");
+    expect(request.headers).toMatchObject({
+      secretKey: "test-secret",
+    });
+  });
+
+  it("creates a credit card payment link with Basic Auth", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          message: "SUCCESS",
+          transactionId: "txn-cc-1",
+          paymentUrl: "https://payment-gateway.phajay.co/cc/txn-cc-1",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await provider("production").createCheckout({
+      merchantReference: "PSK789",
+      amountKip: 250_000,
+      currency: "LAK",
+      idempotencyKey: "idem-cc-1",
+      returnUrl: "",
+      paymentMethod: "credit_card",
+    });
+
+    expect(result).toEqual({
+      transactionId: "txn-cc-1",
+      checkoutUrl: "https://payment-gateway.phajay.co/cc/txn-cc-1",
+    });
+    const [url, request] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(url.pathname).toBe("/v1/api/jdb2c2p/payment/payment-link");
+    expect(request.headers).toMatchObject({
+      Authorization: `Basic ${Buffer.from("test-secret").toString("base64")}`,
+    });
+  });
+
   it("verifies the exact raw webhook bytes", async () => {
     const rawBody = Buffer.from(
       JSON.stringify({

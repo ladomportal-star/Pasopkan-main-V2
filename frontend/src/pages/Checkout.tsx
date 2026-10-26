@@ -326,6 +326,10 @@ export default function Checkout() {
   const [countdown, setCountdown] = useState(900);
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
   const [creditCardUrl, setCreditCardUrl] = useState<string | null>(null);
+  const [hostedCheckoutUrl, setHostedCheckoutUrl] = useState<string | null>(
+    null,
+  );
+  const [paymentReference, setPaymentReference] = useState<string | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
@@ -461,6 +465,53 @@ export default function Checkout() {
     return () => clearInterval(timer);
   }, [step, countdown]);
 
+  useEffect(() => {
+    if (step !== "qr" || !paymentReference) return;
+    let active = true;
+    const poll = async () => {
+      const res = await api.getPaymentStatus(paymentReference);
+      if (
+        active &&
+        res.ok &&
+        (res.data?.verified || res.data?.status === "COMPLETED")
+      ) {
+        setStep("success");
+        setTimeout(() => {
+          navigate("/dashboard", {
+            state: {
+              newTicket: {
+                event,
+                tier,
+                quantity: totalQuantity,
+                selectedTiers: selectedTiersList,
+                selectedDate: state?.selectedDate,
+                selectedTime: state?.selectedTime,
+              },
+            },
+          });
+        }, 3000);
+      }
+    };
+    void poll();
+    const interval = setInterval(() => {
+      void poll();
+    }, 2500);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [
+    step,
+    paymentReference,
+    navigate,
+    event,
+    tier,
+    totalQuantity,
+    selectedTiersList,
+    state?.selectedDate,
+    state?.selectedTime,
+  ]);
+
   if (!state || !state.event) {
     return (
       <div className="min-h-screen bg-[#F9FAFB] flex flex-col items-center justify-center p-8 text-center">
@@ -521,9 +572,11 @@ export default function Checkout() {
   };
 
   // The backend calculates the authoritative total. Free orders are confirmed
-  // immediately; paid orders return a hosted PhaJay Payment Link.
+  // immediately; paid orders return a PhaJay QR code or hosted Payment Link.
   const createRealOrder = async (): Promise<{
     checkoutUrl: string | null;
+    qrCode: string | null;
+    reference: string | null;
   } | null> => {
     if (!event) return null;
     const { ticketOwners: owners, appliedCoupon: currentCoupon } =
@@ -574,6 +627,15 @@ export default function Checkout() {
       }));
       offset += group.quantity;
 
+      const paymentMethod = (selectedBank as
+        | "bcel"
+        | "ldb"
+        | "jdb"
+        | "ib"
+        | "stb"
+        | "credit_card"
+        | null) ?? "payment_link";
+
       const res = await api.createOrder({
         eventId: String(event.id),
         tierId: String(group.tier.id),
@@ -581,6 +643,7 @@ export default function Checkout() {
         quantity: group.quantity,
         selectedDate: state.selectedDate || event.date,
         selectedTime: state.selectedTime || event.time,
+        paymentMethod,
         freeOnly: false,
         couponCode: currentCoupon?.code,
         attendees,
@@ -615,9 +678,16 @@ export default function Checkout() {
       }
       const backendTotal = Number(res.data?.order?.totalKip ?? 0);
       if (backendTotal > 0) {
-        const checkoutUrl = res.data?.checkout?.checkoutUrl;
-        if (res.data?.order?.status === "pending" && checkoutUrl)
-          return { checkoutUrl };
+        const checkoutUrl = res.data?.checkout?.checkoutUrl ?? null;
+        const qrCode = res.data?.checkout?.qrCode ?? null;
+        const reference =
+          res.data?.checkout?.transactionId ||
+          String(res.data?.order?.orderNumber || "") ||
+          String(res.data?.order?.id || "") ||
+          null;
+        if (res.data?.order?.status === "pending" && (qrCode || checkoutUrl)) {
+          return { checkoutUrl, qrCode, reference };
+        }
         void showErrorAlert(
           lang === "lo"
             ? "ສ້າງລິ້ງຊຳລະ PhaJay ບໍ່ສຳເລັດ. ກະລຸນາລອງໃໝ່."
@@ -637,7 +707,7 @@ export default function Checkout() {
         return null;
       }
     }
-    return { checkoutUrl: null };
+    return { checkoutUrl: null, qrCode: null, reference: null };
   };
 
   const handleInitiateCheckout = async () => {
@@ -648,9 +718,28 @@ export default function Checkout() {
       setIsProcessing(false);
       return;
     }
-    if (created.checkoutUrl) {
-      window.location.assign(created.checkoutUrl);
-      return;
+    if (created.qrCode || created.checkoutUrl) {
+      setCountdown(900);
+      setPaymentReference(created.reference);
+      setHostedCheckoutUrl(created.checkoutUrl);
+      if (selectedBank === "credit_card") {
+        setCreditCardUrl(created.checkoutUrl);
+        setQrCodeData(null);
+        setIsProcessing(false);
+        setStep("qr");
+        return;
+      }
+      if (created.qrCode || selectedBank) {
+        setQrCodeData(created.qrCode || created.checkoutUrl);
+        setCreditCardUrl(null);
+        setIsProcessing(false);
+        setStep("qr");
+        return;
+      }
+      if (created.checkoutUrl) {
+        window.location.assign(created.checkoutUrl);
+        return;
+      }
     }
     setIsProcessing(false);
     setStep("success");
@@ -1465,6 +1554,21 @@ export default function Checkout() {
                             />
                           )}
                         </div>
+                        {hostedCheckoutUrl && (
+                          <a
+                            href={hostedCheckoutUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-4 inline-flex w-full py-3 px-4 bg-white hover:bg-orange-50 text-adv-orange border border-orange-200 rounded-xl font-bold text-xs uppercase tracking-wider transition-all items-center justify-center gap-2 shadow-xs"
+                          >
+                            <span>
+                              {lang === "en"
+                                ? "Open PhaJay Payment Page"
+                                : "ເປີດໜ້າຊຳລະເງິນ PhaJay"}
+                            </span>
+                            <Zap className="w-3.5 h-3.5" />
+                          </a>
+                        )}
                       </div>
                     </>
                   )}

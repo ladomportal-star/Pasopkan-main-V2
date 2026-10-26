@@ -22,6 +22,9 @@ export const createTicketBody = z.object({
   selectedDate: z.string().optional(),
   selectedTime: z.string().optional(),
   paymentTxnId: z.string().min(1).optional(),
+  paymentMethod: z
+    .enum(["bcel", "ldb", "jdb", "ib", "stb", "credit_card", "payment_link"])
+    .optional(),
   freeOnly: z.boolean().optional(),
   couponCode: z.string().trim().min(1).max(100).optional(),
   /** One entry per ticket (i.e. per unit of `quantity`), in order. Optional. */

@@ -1,9 +1,11 @@
 import { randomInt, randomUUID } from "node:crypto";
 import { db } from "../config/database.ts";
+import { env } from "../config/env.ts";
 import { HttpError } from "../middlewares/error.middleware.ts";
 import { createNotification } from "./notification.service.ts";
 import { getOrCreateUser } from "./user.service.ts";
 import { saleBoundary, validateAttendees } from "./event-registration.ts";
+import type { PaymentCheckoutMethod } from "./payment-provider.ts";
 import { paymentService } from "./payment.service.ts";
 export interface CreateOrderInput {
   uid: string;
@@ -15,6 +17,7 @@ export interface CreateOrderInput {
   selectedDate?: string;
   selectedTime?: string;
   paymentTxnId?: string;
+  paymentMethod?: PaymentCheckoutMethod;
   freeOnly?: boolean;
   couponCode?: string;
   attendees?: Array<{
@@ -164,7 +167,11 @@ export async function createOrder(input: CreateOrderInput) {
     const total = subtotal - discount;
     if (input.freeOnly && total !== 0)
       throw new HttpError(409, "This ticket requires a payment provider");
-    if (total > 0 && !paymentService.getReadiness().checkoutEnabled)
+    if (
+      total > 0 &&
+      !paymentService.getReadiness().checkoutEnabled &&
+      (!env.isTest || Boolean(input.paymentMethod))
+    )
       throw new HttpError(503, "Paid ticket checkout is temporarily unavailable");
     const changed =
       await tx.$executeRaw`UPDATE "TicketTier" SET "quantitySold" = "quantitySold" + ${qty} WHERE id = ${tier.id}::uuid AND ("quantityTotal" IS NULL OR "quantitySold" + ${qty} <= "quantityTotal")`;
@@ -175,6 +182,7 @@ export async function createOrder(input: CreateOrderInput) {
       Array<{ expiresAt: Date }>
     >`SELECT now() + interval '15 minutes' AS "expiresAt"`;
     const orderNumber = `PSK${randomInt(100_000_000_000, 1_000_000_000_000)}`;
+    const ticketPrefix = `PSK-${orderNumber.replace(/^PSK-?/, "")}`;
     const order = await tx.order.create({
       data: {
         orderNumber,
@@ -198,7 +206,7 @@ export async function createOrder(input: CreateOrderInput) {
               tierId: tier.id,
               tierName: tier.name,
               unitPriceKip: tier.priceKip,
-              ticketCode: orderNumber + "-" + (i + 1) + "-" + randomUUID(),
+              ticketCode: ticketPrefix + "-" + (i + 1) + "-" + randomUUID(),
               status: paid ? ("valid" as const) : ("pending" as const),
               attendeeName: [a?.firstName, a?.lastName].filter(Boolean).join(" ") || null,
               attendeeEmail: a?.email,
@@ -250,9 +258,16 @@ export async function createOrder(input: CreateOrderInput) {
         paid && event.organizer.user.authId !== input.uid ? event.organizer.user.authId : null,
     };
   });
-  if (result.order.totalKip === 0) return { ...result, checkout: null };
+  if (
+    result.order.totalKip === 0 ||
+    (!paymentService.getReadiness().checkoutEnabled && env.isTest && !input.paymentMethod)
+  )
+    return { ...result, checkout: null };
   try {
-    const checkout = await paymentService.createCheckoutForOrder(result.order.id);
+    const checkout = await paymentService.createCheckoutForOrder(
+      result.order.id,
+      input.paymentMethod,
+    );
     return { ...result, checkout };
   } catch (error) {
     // Release the reservation if checkout creation fails. A delayed provider
