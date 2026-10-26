@@ -75,6 +75,7 @@ describe("PhaJay provider", () => {
     expect(result).toEqual({
       transactionId: "txn-qr-1",
       checkoutUrl: null,
+      deepLink: null,
       qrCode: "000201010212...",
     });
     const [url, request] = fetchMock.mock.calls[0] as [URL, RequestInit];

@@ -16,7 +16,7 @@ const asNumber = (value: unknown) => {
   return Number.isFinite(number) ? number : NaN;
 };
 
-const BANK_QR_METHODS = new Set(["bcel", "ldb", "jdb", "ib", "stb", "m-money"]);
+const BANK_QR_METHODS = new Set(["bcel", "ldb", "jdb", "ib", "stb", "apb", "m-money"]);
 
 function mapPaymentStatus(value: unknown): "paid" | "failed" | "pending" | "refunded" {
   const status = asString(value).toUpperCase();
@@ -151,22 +151,31 @@ export class PhajayProvider implements PaymentProvider {
         );
         const row = asObject(data.data);
         const qrCode = asString(data.qrCode) || asString(row.qrCode) || null;
+        const deepLink =
+          asString(data.link) ||
+          asString(row.link) ||
+          asString(data.deepLink) ||
+          asString(row.deepLink) ||
+          asString(data.deeplink) ||
+          asString(row.deeplink) ||
+          null;
         const checkoutUrl =
           asString(data.redirectURL) ||
           asString(data.paymentUrl) ||
           asString(row.redirectURL) ||
           asString(row.paymentUrl) ||
-          null;
+          (deepLink && /^https?:\/\//i.test(deepLink) ? deepLink : null);
         const transactionId =
           asString(data.transactionId) ||
           asString(row.transactionId) ||
           asString(data.linkCode) ||
           asString(row.linkCode) ||
           null;
-        if (qrCode || checkoutUrl) {
+        if (qrCode || checkoutUrl || deepLink) {
           return {
             transactionId,
             checkoutUrl,
+            deepLink,
             ...(qrCode ? { qrCode } : {}),
           };
         }

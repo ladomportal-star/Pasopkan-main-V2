@@ -81,6 +81,7 @@ class PaymentService {
       provider: provider.id,
       transactionId: result.transactionId,
       checkoutUrl: result.checkoutUrl,
+      deepLink: result.deepLink ?? null,
       qrCode: result.qrCode ?? null,
       expiresAt: payment.order.expiresAt.toISOString(),
     };

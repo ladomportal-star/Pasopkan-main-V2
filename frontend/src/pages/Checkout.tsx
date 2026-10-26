@@ -15,6 +15,7 @@ import {
   Calendar,
   Clock,
   CreditCard,
+  Download,
 } from "lucide-react";
 import { LaoEvent, TicketTier, SeatingZone, Coupon } from "../data/events";
 import { useLanguage } from "../context/LanguageContext";
@@ -128,6 +129,7 @@ const LAOS_BANKS = [
   { id: "jdb", name: "JDB Yes", color: "bg-green-600", logo: "/JDB.png" },
   { id: "ib", name: "IB Bank", color: "bg-teal-600", logo: "/IB.png" },
   { id: "stb", name: "ST Bank", color: "bg-emerald-600", logo: "/ST.png" },
+  { id: "apb", name: "APB Bank", color: "bg-amber-600", logo: "" },
   { id: "m-money", name: "M-Money", color: "bg-rose-600", logo: "" },
 ];
 
@@ -330,6 +332,7 @@ export default function Checkout() {
   const [hostedCheckoutUrl, setHostedCheckoutUrl] = useState<string | null>(
     null,
   );
+  const [bankDeepLink, setBankDeepLink] = useState<string | null>(null);
   const [paymentReference, setPaymentReference] = useState<string | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
@@ -577,6 +580,7 @@ export default function Checkout() {
   const createRealOrder = async (): Promise<{
     checkoutUrl: string | null;
     qrCode: string | null;
+    deepLink: string | null;
     reference: string | null;
   } | null> => {
     if (!event) return null;
@@ -634,6 +638,7 @@ export default function Checkout() {
         | "jdb"
         | "ib"
         | "stb"
+        | "apb"
         | "m-money"
         | "credit_card"
         | null) ?? "payment_link";
@@ -682,13 +687,17 @@ export default function Checkout() {
       if (backendTotal > 0) {
         const checkoutUrl = res.data?.checkout?.checkoutUrl ?? null;
         const qrCode = res.data?.checkout?.qrCode ?? null;
+        const deepLink = res.data?.checkout?.deepLink ?? null;
         const reference =
           res.data?.checkout?.transactionId ||
           String(res.data?.order?.orderNumber || "") ||
           String(res.data?.order?.id || "") ||
           null;
-        if (res.data?.order?.status === "pending" && (qrCode || checkoutUrl)) {
-          return { checkoutUrl, qrCode, reference };
+        if (
+          res.data?.order?.status === "pending" &&
+          (qrCode || checkoutUrl || deepLink)
+        ) {
+          return { checkoutUrl, qrCode, deepLink, reference };
         }
         void showErrorAlert(
           lang === "lo"
@@ -709,7 +718,31 @@ export default function Checkout() {
         return null;
       }
     }
-    return { checkoutUrl: null, qrCode: null, reference: null };
+    return { checkoutUrl: null, qrCode: null, deepLink: null, reference: null };
+  };
+
+  const downloadQrCode = () => {
+    const svg = document.getElementById("payment-qr-svg");
+    if (!svg) return;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = img.width + 40;
+      canvas.height = img.height + 40;
+      if (ctx) {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 20, 20);
+        const pngFile = canvas.toDataURL("image/png");
+        const downloadLink = document.createElement("a");
+        downloadLink.download = `pasopkan-qr-${paymentReference || "pay"}.png`;
+        downloadLink.href = pngFile;
+        downloadLink.click();
+      }
+    };
+    img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgData)))}`;
   };
 
   const handleInitiateCheckout = async () => {
@@ -720,10 +753,11 @@ export default function Checkout() {
       setIsProcessing(false);
       return;
     }
-    if (created.qrCode || created.checkoutUrl) {
+    if (created.qrCode || created.checkoutUrl || created.deepLink) {
       setCountdown(900);
       setPaymentReference(created.reference);
       setHostedCheckoutUrl(created.checkoutUrl);
+      setBankDeepLink(created.deepLink || null);
       if (selectedBank === "credit_card") {
         setCreditCardUrl(created.checkoutUrl);
         setQrCodeData(null);
@@ -731,17 +765,28 @@ export default function Checkout() {
         setStep("qr");
         return;
       }
-      if (created.qrCode || selectedBank) {
-        setQrCodeData(created.qrCode || created.checkoutUrl);
-        setCreditCardUrl(null);
-        setIsProcessing(false);
-        setStep("qr");
-        return;
+      setQrCodeData(created.qrCode || created.checkoutUrl);
+      setCreditCardUrl(null);
+      setIsProcessing(false);
+      setStep("qr");
+
+      const isMobile =
+        typeof navigator !== "undefined" &&
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent,
+        );
+
+      const targetLink = created.deepLink || created.checkoutUrl;
+
+      // Automatically launch bank app / payment page if mobile or if deepLink is returned
+      if (targetLink && (isMobile || created.deepLink)) {
+        try {
+          window.location.href = targetLink;
+        } catch (e) {
+          console.warn("Direct navigation to bank app failed", e);
+        }
       }
-      if (created.checkoutUrl) {
-        window.location.assign(created.checkoutUrl);
-        return;
-      }
+      return;
     }
     setIsProcessing(false);
     setStep("success");
@@ -1525,14 +1570,22 @@ export default function Checkout() {
                           ) : null;
                         })()}
                         <h3 className="text-2xl font-bold text-adv-slate mb-2">
-                          {t.scanToPay}
+                          {bankDeepLink
+                            ? lang === "lo"
+                              ? "ກຳລັງເຊື່ອມຕໍ່ແອັບທະນາຄານ"
+                              : "Connecting to Bank App"
+                            : t.scanToPay}
                         </h3>
                         <p className="text-gray-500 text-sm font-medium">
-                          {t.openAppToScan.replace(
-                            "{bankName}",
-                            LAOS_BANKS.find((b) => b.id === selectedBank)
-                              ?.name || "",
-                          )}
+                          {bankDeepLink
+                            ? lang === "lo"
+                              ? `ກະລຸນາເຂົ້າສູ່ລະບົບແອັບ ${LAOS_BANKS.find((b) => b.id === selectedBank)?.name || ""} ເພື່ອຢືນຢັນການຊຳລະເງິນ`
+                              : `Please complete payment in your ${LAOS_BANKS.find((b) => b.id === selectedBank)?.name || ""} app`
+                            : t.openAppToScan.replace(
+                                "{bankName}",
+                                LAOS_BANKS.find((b) => b.id === selectedBank)
+                                  ?.name || "",
+                              )}
                         </p>
                       </div>
 
@@ -1540,23 +1593,68 @@ export default function Checkout() {
                         <div className="flex justify-between w-full mb-4 text-xs font-bold uppercase tracking-widest">
                           <span className="text-adv-green flex items-center gap-2">
                             <div className="w-2 h-2 bg-adv-green rounded-full animate-pulse" />{" "}
-                            Link Active
+                            {lang === "lo" ? "ລະບົບພ້ອມຊຳລະ" : "Active Session"}
                           </span>
-                          <span className="text-red-500">
+                          <span className="text-red-500 font-mono font-bold">
                             {Math.floor(countdown / 60)}:
                             {(countdown % 60).toString().padStart(2, "0")}
                           </span>
                         </div>
-                        <div className="w-full aspect-square bg-white rounded-2xl flex items-center justify-center p-6 shadow-inner relative overflow-hidden">
-                          {qrCodeData && (
-                            <QRCodeSVG
-                              value={qrCodeData}
-                              size={256}
-                              className="w-full h-full"
-                            />
-                          )}
-                        </div>
-                        {hostedCheckoutUrl && (
+
+                        {/* Direct App Launch Button */}
+                        {(bankDeepLink || hostedCheckoutUrl) && (
+                          <div className="w-full mb-4">
+                            <a
+                              href={bankDeepLink || hostedCheckoutUrl || "#"}
+                              onClick={() => {
+                                const target =
+                                  bankDeepLink || hostedCheckoutUrl;
+                                if (target) window.location.href = target;
+                              }}
+                              className="w-full py-4 px-5 bg-adv-orange hover:bg-orange-600 active:scale-[0.98] text-white rounded-2xl font-black text-sm sm:text-base uppercase tracking-wider transition-all flex items-center justify-center gap-2.5 shadow-lg shadow-orange-200"
+                            >
+                              <Zap className="w-5 h-5 fill-white" />
+                              <span>
+                                {lang === "lo"
+                                  ? `ກົດເປີດແອັບ ${LAOS_BANKS.find((b) => b.id === selectedBank)?.name || ""} ເພື່ອຊຳລະ`
+                                  : `Open ${LAOS_BANKS.find((b) => b.id === selectedBank)?.name || ""} App to Pay`}
+                              </span>
+                            </a>
+                            <p className="text-center text-[11px] text-gray-500 mt-2 font-medium leading-relaxed">
+                              {lang === "lo"
+                                ? "ລະບົບໄດ້ເປີດແອັບໃຫ້ທ່ານອັດຕະໂນມັດ. ຖ້າແອັບບໍ່ເປີດ, ກະລຸນາກົດປຸ່ມສີສົ້ມດ້ານເທິງ."
+                                : "The app was launched automatically. If it didn't open, tap the orange button above."}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* QR Code Container */}
+                        {qrCodeData && (
+                          <div className="w-full flex flex-col items-center pt-2">
+                            <div className="w-full max-w-[260px] aspect-square bg-white rounded-2xl flex items-center justify-center p-5 shadow-inner border border-gray-150 relative overflow-hidden">
+                              <QRCodeSVG
+                                id="payment-qr-svg"
+                                value={qrCodeData}
+                                size={256}
+                                className="w-full h-full"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={downloadQrCode}
+                              className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-gray-600 hover:text-adv-orange transition-colors py-1.5 px-3 rounded-lg hover:bg-orange-50 border border-gray-200"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>
+                                {lang === "lo"
+                                  ? "ບັນທຶກຮູບ QR ເພື່ອໄປສະແກນໃນແອັບ"
+                                  : "Save QR image for app"}
+                              </span>
+                            </button>
+                          </div>
+                        )}
+
+                        {hostedCheckoutUrl && !bankDeepLink && (
                           <a
                             href={hostedCheckoutUrl}
                             target="_blank"

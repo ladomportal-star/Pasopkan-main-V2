@@ -294,6 +294,7 @@ export const api = {
         | "jdb"
         | "ib"
         | "stb"
+        | "apb"
         | "m-money"
         | "credit_card"
         | "payment_link";
@@ -317,6 +318,7 @@ export const api = {
         provider: string;
         transactionId: string | null;
         checkoutUrl: string | null;
+        deepLink?: string | null;
         qrCode?: string | null;
         expiresAt: string;
       } | null;

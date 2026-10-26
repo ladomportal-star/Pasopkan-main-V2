@@ -70,11 +70,9 @@ export async function requestOrderRefund(uid: string, orderId: string, reason?: 
     if (order.event.allowRefunds === false)
       throw new HttpError(409, "The organizer does not allow refunds for this event");
 
-    const refundReason =
-      reason?.trim() || "Customer requested refund from Ticket Dashboard";
+    const refundReason = reason?.trim() || "Customer requested refund from Ticket Dashboard";
 
-    let payment =
-      order.payments.find((p) => p.state === "completed") ?? order.payments[0] ?? null;
+    let payment = order.payments.find((p) => p.state === "completed") ?? order.payments[0] ?? null;
 
     if (!payment && order.totalKip > 0) {
       payment = await tx.payment.create({
