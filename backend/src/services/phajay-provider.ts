@@ -44,15 +44,21 @@ function safeDigestMatch(supplied: string, expected: string): boolean {
 
 export class PhajayProvider implements PaymentProvider {
   readonly id = "phajay";
+  private readonly config: {
+    baseUrl: string;
+    apiKey: string;
+    webhookSecret: string;
+    environment: "sandbox" | "production";
+  };
 
-  constructor(
-    private readonly config: {
-      baseUrl: string;
-      apiKey: string;
-      webhookSecret: string;
-      environment: "sandbox" | "production";
-    },
-  ) {}
+  constructor(config: {
+    baseUrl: string;
+    apiKey: string;
+    webhookSecret: string;
+    environment: "sandbox" | "production";
+  }) {
+    this.config = config;
+  }
 
   private async request(path: string, init: RequestInit, auth: "basic" | "secretKey") {
     const response = await fetch(new URL(path, this.config.baseUrl), {
