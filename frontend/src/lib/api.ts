@@ -81,7 +81,12 @@ export interface EventStaffAssignment {
   eventId: string;
   userId: string;
   assignedAt: string;
-  user: { id: string; authEmail: string | null; firstName: string | null; lastName: string | null };
+  user: {
+    id: string;
+    authEmail: string | null;
+    firstName: string | null;
+    lastName: string | null;
+  };
 }
 
 function authToken(explicit?: string | null): string | null {
@@ -126,8 +131,8 @@ async function request<T>(
     const data = text ? (JSON.parse(text) as T) : null;
 
     if (!res.ok) {
-      if (res.status === 401 && token && !path.startsWith('/otp/')) {
-        safeStorage.removeItem('token');
+      if (res.status === 401 && token && !path.startsWith("/otp/")) {
+        safeStorage.removeItem("token");
         window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
       }
       const error = (data as { error?: string })?.error || `HTTP ${res.status}`;
@@ -206,7 +211,12 @@ export const api = {
     }>("POST", "/otp/verify", { phone, code }, opts),
 
   listEvents: (
-    query?: { mine?: boolean; status?: string; limit?: number; cursor?: string },
+    query?: {
+      mine?: boolean;
+      status?: string;
+      limit?: number;
+      cursor?: string;
+    },
     opts?: RequestOptions,
   ) => {
     const params = new URLSearchParams();
@@ -215,12 +225,10 @@ export const api = {
     if (query?.limit) params.set("limit", String(query.limit));
     if (query?.cursor) params.set("cursor", query.cursor);
     const qs = params.toString();
-    return request<{ events: Record<string, unknown>[]; nextCursor: string | null }>(
-      "GET",
-      `/events${qs ? `?${qs}` : ""}`,
-      undefined,
-      opts,
-    );
+    return request<{
+      events: Record<string, unknown>[];
+      nextCursor: string | null;
+    }>("GET", `/events${qs ? `?${qs}` : ""}`, undefined, opts);
   },
 
   getEvent: (idOrRef: string, opts?: RequestOptions) =>
@@ -245,12 +253,7 @@ export const api = {
     request<{
       event: Record<string, unknown>;
       smsNotification?: "accepted" | "unavailable";
-    }>(
-      "PUT",
-      `/events/${encodeURIComponent(idOrRef)}`,
-      patch,
-      opts,
-    ),
+    }>("PUT", `/events/${encodeURIComponent(idOrRef)}`, patch, opts),
 
   listOrders: (opts?: RequestOptions) =>
     request<{ tickets: Record<string, unknown>[] }>(
@@ -285,6 +288,12 @@ export const api = {
       success: true;
       order: Record<string, unknown>;
       items: Record<string, unknown>[];
+      checkout: {
+        provider: string;
+        transactionId: string | null;
+        checkoutUrl: string;
+        expiresAt: string;
+      } | null;
     }>("POST", "/tickets", order, opts),
 
   scanCheckin: (
@@ -299,12 +308,10 @@ export const api = {
     },
     opts?: RequestOptions,
   ) =>
-    request<{ status: "checked_in" | "already_checked_in"; checkIn: BackendCheckIn }>(
-      "POST",
-      "/checkins",
-      scan,
-      opts,
-    ),
+    request<{
+      status: "checked_in" | "already_checked_in";
+      checkIn: BackendCheckIn;
+    }>("POST", "/checkins", scan, opts),
 
   listCheckins: (eventId: string, opts?: RequestOptions) =>
     request<{ checkIns: BackendCheckIn[] }>(
@@ -315,16 +322,36 @@ export const api = {
     ),
 
   listScannerEvents: (opts?: RequestOptions) =>
-    request<{ events: ScannerEvent[] }>("GET", "/checkins/events", undefined, opts),
+    request<{ events: ScannerEvent[] }>(
+      "GET",
+      "/checkins/events",
+      undefined,
+      opts,
+    ),
 
   listEventStaff: (eventId: string, opts?: RequestOptions) =>
-    request<{ staff: EventStaffAssignment[] }>("GET", `/events/${encodeURIComponent(eventId)}/staff`, undefined, opts),
+    request<{ staff: EventStaffAssignment[] }>(
+      "GET",
+      `/events/${encodeURIComponent(eventId)}/staff`,
+      undefined,
+      opts,
+    ),
 
   assignEventStaff: (eventId: string, email: string, opts?: RequestOptions) =>
-    request<{ staff: EventStaffAssignment }>("POST", `/events/${encodeURIComponent(eventId)}/staff`, { email }, opts),
+    request<{ staff: EventStaffAssignment }>(
+      "POST",
+      `/events/${encodeURIComponent(eventId)}/staff`,
+      { email },
+      opts,
+    ),
 
   revokeEventStaff: (eventId: string, userId: string, opts?: RequestOptions) =>
-    request<{ staff: EventStaffAssignment }>("DELETE", `/events/${encodeURIComponent(eventId)}/staff/${encodeURIComponent(userId)}`, undefined, opts),
+    request<{ staff: EventStaffAssignment }>(
+      "DELETE",
+      `/events/${encodeURIComponent(eventId)}/staff/${encodeURIComponent(userId)}`,
+      undefined,
+      opts,
+    ),
 
   /** Preview a scanned ticket code against the real order — does NOT check it in. */
   lookupTicket: (code: string, opts?: RequestOptions) =>
@@ -411,11 +438,16 @@ export const api = {
 };
 
 /** Fetch every page of the signed-in organizer's events; never use the public catalog. */
-export async function listAllMyEvents(opts?: RequestOptions): Promise<Record<string, unknown>[]> {
+export async function listAllMyEvents(
+  opts?: RequestOptions,
+): Promise<Record<string, unknown>[]> {
   const events: Record<string, unknown>[] = [];
   let cursor: string | undefined;
   do {
-    const result = await api.listEvents({ mine: true, limit: 100, cursor }, { ...opts, throwOnError: true });
+    const result = await api.listEvents(
+      { mine: true, limit: 100, cursor },
+      { ...opts, throwOnError: true },
+    );
     if (!result.data) throw new Error("Could not load your events");
     events.push(...result.data.events);
     cursor = result.data.nextCursor ?? undefined;

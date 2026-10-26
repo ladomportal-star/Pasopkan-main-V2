@@ -451,7 +451,9 @@ export default function Checkout() {
       setStep("details");
       setCountdown(900);
       void showErrorAlert(
-        lang === "lo" ? "ເວລາຊຳລະໝົດແລ້ວ. ກະລຸນາລອງໃໝ່." : "The payment session expired. Please try again.",
+        lang === "lo"
+          ? "ເວລາຊຳລະໝົດແລ້ວ. ກະລຸນາລອງໃໝ່."
+          : "The payment session expired. Please try again.",
         lang,
         lang === "lo" ? "ການຊຳລະໝົດເວລາ" : "Payment session expired",
       );
@@ -518,47 +520,58 @@ export default function Checkout() {
     return true;
   };
 
-  // One `POST /api/tickets` call per tier. The backend verifies that each
-  // requested tier is actually free before it reserves stock or issues tickets.
-  const createRealOrder = async (): Promise<boolean> => {
-    if (!event) return false;
-    const { ticketOwners: owners, appliedCoupon: currentCoupon } = latestFormRef.current;
+  // The backend calculates the authoritative total. Free orders are confirmed
+  // immediately; paid orders return a hosted PhaJay Payment Link.
+  const createRealOrder = async (): Promise<{
+    checkoutUrl: string | null;
+  } | null> => {
+    if (!event) return null;
+    const { ticketOwners: owners, appliedCoupon: currentCoupon } =
+      latestFormRef.current;
     const groups =
       selectedTiersList.length > 0
         ? selectedTiersList
         : tier
           ? [{ tier, quantity: quantity || 1 }]
           : [];
-    if (groups.length === 0) return false;
-    if (currentCoupon && groups.length > 1) {
-      void showErrorAlert(lang === "lo" ? "ກະລຸນາໃຊ້ Coupon ກັບປີ້ປະເພດດຽວຕໍ່ການສັ່ງຊື້." :
-        "Use a coupon with one ticket type per checkout.", lang, lang === "lo" ? "Coupon ໃຊ້ບໍ່ໄດ້" : "Coupon not applicable");
-      return false;
-    }
-    if (!currentCoupon && groups.some((group) => Number(group.tier.price) > 0)) {
+    if (groups.length === 0) return null;
+    if (
+      groups.length > 1 &&
+      groups.some((group) => Number(group.tier.price) > 0)
+    ) {
       void showErrorAlert(
         lang === "lo"
-          ? "ການຊຳລະເງິນຍັງບໍ່ເປີດໃຊ້ສຳລັບປີ້ນີ້."
-          : "Payment isn't available for this ticket yet. Please contact the event organizer or try again later.",
+          ? "ກະລຸນາຊື້ປີ້ຈ່າຍເງິນເທື່ອລະປະເພດ."
+          : "Purchase one paid ticket type per checkout.",
         lang,
-        lang === "lo" ? "ຍັງຊື້ປີ້ບໍ່ໄດ້" : "Ticket purchase unavailable",
+        lang === "lo" ? "ເລືອກປີ້ໜຶ່ງປະເພດ" : "One paid ticket type",
       );
-      return false;
+      return null;
+    }
+    if (currentCoupon && groups.length > 1) {
+      void showErrorAlert(
+        lang === "lo"
+          ? "ກະລຸນາໃຊ້ Coupon ກັບປີ້ປະເພດດຽວຕໍ່ການສັ່ງຊື້."
+          : "Use a coupon with one ticket type per checkout.",
+        lang,
+        lang === "lo" ? "Coupon ໃຊ້ບໍ່ໄດ້" : "Coupon not applicable",
+      );
+      return null;
     }
 
     let offset = 0;
     for (const group of groups) {
-      const groupOwners = event.requireEveryTicketInfo === false
-        ? Array.from({ length: group.quantity }, () => owners[0])
-        : owners.slice(offset, offset + group.quantity);
-      const attendees = groupOwners
-        .map((o) => ({
-          firstName: o.firstName.trim() || undefined,
-          lastName: o.lastName.trim() || undefined,
-          email: o.email.trim() || undefined,
-          phone: o.phone.trim() || undefined,
-          customAnswers: o.customAnswers,
-        }));
+      const groupOwners =
+        event.requireEveryTicketInfo === false
+          ? Array.from({ length: group.quantity }, () => owners[0])
+          : owners.slice(offset, offset + group.quantity);
+      const attendees = groupOwners.map((o) => ({
+        firstName: o.firstName.trim() || undefined,
+        lastName: o.lastName.trim() || undefined,
+        email: o.email.trim() || undefined,
+        phone: o.phone.trim() || undefined,
+        customAnswers: o.customAnswers,
+      }));
       offset += group.quantity;
 
       const res = await api.createOrder({
@@ -568,48 +581,75 @@ export default function Checkout() {
         quantity: group.quantity,
         selectedDate: state.selectedDate || event.date,
         selectedTime: state.selectedTime || event.time,
-        freeOnly: true,
+        freeOnly: false,
         couponCode: currentCoupon?.code,
         attendees,
       });
       if (!res.ok) {
-        const message = res.status === 409
-          ? (lang === "lo" ? "ປີ້ອາດຈະໝົດ ຫຼືຂໍ້ມູນການຈອງປ່ຽນແປງ. ກະລຸນາເລືອກອີກຄັ້ງ." : "Tickets may have sold out or the booking changed. Please review your selection.")
-          : res.status === 429
-            ? (lang === "lo" ? "ມີການຈອງຫຼາຍເກີນໄປ. ກະລຸນາລໍຖ້າແລ້ວລອງໃໝ່." : "Too many booking attempts. Please wait and try again.")
-            : res.status === 503
-              ? (lang === "lo" ? "ລະບົບຈອງປີ້ກຳລັງບໍ່ພ້ອມ. ການສັ່ງຊື້ຍັງບໍ່ສຳເລັດ—ກະລຸນາລອງໃໝ່ພາຍຫຼັງ." : "Ticket ordering is temporarily unavailable. Your order was not confirmed; please try again later.")
-              : res.status === 0
-                ? (lang === "lo" ? "ບໍ່ສາມາດເຊື່ອມຕໍ່ລະບົບຈອງປີ້ໄດ້. ກວດອິນເຕີເນັດແລ້ວລອງໃໝ່." : "We couldn't reach the ticket service. Check your connection and try again.")
-                : (lang === "lo" ? "ບໍ່ສາມາດຈອງປີ້ໄດ້. ກະລຸນາກວດຂໍ້ມູນແລ້ວລອງໃໝ່." : "We couldn't complete your ticket order. Please review your details and try again.");
-        void showErrorAlert(message, lang, lang === "lo" ? "ຈອງປີ້ບໍ່ສຳເລັດ" : "Ticket order failed");
-        return false;
+        const message =
+          res.status === 409
+            ? lang === "lo"
+              ? "ປີ້ອາດຈະໝົດ ຫຼືຂໍ້ມູນການຈອງປ່ຽນແປງ. ກະລຸນາເລືອກອີກຄັ້ງ."
+              : "Tickets may have sold out or the booking changed. Please review your selection."
+            : res.status === 429
+              ? lang === "lo"
+                ? "ມີການຈອງຫຼາຍເກີນໄປ. ກະລຸນາລໍຖ້າແລ້ວລອງໃໝ່."
+                : "Too many booking attempts. Please wait and try again."
+              : res.status === 503
+                ? lang === "lo"
+                  ? "ລະບົບຈອງປີ້ກຳລັງບໍ່ພ້ອມ. ການສັ່ງຊື້ຍັງບໍ່ສຳເລັດ—ກະລຸນາລອງໃໝ່ພາຍຫຼັງ."
+                  : "Ticket ordering is temporarily unavailable. Your order was not confirmed; please try again later."
+                : res.status === 0
+                  ? lang === "lo"
+                    ? "ບໍ່ສາມາດເຊື່ອມຕໍ່ລະບົບຈອງປີ້ໄດ້. ກວດອິນເຕີເນັດແລ້ວລອງໃໝ່."
+                    : "We couldn't reach the ticket service. Check your connection and try again."
+                  : lang === "lo"
+                    ? "ບໍ່ສາມາດຈອງປີ້ໄດ້. ກະລຸນາກວດຂໍ້ມູນແລ້ວລອງໃໝ່."
+                    : "We couldn't complete your ticket order. Please review your details and try again.";
+        void showErrorAlert(
+          message,
+          lang,
+          lang === "lo" ? "ຈອງປີ້ບໍ່ສຳເລັດ" : "Ticket order failed",
+        );
+        return null;
       }
-      // The backend owns the price. A client-side coupon must never make a
-      // paid tier look like a confirmed free ticket.
-      if (
-        res.data?.order?.status !== "confirmed" ||
-        res.data.order.totalKip !== 0
-      ) {
+      const backendTotal = Number(res.data?.order?.totalKip ?? 0);
+      if (backendTotal > 0) {
+        const checkoutUrl = res.data?.checkout?.checkoutUrl;
+        if (res.data?.order?.status === "pending" && checkoutUrl)
+          return { checkoutUrl };
         void showErrorAlert(
           lang === "lo"
-            ? "ປີ້ນີ້ຕ້ອງຊຳລະເງິນ ແຕ່ລະບົບຊຳລະເງິນຍັງບໍ່ພ້ອມ."
-            : "This ticket requires payment, but the payment service is not available yet.",
+            ? "ສ້າງລິ້ງຊຳລະ PhaJay ບໍ່ສຳເລັດ. ກະລຸນາລອງໃໝ່."
+            : "PhaJay did not return a payment link. Please try again.",
           lang,
-          lang === "lo" ? "ການຊຳລະຍັງບໍ່ພ້ອມ" : "Payment unavailable",
+          lang === "lo" ? "ສ້າງລິ້ງຊຳລະບໍ່ສຳເລັດ" : "Payment link unavailable",
         );
-        return false;
+        return null;
+      }
+      if (res.data?.order?.status !== "confirmed") {
+        void showErrorAlert(
+          lang === "lo"
+            ? "ບໍ່ສາມາດຢືນຢັນປີ້ຟຣີໄດ້."
+            : "The free ticket could not be confirmed.",
+          lang,
+        );
+        return null;
       }
     }
-    return true;
+    return { checkoutUrl: null };
   };
 
-  const handleFreeCheckout = async () => {
+  const handleInitiateCheckout = async () => {
     if (!validateContactDetails()) return;
     setIsProcessing(true);
     const created = await createRealOrder();
     if (!created) {
       setIsProcessing(false);
+      return;
+    }
+    if (created.checkoutUrl) {
+      window.location.assign(created.checkoutUrl);
       return;
     }
     setIsProcessing(false);
@@ -628,13 +668,6 @@ export default function Checkout() {
         },
       });
     }, 3000);
-  };
-
-  const handleInitiateCheckout = () => {
-    if (!validateContactDetails()) return;
-    if (total === 0) {
-      void handleFreeCheckout();
-    }
   };
 
   const renderActivitySummary = () => (
@@ -1283,23 +1316,25 @@ export default function Checkout() {
                 )}
 
                 <button
-                  disabled={!isDetailsValid || total > 0 || isProcessing}
-                  onClick={handleInitiateCheckout}
+                  disabled={!isDetailsValid || isProcessing}
+                  onClick={() => void handleInitiateCheckout()}
                   className="w-full py-3 bg-adv-orange text-white rounded-xl font-bold text-sm sm:text-base hover:bg-orange-600 transition-all flex items-center justify-center gap-2 shadow-md shadow-orange-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isProcessing ? (
                     <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
                   ) : total === 0 ? (
                     t.book || "Book"
+                  ) : lang === "lo" ? (
+                    "ຊຳລະຜ່ານ PhaJay"
                   ) : (
-                    lang === "lo" ? "ຍັງບໍ່ເປີດຮັບຊຳລະເງິນ" : "Payments unavailable"
+                    "Pay with PhaJay"
                   )}
                 </button>
                 {total > 0 && (
                   <p className="mt-2 text-center text-xs text-amber-700">
                     {lang === "lo"
-                      ? "ປີ້ຈ່າຍເງິນຈະເປີດເມື່ອລະບົບຊຳລະເງິນພ້ອມ."
-                      : "Paid tickets will be available when payment setup is complete."}
+                      ? "ທ່ານຈະຖືກສົ່ງໄປໜ້າຊຳລະເງິນທີ່ປອດໄພຂອງ PhaJay."
+                      : "You will be redirected to PhaJay's secure hosted payment page."}
                   </p>
                 )}
               </div>
