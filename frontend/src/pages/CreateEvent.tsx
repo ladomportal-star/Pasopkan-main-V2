@@ -2974,7 +2974,19 @@ export default function CreateEvent() {
   const completeSubmission = async (
     submissionOtp: { challengeId: string; code: string } | null,
   ): Promise<boolean> => {
-    if (!termsAccepted || submissionInFlight.current || draftSaveInFlight.current) return false;
+    // If a background draft save is running, wait for it to finish first
+    for (let i = 0; i < 20 && draftSaveInFlight.current; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    if (!termsAccepted) {
+      const msg =
+        lang === "lo"
+          ? "ກະລຸນາຍອມຮັບຂໍ້ກຳນົດ ແລະ ເງື່ອນໄຂຂອງຜູ້ຈັດງານ (Organizer Terms) ກ່ອນສົ່ງ Event"
+          : "Accept the organizer terms before submitting an event";
+      setValidationError(msg);
+      throw new Error(msg);
+    }
+    if (submissionInFlight.current) return false;
     submissionInFlight.current = true;
     setIsLoading(true);
     setValidationError(null);
@@ -2989,22 +3001,32 @@ export default function CreateEvent() {
       const result = editingEventId
         ? await api.updateEvent(String(editingEventId), payload)
         : await api.createEvent(payload);
-      if (!result.ok || !result.data?.event) throw new Error(
-        result.error || (lang === "lo" ? "ບໍ່ສາມາດບັນທຶກ Event ໄດ້" : "Could not save the event"),
-      );
+      if (!result.ok || !result.data?.event) {
+        throw new Error(
+          result.error ||
+            (lang === "lo"
+              ? "ບໍ່ສາມາດບັນທຶກ Event ໄດ້"
+              : "Could not save the event"),
+        );
+      }
       const saved = fromBackendEvent(result.data.event);
       setSmsNotificationStatus(
         editingEventId ? null : (result.data.smsNotification ?? "unavailable"),
       );
       setWasEditing(Boolean(editingEventId));
-      setLocalEvents((events) => [saved, ...events.filter((event) => String(event.id) !== String(saved.id))]);
+      setLocalEvents((events) => [
+        saved,
+        ...events.filter((event) => String(event.id) !== String(saved.id)),
+      ]);
       setEditingEventId(null);
       setShowSubmissionOtp(false);
       setShowSuccessModal(true);
       return true;
     } catch (error) {
-      setValidationError(error instanceof Error ? error.message : "Could not submit the event");
-      return false;
+      const msg =
+        error instanceof Error ? error.message : "Could not submit the event";
+      setValidationError(msg);
+      throw error;
     } finally {
       submissionInFlight.current = false;
       setIsLoading(false);

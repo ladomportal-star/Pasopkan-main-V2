@@ -75,15 +75,25 @@ export default function EventSubmissionOtpModal({
     setBusy(true);
     setError("");
     try {
-      const success = await onConfirm({ challengeId, code });
-      if (!success)
-        throw new Error(
-          "Could not submit event. Check the form and OTP, then retry.",
-        );
+      await onConfirm({ challengeId, code });
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Could not submit event",
-      );
+      const rawMsg =
+        cause instanceof Error ? cause.message : "Could not submit event";
+      let friendlyMsg = rawMsg;
+      if (/invalid otp/i.test(rawMsg)) {
+        friendlyMsg =
+          "ລະຫັດ OTP ບໍ່ຖືກຕ້ອງ. ກະລຸນາກວດເບິ່ງລະຫັດຈາກ SMS ຫຼ້າສຸດແລ້ວລອງໃໝ່ (Invalid OTP)";
+      } else if (/otp expired|unavailable/i.test(rawMsg)) {
+        friendlyMsg =
+          "ລະຫັດ OTP ໝົດອາຍຸແລ້ວ. ກະລຸນາກົດສົ່ງ OTP ໃໝ່ (OTP expired. Request new code)";
+      } else if (/verified phone/i.test(rawMsg)) {
+        friendlyMsg =
+          "ກະລຸນາໃສ່ເບີໂທທີ່ຢືນຢັນແລ້ວໃນບັນຊີຂອງທ່ານ (Enter the verified phone on your account)";
+      } else if (/organizer terms/i.test(rawMsg)) {
+        friendlyMsg =
+          "ກະລຸນາຍອມຮັບເງື່ອນໄຂ Organizer ກ່ອນສົ່ງ Event";
+      }
+      setError(friendlyMsg);
     } finally {
       setBusy(false);
     }
