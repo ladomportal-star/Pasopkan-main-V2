@@ -421,8 +421,13 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     const loadHomeHeroSettings = async () => {
-      const settings = await getHomeHeroSettings();
-      if (!cancelled) setHomeHeroSettings(settings);
+      try {
+        const settings = await getHomeHeroSettings();
+        if (!cancelled) setHomeHeroSettings(settings);
+      } catch (error) {
+        // Keep the page usable, but never substitute cached settings from another source.
+        console.error("Failed to load homepage hero settings from Backend API:", error);
+      }
     };
     void loadHomeHeroSettings();
 

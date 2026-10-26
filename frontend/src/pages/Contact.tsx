@@ -56,8 +56,13 @@ export default function Contact() {
 
   useEffect(() => {
     const loadSettings = async () => {
-      const data = await getContactSettings();
-      setSettings(data);
+      try {
+        const data = await getContactSettings();
+        setSettings(data);
+      } catch (error) {
+        // Do not fall back to cached or Supabase settings when Backend is unavailable.
+        console.error('Failed to load contact settings from Backend API:', error);
+      }
     };
     loadSettings();
   }, []);

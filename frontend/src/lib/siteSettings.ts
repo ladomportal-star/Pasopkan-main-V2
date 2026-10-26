@@ -1,5 +1,4 @@
 import { api } from "./api";
-import { supabase } from "./supabase";
 
 // ==========================================
 
@@ -880,64 +879,21 @@ export const DEFAULT_TICKET_SPONSOR_SETTINGS: TicketSponsorSettings = {
 
 // ==========================================
 
-// Helper to load settings from Supabase, with LocalStorage and Hardcoded fallbacks
+// Backend is the single source of truth for remotely managed site settings.
+// Defaults are used only when the Backend confirms no value has been saved yet.
 
 async function getSettings<T>(docId: string, defaultValue: T): Promise<T> {
-  try {
-    const res = await api.get<{ data: T | null }>(
-      `/site-settings/${encodeURIComponent(docId)}`,
-    );
-    if (res.ok && res.data?.data) {
-      const data = res.data.data as T;
-      localStorage.setItem(`pasopkan_setting_${docId}`, JSON.stringify(data));
-      return data;
-    }
-  } catch (error) {
-    console.warn(`Backend API load failed for site_settings/${docId}:`, error);
+  const res = await api.get<{ data: T | null }>(
+    `/site-settings/${encodeURIComponent(docId)}`,
+    { throwOnError: true },
+  );
+  if (!res.ok) {
+    throw new Error(res.error || `Unable to load site setting: ${docId}`);
   }
-
-  try {
-    // Try to get from Supabase first
-
-    const { data: row, error } = await supabase
-
-      .from("site_settings")
-
-      .select("data")
-
-      .eq("id", docId)
-
-      .single();
-
-    if (row && row.data && !error) {
-      const data = row.data as T;
-
-      // Backup to localStorage for lightning fast loading
-
-      localStorage.setItem(`pasopkan_setting_${docId}`, JSON.stringify(data));
-
-      return data;
-    }
-  } catch (error) {
-    console.warn(`Supabase load failed for site_settings/${docId}:`, error);
-  }
-
-  // Fallback to localStorage
-
-  const cached = localStorage.getItem(`pasopkan_setting_${docId}`);
-
-  if (cached) {
-    try {
-      return JSON.parse(cached) as T;
-    } catch {
-      // Ignore
-    }
-  }
-
-  return defaultValue;
+  return res.data?.data ?? defaultValue;
 }
 
-// Helper to save settings to Supabase and LocalStorage
+// Save remotely managed settings only through the Backend API.
 
 async function saveSettings<T extends object>(
   docId: string,
@@ -949,7 +905,6 @@ async function saveSettings<T extends object>(
       { data },
       { throwOnError: true },
     );
-    localStorage.setItem(`pasopkan_setting_${docId}`, JSON.stringify(data));
   } catch (error) {
     console.error(`Backend API save failed for site_settings/${docId}:`, error);
     throw error;

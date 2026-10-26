@@ -29,8 +29,13 @@ export default function Help() {
 
   useEffect(() => {
     const loadSettings = async () => {
-      const data = await getSupportSettings();
-      setSettings(data);
+      try {
+        const data = await getSupportSettings();
+        setSettings(data);
+      } catch (error) {
+        // Do not fall back to cached or Supabase settings when Backend is unavailable.
+        console.error('Failed to load support settings from Backend API:', error);
+      }
     };
     loadSettings();
   }, []);
