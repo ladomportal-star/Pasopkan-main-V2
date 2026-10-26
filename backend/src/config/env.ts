@@ -79,6 +79,10 @@ const schema = z.object({
   PAYMENT_API_KEY: z.string().trim().optional().default(""),
   PAYMENT_MERCHANT_ID: z.string().trim().optional().default(""),
   PAYMENT_WEBHOOK_SECRET: z.string().trim().optional().default(""),
+  PHAJAY_ENVIRONMENT: z.enum(["sandbox", "production"]).default("sandbox"),
+  // PhaJay Split Payment is configured in the merchant portal for approved
+  // sub-accounts; there is no public transfer endpoint in the provider docs.
+  PHAJAY_PAYOUT_MODE: z.enum(["manual", "split_payment"]).default("manual"),
 
   FRONTEND_DIST: z.string().optional().default(""),
 
@@ -135,8 +139,13 @@ export const env = {
     apiBaseUrl: e.PAYMENT_API_BASE_URL,
     apiKey: e.PAYMENT_API_KEY,
     merchantId: e.PAYMENT_MERCHANT_ID,
-    webhookSecret: e.PAYMENT_WEBHOOK_SECRET,
+    // PhaJay signs callbacks with the same secretKey/devSecretKey used by its
+    // API. Keep an override for a controlled key-rotation window.
+    webhookSecret: e.PAYMENT_WEBHOOK_SECRET || e.PAYMENT_API_KEY,
+    environment: e.PHAJAY_ENVIRONMENT,
+    payoutMode: e.PHAJAY_PAYOUT_MODE,
     get credentialsComplete() {
+      if (this.provider === "phajay") return Boolean(this.apiBaseUrl && this.apiKey);
       return Boolean(
         this.provider && this.apiBaseUrl && this.apiKey && this.merchantId && this.webhookSecret,
       );
@@ -178,8 +187,8 @@ export function checkEnv(warn: (msg: string) => void) {
     env.payment.provider,
     env.payment.apiBaseUrl,
     env.payment.apiKey,
-    env.payment.merchantId,
-    env.payment.webhookSecret,
+    ...(env.payment.provider === "phajay" ? [] : [env.payment.merchantId]),
+    ...(env.payment.provider === "phajay" ? [] : [env.payment.webhookSecret]),
   ].filter(Boolean).length;
   if (paymentCredentialCount > 0 && !env.payment.credentialsComplete) {
     warn(

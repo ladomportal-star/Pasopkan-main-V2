@@ -2,22 +2,29 @@
 
 ## Current status
 
-Paid checkout and provider refunds are intentionally disabled. The API currently
-rejects paid ticket checkout; the payment webhook returns `503` until a
-provider-specific adapter is implemented. Approving a refund records an
-administrative decision in the database; it does **not** transfer money. Do not
-enable paid events or tell customers that a refund is complete based on an
-approval alone.
+The PhaJay adapter supports Payment Link checkout, signed payment webhooks,
+transaction lookup, full-transaction refund submission and refund status sync.
+It registers only when all required server credentials are present. With missing
+credentials the API fails closed and paid checkout remains unavailable.
 
-This is deliberate: gateway request formats, signing rules, settlement states,
-and refund semantics differ. A generic HTTP call without those rules can accept
-forged payments or issue duplicate refunds.
+Refund approval and money movement are separate admin actions. Approval records
+the decision in the database. `POST /api/admin/refunds/:id/execute` submits one
+approved refund to PhaJay; `POST /api/admin/refunds/:id/sync` reconciles its
+provider status. Batch approval never moves money. PhaJay's documented API
+accepts a transaction ID and does not expose a partial amount, so provider
+execution rejects partial refunds.
+
+PhaJay payout is not a public transfer API in the current documentation. Use
+`PHAJAY_PAYOUT_MODE=split_payment` only after the parent/sub-account relationship
+and split percent have been configured in PhaJay Portal. In that mode the API
+blocks manual payout-bill completion to prevent paying an organizer twice.
 
 ## Backend boundaries already prepared
 
 - `PaymentProvider` is the server-side contract for hosted checkout, signed
-  webhook verification, and refunds. A provider implementation must be
-  explicitly registered at startup and match `PAYMENT_PROVIDER`.
+  webhook verification, transaction checks and refunds. The PhaJay
+  implementation is registered at startup when `PAYMENT_PROVIDER=phajay` and
+  the required credentials are complete.
 - Payment webhook routes run before JSON parsing, retain the original request
   bytes, require JSON, and cap the request body at 64 KiB.
 - Payment secrets are parsed only by backend environment configuration. The
@@ -26,19 +33,46 @@ forged payments or issue duplicate refunds.
 - If provider configuration or the adapter is missing, payment operations fail
   closed with `503`.
 
-## When provider access is available
+## Configuration
 
-Obtain the following from the payment provider before implementing an adapter:
+Set these only in `Backend/.env` locally and Railway service variables in hosted
+environments:
+
+```dotenv
+PAYMENT_PROVIDER=phajay
+PAYMENT_API_BASE_URL=https://payment-gateway.phajay.co
+PAYMENT_API_KEY=<PhaJay test key or production secret key>
+# Optional override during key rotation; otherwise PAYMENT_API_KEY is used.
+PAYMENT_WEBHOOK_SECRET=
+PHAJAY_ENVIRONMENT=sandbox
+PHAJAY_PAYOUT_MODE=manual
+```
+
+Use `PHAJAY_ENVIRONMENT=production` only after KYC and production verification.
+Use `PHAJAY_PAYOUT_MODE=split_payment` only after PhaJay Portal is configured for
+approved organizer sub-accounts. `PAYMENT_MERCHANT_ID` remains available for
+other providers but is not required by the documented PhaJay endpoints.
+
+Configure the public webhook URL in PhaJay Portal as:
+
+```text
+https://<backend-domain>/api/payment/webhook
+```
+
+Also configure the customer success and cancel URLs in PhaJay Portal. Sandbox
+Payment Links use PhaJay's test endpoint and must be completed with the PhaJay
+Sandbox App.
+
+Before production activation, confirm the following with PhaJay:
 
 1. Official API documentation and sandbox base URL/account.
-2. Merchant ID, API credential format, key rotation process, and required
-   network/IP allowlisting.
+2. API credential rotation process and any required network/IP allowlisting.
 3. Checkout creation and server-side transaction inquiry APIs, including
    required merchant reference, amount units, currency, and return URL rules.
 4. Webhook signature algorithm, exact signed bytes/canonicalization, timestamp
    tolerance, key rotation behavior, retry policy, and sample success/failure
    payloads with headers.
-5. Refund API, partial-refund rules, idempotency support, asynchronous statuses,
+5. Refund API, full-refund rules, idempotency support, asynchronous statuses,
    cancellation/timeout semantics, and reconciliation/reporting APIs.
 6. Sandbox test cases for duplicate, delayed, out-of-order, invalid-signature,
    wrong-amount, expired-order, partial-refund, and timeout outcomes.
@@ -68,8 +102,10 @@ use the deployment platform's secret variables for production.
    for secret/PII leakage, and obtain business approval before enabling the
    provider in production.
 
-`PAYMENT_PROVIDER`, `PAYMENT_API_BASE_URL`, `PAYMENT_API_KEY`,
-`PAYMENT_MERCHANT_ID`, and `PAYMENT_WEBHOOK_SECRET` are reserved backend-only
-configuration keys. Filling them in does not activate payments: an audited,
-provider-specific implementation and the release gates above are still
-required.
+`PAYMENT_API_KEY` and the optional `PAYMENT_WEBHOOK_SECRET` override are
+backend-only. Never expose them through Vite variables or React components.
+PhaJay uses the same `devSecretKey`/`secretKey` for API authentication and
+webhook HMAC signing; the separate override exists only for a controlled
+rotation window. Filling the required variables registers the adapter at API
+startup; production activation still requires sandbox end-to-end verification
+and correct PhaJay Portal callback configuration.

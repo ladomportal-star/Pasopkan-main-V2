@@ -18,7 +18,7 @@ export async function createTicket(req: Request, res: Response) {
   const uid = req.user?.uid;
   if (!uid) return fail(res, "Unauthorized", 401);
 
-  const { order, items, organizerUid } = await createOrder({
+  const { order, items, organizerUid, checkout } = await createOrder({
     ...req.body,
     uid,
     email: req.user?.email,
@@ -39,5 +39,5 @@ export async function createTicket(req: Request, res: Response) {
     }
   }
 
-  return ok(res, { success: true, order, items });
+  return ok(res, { success: true, order, items, checkout });
 }

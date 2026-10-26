@@ -8,9 +8,15 @@ import {
   attachPayoutBill,
   getPayoutBillUrl,
 } from "../services/payout.service.ts";
+import { paymentService } from "../services/payment.service.ts";
 
 const router = Router();
 const eventParams = z.object({ eventId: z.string().uuid() });
+
+router.get("/admin/payouts/readiness", requireAuth, requireAdmin, (_req, res) => {
+  res.setHeader("Cache-Control", "private, no-store");
+  res.json(paymentService.getReadiness().payout);
+});
 
 router.get("/admin/payouts", requireAuth, requireAdmin, async (_req, res) => {
   res.setHeader("Cache-Control", "private, no-store");

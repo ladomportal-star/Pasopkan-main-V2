@@ -4,8 +4,10 @@ import { logger } from "./utils/logger.ts";
 import { pool } from "./config/database.ts";
 import { releaseExpiredOrders } from "./services/ticket.service.ts";
 import { printStartupBanner } from "./utils/startupBanner.ts";
+import { paymentService } from "./services/payment.service.ts";
 
 checkEnv((msg) => logger.warn("[env]", msg));
+paymentService.configureFromEnvironment();
 
 const app = createApp();
 const startedAt = Date.now();

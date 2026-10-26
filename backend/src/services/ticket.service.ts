@@ -4,6 +4,7 @@ import { HttpError } from "../middlewares/error.middleware.ts";
 import { createNotification } from "./notification.service.ts";
 import { getOrCreateUser } from "./user.service.ts";
 import { saleBoundary, validateAttendees } from "./event-registration.ts";
+import { paymentService } from "./payment.service.ts";
 export interface CreateOrderInput {
   uid: string;
   email?: string;
@@ -163,10 +164,8 @@ export async function createOrder(input: CreateOrderInput) {
     const total = subtotal - discount;
     if (input.freeOnly && total !== 0)
       throw new HttpError(409, "This ticket requires a payment provider");
-    // Never reserve paid tickets as if checkout were available. The payment
-    // adapter currently has no configured provider/session verification path.
-    // Free orders remain supported and are confirmed below.
-    if (total > 0) throw new HttpError(503, "Paid ticket checkout is temporarily unavailable");
+    if (total > 0 && !paymentService.getReadiness().checkoutEnabled)
+      throw new HttpError(503, "Paid ticket checkout is temporarily unavailable");
     const changed =
       await tx.$executeRaw`UPDATE "TicketTier" SET "quantitySold" = "quantitySold" + ${qty} WHERE id = ${tier.id}::uuid AND ("quantityTotal" IS NULL OR "quantitySold" + ${qty} <= "quantityTotal")`;
     if (!changed) throw new HttpError(409, "Not enough tickets left");
@@ -208,6 +207,17 @@ export async function createOrder(input: CreateOrderInput) {
             };
           }),
         },
+        ...(paid
+          ? {}
+          : {
+              payments: {
+                create: {
+                  provider: "phajay",
+                  amountKip: total,
+                  currency: "LAK",
+                },
+              },
+            }),
       },
       include: { items: true },
     });
@@ -221,7 +231,7 @@ export async function createOrder(input: CreateOrderInput) {
       },
       tx,
     );
-    if (event.organizer.user.authId !== input.uid)
+    if (paid && event.organizer.user.authId !== input.uid)
       await createNotification(
         event.organizer.user.authId,
         {
@@ -236,10 +246,34 @@ export async function createOrder(input: CreateOrderInput) {
     return {
       order: row,
       items,
-      organizerUid: event.organizer.user.authId === input.uid ? null : event.organizer.user.authId,
+      organizerUid:
+        paid && event.organizer.user.authId !== input.uid ? event.organizer.user.authId : null,
     };
   });
-  return result;
+  if (result.order.totalKip === 0) return { ...result, checkout: null };
+  try {
+    const checkout = await paymentService.createCheckoutForOrder(result.order.id);
+    return { ...result, checkout };
+  } catch (error) {
+    // Release the reservation if checkout creation fails. A delayed provider
+    // callback is still handled as a late payment and queued for refund.
+    await db.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({ where: { id: result.order.id } });
+      if (!order || order.status !== "pending") return;
+      const items = await tx.orderItem.findMany({ where: { orderId: order.id } });
+      const quantities = new Map<string, number>();
+      for (const item of items) quantities.set(item.tierId, (quantities.get(item.tierId) ?? 0) + 1);
+      for (const [tierId, quantity] of quantities)
+        await tx.ticketTier.update({
+          where: { id: tierId },
+          data: { quantitySold: { decrement: quantity } },
+        });
+      await tx.order.update({ where: { id: order.id }, data: { status: "cancelled" } });
+      await tx.orderItem.updateMany({ where: { orderId: order.id }, data: { status: "void" } });
+      await tx.payment.updateMany({ where: { orderId: order.id }, data: { state: "failed" } });
+    });
+    throw error;
+  }
 }
 export async function releaseExpiredOrders() {
   return db.$transaction(async (tx) => {

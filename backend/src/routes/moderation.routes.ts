@@ -20,6 +20,7 @@ import {
   createAdminRefund,
 } from "../services/moderation.service.ts";
 import { INITIAL_BLOG_POSTS, type BlogPost } from "../data/defaultBlogs.ts";
+import { paymentService } from "../services/payment.service.ts";
 const router = Router();
 const id = z.object({ id: z.string().uuid() });
 const adminListQuery = z.object({
@@ -1007,7 +1008,7 @@ router.post(
       results.push(await handler(req.user!.uid, refundId));
     }
     res.setHeader("Cache-Control", "private, no-store");
-    res.json({ refunds: results, providerExecution: "not_configured" });
+    res.json({ refunds: results, providerExecution: "approval_recorded" });
   },
 );
 router.post(
@@ -1018,7 +1019,7 @@ router.post(
   async (req, res) => {
     res.json({
       refund: await approveRefund(req.user!.uid, req.params.id),
-      providerExecution: "not_configured",
+      providerExecution: "approval_recorded",
     });
   },
 );
@@ -1031,6 +1032,27 @@ router.post(
     res.json({
       refund: await rejectRefund(req.user!.uid, req.params.id),
     });
+  },
+);
+router.post(
+  "/admin/refunds/:id/execute",
+  requireAuth,
+  requireAdmin,
+  validate({ params: id }),
+  async (req, res) => {
+    res.json({
+      refund: await paymentService.executeApprovedRefund(req.params.id, req.user!.uid),
+      providerExecution: "submitted",
+    });
+  },
+);
+router.post(
+  "/admin/refunds/:id/sync",
+  requireAuth,
+  requireAdmin,
+  validate({ params: id }),
+  async (req, res) => {
+    res.json({ refund: await paymentService.syncRefund(req.params.id, req.user!.uid) });
   },
 );
 

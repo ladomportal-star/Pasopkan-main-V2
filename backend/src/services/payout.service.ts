@@ -1,6 +1,7 @@
 import { db } from "../config/database.ts";
 import { HttpError } from "../middlewares/error.middleware.ts";
 import { uploadImage, resolvePrivateImageAsAdmin } from "./media.service.ts";
+import { env } from "../config/env.ts";
 
 /** Default platform fee (percent of gross ticket sales) before an admin edits it. */
 export const DEFAULT_PAYOUT_FEE_PERCENT = 10;
@@ -127,6 +128,11 @@ export async function updatePayoutFee(adminUid: string, eventId: string, feePerc
  * freezes gross/fee/payout; later uploads only replace the bill image.
  */
 export async function attachPayoutBill(adminUid: string, eventId: string, dataUrl: string) {
+  if (env.payment.credentialsComplete && env.payment.payoutMode === "split_payment")
+    throw new HttpError(
+      409,
+      "This payout is managed by PhaJay Split Payment; do not record a second manual transfer",
+    );
   const gross = await requirePayableEvent(eventId);
   const reference = await uploadImage(adminUid, dataUrl, "private");
   await db.$transaction(async (tx) => {
