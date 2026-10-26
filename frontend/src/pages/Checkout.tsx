@@ -128,6 +128,7 @@ const LAOS_BANKS = [
   { id: "jdb", name: "JDB Yes", color: "bg-green-600", logo: "/JDB.png" },
   { id: "ib", name: "IB Bank", color: "bg-teal-600", logo: "/IB.png" },
   { id: "stb", name: "ST Bank", color: "bg-emerald-600", logo: "/ST.png" },
+  { id: "m-money", name: "M-Money", color: "bg-rose-600", logo: "" },
 ];
 
 const MultiSelectDropdown = ({
@@ -633,6 +634,7 @@ export default function Checkout() {
         | "jdb"
         | "ib"
         | "stb"
+        | "m-money"
         | "credit_card"
         | null) ?? "payment_link";
 

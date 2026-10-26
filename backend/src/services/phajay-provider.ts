@@ -16,7 +16,7 @@ const asNumber = (value: unknown) => {
   return Number.isFinite(number) ? number : NaN;
 };
 
-const BANK_QR_METHODS = new Set(["bcel", "ldb", "jdb", "ib", "stb"]);
+const BANK_QR_METHODS = new Set(["bcel", "ldb", "jdb", "ib", "stb", "m-money"]);
 
 function mapPaymentStatus(value: unknown): "paid" | "failed" | "pending" | "refunded" {
   const status = asString(value).toUpperCase();

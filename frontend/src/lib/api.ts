@@ -278,6 +278,7 @@ export const api = {
         | "jdb"
         | "ib"
         | "stb"
+        | "m-money"
         | "credit_card"
         | "payment_link";
       freeOnly?: boolean;
