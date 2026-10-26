@@ -1,14 +1,7 @@
 import type { IncomingHttpHeaders } from "node:http";
 
 export type PaymentCheckoutMethod =
-  | "bcel"
-  | "ldb"
-  | "jdb"
-  | "ib"
-  | "stb"
-  | "m-money"
-  | "credit_card"
-  | "payment_link";
+  "bcel" | "ldb" | "jdb" | "ib" | "stb" | "m-money" | "credit_card" | "payment_link";
 
 /** Provider-neutral, verified webhook data. Implementations MUST verify the
  * exact raw request bytes and reject invalid signatures before returning. */

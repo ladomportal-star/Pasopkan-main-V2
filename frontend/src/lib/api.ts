@@ -263,6 +263,22 @@ export const api = {
       opts,
     ),
 
+  requestOrderRefund: (
+    orderId: string,
+    reason?: string,
+    opts?: RequestOptions,
+  ) =>
+    request<{
+      success: true;
+      order: Record<string, unknown>;
+      refund: Record<string, unknown> | null;
+    }>(
+      "POST",
+      `/tickets/${encodeURIComponent(orderId)}/refund`,
+      reason ? { reason } : {},
+      opts,
+    ),
+
   createOrder: (
     order: {
       eventId: string;

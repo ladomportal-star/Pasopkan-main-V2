@@ -31,4 +31,12 @@ export const createTicketBody = z.object({
   attendees: z.array(attendee).max(50).optional(),
 });
 
+export const refundTicketParams = z.object({
+  id: z.string().uuid(),
+});
+
+export const refundTicketBody = z.object({
+  reason: z.string().trim().max(500).optional(),
+});
+
 export type CreateTicketBody = z.infer<typeof createTicketBody>;

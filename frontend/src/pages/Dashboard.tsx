@@ -66,7 +66,7 @@ const translations = {
       ticketsSold: 'Sales',
       activeEvents: 'Active Items',
       manageEvent: 'Manage Item',
-      refund: 'Refunds unavailable',
+      refund: 'Request Refund',
       refundConfirmTitle: 'Request Refund?',
       refundConfirmDesc: 'Are you sure you want to refund your tickets for {event}? Refunds will be processed 4-5 business days after the event ends.',
       confirmRefund: 'Confirm Refund',
@@ -143,7 +143,7 @@ const translations = {
       ticketsSold: 'ປີ້ທີ່ຂາຍແລ້ວ',
       activeEvents: 'ກິດຈະກຳທີ່ກຳລັງດຳເນີນ',
       manageEvent: 'ຈັດການກິດຈະກຳ',
-      refund: 'ການຄືນເງິນຍັງບໍ່ພ້ອມ',
+      refund: 'ຂໍຄືນເງິນ',
       refundConfirmTitle: 'ຕ້ອງການຄືນເງິນປີ້?',
       refundConfirmDesc: 'ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການຄືນເງິນປີ້ສຳລັບ {event}? ການຄືນເງິນຈະຖືກປະມວນຜົນພາຍໃນ 4-5 ມື້ລັດຖະການ ຫຼັງຈາກກິດຈະກຳສິ້ນສຸດ.',
       confirmRefund: 'ຢືນຢັນການຄືນເງິນ',
@@ -195,6 +195,9 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
   const [showQrTicket, setShowQrTicket] = useState<PurchasedTicket | null>(null);
+  const [refundTicket, setRefundTicket] = useState<PurchasedTicket | null>(null);
+  const [isRefunding, setIsRefunding] = useState(false);
+  const [refundReason, setRefundReason] = useState('');
 
 
 
@@ -243,12 +246,18 @@ export default function Dashboard() {
             available: 0,
           };
           const eventDate = o.selectedDate || event.date || '';
+          const refundStatus = o.payments?.[0]?.refunds?.[0]?.status;
           const status: PurchasedTicket['status'] =
-            o.status === 'refunded' || o.status === 'cancelled'
+            o.status === 'refunded' ||
+            o.status === 'cancelled' ||
+            refundStatus === 'approved' ||
+            refundStatus === 'succeeded'
               ? 'refunded'
-              : eventDate && eventDate < today
-                ? 'past'
-                : 'upcoming';
+              : refundStatus === 'pending_approval' || refundStatus === 'processing'
+                ? 'pending_refund'
+                : eventDate && eventDate < today
+                  ? 'past'
+                  : 'upcoming';
 
           return {
             id: o.id,
@@ -368,14 +377,70 @@ export default function Dashboard() {
 
   const filteredTickets = tickets.filter(t => getEffectiveStatus(t) === activeTab);
 
-  const handleRefundUnavailable = () => {
-    showErrorAlert(
-      lang === 'lo'
-        ? 'ລະບົບຍັງບໍ່ມີ API ຄືນເງິນ. ບໍ່ມີການສ້າງຄຳຮ້ອງ ຫຼືປ່ຽນສະຖານະປີ້.'
-        : 'The refund API is not configured. No request was created and your ticket status was not changed.',
-      lang as 'en' | 'lo',
-      lang === 'lo' ? 'ການຄືນເງິນຍັງບໍ່ພ້ອມ' : 'Refunds are not available yet',
-    );
+  const isRefundEligible = (ticket: PurchasedTicket): boolean => {
+    if (ticket.status === 'refunded' || ticket.status === 'pending_refund') return false;
+    if (ticket.scanned) return false;
+    if (ticket.event && ticket.event.allowRefunds === false) return false;
+    return true;
+  };
+
+  const handleRefundTicket = (ticket: PurchasedTicket) => {
+    if (ticket.event && ticket.event.allowRefunds === false) {
+      void showErrorAlert(
+        lang === 'lo'
+          ? 'ຜູ້ຈັດງານບໍ່ອະນຸຍາດໃຫ້ຄືນເງິນສຳລັບກິດຈະກຳນີ້'
+          : 'The organizer does not allow refunds for this event.',
+        lang as 'en' | 'lo',
+      );
+      return;
+    }
+    if (!isRefundEligible(ticket)) {
+      void showErrorAlert(
+        lang === 'lo'
+          ? 'ປີ້ໃບນີ້ບໍ່ສາມາດຄືນເງິນໄດ້ (ອາດຖືກສະແກນ ຫຼື ຢູ່ໃນຂັ້ນຕອນຄືນເງິນແລ້ວ)'
+          : 'This ticket cannot be refunded.',
+        lang as 'en' | 'lo',
+      );
+      return;
+    }
+    setRefundTicket(ticket);
+    setRefundReason('');
+  };
+
+  const processRefund = async () => {
+    if (!refundTicket) return;
+    setIsRefunding(true);
+    try {
+      const res = await api.requestOrderRefund(
+        refundTicket.id,
+        refundReason.trim() || undefined,
+      );
+      if (!res.ok) {
+        void showErrorAlert(
+          res.error ||
+            (lang === 'lo'
+              ? 'ບໍ່ສາມາດສົ່ງຄຳຮ້ອງຂໍຄືນເງິນໄດ້'
+              : 'Could not submit refund request'),
+          lang as 'en' | 'lo',
+        );
+        return;
+      }
+      const nextStatus: PurchasedTicket['status'] = res.data?.refund
+        ? 'pending_refund'
+        : 'refunded';
+      setTickets((prev) =>
+        prev.map((t) => (t.id === refundTicket.id ? { ...t, status: nextStatus } : t)),
+      );
+      setRefundTicket(null);
+      setActiveTab('past');
+    } catch (err) {
+      void showErrorAlert(
+        err instanceof Error ? err.message : 'Refund request failed',
+        lang as 'en' | 'lo',
+      );
+    } finally {
+      setIsRefunding(false);
+    }
   };
 
   if (isLoading) {
@@ -578,7 +643,7 @@ export default function Dashboard() {
                                 
                                 <button
                                   type="button"
-                                  onClick={handleRefundUnavailable}
+                                  onClick={() => handleRefundTicket(ticket)}
                                   title={t.refund}
                                   className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider border cursor-pointer ${theme === 'dark' ? 'bg-zinc-800/60 text-zinc-400 border-zinc-700/60' : 'bg-gray-50 text-gray-500 border-gray-200'}`}
                                 >

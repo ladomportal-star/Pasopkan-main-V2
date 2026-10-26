@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { ok, fail } from "../utils/response.util.ts";
-import { createOrder, listOrders } from "../services/ticket.service.ts";
+import { createOrder, listOrders, requestOrderRefund } from "../services/ticket.service.ts";
 import { getVerifiedPhone } from "../services/verified-phone.service.ts";
 import { sendTransactionalSms } from "../services/sms-hook.service.ts";
 import { logger } from "../utils/logger.ts";
@@ -10,6 +10,14 @@ export async function listTickets(req: Request, res: Response) {
   const uid = req.user?.uid;
   if (!uid) return fail(res, "Unauthorized", 401);
   return ok(res, { tickets: await listOrders(uid) });
+}
+
+/** POST /api/tickets/:id/refund — submit a refund request for a confirmed ticket order. */
+export async function requestTicketRefund(req: Request, res: Response) {
+  const uid = req.user?.uid;
+  if (!uid) return fail(res, "Unauthorized", 401);
+  const { order, refund } = await requestOrderRefund(uid, req.params.id, req.body?.reason);
+  return ok(res, { success: true, order, refund });
 }
 
 /** POST /api/tickets — create an order + one ticket item per quantity.

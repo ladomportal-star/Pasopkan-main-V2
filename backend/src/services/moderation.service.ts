@@ -191,7 +191,18 @@ export async function approveRefund(uid: string, id: string) {
     const initial = await tx.refund.findUnique({ where: { id } });
     if (!initial) throw new HttpError(404, "Refund not found");
     await tx.$queryRaw`SELECT id FROM "Payment" WHERE id = ${initial.paymentId}::uuid FOR UPDATE`;
-    const refund = await tx.refund.findUniqueOrThrow({ where: { id }, include: { payment: true } });
+    const refund = await tx.refund.findUniqueOrThrow({
+      where: { id },
+      include: {
+        payment: {
+          include: {
+            order: {
+              include: { user: true, items: true },
+            },
+          },
+        },
+      },
+    });
     if (refund.status !== "pending_approval") throw new HttpError(409, "Refund already reviewed");
     if (refund.payment.state !== "completed") throw new HttpError(409, "Payment is not settled");
     const reserved = await tx.refund.aggregate({
@@ -208,10 +219,44 @@ export async function approveRefund(uid: string, id: string) {
       where: { id },
       data: { status: "approved", reviewedAt: new Date(), reviewedByUserId: admin.id },
     });
+    if (refund.payment.order.status === "confirmed") {
+      const activeItems = refund.payment.order.items.filter(
+        (item) => item.status === "valid" || item.status === "pending",
+      );
+      const quantities = new Map<string, number>();
+      for (const item of activeItems) {
+        quantities.set(item.tierId, (quantities.get(item.tierId) ?? 0) + 1);
+      }
+      for (const [tierId, quantity] of quantities) {
+        await tx.ticketTier.update({
+          where: { id: tierId },
+          data: { quantitySold: { decrement: quantity } },
+        });
+      }
+      await tx.order.update({
+        where: { id: refund.payment.orderId },
+        data: { status: "refunded" },
+      });
+      await tx.orderItem.updateMany({
+        where: { orderId: refund.payment.orderId },
+        data: { status: "refunded" },
+      });
+    }
+    await createNotification(
+      refund.payment.order.user.authId,
+      {
+        type: "ticket",
+        title: "Refund approved",
+        titleLo: "ຄຳຮ້ອງຂໍຄືນເງິນໄດ້ຮັບອະນຸມັດ",
+        message: `Your refund for ${refund.payment.order.eventTitle} (${refund.payment.order.orderNumber}) has been approved.`,
+        messageLo: `ການຄືນເງິນສຳລັບ ${refund.payment.order.eventTitle} (${refund.payment.order.orderNumber}) ໄດ້ຮັບການອະນຸມັດແລ້ວ.`,
+        data: { orderId: refund.payment.orderId, refundId: refund.id },
+      },
+      tx,
+    );
     await tx.auditLog.create({
       data: { actorId: admin.id, action: "refund.approved", entityType: "Refund", entityId: id },
     });
-    // Approval is not a money transfer. A configured provider worker must execute it later.
     return result;
   });
 }

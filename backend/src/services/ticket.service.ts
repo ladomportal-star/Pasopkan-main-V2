@@ -32,7 +32,171 @@ export async function listOrders(uid: string) {
   return db.order.findMany({
     where: { user: { authId: uid } },
     orderBy: { createdAt: "desc" },
-    include: { items: true },
+    include: {
+      items: true,
+      payments: {
+        orderBy: { createdAt: "desc" },
+        include: {
+          refunds: {
+            orderBy: { createdAt: "desc" },
+          },
+        },
+      },
+    },
+  });
+}
+
+export async function requestOrderRefund(uid: string, orderId: string, reason?: string) {
+  return db.$transaction(async (tx) => {
+    const order = await tx.order.findFirst({
+      where: { id: orderId, user: { authId: uid } },
+      include: {
+        user: true,
+        items: true,
+        event: { include: { organizer: { include: { user: true } } } },
+        payments: {
+          orderBy: { createdAt: "desc" },
+          include: { refunds: { orderBy: { createdAt: "desc" } } },
+        },
+      },
+    });
+    if (!order) throw new HttpError(404, "Ticket order not found");
+    if (order.status === "cancelled" || order.status === "refunded")
+      throw new HttpError(409, "This ticket order has already been refunded or cancelled");
+    if (order.status !== "confirmed")
+      throw new HttpError(409, "Only confirmed ticket orders can be refunded");
+    if (order.items.some((item) => item.status === "checked_in"))
+      throw new HttpError(409, "Checked-in tickets cannot be refunded");
+    if (order.event.allowRefunds === false)
+      throw new HttpError(409, "The organizer does not allow refunds for this event");
+
+    const refundReason =
+      reason?.trim() || "Customer requested refund from Ticket Dashboard";
+
+    let payment =
+      order.payments.find((p) => p.state === "completed") ?? order.payments[0] ?? null;
+
+    if (!payment && order.totalKip > 0) {
+      payment = await tx.payment.create({
+        data: {
+          orderId: order.id,
+          provider: "phajay",
+          amountKip: order.totalKip,
+          currency: "LAK",
+          state: "completed",
+          verifiedAt: order.paidAt ?? new Date(),
+        },
+        include: { refunds: true },
+      });
+    } else if (payment && payment.state !== "completed" && order.status === "confirmed") {
+      payment = await tx.payment.update({
+        where: { id: payment.id },
+        data: { state: "completed", verifiedAt: payment.verifiedAt ?? order.paidAt ?? new Date() },
+        include: { refunds: true },
+      });
+    }
+
+    if (payment) {
+      await tx.$queryRaw`SELECT id FROM "Payment" WHERE id = ${payment.id}::uuid FOR UPDATE`;
+      const existingActive = await tx.refund.findFirst({
+        where: {
+          paymentId: payment.id,
+          status: { in: ["pending_approval", "approved", "processing", "succeeded"] },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      if (existingActive) {
+        return { order, refund: existingActive };
+      }
+
+      const refund = await tx.refund.create({
+        data: {
+          paymentId: payment.id,
+          amountKip: payment.amountKip,
+          currency: payment.currency,
+          reason: refundReason,
+          status: "pending_approval",
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorId: order.user.id,
+          action: "refund.requested",
+          entityType: "Refund",
+          entityId: refund.id,
+          metadata: {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            amountKip: refund.amountKip,
+          },
+        },
+      });
+
+      await createNotification(
+        uid,
+        {
+          type: "ticket",
+          title: "Refund request submitted",
+          titleLo: "ສົ່ງຄຳຮ້ອງຂໍຄືນເງິນສຳເລັດ",
+          message: `Your refund request for ${order.eventTitle} (${order.orderNumber}) has been submitted.`,
+          messageLo: `ຄຳຮ້ອງຂໍຄືນເງິນສຳລັບ ${order.eventTitle} (${order.orderNumber}) ຖືກສົ່ງແລ້ວ.`,
+          data: { orderId: order.id, refundId: refund.id },
+        },
+        tx,
+      );
+
+      const admins = await tx.user.findMany({
+        where: { role: "admin" },
+        select: { authId: true },
+      });
+      for (const admin of admins) {
+        await createNotification(
+          admin.authId,
+          {
+            type: "noted",
+            title: "New ticket refund request",
+            titleLo: "ມີຄຳຮ້ອງຂໍຄືນເງິນປີ້ໃໝ່",
+            message: `${order.orderNumber} requested a refund for ${order.eventTitle}.`,
+            messageLo: `ຄຳສັ່ງຊື້ ${order.orderNumber} ຂໍຄືນເງິນສຳລັບງານ ${order.eventTitle}.`,
+            data: { orderId: order.id, refundId: refund.id },
+          },
+          tx,
+        );
+      }
+
+      return { order, refund };
+    }
+
+    // Free ticket order (0 LAK): cancel/refund immediately and return stock.
+    const quantities = new Map<string, number>();
+    for (const item of order.items) {
+      quantities.set(item.tierId, (quantities.get(item.tierId) ?? 0) + 1);
+    }
+    for (const [tierId, quantity] of quantities) {
+      await tx.ticketTier.update({
+        where: { id: tierId },
+        data: { quantitySold: { decrement: quantity } },
+      });
+    }
+    const updatedOrder = await tx.order.update({
+      where: { id: order.id },
+      data: { status: "refunded" },
+    });
+    await tx.orderItem.updateMany({
+      where: { orderId: order.id },
+      data: { status: "refunded" },
+    });
+    await tx.auditLog.create({
+      data: {
+        actorId: order.user.id,
+        action: "order.free_refunded",
+        entityType: "Order",
+        entityId: order.id,
+        metadata: { orderNumber: order.orderNumber },
+      },
+    });
+    return { order: updatedOrder, refund: null };
   });
 }
 export async function createOrder(input: CreateOrderInput) {
