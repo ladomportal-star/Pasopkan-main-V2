@@ -336,6 +336,9 @@ export default function Checkout() {
   const [paymentReference, setPaymentReference] = useState<string | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const qrHistoryEntryRef = useRef(false);
+  const awaitingBankReturnRef = useRef(false);
+  const checkingBankReturnRef = useRef(false);
 
   const ownersCount =
     event?.requireEveryTicketInfo === false ? 1 : totalQuantity;
@@ -452,12 +455,78 @@ export default function Checkout() {
   }, [isAuthenticated, navigate, location.pathname, state]);
 
   useEffect(() => {
+    if (step !== "qr") return;
+
+    const currentState =
+      window.history.state && typeof window.history.state === "object"
+        ? window.history.state
+        : {};
+    window.history.pushState(
+      { ...currentState, pasopkanCheckoutPayment: true },
+      "",
+      window.location.href,
+    );
+    qrHistoryEntryRef.current = true;
+
+    const handleBackToMethods = () => {
+      if (!qrHistoryEntryRef.current) return;
+      qrHistoryEntryRef.current = false;
+      awaitingBankReturnRef.current = false;
+      setStep("details");
+    };
+    window.addEventListener("popstate", handleBackToMethods);
+    return () => window.removeEventListener("popstate", handleBackToMethods);
+  }, [step]);
+
+  useEffect(() => {
+    if (step !== "qr" || !paymentReference) return;
+
+    const checkReturnFromBank = async () => {
+      if (
+        !awaitingBankReturnRef.current ||
+        checkingBankReturnRef.current ||
+        document.visibilityState !== "visible"
+      ) {
+        return;
+      }
+      checkingBankReturnRef.current = true;
+      try {
+        const res = await api.getPaymentStatus(paymentReference);
+        if (res.ok && !res.data?.verified && res.data?.status !== "COMPLETED") {
+          awaitingBankReturnRef.current = false;
+          if (qrHistoryEntryRef.current) window.history.back();
+          else setStep("details");
+        }
+      } catch (error) {
+        console.warn("Could not check payment after returning from the bank", error);
+      } finally {
+        checkingBankReturnRef.current = false;
+      }
+    };
+
+    const handlePageShow = () => void checkReturnFromBank();
+    const handleVisibilityChange = () => void checkReturnFromBank();
+    window.addEventListener("pageshow", handlePageShow);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [step, paymentReference]);
+
+  useEffect(() => {
     let timer: NodeJS.Timeout;
     if (step === "qr" && countdown > 0) {
       timer = setInterval(() => setCountdown((prev) => prev - 1), 1000);
     } else if (countdown === 0 && step === "qr") {
-      setStep("details");
       setCountdown(900);
+      awaitingBankReturnRef.current = false;
+      setPaymentReference(null);
+      setQrCodeData(null);
+      setHostedCheckoutUrl(null);
+      setBankDeepLink(null);
+      if (qrHistoryEntryRef.current) window.history.back();
+      else setStep("details");
       void showErrorAlert(
         lang === "lo"
           ? "ເວລາຊຳລະໝົດແລ້ວ. ກະລຸນາລອງໃໝ່."
@@ -470,7 +539,7 @@ export default function Checkout() {
   }, [step, countdown]);
 
   useEffect(() => {
-    if (step !== "qr" || !paymentReference) return;
+    if (!paymentReference || step === "success") return;
     let active = true;
     const poll = async () => {
       const res = await api.getPaymentStatus(paymentReference);
@@ -482,6 +551,7 @@ export default function Checkout() {
         setStep("success");
         setTimeout(() => {
           navigate("/dashboard", {
+            replace: true,
             state: {
               newTicket: {
                 event,
@@ -748,6 +818,20 @@ export default function Checkout() {
   const handleInitiateCheckout = async (bankId = selectedBank) => {
     if (isProcessing) return;
     if (total > 0 && !bankId) return;
+    if (
+      paymentReference &&
+      bankId === selectedBank &&
+      countdown > 0 &&
+      (qrCodeData || hostedCheckoutUrl || bankDeepLink)
+    ) {
+      setStep("qr");
+      const targetLink = bankDeepLink || hostedCheckoutUrl;
+      if (targetLink) {
+        awaitingBankReturnRef.current = true;
+        window.location.assign(targetLink);
+      }
+      return;
+    }
     if (!validateContactDetails()) return;
     if (bankId) setSelectedBank(bankId);
     setIsProcessing(true);
@@ -778,6 +862,7 @@ export default function Checkout() {
       // Prefer the gateway's bank app/hosted bank URL immediately after selection.
       if (targetLink) {
         try {
+          awaitingBankReturnRef.current = true;
           window.location.assign(targetLink);
         } catch (e) {
           console.warn("Direct navigation to bank app failed", e);
@@ -1025,7 +1110,10 @@ export default function Checkout() {
       <div className="max-w-6xl mx-auto">
         <button
           onClick={() => {
-            if (step === "qr") setStep("details");
+            if (step === "qr") {
+              if (qrHistoryEntryRef.current) window.history.back();
+              else setStep("details");
+            }
             else navigate(-1);
           }}
           className="inline-flex items-center gap-2 text-gray-400 hover:text-adv-orange mb-3 transition-colors font-bold text-sm"
