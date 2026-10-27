@@ -383,7 +383,7 @@ function InlineCalendar({
   ];
 
   return (
-    <div className="bg-gray-50/50 border border-gray-150/80 rounded-2xl p-4 space-y-3.5 shadow-inner">
+    <div className="bg-gray-50/50 border border-gray-200/80 rounded-2xl p-4 space-y-3.5 shadow-inner">
       {/* Month Year Header */}
       <div className="flex items-center justify-between px-1">
         <span className="font-bold text-sm text-adv-slate">
@@ -482,7 +482,7 @@ function InlineCalendar({
       </div>
 
       {/* Legend / Helper Info */}
-      <div className="flex items-center justify-between text-[10px] font-semibold text-gray-400 border-t border-gray-150/50 pt-2.5">
+      <div className="flex items-center justify-between text-[10px] font-semibold text-gray-400 border-t border-gray-200/50 pt-2.5">
         <div className="flex items-center gap-1.5">
           <div className="w-2.5 h-2.5 rounded-full bg-adv-orange" />
           <span>{lang === "en" ? "Selected" : "ເລືອກແລ້ວ"}</span>
@@ -598,7 +598,7 @@ const renderFormattedDescription = (desc: string) => {
       <div className="space-y-5" onClick={handleDescriptionClick}>
         {paragraphs.map((para, index) => (
           <div key={index} className="space-y-5">
-            {index > 0 && <div className="border-t border-gray-150/70 my-5" />}
+            {index > 0 && <div className="border-t border-gray-200/70 my-5" />}
             <div
               className="text-gray-800 leading-relaxed text-sm sm:text-[15px] rich-text-content"
               dangerouslySetInnerHTML={{ __html: formatHtmlLinks(para) }}
@@ -621,7 +621,7 @@ const renderFormattedDescription = (desc: string) => {
         const formattedPara = para.replace(/<br\s*\/?>/gi, "<br />");
         return (
           <div key={index} className="space-y-5">
-            {index > 0 && <div className="border-t border-gray-150/70 my-5" />}
+            {index > 0 && <div className="border-t border-gray-200/70 my-5" />}
             <div
               className="text-gray-800 leading-relaxed text-sm sm:text-[15px] rich-text-content"
               dangerouslySetInnerHTML={{
@@ -1602,7 +1602,7 @@ export default function EventDetails({
                   </div>
                 ) : (
                   /* Title with NO background image - should be black / text-adv-slate */
-                  <div className="p-6 border-b border-gray-150/60 bg-gray-50/50 block">
+                  <div className="p-6 border-b border-gray-200/60 bg-gray-50/50 block">
                     <h1 className="text-xl sm:text-3xl font-black tracking-tight leading-tight mb-4 text-adv-slate">
                       {event.title}
                     </h1>
@@ -1610,13 +1610,13 @@ export default function EventDetails({
                     {/* Ticket Dashboard style location on line 1, date and time on line 2 */}
                     <div className="flex flex-col items-start gap-2">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs font-medium text-gray-500">
-                        <div className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-lg border border-gray-150 shadow-xs">
+                        <div className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-lg border border-gray-200 shadow-xs">
                           <MapPin className="w-3.5 h-3.5 text-adv-orange shrink-0" />
                           <span className="truncate max-w-[280px]">
                             {event.venue || event.location}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-lg border border-gray-150 shadow-xs text-gray-600">
+                        <div className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-lg border border-gray-200 shadow-xs text-gray-600">
                           <Languages className="w-3.5 h-3.5 text-adv-orange shrink-0" />
                           <span>
                             {(event.languages || ["Lao", "English"]).join(", ")}
@@ -1636,7 +1636,7 @@ export default function EventDetails({
 
                       {event.dateType !== "flexible" && (
                         <div className="flex flex-wrap items-center gap-3 text-xs font-semibold">
-                          <div className="flex items-center gap-1.5 text-gray-600 bg-white px-3 py-1.5 rounded-lg border border-gray-150 shadow-xs">
+                          <div className="flex items-center gap-1.5 text-gray-600 bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs">
                             <Calendar className="w-3.5 h-3.5 text-adv-orange shrink-0" />
                             <span>
                               {formatEventDetailsDate(
@@ -1646,7 +1646,7 @@ export default function EventDetails({
                             </span>
                           </div>
                           {event.time && event.dateType !== "booking" && (
-                            <div className="flex items-center gap-1.5 text-gray-600 bg-white px-3 py-1.5 rounded-lg border border-gray-150 shadow-xs">
+                            <div className="flex items-center gap-1.5 text-gray-600 bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs">
                               <Clock className="w-3.5 h-3.5 text-adv-orange shrink-0" />
                               <span>{formatEventStartTime(event.time)}</span>
                             </div>
@@ -1674,7 +1674,7 @@ export default function EventDetails({
                 {/* Public Map & Location Venue Section */}
                 {event.eventType !== "online" ? (
                   <div
-                    className="my-4 bg-white p-4 sm:p-5 rounded-2xl border border-gray-150/80 shadow-xs space-y-4"
+                    className="my-4 bg-white p-4 sm:p-5 rounded-2xl border border-gray-200/80 shadow-xs space-y-4"
                     id="event-map-venue"
                   >
                     <div className="pb-3 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1730,7 +1730,7 @@ export default function EventDetails({
                   </div>
                 ) : (
                   <div
-                    className="my-4 bg-white p-4 sm:p-5 rounded-2xl border border-gray-150/80 shadow-xs space-y-3"
+                    className="my-4 bg-white p-4 sm:p-5 rounded-2xl border border-gray-200/80 shadow-xs space-y-3"
                     id="event-online-venue"
                   >
                     <div className="flex items-center gap-2.5 pb-2 border-b border-gray-100">
@@ -1771,13 +1771,13 @@ export default function EventDetails({
             </div>
 
             {/* Event Organizer Details Section (Desktop Only - Hidden on Mobile) */}
-            <div className="hidden lg:block bg-white rounded-2xl p-5 shadow-sm border border-gray-150/60">
+            <div className="hidden lg:block bg-white rounded-2xl p-5 shadow-sm border border-gray-200/60">
               <div
                 onClick={() => setShowOrganizerDetails(!showOrganizerDetails)}
                 className="flex items-center justify-between gap-4 cursor-pointer select-none group/organizer"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-150 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
+                  <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
                     {event.organizerLogo &&
                     (event.organizerLogo.startsWith("data:") ||
                       event.organizerLogo.startsWith("http") ||
@@ -1848,7 +1848,7 @@ export default function EventDetails({
           {/* Ticket Sidebar */}
           <div className="lg:col-span-5 block" ref={ticketSidebarRef}>
             {isPast ? (
-              <div className="sticky top-24 bg-white rounded-3xl p-6 shadow-sm border border-gray-150/80 space-y-4 text-center">
+              <div className="sticky top-24 bg-white rounded-3xl p-6 shadow-sm border border-gray-200/80 space-y-4 text-center">
                 <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto text-slate-700 border border-slate-200/60 shadow-xs">
                   <Calendar className="w-6 h-6 text-slate-600" />
                 </div>
@@ -1872,7 +1872,7 @@ export default function EventDetails({
                 </div>
               </div>
             ) : (
-              <div className="sticky top-24 bg-white rounded-3xl p-6 shadow-[0_10px_35px_rgba(0,0,0,0.06)] border border-gray-150/80 space-y-5 relative overflow-hidden">
+              <div className="sticky top-24 bg-white rounded-3xl p-6 shadow-[0_10px_35px_rgba(0,0,0,0.06)] border border-gray-200/80 space-y-5 relative overflow-hidden">
                 {/* Decorative top accent line */}
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-adv-orange via-amber-500 to-adv-orange" />
 
@@ -2372,13 +2372,13 @@ export default function EventDetails({
           </div>
 
           {/* Mobile Event Organizer (Visible on Mobile Only) */}
-          <div className="col-span-1 block lg:hidden w-full bg-white rounded-2xl p-5 shadow-sm border border-gray-150/60">
+          <div className="col-span-1 block lg:hidden w-full bg-white rounded-2xl p-5 shadow-sm border border-gray-200/60">
             <div
               onClick={() => setShowOrganizerDetails(!showOrganizerDetails)}
               className="flex items-center justify-between gap-4 cursor-pointer select-none"
             >
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-150 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
+                <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
                   {event.organizerLogo &&
                   (event.organizerLogo.startsWith("data:") ||
                     event.organizerLogo.startsWith("http") ||
