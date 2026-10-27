@@ -14,13 +14,10 @@ import {
   X,
   Calendar,
   Clock,
-  CreditCard,
-  Download,
 } from "lucide-react";
 import { LaoEvent, TicketTier, SeatingZone, Coupon } from "../data/events";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
-import { QRCodeSVG } from "qrcode.react";
 import { api } from "../lib/api";
 import { showErrorAlert } from "../lib/alerts";
 import { formatEventDateDDMMYYYY } from "../lib/dateFormat";
@@ -46,14 +43,6 @@ const translations = {
     invalidCoupon: "Invalid or expired coupon",
     couponApplied: "Coupon applied successfully",
     contactDetails: "Contact Information",
-    generateQr: "Generate QR",
-    scanToPay: "Scan to Pay",
-    openAppToScan:
-      "Open your {bankName} app and scan the QR code to complete the payment.",
-    verifyingPayment: "Verifying payment...",
-    waitingForPayment: "Waiting for payment confirmation...",
-    autoVerifyNotice:
-      "This page will automatically update once payment is verified.",
     checkout: "Pay Now",
     book: "Book",
     startingFrom: "From",
@@ -88,13 +77,6 @@ const translations = {
     invalidCoupon: "ລະຫັດບໍ່ຖືກຕ້ອງ ຫຼື ໝົດອາຍຸ",
     couponApplied: "ໃຊ້ລະຫັດສ່ວນຫຼຸດສຳເລັດ",
     contactDetails: "ຂໍ້ມູນຕິດຕໍ່",
-    generateQr: "ສ້າງ QR code",
-    scanToPay: "ສະແກນເພື່ອຈ່າຍ",
-    openAppToScan: "ໃຊ້ແອັບ {bankName} ເພື່ອສະແກນ QR ແລະ ຊຳລະເງິນ.",
-    verifyingPayment: "ກຳລັງກວດສອບການຊຳລະ...",
-    waitingForPayment: "ກຳລັງລໍຖ້າການຢືນຢັນການຊຳລະເງິນ...",
-    autoVerifyNotice:
-      "ໜ້າຈໍຈະປ່ຽນໄປໜ້າສຳເລັດໂດຍອັດຕະໂນມັດເມື່ອໄດ້ຮັບການຊຳລະເງິນ.",
     checkout: "ຊຳລະເງິນ",
     book: "ຈອງ",
     startingFrom: "ເລີ່ມຕົ້ນທີ່",
@@ -321,14 +303,9 @@ export default function Checkout() {
     return (tier?.price || 0) * (quantity || 1);
   }, [zone, selectedTiersList, tier, quantity]);
 
-  const [step, setStep] = useState<"details" | "payment" | "qr" | "success">(
-    "details",
-  );
+  const [step, setStep] = useState<"details" | "success">("details");
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedBank, setSelectedBank] = useState<string | null>(null);
-  const [countdown, setCountdown] = useState(900);
-  const [qrCodeData, setQrCodeData] = useState<string | null>(null);
-  const [creditCardUrl, setCreditCardUrl] = useState<string | null>(null);
   const [hostedCheckoutUrl, setHostedCheckoutUrl] = useState<string | null>(
     null,
   );
@@ -336,9 +313,6 @@ export default function Checkout() {
   const [paymentReference, setPaymentReference] = useState<string | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
-  const qrHistoryEntryRef = useRef(false);
-  const awaitingBankReturnRef = useRef(false);
-  const checkingBankReturnRef = useRef(false);
 
   const ownersCount =
     event?.requireEveryTicketInfo === false ? 1 : totalQuantity;
@@ -455,90 +429,6 @@ export default function Checkout() {
   }, [isAuthenticated, navigate, location.pathname, state]);
 
   useEffect(() => {
-    if (step !== "qr") return;
-
-    const currentState =
-      window.history.state && typeof window.history.state === "object"
-        ? window.history.state
-        : {};
-    window.history.pushState(
-      { ...currentState, pasopkanCheckoutPayment: true },
-      "",
-      window.location.href,
-    );
-    qrHistoryEntryRef.current = true;
-
-    const handleBackToMethods = () => {
-      if (!qrHistoryEntryRef.current) return;
-      qrHistoryEntryRef.current = false;
-      awaitingBankReturnRef.current = false;
-      setStep("details");
-    };
-    window.addEventListener("popstate", handleBackToMethods);
-    return () => window.removeEventListener("popstate", handleBackToMethods);
-  }, [step]);
-
-  useEffect(() => {
-    if (step !== "qr" || !paymentReference) return;
-
-    const checkReturnFromBank = async () => {
-      if (
-        !awaitingBankReturnRef.current ||
-        checkingBankReturnRef.current ||
-        document.visibilityState !== "visible"
-      ) {
-        return;
-      }
-      checkingBankReturnRef.current = true;
-      try {
-        const res = await api.getPaymentStatus(paymentReference);
-        if (res.ok && !res.data?.verified && res.data?.status !== "COMPLETED") {
-          awaitingBankReturnRef.current = false;
-          if (qrHistoryEntryRef.current) window.history.back();
-          else setStep("details");
-        }
-      } catch (error) {
-        console.warn("Could not check payment after returning from the bank", error);
-      } finally {
-        checkingBankReturnRef.current = false;
-      }
-    };
-
-    const handlePageShow = () => void checkReturnFromBank();
-    const handleVisibilityChange = () => void checkReturnFromBank();
-    window.addEventListener("pageshow", handlePageShow);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      window.removeEventListener("pageshow", handlePageShow);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [step, paymentReference]);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (step === "qr" && countdown > 0) {
-      timer = setInterval(() => setCountdown((prev) => prev - 1), 1000);
-    } else if (countdown === 0 && step === "qr") {
-      setCountdown(900);
-      awaitingBankReturnRef.current = false;
-      setPaymentReference(null);
-      setQrCodeData(null);
-      setHostedCheckoutUrl(null);
-      setBankDeepLink(null);
-      if (qrHistoryEntryRef.current) window.history.back();
-      else setStep("details");
-      void showErrorAlert(
-        lang === "lo"
-          ? "ເວລາຊຳລະໝົດແລ້ວ. ກະລຸນາລອງໃໝ່."
-          : "The payment session expired. Please try again.",
-        lang,
-        lang === "lo" ? "ການຊຳລະໝົດເວລາ" : "Payment session expired",
-      );
-    }
-    return () => clearInterval(timer);
-  }, [step, countdown]);
-
-  useEffect(() => {
     if (!paymentReference || step === "success") return;
     let active = true;
     const poll = async () => {
@@ -564,6 +454,23 @@ export default function Checkout() {
             },
           });
         }, 3000);
+      } else if (
+        active &&
+        res.ok &&
+        ["FAILED", "CANCELLED", "CANCELED", "EXPIRED"].includes(
+          res.data?.status?.toUpperCase() || "",
+        )
+      ) {
+        setPaymentReference(null);
+        setHostedCheckoutUrl(null);
+        setBankDeepLink(null);
+        void showErrorAlert(
+          lang === "lo"
+            ? "ການຊຳລະບໍ່ສຳເລັດ. ກະລຸນາເລືອກທະນາຄານແລະລອງໃໝ່."
+            : "Payment was not completed. Choose a bank and try again.",
+          lang,
+          lang === "lo" ? "ການຊຳລະບໍ່ສຳເລັດ" : "Payment failed",
+        );
       }
     };
     void poll();
@@ -584,6 +491,7 @@ export default function Checkout() {
     selectedTiersList,
     state?.selectedDate,
     state?.selectedTime,
+    lang,
   ]);
 
   if (!state || !state.event) {
@@ -646,7 +554,7 @@ export default function Checkout() {
   };
 
   // The backend calculates the authoritative total. Free orders are confirmed
-  // immediately; paid orders return a PhaJay QR code or hosted Payment Link.
+  // immediately; paid orders return a provider checkout/deep link.
   const createRealOrder = async (bankId: string | null): Promise<{
     checkoutUrl: string | null;
     qrCode: string | null;
@@ -771,8 +679,12 @@ export default function Checkout() {
         }
         void showErrorAlert(
           lang === "lo"
-            ? "ສ້າງລິ້ງຊຳລະ PhaJay ບໍ່ສຳເລັດ. ກະລຸນາລອງໃໝ່."
-            : "PhaJay did not return a payment link. Please try again.",
+            ? qrCode
+              ? "ທະນາຄານບໍ່ໄດ້ສົ່ງລິ້ງເຂົ້າໜ້າຊຳລະໂດຍກົງ. ກະລຸນາເລືອກທະນາຄານທີ່ຮອງຮັບລິ້ງຊຳລະ ຫຼືຕິດຕໍ່ຝ່າຍຊ່ວຍເຫຼືອ."
+              : "ສ້າງລິ້ງຊຳລະບໍ່ສຳເລັດ. ກະລຸນາລອງໃໝ່."
+            : qrCode
+              ? "The bank did not return a direct payment link. Choose a bank that supports payment links or contact support."
+              : "PhaJay did not return a payment link. Please try again.",
           lang,
           lang === "lo" ? "ສ້າງລິ້ງຊຳລະບໍ່ສຳເລັດ" : "Payment link unavailable",
         );
@@ -791,44 +703,21 @@ export default function Checkout() {
     return { checkoutUrl: null, qrCode: null, deepLink: null, reference: null };
   };
 
-  const downloadQrCode = () => {
-    const svg = document.getElementById("payment-qr-svg");
-    if (!svg) return;
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-    img.onload = () => {
-      canvas.width = img.width + 40;
-      canvas.height = img.height + 40;
-      if (ctx) {
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 20, 20);
-        const pngFile = canvas.toDataURL("image/png");
-        const downloadLink = document.createElement("a");
-        downloadLink.download = `pasopkan-qr-${paymentReference || "pay"}.png`;
-        downloadLink.href = pngFile;
-        downloadLink.click();
-      }
-    };
-    img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgData)))}`;
-  };
-
   const handleInitiateCheckout = async (bankId = selectedBank) => {
     if (isProcessing) return;
     if (total > 0 && !bankId) return;
-    if (
-      paymentReference &&
-      bankId === selectedBank &&
-      countdown > 0 &&
-      (qrCodeData || hostedCheckoutUrl || bankDeepLink)
-    ) {
-      setStep("qr");
+    if (paymentReference) {
       const targetLink = bankDeepLink || hostedCheckoutUrl;
-      if (targetLink) {
-        awaitingBankReturnRef.current = true;
+      if (bankId === selectedBank && targetLink) {
         window.location.assign(targetLink);
+      } else {
+        void showErrorAlert(
+          lang === "lo"
+            ? "ມີລາຍການຊຳລະທີ່ຍັງຄ້າງຢູ່. ລະບົບກຳລັງກວດສອບສະຖານະ; ກະລຸນາຢ່າສ້າງລາຍການຊ້ຳ."
+            : "A payment is already pending. We are checking its status; please do not create a duplicate order.",
+          lang,
+          lang === "lo" ? "ລາຍການຊຳລະຍັງຄ້າງ" : "Payment pending",
+        );
       }
       return;
     }
@@ -840,34 +729,26 @@ export default function Checkout() {
       setIsProcessing(false);
       return;
     }
-    if (created.qrCode || created.checkoutUrl || created.deepLink) {
-      setCountdown(900);
+    const paymentUrl = created.deepLink || created.checkoutUrl;
+    if (paymentUrl) {
       setPaymentReference(created.reference);
       setHostedCheckoutUrl(created.checkoutUrl);
       setBankDeepLink(created.deepLink || null);
-      if (bankId === "credit_card") {
-        setCreditCardUrl(created.checkoutUrl);
-        setQrCodeData(null);
-        setIsProcessing(false);
-        setStep("qr");
-        return;
-      }
-      setQrCodeData(created.qrCode || created.checkoutUrl);
-      setCreditCardUrl(null);
       setIsProcessing(false);
-      setStep("qr");
-
-      const targetLink = created.deepLink || created.checkoutUrl;
-
-      // Prefer the gateway's bank app/hosted bank URL immediately after selection.
-      if (targetLink) {
-        try {
-          awaitingBankReturnRef.current = true;
-          window.location.assign(targetLink);
-        } catch (e) {
-          console.warn("Direct navigation to bank app failed", e);
-        }
-      }
+      // Open the provider's bank/hosted payment URL directly; never render a QR wait page.
+      window.location.assign(paymentUrl);
+      return;
+    }
+    if (total > 0 && created.reference) {
+      setPaymentReference(created.reference);
+      setIsProcessing(false);
+      void showErrorAlert(
+        lang === "lo"
+          ? "ທະນາຄານບໍ່ໄດ້ສົ່ງລິ້ງເຂົ້າໜ້າຊຳລະໂດຍກົງ. ລະບົບຈະກວດສອບສະຖານະລາຍການ; ບໍ່ມີ QR ຫຼືໜ້າລໍຖ້າສະແດງ."
+          : "The bank did not provide a direct payment link. We will check the payment status; no QR or payment waiting page will be shown.",
+        lang,
+        lang === "lo" ? "ບໍ່ມີລິ້ງຊຳລະໂດຍກົງ" : "Direct payment link unavailable",
+      );
       return;
     }
     setIsProcessing(false);
@@ -1109,13 +990,7 @@ export default function Checkout() {
 
       <div className="max-w-6xl mx-auto">
         <button
-          onClick={() => {
-            if (step === "qr") {
-              if (qrHistoryEntryRef.current) window.history.back();
-              else setStep("details");
-            }
-            else navigate(-1);
-          }}
+          onClick={() => navigate(-1)}
           className="inline-flex items-center gap-2 text-gray-400 hover:text-adv-orange mb-3 transition-colors font-bold text-sm"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -1123,7 +998,7 @@ export default function Checkout() {
         </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
-          {step === "details" ? (
+          {step === "details" && (
             <>
               {/* 1. Guest Information (Mobile: 1st, Desktop: Left Column Top) */}
               <div className="order-1 lg:order-none lg:col-span-7 lg:col-start-1 lg:row-start-1">
@@ -1556,211 +1431,6 @@ export default function Checkout() {
                     {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : t.book || "Book"}
                   </button>
                 )}
-              </div>
-            </>
-          ) : (
-            <>
-              {/* QR / Credit Card Gateway view */}
-              <div className="order-1 lg:order-none lg:col-span-7 lg:col-start-1 lg:row-start-1">
-                <motion.div
-                  key="qr"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-150/60 flex flex-col items-center"
-                >
-                  {selectedBank === "credit_card" ? (
-                    <>
-                      <div className="text-center mb-8">
-                        <h3 className="text-2xl font-bold text-adv-slate mb-3">
-                          {lang === "en"
-                            ? "Credit Card Checkout"
-                            : "ຊຳລະດ້ວຍບັດເຄຣດິດ"}
-                        </h3>
-                        <p className="text-gray-500 text-sm font-medium">
-                          {lang === "en"
-                            ? "Complete your payment securely via our Visa/Mastercard gateway."
-                            : "ຊຳລະເງິນຢ່າງປອດໄພຜ່ານລະບົບ Visa/Mastercard ຂອງພວກເຮົາ."}
-                        </p>
-                      </div>
-
-                      <div className="p-6 bg-gray-50 rounded-3xl w-full flex flex-col items-center border border-gray-100 mb-8">
-                        <div className="flex justify-between w-full mb-6 text-xs font-bold uppercase tracking-widest">
-                          <span className="text-adv-green flex items-center gap-2">
-                            <div className="w-2 h-2 bg-adv-green rounded-full animate-pulse" />{" "}
-                            Gateway Secure
-                          </span>
-                          <span className="text-red-500">
-                            {Math.floor(countdown / 60)}:
-                            {(countdown % 60).toString().padStart(2, "0")}
-                          </span>
-                        </div>
-
-                        <div className="w-full bg-white rounded-2xl p-6 border border-gray-100 text-center space-y-6">
-                          <div className="w-16 h-16 bg-white border border-gray-150 rounded-2xl flex items-center justify-center mx-auto p-2 shadow-xs">
-                            <img
-                              src="/Card.png"
-                              alt="Credit Card"
-                              className="w-full h-full object-contain"
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <h4 className="font-extrabold text-adv-slate text-base">
-                              {lang === "en"
-                                ? "Secure Payment Portal Ready"
-                                : "ຊ່ອງທາງການຊຳລະເງິນປອດໄພພ້ອມແລ້ວ"}
-                            </h4>
-                            <p className="text-xs text-gray-400 font-semibold max-w-xs mx-auto leading-relaxed">
-                              {lang === "en"
-                                ? "Click the button below to open the secure banking page and complete your transaction. Only 3D Secure (3DS) cards are supported."
-                                : "ກະລຸນາຄລິກປຸ່ມລຸ່ມນີ້ເພື່ອເປີດໜ້າຊຳລະເງິນຂອງທະນາຄານຢ່າງປອດໄພ. ຮອງຮັບສະເພາະບັດທີ່ມີລະບົບ 3D Secure (3DS) ເທົ່ານັ້ນ."}
-                            </p>
-                          </div>
-
-                          {creditCardUrl && (
-                            <a
-                              href={creditCardUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex w-full py-4 px-6 bg-adv-orange hover:bg-orange-600 text-white rounded-2xl font-extrabold text-sm uppercase tracking-wider transition-all items-center justify-center gap-2 shadow-lg shadow-orange-100 active:scale-[0.98]"
-                            >
-                              <span>
-                                {lang === "en"
-                                  ? "Open Payment Portal"
-                                  : "ເປີດໜ້າຊຳລະເງິນ"}
-                              </span>
-                              <Zap className="w-4 h-4 text-white" />
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-center mb-6">
-                        {(() => {
-                          const bObj = LAOS_BANKS.find(
-                            (b) => b.id === selectedBank,
-                          );
-                          return bObj?.logo ? (
-                            <div className="w-14 h-14 mx-auto mb-3 bg-white p-1.5 rounded-2xl shadow-xs border border-gray-150 flex items-center justify-center">
-                              <img
-                                src={bObj.logo}
-                                alt={bObj.name}
-                                className="w-full h-full object-contain rounded-xl"
-                              />
-                            </div>
-                          ) : null;
-                        })()}
-                        <h3 className="text-2xl font-bold text-adv-slate mb-2">
-                          {bankDeepLink
-                            ? lang === "lo"
-                              ? "ກຳລັງເຊື່ອມຕໍ່ແອັບທະນາຄານ"
-                              : "Connecting to Bank App"
-                            : t.scanToPay}
-                        </h3>
-                        <p className="text-gray-500 text-sm font-medium">
-                          {bankDeepLink
-                            ? lang === "lo"
-                              ? `ກະລຸນາເຂົ້າສູ່ລະບົບແອັບ ${LAOS_BANKS.find((b) => b.id === selectedBank)?.name || ""} ເພື່ອຢືນຢັນການຊຳລະເງິນ`
-                              : `Please complete payment in your ${LAOS_BANKS.find((b) => b.id === selectedBank)?.name || ""} app`
-                            : t.openAppToScan.replace(
-                                "{bankName}",
-                                LAOS_BANKS.find((b) => b.id === selectedBank)
-                                  ?.name || "",
-                              )}
-                        </p>
-                      </div>
-
-                      <div className="p-6 bg-gray-50 rounded-3xl w-full flex flex-col items-center border border-gray-100 mb-8">
-                        <div className="flex justify-between w-full mb-4 text-xs font-bold uppercase tracking-widest">
-                          <span className="text-adv-green flex items-center gap-2">
-                            <div className="w-2 h-2 bg-adv-green rounded-full animate-pulse" />{" "}
-                            {lang === "lo" ? "ລະບົບພ້ອມຊຳລະ" : "Active Session"}
-                          </span>
-                          <span className="text-red-500 font-mono font-bold">
-                            {Math.floor(countdown / 60)}:
-                            {(countdown % 60).toString().padStart(2, "0")}
-                          </span>
-                        </div>
-
-                        {/* Direct App Launch Button */}
-                        {(bankDeepLink || hostedCheckoutUrl) && (
-                          <div className="w-full mb-4">
-                            <a
-                              href={bankDeepLink || hostedCheckoutUrl || "#"}
-                              onClick={() => {
-                                const target =
-                                  bankDeepLink || hostedCheckoutUrl;
-                                if (target) window.location.href = target;
-                              }}
-                              className="w-full py-4 px-5 bg-adv-orange hover:bg-orange-600 active:scale-[0.98] text-white rounded-2xl font-black text-sm sm:text-base uppercase tracking-wider transition-all flex items-center justify-center gap-2.5 shadow-lg shadow-orange-200"
-                            >
-                              <Zap className="w-5 h-5 fill-white" />
-                              <span>
-                                {lang === "lo"
-                                  ? `ກົດເປີດແອັບ ${LAOS_BANKS.find((b) => b.id === selectedBank)?.name || ""} ເພື່ອຊຳລະ`
-                                  : `Open ${LAOS_BANKS.find((b) => b.id === selectedBank)?.name || ""} App to Pay`}
-                              </span>
-                            </a>
-                            <p className="text-center text-[11px] text-gray-500 mt-2 font-medium leading-relaxed">
-                              {lang === "lo"
-                                ? "ລະບົບໄດ້ເປີດແອັບໃຫ້ທ່ານອັດຕະໂນມັດ. ຖ້າແອັບບໍ່ເປີດ, ກະລຸນາກົດປຸ່ມສີສົ້ມດ້ານເທິງ."
-                                : "The app was launched automatically. If it didn't open, tap the orange button above."}
-                            </p>
-                          </div>
-                        )}
-
-                        {/* QR Code Container */}
-                        {qrCodeData && (
-                          <div className="w-full flex flex-col items-center pt-2">
-                            <div className="w-full max-w-[260px] aspect-square bg-white rounded-2xl flex items-center justify-center p-5 shadow-inner border border-gray-150 relative overflow-hidden">
-                              <QRCodeSVG
-                                id="payment-qr-svg"
-                                value={qrCodeData}
-                                size={256}
-                                className="w-full h-full"
-                              />
-                            </div>
-                            <button
-                              type="button"
-                              onClick={downloadQrCode}
-                              className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-gray-600 hover:text-adv-orange transition-colors py-1.5 px-3 rounded-lg hover:bg-orange-50 border border-gray-200"
-                            >
-                              <Download className="w-3.5 h-3.5" />
-                              <span>
-                                {lang === "lo"
-                                  ? "ບັນທຶກຮູບ QR ເພື່ອໄປສະແກນໃນແອັບ"
-                                  : "Save QR image for app"}
-                              </span>
-                            </button>
-                          </div>
-                        )}
-
-                      </div>
-                    </>
-                  )}
-
-                  <div className="w-full py-4 px-5 bg-gradient-to-r from-orange-50/70 via-gray-50 to-orange-50/70 border border-orange-200/60 rounded-2xl flex items-center justify-center gap-3.5 shadow-xs">
-                    <div className="relative flex items-center justify-center shrink-0">
-                      <span className="w-3.5 h-3.5 bg-adv-orange rounded-full animate-ping absolute opacity-75" />
-                      <span className="w-2.5 h-2.5 bg-adv-orange rounded-full relative" />
-                    </div>
-                    <div className="flex flex-col text-left">
-                      <span className="text-xs font-extrabold text-adv-slate flex items-center gap-1.5">
-                        {t.waitingForPayment}
-                      </span>
-                      <span className="text-[11px] text-gray-500 font-medium leading-tight mt-0.5">
-                        {t.autoVerifyNotice}
-                      </span>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-
-              {/* 2. Activity Summary in QR state */}
-              <div className="order-2 lg:order-none lg:col-span-5 lg:col-start-8 lg:row-start-1 lg:sticky lg:top-4">
-                {renderActivitySummary()}
               </div>
             </>
           )}
