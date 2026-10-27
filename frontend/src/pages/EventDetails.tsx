@@ -2062,27 +2062,26 @@ export default function EventDetails({
                 {/* Ticket Options (Multi-Tier Selection) */}
                 {event.ticketTiers && event.ticketTiers.length > 0 ? (
                   <div className="space-y-2.5">
-                    <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
-                        <label className="text-xs font-black uppercase tracking-wider text-adv-slate block">
+                          <label className="text-sm font-semibold text-adv-slate block">
                           {t.selectTickets}
                         </label>
                         {event.showRemainingTickets && (
-                          <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <Ticket className="w-2.5 h-2.5 text-emerald-600" />
+                            <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md flex items-center gap-1">
                             {lang === "en"
                               ? `${totalAvailableTickets} Available`
                               : `ເຫຼືອ ${totalAvailableTickets} ໃບ`}
                           </span>
                         )}
                       </div>
-                      <span className="text-[10px] text-gray-400 font-semibold">
+                        <span className="text-[11px] text-gray-500">
                         {lang === "en"
                           ? `Max ${effectiveMaxTickets} total tickets`
                           : `ສູງສຸດ ${effectiveMaxTickets} ໃບທັງໝົດ`}
                       </span>
                     </div>
-                    <div className="space-y-2.5">
+                    <div className="space-y-2">
                       {event.ticketTiers.map((tier) => {
                         const currentQty = tierQuantities[tier.id] || 0;
                         const isSelected = currentQty > 0;
@@ -2095,43 +2094,40 @@ export default function EventDetails({
                         return (
                           <div
                             key={tier.id}
-                            className={`w-full p-3.5 rounded-xl border transition-all duration-200 flex items-center justify-between group ${
+                            className={`w-full p-3 rounded-xl border flex items-center justify-between ${
                               isSelected
-                                ? "border-adv-orange bg-gradient-to-r from-orange-50/90 to-amber-50/40 shadow-xs ring-2 ring-adv-orange/20"
+                                ? "border-orange-300 bg-orange-50/40"
                                 : isSoldOut
-                                  ? "border-gray-200 bg-gray-50/60 opacity-60"
+                                  ? "border-gray-200 bg-gray-50 opacity-60"
                                   : "border-gray-200 bg-white hover:border-gray-300"
                             }`}
                           >
                             <div className="flex-1 min-w-0 pr-3">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-bold text-xs text-adv-slate group-hover:text-black transition-colors truncate">
+                                <p className="font-semibold text-sm text-adv-slate truncate">
                                   {tier.name}
                                 </p>
                                 {event.showRemainingTickets &&
                                   (isSoldOut ? (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-black text-red-600 bg-red-50 border border-red-200/80 px-2 py-0.5 rounded-full">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-red-700 bg-red-50 px-2 py-0.5 rounded-md">
                                       {lang === "en" ? "Sold Out" : "ໝົດແລ້ວ"}
                                     </span>
                                   ) : tierAvailable <= 10 ? (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md">
                                       {lang === "en"
-                                        ? `Only ${tierAvailable} left!`
-                                        : `ເຫຼືອພຽງ ${tierAvailable} ໃບ!`}
+                                        ? `${tierAvailable} left`
+                                        : `ເຫຼືອ ${tierAvailable} ໃບ`}
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
-                                      <Ticket className="w-2.5 h-2.5 text-emerald-600" />
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
                                       {lang === "en"
                                         ? `${tierAvailable} remaining`
                                         : `ເຫຼືອ ${tierAvailable} ໃບ`}
                                     </span>
                                   ))}
                               </div>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="font-mono font-black text-xs text-adv-orange">
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <span className="font-semibold text-sm text-adv-orange">
                                   {tier.price === 0
                                     ? lang === "en"
                                       ? "Free"
@@ -2139,7 +2135,7 @@ export default function EventDetails({
                                     : `${tier.price.toLocaleString()} ${currency}`}
                                 </span>
                                 {tier.description && (
-                                  <span className="text-[10px] text-gray-400 font-medium truncate max-w-[180px]">
+                                  <span className="text-[11px] text-gray-500 font-normal truncate max-w-[180px]">
                                     • {tier.description}
                                   </span>
                                 )}
@@ -2147,7 +2143,7 @@ export default function EventDetails({
                             </div>
 
                             {/* Tier Quantity Controls */}
-                            <div className="flex items-center gap-2 bg-gray-50/90 px-2 py-1 rounded-xl border border-gray-200/80 shadow-2xs shrink-0">
+                            <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-gray-200 shrink-0">
                               <button
                                 type="button"
                                 onClick={() =>
@@ -2158,11 +2154,11 @@ export default function EventDetails({
                                   )
                                 }
                                 disabled={currentQty <= 0 || isSoldOut}
-                                className="w-6 h-6 flex items-center justify-center bg-white rounded-lg border border-gray-200 text-gray-700 hover:border-adv-orange hover:text-adv-orange active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-2xs cursor-pointer"
+                                className="w-7 h-7 flex items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 hover:text-adv-slate transition-colors disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer"
                               >
                                 <Minus className="w-3 h-3" />
                               </button>
-                              <span className="font-black text-xs w-5 text-center text-adv-slate">
+                              <span className="font-semibold text-sm w-5 text-center text-adv-slate tabular-nums">
                                 {currentQty}
                               </span>
                               <button
@@ -2179,7 +2175,7 @@ export default function EventDetails({
                                   isSoldOut ||
                                   totalQuantity >= effectiveMaxTickets
                                 }
-                                className="w-6 h-6 flex items-center justify-center bg-white rounded-lg border border-gray-200 text-gray-700 hover:border-adv-orange hover:text-adv-orange active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-2xs cursor-pointer"
+                                className="w-7 h-7 flex items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 hover:text-adv-slate transition-colors disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer"
                               >
                                 <Plus className="w-3 h-3" />
                               </button>
@@ -2241,15 +2237,15 @@ export default function EventDetails({
                 )}
 
                 {/* Selected Tickets Summary Box */}
-                <div className="p-3.5 bg-gradient-to-r from-orange-50/80 via-amber-50/50 to-orange-50/80 border border-orange-200/80 rounded-2xl space-y-2">
-                  <div className="flex items-center justify-between text-xs font-extrabold text-adv-slate pb-1 border-b border-orange-200/40">
-                    <span className="flex items-center gap-1.5 text-adv-orange">
+                <div className="p-4 bg-white border border-gray-200 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between text-sm font-semibold text-adv-slate pb-2 border-b border-gray-100">
+                    <span className="flex items-center gap-2 text-adv-slate">
                       <Ticket className="w-4 h-4" />
                       <span>
                         {lang === "en" ? "Order Summary" : "ລາຍການປີ້ທີ່ເລືອກ"}
                       </span>
                     </span>
-                    <span className="bg-white px-2 py-0.5 rounded-md border border-orange-200 text-[10px] font-black text-adv-slate">
+                    <span className="text-xs font-medium text-gray-500">
                       {totalQuantity}{" "}
                       {lang === "en"
                         ? totalQuantity === 1
@@ -2260,23 +2256,23 @@ export default function EventDetails({
                   </div>
 
                   {selectedTiersList.length > 0 ? (
-                    <div className="space-y-1 text-xs">
+                    <div className="space-y-2 text-sm">
                       {selectedTiersList.map(({ tier, quantity: qty }) => (
                         <div
                           key={tier.id}
-                          className="flex items-center justify-between font-bold text-gray-700"
+                          className="flex items-center justify-between font-medium text-gray-700"
                         >
                           <span>
                             {qty}× {tier.name}
                           </span>
-                          <span className="font-mono text-adv-orange">
+                          <span className="font-medium text-adv-slate tabular-nums">
                             {(tier.price * qty).toLocaleString()} {currency}
                           </span>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-gray-400 font-semibold italic">
+                    <p className="text-sm text-gray-500">
                       {lang === "en"
                         ? "Please select at least 1 ticket to proceed."
                         : "ກະລຸນາເລືອກປີ້ຢ່າງໜ້ອຍ 1 ໃບເພື່ອດຳເນີນການ."}
@@ -2284,8 +2280,8 @@ export default function EventDetails({
                   )}
 
                   {!appliedPromo && (
-                    <div className="pt-2 border-t border-gray-150/50 mt-2">
-                      <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">
+                    <div className="pt-3 border-t border-gray-100 mt-1">
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">
                         {t.promoCode}
                       </label>
                       <div className="flex gap-2">
@@ -2296,12 +2292,12 @@ export default function EventDetails({
                             setPromoCode(e.target.value.toUpperCase())
                           }
                           placeholder={t.promoCode}
-                          className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-adv-slate focus:outline-none focus:border-adv-orange focus:ring-1 focus:ring-adv-orange transition-all"
+                          className="flex-1 min-w-0 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-adv-slate placeholder:text-gray-400 focus:outline-none focus:border-adv-orange focus:ring-2 focus:ring-orange-100 transition-colors"
                         />
                         <button
                           onClick={handleApplyPromo}
                           disabled={!promoCode.trim()}
-                          className="px-3 py-1.5 bg-adv-slate text-white text-xs font-bold rounded-lg hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-3 py-2 border border-gray-300 bg-white text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {t.apply}
                         </button>
@@ -2340,9 +2336,9 @@ export default function EventDetails({
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between pt-2 border-t border-orange-200/60 font-black text-sm text-adv-slate mt-2">
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100 font-semibold text-sm text-adv-slate mt-1">
                     <span>{t.total}</span>
-                    <span className="text-base text-adv-orange font-mono font-black">
+                    <span className="text-base text-adv-orange font-semibold tabular-nums">
                       {totalPrice.toLocaleString()} {currency}
                     </span>
                   </div>
@@ -2353,10 +2349,10 @@ export default function EventDetails({
                   <button
                     onClick={handleCheckout}
                     disabled={event.status === "paused"}
-                    className={`w-full py-4 rounded-xl text-white font-black text-sm tracking-wide transition-all shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer ${
+                    className={`w-full py-3.5 rounded-lg text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer ${
                       event.status === "paused"
-                        ? "bg-gray-300 shadow-none cursor-not-allowed text-gray-500"
-                        : "bg-adv-orange hover:bg-orange-600 shadow-lg shadow-orange-500/25"
+                        ? "bg-gray-300 cursor-not-allowed text-gray-500"
+                        : "bg-adv-orange hover:bg-orange-600"
                     }`}
                   >
                     <span>
