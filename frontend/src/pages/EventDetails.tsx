@@ -1674,7 +1674,7 @@ export default function EventDetails({
                 {/* Public Map & Location Venue Section */}
                 {event.eventType !== "online" ? (
                   <div
-                    className="my-4 bg-white p-4 sm:p-5 rounded-2xl border border-gray-200/80 shadow-xs space-y-4"
+                    className="mt-4 mb-0 bg-white p-4 sm:p-5 rounded-2xl border border-gray-200/80 shadow-xs space-y-4"
                     id="event-map-venue"
                   >
                     <div className="pb-3 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1730,7 +1730,7 @@ export default function EventDetails({
                   </div>
                 ) : (
                   <div
-                    className="my-4 bg-white p-4 sm:p-5 rounded-2xl border border-gray-200/80 shadow-xs space-y-3"
+                    className="mt-4 mb-0 bg-white p-4 sm:p-5 rounded-2xl border border-gray-200/80 shadow-xs space-y-3"
                     id="event-online-venue"
                   >
                     <div className="flex items-center gap-2.5 pb-2 border-b border-gray-100">
