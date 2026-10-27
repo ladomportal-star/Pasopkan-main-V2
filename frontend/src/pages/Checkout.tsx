@@ -129,8 +129,8 @@ const LAOS_BANKS = [
   { id: "jdb", name: "JDB Yes", color: "bg-green-600", logo: "/JDB.png" },
   { id: "ib", name: "IB Bank", color: "bg-teal-600", logo: "/IB.png" },
   { id: "stb", name: "ST Bank", color: "bg-emerald-600", logo: "/ST.png" },
-  { id: "apb", name: "APB Bank", color: "bg-amber-600", logo: "" },
-  { id: "m-money", name: "M-Money", color: "bg-rose-600", logo: "" },
+  { id: "apb", name: "APB Bank", color: "bg-emerald-600", logo: "/APB.svg" },
+  { id: "m-money", name: "M-Money", color: "bg-rose-600", logo: "/M-Money.png" },
 ];
 
 const MultiSelectDropdown = ({
@@ -577,7 +577,7 @@ export default function Checkout() {
 
   // The backend calculates the authoritative total. Free orders are confirmed
   // immediately; paid orders return a PhaJay QR code or hosted Payment Link.
-  const createRealOrder = async (): Promise<{
+  const createRealOrder = async (bankId: string | null): Promise<{
     checkoutUrl: string | null;
     qrCode: string | null;
     deepLink: string | null;
@@ -632,7 +632,7 @@ export default function Checkout() {
       }));
       offset += group.quantity;
 
-      const paymentMethod = (selectedBank as
+      const paymentMethod = (bankId as
         | "bcel"
         | "ldb"
         | "jdb"
@@ -745,10 +745,13 @@ export default function Checkout() {
     img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgData)))}`;
   };
 
-  const handleInitiateCheckout = async () => {
+  const handleInitiateCheckout = async (bankId = selectedBank) => {
+    if (isProcessing) return;
+    if (total > 0 && !bankId) return;
     if (!validateContactDetails()) return;
+    if (bankId) setSelectedBank(bankId);
     setIsProcessing(true);
-    const created = await createRealOrder();
+    const created = await createRealOrder(bankId);
     if (!created) {
       setIsProcessing(false);
       return;
@@ -758,7 +761,7 @@ export default function Checkout() {
       setPaymentReference(created.reference);
       setHostedCheckoutUrl(created.checkoutUrl);
       setBankDeepLink(created.deepLink || null);
-      if (selectedBank === "credit_card") {
+      if (bankId === "credit_card") {
         setCreditCardUrl(created.checkoutUrl);
         setQrCodeData(null);
         setIsProcessing(false);
@@ -770,18 +773,12 @@ export default function Checkout() {
       setIsProcessing(false);
       setStep("qr");
 
-      const isMobile =
-        typeof navigator !== "undefined" &&
-        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-          navigator.userAgent,
-        );
-
       const targetLink = created.deepLink || created.checkoutUrl;
 
-      // Automatically launch bank app / payment page if mobile or if deepLink is returned
-      if (targetLink && (isMobile || created.deepLink)) {
+      // Prefer the gateway's bank app/hosted bank URL immediately after selection.
+      if (targetLink) {
         try {
-          window.location.href = targetLink;
+          window.location.assign(targetLink);
         } catch (e) {
           console.warn("Direct navigation to bank app failed", e);
         }
@@ -1389,46 +1386,56 @@ export default function Checkout() {
                       {LAOS_BANKS.map((bank) => (
                         <button
                           key={bank.id}
-                          onClick={() => setSelectedBank(bank.id)}
-                          className={`w-full flex items-center p-3 rounded-xl border-2 transition-all ${
+                          type="button"
+                          disabled={isProcessing}
+                          onClick={() => void handleInitiateCheckout(bank.id)}
+                          className={`w-full flex items-center p-3 rounded-xl border transition-colors text-left disabled:cursor-wait disabled:opacity-70 ${
                             selectedBank === bank.id
-                              ? "border-adv-orange bg-orange-50/50"
-                              : "border-gray-50 hover:border-gray-100 bg-gray-50/50"
+                              ? "border-orange-300 bg-orange-50/60"
+                              : "border-gray-100 hover:border-orange-200 hover:bg-orange-50/30 bg-white"
                           }`}
                         >
-                          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center mr-3 shrink-0 shadow-xs p-1">
+                          <div className="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center mr-3 shrink-0 p-1.5">
                             {bank.logo ? (
                               <img
                                 src={bank.logo}
                                 alt={bank.name}
                                 className="w-full h-full object-contain rounded-lg"
+                                onError={(event) => {
+                                  event.currentTarget.hidden = true;
+                                  event.currentTarget.nextElementSibling?.classList.remove("hidden");
+                                }}
                               />
-                            ) : (
-                              <div
-                                className={`w-full h-full rounded-lg ${bank.color} flex items-center justify-center`}
-                              >
-                                <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                              </div>
-                            )}
+                            ) : null}
+                            <div className={`hidden w-full h-full rounded-lg ${bank.color} flex items-center justify-center`}>
+                              <Building2 className="w-4 h-4 text-white" />
+                            </div>
                           </div>
                           <div className="flex-1 text-left">
                             <h4 className="text-sm sm:text-base font-bold text-adv-slate">
                               {bank.name}
                             </h4>
-                            <p className="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                              Mobile Banking
+                            <p className="text-[10px] text-gray-400 font-medium tracking-wide">
+                              {lang === "lo" ? "Mobile Banking" : "Mobile banking"}
                             </p>
                           </div>
+                          {isProcessing && selectedBank === bank.id ? (
+                            <Loader2 className="w-4 h-4 text-adv-orange animate-spin" />
+                          ) : (
+                            <ArrowLeft className="w-4 h-4 rotate-180 text-gray-300" />
+                          )}
                         </button>
                       ))}
 
                       <button
                         key="credit_card"
-                        onClick={() => setSelectedBank("credit_card")}
-                        className={`w-full flex items-center p-3 rounded-xl border-2 transition-all ${
+                        type="button"
+                        disabled={isProcessing}
+                        onClick={() => void handleInitiateCheckout("credit_card")}
+                        className={`w-full flex items-center p-3 rounded-xl border transition-colors disabled:cursor-wait disabled:opacity-70 ${
                           selectedBank === "credit_card"
-                            ? "border-adv-orange bg-orange-50/50"
-                            : "border-gray-50 hover:border-gray-100 bg-gray-50/50"
+                            ? "border-orange-300 bg-orange-50/60"
+                            : "border-gray-100 hover:border-orange-200 hover:bg-orange-50/30 bg-white"
                         }`}
                       >
                         <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center mr-3 shrink-0 shadow-xs p-1">
@@ -1451,27 +1458,15 @@ export default function Checkout() {
                   </div>
                 )}
 
-                <button
-                  disabled={!isDetailsValid || isProcessing}
-                  onClick={() => void handleInitiateCheckout()}
-                  className="w-full py-3 bg-adv-orange text-white rounded-xl font-bold text-sm sm:text-base hover:bg-orange-600 transition-all flex items-center justify-center gap-2 shadow-md shadow-orange-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isProcessing ? (
-                    <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
-                  ) : total === 0 ? (
-                    t.book || "Book"
-                  ) : lang === "lo" ? (
-                    "ຊຳລະຜ່ານ PhaJay"
-                  ) : (
-                    "Pay with PhaJay"
-                  )}
-                </button>
-                {total > 0 && (
-                  <p className="mt-2 text-center text-xs text-amber-700">
-                    {lang === "lo"
-                      ? "ທ່ານຈະຖືກສົ່ງໄປໜ້າຊຳລະເງິນທີ່ປອດໄພຂອງ PhaJay."
-                      : "You will be redirected to PhaJay's secure hosted payment page."}
-                  </p>
+                {total === 0 && (
+                  <button
+                    type="button"
+                    disabled={!isDetailsValid || isProcessing}
+                    onClick={() => void handleInitiateCheckout(null)}
+                    className="w-full py-3 bg-adv-orange text-white rounded-xl font-bold text-sm sm:text-base hover:bg-orange-600 transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : t.book || "Book"}
+                  </button>
                 )}
               </div>
             </>
@@ -1654,21 +1649,6 @@ export default function Checkout() {
                           </div>
                         )}
 
-                        {hostedCheckoutUrl && !bankDeepLink && (
-                          <a
-                            href={hostedCheckoutUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-4 inline-flex w-full py-3 px-4 bg-white hover:bg-orange-50 text-adv-orange border border-orange-200 rounded-xl font-bold text-xs uppercase tracking-wider transition-all items-center justify-center gap-2 shadow-xs"
-                          >
-                            <span>
-                              {lang === "en"
-                                ? "Open PhaJay Payment Page"
-                                : "ເປີດໜ້າຊຳລະເງິນ PhaJay"}
-                            </span>
-                            <Zap className="w-3.5 h-3.5" />
-                          </a>
-                        )}
                       </div>
                     </>
                   )}
