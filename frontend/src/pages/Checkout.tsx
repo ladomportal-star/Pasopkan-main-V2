@@ -15,6 +15,7 @@ import {
   Calendar,
   Clock,
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { LaoEvent, TicketTier, SeatingZone, Coupon } from "../data/events";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
@@ -305,14 +306,26 @@ export default function Checkout() {
 
   const [step, setStep] = useState<"details" | "success">("details");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDesktopViewport, setIsDesktopViewport] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
+  );
   const [selectedBank, setSelectedBank] = useState<string | null>(null);
   const [hostedCheckoutUrl, setHostedCheckoutUrl] = useState<string | null>(
     null,
   );
   const [bankDeepLink, setBankDeepLink] = useState<string | null>(null);
+  const [paymentQrPayload, setPaymentQrPayload] = useState<string | null>(null);
   const [paymentReference, setPaymentReference] = useState<string | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const desktopQuery = window.matchMedia("(min-width: 1024px)");
+    const updateViewport = () => setIsDesktopViewport(desktopQuery.matches);
+    updateViewport();
+    desktopQuery.addEventListener("change", updateViewport);
+    return () => desktopQuery.removeEventListener("change", updateViewport);
+  }, []);
 
   const ownersCount =
     event?.requireEveryTicketInfo === false ? 1 : totalQuantity;
@@ -464,6 +477,7 @@ export default function Checkout() {
         setPaymentReference(null);
         setHostedCheckoutUrl(null);
         setBankDeepLink(null);
+        setPaymentQrPayload(null);
         void showErrorAlert(
           lang === "lo"
             ? "ການຊຳລະບໍ່ສຳເລັດ. ກະລຸນາເລືອກທະນາຄານແລະລອງໃໝ່."
@@ -709,7 +723,11 @@ export default function Checkout() {
     if (paymentReference) {
       const targetLink = bankDeepLink || hostedCheckoutUrl;
       if (bankId === selectedBank && targetLink) {
-        window.location.assign(targetLink);
+        if (isDesktopViewport) {
+          window.open(targetLink, "_blank", "noopener,noreferrer");
+        } else {
+          window.location.assign(targetLink);
+        }
       } else {
         void showErrorAlert(
           lang === "lo"
@@ -734,21 +752,26 @@ export default function Checkout() {
       setPaymentReference(created.reference);
       setHostedCheckoutUrl(created.checkoutUrl);
       setBankDeepLink(created.deepLink || null);
+      setPaymentQrPayload(created.qrCode || created.checkoutUrl || created.deepLink);
       setIsProcessing(false);
-      // Open the provider's bank/hosted payment URL directly; never render a QR wait page.
+      if (isDesktopViewport) return;
+      // Preserve the existing mobile flow: open the provider payment URL directly.
       window.location.assign(paymentUrl);
       return;
     }
     if (total > 0 && created.reference) {
       setPaymentReference(created.reference);
+      setPaymentQrPayload(created.qrCode);
       setIsProcessing(false);
-      void showErrorAlert(
-        lang === "lo"
-          ? "ທະນາຄານບໍ່ໄດ້ສົ່ງລິ້ງເຂົ້າໜ້າຊຳລະໂດຍກົງ. ລະບົບຈະກວດສອບສະຖານະລາຍການ; ບໍ່ມີ QR ຫຼືໜ້າລໍຖ້າສະແດງ."
-          : "The bank did not provide a direct payment link. We will check the payment status; no QR or payment waiting page will be shown.",
-        lang,
-        lang === "lo" ? "ບໍ່ມີລິ້ງຊຳລະໂດຍກົງ" : "Direct payment link unavailable",
-      );
+      if (!isDesktopViewport || !created.qrCode) {
+        void showErrorAlert(
+          lang === "lo"
+            ? "ທະນາຄານບໍ່ໄດ້ສົ່ງລິ້ງ ຫຼື QR ສຳລັບຊຳລະ. ລະບົບຈະກວດສອບສະຖານະລາຍການ."
+            : "The bank did not provide a payment link or QR code. We will continue checking the payment status.",
+          lang,
+          lang === "lo" ? "ຂໍ້ມູນຊຳລະບໍ່ຄົບ" : "Payment details unavailable",
+        );
+      }
       return;
     }
     setIsProcessing(false);
@@ -1350,8 +1373,11 @@ export default function Checkout() {
                         <button
                           key={bank.id}
                           type="button"
-                          disabled={isProcessing}
-                          onClick={() => void handleInitiateCheckout(bank.id)}
+                          disabled={isProcessing || Boolean(paymentReference)}
+                          onClick={() => {
+                            if (isDesktopViewport) setSelectedBank(bank.id);
+                            else void handleInitiateCheckout(bank.id);
+                          }}
                           className={`w-full flex items-center p-3 rounded-xl border transition-colors text-left disabled:cursor-wait disabled:opacity-70 ${
                             selectedBank === bank.id
                               ? "border-orange-300 bg-orange-50/60"
@@ -1393,8 +1419,11 @@ export default function Checkout() {
                       <button
                         key="credit_card"
                         type="button"
-                        disabled={isProcessing}
-                        onClick={() => void handleInitiateCheckout("credit_card")}
+                        disabled={isProcessing || Boolean(paymentReference)}
+                        onClick={() => {
+                          if (isDesktopViewport) setSelectedBank("credit_card");
+                          else void handleInitiateCheckout("credit_card");
+                        }}
                         className={`w-full flex items-center p-3 rounded-xl border transition-colors disabled:cursor-wait disabled:opacity-70 ${
                           selectedBank === "credit_card"
                             ? "border-orange-300 bg-orange-50/60"
@@ -1418,6 +1447,61 @@ export default function Checkout() {
                         </div>
                       </button>
                     </div>
+
+                    {isDesktopViewport && selectedBank && !paymentReference && (
+                      <button
+                        type="button"
+                        disabled={!isDetailsValid || isProcessing}
+                        onClick={() => void handleInitiateCheckout(selectedBank)}
+                        className="w-full rounded-xl bg-adv-orange px-4 py-3 font-bold text-white shadow-sm transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isProcessing ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            {lang === "lo" ? "ກຳລັງສ້າງລາຍການຊຳລະ..." : "Preparing payment..."}
+                          </span>
+                        ) : (
+                          lang === "lo" ? "ຊຳລະເງິນ" : "Pay now"
+                        )}
+                      </button>
+                    )}
+
+                    {isDesktopViewport && paymentReference && (
+                      <div className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4 sm:p-5">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <h4 className="font-bold text-adv-slate">
+                              {lang === "lo" ? "ສະແກນ QR ເພື່ອຊຳລະ" : "Scan QR code to pay"}
+                            </h4>
+                            <p className="mt-1 text-xs text-gray-500">
+                              {lang === "lo" ? "ເລກອ້າງອີງ: " : "Reference: "}{paymentReference}
+                            </p>
+                          </div>
+                          {paymentQrPayload && (
+                            <div className="rounded-xl border border-gray-200 bg-white p-3">
+                              <QRCodeSVG value={paymentQrPayload} size={176} level="M" includeMargin />
+                            </div>
+                          )}
+                        </div>
+                        {!paymentQrPayload && (
+                          <p className="mt-3 text-sm text-gray-600">
+                            {lang === "lo" ? "ກຳລັງລໍຖ້າຂໍ້ມູນ QR ຈາກຜູ້ໃຫ້ບໍລິການ..." : "Waiting for the provider's QR payment details..."}
+                          </p>
+                        )}
+                        {(bankDeepLink || hostedCheckoutUrl) && (
+                          <button
+                            type="button"
+                            onClick={() => void handleInitiateCheckout(selectedBank)}
+                            className="mt-4 w-full rounded-xl bg-adv-orange px-4 py-3 font-bold text-white shadow-sm transition-colors hover:bg-orange-600"
+                          >
+                            {lang === "lo" ? "ເປີດໜ້າຊຳລະ" : "Open payment page"}
+                          </button>
+                        )}
+                        <p className="mt-3 text-center text-xs text-gray-500">
+                          {lang === "lo" ? "ລະບົບກຳລັງກວດສອບສະຖານະການຊຳລະອັດຕະໂນມັດ." : "Payment status is checked automatically."}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
 
