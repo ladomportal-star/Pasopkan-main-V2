@@ -319,6 +319,7 @@ export default function Checkout() {
   const [paymentReference, setPaymentReference] = useState<string | null>(null);
   const [paymentExpiresAt, setPaymentExpiresAt] = useState<number | null>(null);
   const [paymentSecondsLeft, setPaymentSecondsLeft] = useState<number | null>(null);
+  const [isPaymentPageVisible, setIsPaymentPageVisible] = useState(false);
   const paymentQrRef = useRef<SVGSVGElement | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
@@ -495,6 +496,7 @@ export default function Checkout() {
         setBankDeepLink(null);
         setPaymentQrPayload(null);
         setPaymentExpiresAt(null);
+        setIsPaymentPageVisible(false);
         void showErrorAlert(
           lang === "lo"
             ? "ການຊຳລະບໍ່ສຳເລັດ. ກະລຸນາເລືອກທະນາຄານແລະລອງໃໝ່."
@@ -785,7 +787,10 @@ export default function Checkout() {
       setPaymentQrPayload(created.qrCode || created.checkoutUrl || created.deepLink);
       setPaymentExpiresAt(created.expiresAt);
       setIsProcessing(false);
-      if (isDesktopViewport) return;
+      if (isDesktopViewport) {
+        setIsPaymentPageVisible(true);
+        return;
+      }
       // Preserve the existing mobile flow: open the provider payment URL directly.
       window.location.assign(paymentUrl);
       return;
@@ -795,6 +800,7 @@ export default function Checkout() {
       setPaymentQrPayload(created.qrCode);
       setPaymentExpiresAt(created.expiresAt);
       setIsProcessing(false);
+      if (isDesktopViewport) setIsPaymentPageVisible(true);
       if (!isDesktopViewport || !created.qrCode) {
         void showErrorAlert(
           lang === "lo"
@@ -966,7 +972,7 @@ export default function Checkout() {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  if (isDesktopViewport && paymentReference && step !== "success") {
+  if (isDesktopViewport && paymentReference && isPaymentPageVisible && step !== "success") {
     const bank = LAOS_BANKS.find((item) => item.id === selectedBank);
     const bankName = bank?.name || (lang === "lo" ? "ບັດເຄຣດິດ" : "Credit Card");
     const bankLogo = bank?.logo || "/Card.png";
@@ -985,6 +991,16 @@ export default function Checkout() {
           description="Complete your secure ticket payment."
           noindex={true}
         />
+        <div className="mx-auto mb-3 w-full max-w-[720px]">
+          <button
+            type="button"
+            onClick={() => setIsPaymentPageVisible(false)}
+            className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-bold text-gray-500 transition hover:bg-white hover:text-adv-orange"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {lang === "lo" ? "ກັບຄືນໜ້າ Checkout" : "Back to checkout"}
+          </button>
+        </div>
         <section className="mx-auto w-full max-w-[720px] overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.08)]">
           <header className="flex flex-col items-center px-5 pb-6 pt-8 text-center sm:px-10 sm:pt-10">
             <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
@@ -1001,6 +1017,14 @@ export default function Checkout() {
           </header>
 
           <div className="mx-4 mb-5 rounded-[24px] bg-[#f7f8fa] p-4 sm:mx-8 sm:mb-8 sm:p-7">
+            <div className="mb-3 rounded-2xl border border-orange-100 bg-white px-4 py-3 text-center sm:mb-4 sm:py-4">
+              <p className="text-xs font-semibold text-gray-500 sm:text-sm">
+                {lang === "lo" ? "ຍອດຊຳລະ" : "Amount due"}
+              </p>
+              <p className="mt-1 text-xl font-black tracking-tight text-adv-orange sm:text-2xl">
+                {total.toLocaleString()} {currency}
+              </p>
+            </div>
             <div className="flex items-center justify-between gap-3 px-1 py-2">
               <span className="flex items-center gap-2 text-sm font-bold text-emerald-600 sm:text-base">
                 <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
@@ -1050,10 +1074,6 @@ export default function Checkout() {
               </button>
             )}
 
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t border-gray-200 pt-4 text-xs text-gray-500">
-              <span>{lang === "lo" ? "ຍອດຊຳລະ" : "Amount"}: <strong className="text-adv-slate">{total.toLocaleString()} {currency}</strong></span>
-              <span>{lang === "lo" ? "ລະຫັດອ້າງອີງ" : "Reference"}: <strong className="font-mono text-adv-slate">{paymentReference}</strong></span>
-            </div>
           </div>
         </section>
       </motion.div>
