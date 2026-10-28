@@ -25,6 +25,7 @@ import {
 import { LaoEvent, getEventStatus } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
 import LandscapeEventCard from '../components/LandscapeEventCard';
+import HomeBlogSection from '../components/HomeBlogSection';
 import { listAllPublicEvents } from '../lib/publicEvents';
 import { fromBackendEvent } from '../lib/eventPayload';
 import { getHomeHeroSettings, type HomeHeroSettings } from '../lib/siteSettings';
@@ -687,6 +688,8 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      <HomeBlogSection />
       
     </div>
   );
