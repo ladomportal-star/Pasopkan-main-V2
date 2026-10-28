@@ -739,6 +739,16 @@ export default function Checkout() {
       }
       return;
     }
+    if (!isDetailsValid) {
+      void showErrorAlert(
+        lang === "lo"
+          ? "ກະລຸນາກອກຂໍ້ມູນຜູ້ຊື້ ແລະຕອບຄຳຖາມທີ່ຈຳເປັນໃຫ້ຄົບກ່ອນຊຳລະເງິນ."
+          : "Complete the required attendee details before continuing to payment.",
+        lang,
+        lang === "lo" ? "ຂໍ້ມູນຍັງບໍ່ຄົບ" : "Required details missing",
+      );
+      return;
+    }
     if (!validateContactDetails()) return;
     if (bankId) setSelectedBank(bankId);
     setIsProcessing(true);
@@ -1451,7 +1461,7 @@ export default function Checkout() {
                     {isDesktopViewport && selectedBank && !paymentReference && (
                       <button
                         type="button"
-                        disabled={!isDetailsValid || isProcessing}
+                        disabled={isProcessing}
                         onClick={() => void handleInitiateCheckout(selectedBank)}
                         className="w-full rounded-xl bg-adv-orange px-4 py-3 font-bold text-white shadow-sm transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
                       >
