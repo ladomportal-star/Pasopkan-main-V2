@@ -10,6 +10,7 @@ import {
   Activity,
   Shield,
   Zap,
+  Download,
   MapPin,
   X,
   Calendar,
@@ -316,6 +317,9 @@ export default function Checkout() {
   const [bankDeepLink, setBankDeepLink] = useState<string | null>(null);
   const [paymentQrPayload, setPaymentQrPayload] = useState<string | null>(null);
   const [paymentReference, setPaymentReference] = useState<string | null>(null);
+  const [paymentExpiresAt, setPaymentExpiresAt] = useState<number | null>(null);
+  const [paymentSecondsLeft, setPaymentSecondsLeft] = useState<number | null>(null);
+  const paymentQrRef = useRef<SVGSVGElement | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
@@ -326,6 +330,18 @@ export default function Checkout() {
     desktopQuery.addEventListener("change", updateViewport);
     return () => desktopQuery.removeEventListener("change", updateViewport);
   }, []);
+
+  useEffect(() => {
+    if (!paymentExpiresAt) {
+      setPaymentSecondsLeft(null);
+      return;
+    }
+    const updateCountdown = () =>
+      setPaymentSecondsLeft(Math.max(0, Math.ceil((paymentExpiresAt - Date.now()) / 1000)));
+    updateCountdown();
+    const timer = window.setInterval(updateCountdown, 1000);
+    return () => window.clearInterval(timer);
+  }, [paymentExpiresAt]);
 
   const ownersCount =
     event?.requireEveryTicketInfo === false ? 1 : totalQuantity;
@@ -478,6 +494,7 @@ export default function Checkout() {
         setHostedCheckoutUrl(null);
         setBankDeepLink(null);
         setPaymentQrPayload(null);
+        setPaymentExpiresAt(null);
         void showErrorAlert(
           lang === "lo"
             ? "ການຊຳລະບໍ່ສຳເລັດ. ກະລຸນາເລືອກທະນາຄານແລະລອງໃໝ່."
@@ -574,6 +591,7 @@ export default function Checkout() {
     qrCode: string | null;
     deepLink: string | null;
     reference: string | null;
+    expiresAt: number | null;
   } | null> => {
     if (!event) return null;
     const { ticketOwners: owners, appliedCoupon: currentCoupon } =
@@ -680,6 +698,8 @@ export default function Checkout() {
         const checkoutUrl = res.data?.checkout?.checkoutUrl ?? null;
         const qrCode = res.data?.checkout?.qrCode ?? null;
         const deepLink = res.data?.checkout?.deepLink ?? null;
+        const expiresAtValue = res.data?.checkout?.expiresAt;
+        const expiresAt = expiresAtValue ? new Date(expiresAtValue).getTime() : null;
         const reference =
           res.data?.checkout?.transactionId ||
           String(res.data?.order?.orderNumber || "") ||
@@ -689,7 +709,7 @@ export default function Checkout() {
           res.data?.order?.status === "pending" &&
           (qrCode || checkoutUrl || deepLink)
         ) {
-          return { checkoutUrl, qrCode, deepLink, reference };
+          return { checkoutUrl, qrCode, deepLink, reference, expiresAt: Number.isFinite(expiresAt) ? expiresAt : null };
         }
         void showErrorAlert(
           lang === "lo"
@@ -714,7 +734,7 @@ export default function Checkout() {
         return null;
       }
     }
-    return { checkoutUrl: null, qrCode: null, deepLink: null, reference: null };
+    return { checkoutUrl: null, qrCode: null, deepLink: null, reference: null, expiresAt: null };
   };
 
   const handleInitiateCheckout = async (bankId = selectedBank) => {
@@ -763,6 +783,7 @@ export default function Checkout() {
       setHostedCheckoutUrl(created.checkoutUrl);
       setBankDeepLink(created.deepLink || null);
       setPaymentQrPayload(created.qrCode || created.checkoutUrl || created.deepLink);
+      setPaymentExpiresAt(created.expiresAt);
       setIsProcessing(false);
       if (isDesktopViewport) return;
       // Preserve the existing mobile flow: open the provider payment URL directly.
@@ -772,6 +793,7 @@ export default function Checkout() {
     if (total > 0 && created.reference) {
       setPaymentReference(created.reference);
       setPaymentQrPayload(created.qrCode);
+      setPaymentExpiresAt(created.expiresAt);
       setIsProcessing(false);
       if (!isDesktopViewport || !created.qrCode) {
         void showErrorAlert(
@@ -928,6 +950,115 @@ export default function Checkout() {
       </div>
     </div>
   );
+
+  const downloadPaymentQr = () => {
+    const svg = paymentQrRef.current;
+    if (!svg) return;
+    const source = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `pasopkan-payment-${paymentReference || "qr"}.svg`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  if (isDesktopViewport && paymentReference && step !== "success") {
+    const bank = LAOS_BANKS.find((item) => item.id === selectedBank);
+    const bankName = bank?.name || (lang === "lo" ? "ບັດເຄຣດິດ" : "Credit Card");
+    const bankLogo = bank?.logo || "/Card.png";
+    const paymentUrl = bankDeepLink || hostedCheckoutUrl;
+    const minutes = Math.floor((paymentSecondsLeft ?? 0) / 60).toString().padStart(2, "0");
+    const seconds = ((paymentSecondsLeft ?? 0) % 60).toString().padStart(2, "0");
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="min-h-[75vh] bg-[#f7f8fa] px-4 py-6 sm:py-10"
+      >
+        <SEO
+          title={lang === "lo" ? `ຊຳລະຜ່ານ ${bankName}` : `Pay with ${bankName}`}
+          description="Complete your secure ticket payment."
+          noindex={true}
+        />
+        <section className="mx-auto w-full max-w-[720px] overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.08)]">
+          <header className="flex flex-col items-center px-5 pb-6 pt-8 text-center sm:px-10 sm:pt-10">
+            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+              <img src={bankLogo} alt={bankName} className="h-full w-full object-contain" />
+            </div>
+            <h1 className="mt-5 text-2xl font-black tracking-tight text-adv-slate sm:text-3xl">
+              {lang === "lo" ? "ກຳລັງເຊື່ອມຕໍ່ແອັບທະນາຄານ" : "Connect to your bank"}
+            </h1>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500 sm:text-base">
+              {lang === "lo"
+                ? `ກະລຸນາສະແກນ QR ດ້ວຍ ${bankName} ເພື່ອຢືນຢັນການຊຳລະເງິນ.`
+                : `Scan the QR code with ${bankName} to complete your payment.`}
+            </p>
+          </header>
+
+          <div className="mx-4 mb-5 rounded-[24px] bg-[#f7f8fa] p-4 sm:mx-8 sm:mb-8 sm:p-7">
+            <div className="flex items-center justify-between gap-3 px-1 py-2">
+              <span className="flex items-center gap-2 text-sm font-bold text-emerald-600 sm:text-base">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                {lang === "lo" ? "ພ້ອມຊຳລະ" : "Ready to pay"}
+              </span>
+              <span className="font-mono text-lg font-black tracking-[0.18em] text-rose-500 sm:text-xl">
+                {paymentSecondsLeft === null ? "--:--" : `${minutes}:${seconds}`}
+              </span>
+            </div>
+
+            {paymentUrl && (
+              <button
+                type="button"
+                onClick={() => window.open(paymentUrl, "_blank", "noopener,noreferrer")}
+                disabled={paymentSecondsLeft === 0}
+                className="mt-3 flex min-h-16 w-full items-center justify-center gap-3 rounded-2xl bg-adv-orange px-5 py-4 text-center text-base font-black text-white shadow-[0_10px_20px_rgba(255,94,0,0.2)] transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50 sm:text-xl"
+              >
+                <Zap className="h-6 w-6 shrink-0 fill-current" />
+                {lang === "lo" ? `ເປີດ ${bankName} ເພື່ອຊຳລະ` : `Open ${bankName} to pay`}
+              </button>
+            )}
+
+            <p className="mx-auto mt-4 max-w-lg text-center text-sm leading-6 text-gray-500">
+              {lang === "lo"
+                ? "ເປີດແອັບທະນາຄານ ຫຼືໃຊ້ແອັບທະນາຄານໃນມືຖືສະແກນ QR ດ້ານລຸ່ມ. ຢ່າປິດໜ້ານີ້ຈົນກວ່າການຊຳລະສຳເລັດ."
+                : "Open your banking app or scan the QR below with your phone. Keep this page open while payment is being confirmed."}
+            </p>
+
+            {paymentQrPayload ? (
+              <div className="mx-auto mt-6 w-fit rounded-[24px] border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+                <QRCodeSVG ref={paymentQrRef} value={paymentQrPayload} size={280} level="M" includeMargin />
+              </div>
+            ) : (
+              <div className="mx-auto mt-6 flex h-[312px] w-[312px] max-w-full items-center justify-center rounded-[24px] border border-dashed border-gray-300 bg-white px-6 text-center text-sm text-gray-500">
+                {lang === "lo" ? "ບໍ່ມີ QR ຈາກຜູ້ໃຫ້ບໍລິການ. ກະລຸນາກົດປຸ່ມເປີດແອັບທະນາຄານ." : "The provider did not return a QR code. Use the bank payment button above."}
+              </div>
+            )}
+
+            {paymentQrPayload && (
+              <button
+                type="button"
+                onClick={downloadPaymentQr}
+                className="mx-auto mt-4 flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-bold text-gray-600 transition hover:border-orange-200 hover:text-adv-orange"
+              >
+                <Download className="h-4 w-4" />
+                {lang === "lo" ? "ດາວໂຫຼດຮູບ QR ເພື່ອສະແກນໃນແອັບ" : "Download QR code"}
+              </button>
+            )}
+
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t border-gray-200 pt-4 text-xs text-gray-500">
+              <span>{lang === "lo" ? "ຍອດຊຳລະ" : "Amount"}: <strong className="text-adv-slate">{total.toLocaleString()} {currency}</strong></span>
+              <span>{lang === "lo" ? "ລະຫັດອ້າງອີງ" : "Reference"}: <strong className="font-mono text-adv-slate">{paymentReference}</strong></span>
+            </div>
+          </div>
+        </section>
+      </motion.div>
+    );
+  }
 
   if (step === "success") {
     return (
