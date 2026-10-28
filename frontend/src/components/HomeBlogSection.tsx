@@ -42,10 +42,15 @@ export default function HomeBlogSection() {
   };
 
   useEffect(() => {
+    let cancelled = false;
     loadBlogs();
-    void fetchBlogs().catch((error) => {
-      console.warn('Could not load blog articles from the backend:', error);
-    });
+    void fetchBlogs()
+      .then((posts) => {
+        if (!cancelled) setBlogs(posts.filter((post) => post.isPublished));
+      })
+      .catch((error) => {
+        console.warn('Could not load blog articles from the backend:', error);
+      });
 
     const handleUpdate = () => {
       loadBlogs();
@@ -69,6 +74,7 @@ export default function HomeBlogSection() {
     window.addEventListener('storage', handleUpdate);
     window.addEventListener('hashchange', checkHash);
     return () => {
+      cancelled = true;
       window.removeEventListener('pasopkan_blogs_updated', handleUpdate);
       window.removeEventListener('storage', handleUpdate);
       window.removeEventListener('hashchange', checkHash);
