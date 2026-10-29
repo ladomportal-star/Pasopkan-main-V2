@@ -9,7 +9,10 @@ export async function listOrganizerAttendees(
   uid: string,
   query: OrganizerAttendeesQuery,
 ) {
-  const actor = await db.user.findUnique({ where: { authId: uid }, select: { id: true, role: true } });
+  const actor = await db.user.findUnique({
+    where: { authId: uid },
+    select: { id: true, role: true },
+  });
   const event = await db.event.findUnique({
     where: { id: eventId },
     select: { id: true, organizer: { select: { userId: true } } },
@@ -93,6 +96,6 @@ export async function listOrganizerAttendees(
       gate: checkIn?.gate ?? null,
     })),
     stats: { totalPaid, checkedIn, notCheckedIn: totalPaid - checkedIn },
-    nextCursor: hasMore ? page.at(-1)?.id ?? null : null,
+    nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
   };
 }

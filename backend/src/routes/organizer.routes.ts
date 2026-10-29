@@ -2,7 +2,10 @@ import { Router } from "express";
 import { requireAuth, requireRegisteredUser } from "../middlewares/auth.middleware.ts";
 import { validate } from "../middlewares/validate.middleware.ts";
 import { listOrganizerAttendees } from "../services/organizer.service.ts";
-import { organizerAttendeesParams, organizerAttendeesQuery } from "../validators/organizer.validator.ts";
+import {
+  organizerAttendeesParams,
+  organizerAttendeesQuery,
+} from "../validators/organizer.validator.ts";
 
 const router = Router();
 
