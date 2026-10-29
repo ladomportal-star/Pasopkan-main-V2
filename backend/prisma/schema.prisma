@@ -326,8 +326,10 @@ model EventStaff {
   id String @id @default(uuid()) @db.Uuid
   eventId String @db.Uuid
   event Event @relation(fields: [eventId], references: [id], onDelete: Restrict)
-  userId String @db.Uuid
-  user User @relation("AssignedStaff", fields: [userId], references: [id], onDelete: Restrict)
+  userId String? @db.Uuid
+  user User? @relation("AssignedStaff", fields: [userId], references: [id], onDelete: Restrict)
+  staffName String?
+  gateLabel String?
   assignedByUserId String @db.Uuid
   assignedBy User @relation("StaffGrantor", fields: [assignedByUserId], references: [id], onDelete: Restrict)
   assignedAt DateTime @default(now()) @db.Timestamptz(3)

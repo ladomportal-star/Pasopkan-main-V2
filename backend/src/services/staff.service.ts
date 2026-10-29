@@ -25,31 +25,141 @@ export async function listEventStaff(eventId: string, uid: string) {
   });
 }
 
-export async function assignEventStaff(eventId: string, email: string, uid: string) {
+export async function assignEventStaff(
+  eventId: string,
+  identifier: string,
+  gateLabel: string | undefined,
+  uid: string,
+) {
   return db.$transaction(async (tx) => {
     const actor = await managerFor(tx, eventId, uid);
+    const normalized = identifier.trim().replace(/\s+/g, " ");
+    const isEmail = normalized.includes("@");
+    const nameParts = normalized.split(" ");
+    const nameMatches = isEmail
+      ? []
+      : [
+          ...(nameParts.length === 1
+            ? [
+                { firstName: { equals: normalized, mode: "insensitive" as const } },
+                { lastName: { equals: normalized, mode: "insensitive" as const } },
+              ]
+            : []),
+          {
+            AND: [
+              { firstName: { equals: nameParts[0], mode: "insensitive" as const } },
+              {
+                lastName: {
+                  equals: nameParts.slice(1).join(" "),
+                  mode: "insensitive" as const,
+                },
+              },
+            ],
+          },
+        ];
     const matches = await tx.user.findMany({
-      where: { authEmail: { equals: email, mode: "insensitive" } },
+      where: {
+        deletedAt: null,
+        isSuspended: false,
+        ...(isEmail
+          ? { authEmail: { equals: normalized, mode: "insensitive" } }
+          : { OR: nameMatches }),
+      },
       take: 2,
     });
-    if (!matches.length)
-      throw new HttpError(404, "User must sign in before being assigned as staff");
+    if (!matches.length) {
+      if (isEmail) throw new HttpError(404, "No active Pasopkan account matches that email");
+      const duplicate = await tx.eventStaff.findFirst({
+        where: {
+          eventId,
+          userId: null,
+          revokedAt: null,
+          staffName: { equals: normalized, mode: "insensitive" },
+        },
+      });
+      if (duplicate)
+        throw new HttpError(409, "A staff entry with this name already exists for this event");
+      const pending = await tx.eventStaff.create({
+        data: {
+          eventId,
+          userId: null,
+          staffName: normalized,
+          gateLabel: gateLabel?.trim() || null,
+          assignedByUserId: actor.id,
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: actor.id,
+          action: "event.staff.pending_added",
+          entityType: "EventStaff",
+          entityId: pending.id,
+          metadata: { eventId, staffName: normalized },
+        },
+      });
+      return { ...pending, user: null };
+    }
     if (matches.length > 1)
-      throw new HttpError(409, "Email matches multiple accounts; contact an admin");
+      throw new HttpError(
+        409,
+        isEmail
+          ? "Email matches multiple accounts; contact an admin"
+          : "More than one account has that name. Use the email or phone-linked account details to identify the staff member.",
+      );
     const user = matches[0];
     const existing = await tx.eventStaff.findUnique({
       where: { eventId_userId: { eventId, userId: user.id } },
     });
     if (existing && !existing.revokedAt)
       throw new HttpError(409, "User is already assigned to this event");
-    const assignment = existing
-      ? await tx.eventStaff.update({
-          where: { id: existing.id },
-          data: { revokedAt: null, assignedAt: new Date(), assignedByUserId: actor.id },
-        })
-      : await tx.eventStaff.create({
-          data: { eventId, userId: user.id, assignedByUserId: actor.id },
+    const pendingByName = await tx.eventStaff.findFirst({
+      where: {
+        eventId,
+        userId: null,
+        revokedAt: null,
+        staffName: { equals: normalized, mode: "insensitive" },
+      },
+    });
+    let assignment: Awaited<ReturnType<typeof tx.eventStaff.update>>;
+    if (existing) {
+      assignment = await tx.eventStaff.update({
+        where: { id: existing.id },
+        data: {
+          revokedAt: null,
+          staffName: normalized,
+          gateLabel: gateLabel?.trim() || null,
+          assignedAt: new Date(),
+          assignedByUserId: actor.id,
+        },
+      });
+      if (pendingByName) {
+        await tx.eventStaff.update({
+          where: { id: pendingByName.id },
+          data: { revokedAt: new Date() },
         });
+      }
+    } else if (pendingByName) {
+      assignment = await tx.eventStaff.update({
+        where: { id: pendingByName.id },
+        data: {
+          userId: user.id,
+          staffName: normalized,
+          gateLabel: gateLabel?.trim() || pendingByName.gateLabel,
+          assignedByUserId: actor.id,
+          assignedAt: new Date(),
+        },
+      });
+    } else {
+      assignment = await tx.eventStaff.create({
+        data: {
+          eventId,
+          userId: user.id,
+          staffName: normalized,
+          gateLabel: gateLabel?.trim() || null,
+          assignedByUserId: actor.id,
+        },
+      });
+    }
     await tx.auditLog.create({
       data: {
         actorId: actor.id,
@@ -71,11 +181,11 @@ export async function assignEventStaff(eventId: string, email: string, uid: stri
   });
 }
 
-export async function revokeEventStaff(eventId: string, userId: string, uid: string) {
+export async function revokeEventStaff(eventId: string, staffRef: string, uid: string) {
   return db.$transaction(async (tx) => {
     const actor = await managerFor(tx, eventId, uid);
-    const assignment = await tx.eventStaff.findUnique({
-      where: { eventId_userId: { eventId, userId } },
+    const assignment = await tx.eventStaff.findFirst({
+      where: { eventId, OR: [{ id: staffRef }, { userId: staffRef }] },
     });
     if (!assignment || assignment.revokedAt)
       throw new HttpError(404, "Active staff assignment not found");
@@ -89,7 +199,7 @@ export async function revokeEventStaff(eventId: string, userId: string, uid: str
         action: "event.staff.revoked",
         entityType: "EventStaff",
         entityId: assignment.id,
-        metadata: { eventId, userId },
+        metadata: { eventId, userId: assignment.userId, staffName: assignment.staffName },
       },
     });
     return revoked;

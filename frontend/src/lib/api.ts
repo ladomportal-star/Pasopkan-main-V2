@@ -182,14 +182,16 @@ export interface OrganizerAnalyticsEvent {
 export interface EventStaffAssignment {
   id: string;
   eventId: string;
-  userId: string;
+  userId: string | null;
+  staffName: string | null;
+  gateLabel: string | null;
   assignedAt: string;
   user: {
     id: string;
     authEmail: string | null;
     firstName: string | null;
     lastName: string | null;
-  };
+  } | null;
 }
 
 function authToken(explicit?: string | null): string | null {
@@ -610,18 +612,18 @@ export const api = {
       opts,
     ),
 
-  assignEventStaff: (eventId: string, email: string, opts?: RequestOptions) =>
+  assignEventStaff: (eventId: string, identifier: string, opts?: RequestOptions, gateLabel?: string) =>
     request<{ staff: EventStaffAssignment }>(
       "POST",
       `/events/${encodeURIComponent(eventId)}/staff`,
-      { email },
+      { identifier, gateLabel },
       opts,
     ),
 
-  revokeEventStaff: (eventId: string, userId: string, opts?: RequestOptions) =>
+  revokeEventStaff: (eventId: string, assignmentId: string, opts?: RequestOptions) =>
     request<{ staff: EventStaffAssignment }>(
       "DELETE",
-      `/events/${encodeURIComponent(eventId)}/staff/${encodeURIComponent(userId)}`,
+      `/events/${encodeURIComponent(eventId)}/staff/${encodeURIComponent(assignmentId)}`,
       undefined,
       opts,
     ),

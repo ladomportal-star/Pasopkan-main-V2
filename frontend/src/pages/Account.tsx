@@ -171,13 +171,18 @@ const translations = {
     ticketDetails: "Ticket Verification Details",
     staffScannerLinks: "Staff QR Scanner Access Links",
     staffScannerDesc:
-      "Assign registered staff accounts by email and share dedicated scanner links for gate entry.",
+      "Add a staff name now. Scanner access activates after they create or sign into a Pasopkan account.",
     createStaffLink: "Assign Staff Scanner",
-    staffEmailLabel: "Staff Account Email",
-    staffEmailPlaceholder: "staff@example.com",
-    staffAccountHint: "Use the email of an existing Pasopkan account. The staff member must sign in at least once before you assign scanner access.",
-    staffEmailInvalid: "Enter a valid email address for an existing Pasopkan account.",
-    staffAccountMissing: "No Pasopkan account matches that email. The staff member must sign in once before being assigned.",
+    staffEmailLabel: "Staff Account Email or Name",
+    staffEmailPlaceholder: "Email or exact account name",
+    staffAccountHint: "Enter a name to add staff before they have an account. If they already have an account, an exact name or email activates scanner access now. Duplicate names require an email.",
+    staffEmailInvalid: "Enter a staff name or account email.",
+    staffAccountMissing: "No active account matches this email. Try the staff member’s name to add them before registration.",
+    staffAccountAmbiguous: "More than one account has that name. Use the staff member’s account email.",
+    staffAlreadyAssigned: "This person already has scanner access for this event.",
+    staffAlreadyAdded: "This staff name has already been added to this event.",
+    staffAddedPending: "Staff name added. They can scan after creating/signing into a Pasopkan account and being activated with the same name.",
+    staffPending: "Account setup needed before scanning",
     staffNameLabel: "Gate / Label (Optional)",
     staffNamePlaceholder: "e.g., Gate 1 - Main Entrance",
     generateLink: "Assign & Copy Link",
@@ -246,13 +251,18 @@ const translations = {
     ticketDetails: "ລາຍລະອຽດການຢືນຢັນປີ້",
     staffScannerLinks: "ລິ້ງສະແກນປີ້ QR ສຳລັບພະນັກງານ",
     staffScannerDesc:
-      "ເພີ່ມອີເມວບັນຊີພະນັກງານປະຕູ ເພື່ອສ້າງລິ້ງສະແກນ QR code ແລະ ກວດສອບລາຍລະອຽດຜູ້ເຂົ້າຮ່ວມໃນອຸປະກອນຂອງເຂົາເຈົ້າ.",
+      "ເພີ່ມຊື່ພະນັກງານໄດ້ທັນທີ. ສິດສະແກນຈະເປີດໃຊ້ຫຼັງຈາກພະນັກງານສ້າງ ຫຼື ເຂົ້າບັນຊີ Pasopkan.",
     createStaffLink: "ເພີ່ມພະນັກງານສະແກນປີ້",
-    staffEmailLabel: "ອີເມວບັນຊີພະນັກງານ",
-    staffEmailPlaceholder: "staff@example.com",
-    staffAccountHint: "ໃສ່ອີເມວບັນຊີ Pasopkan ທີ່ມີຢູ່ແລ້ວ. ພະນັກງານຕ້ອງເຂົ້າລະບົບຢ່າງໜ້ອຍ 1 ຄັ້ງ ກ່ອນຈຶ່ງຈະກຳນົດສິດສະແກນໄດ້.",
-    staffEmailInvalid: "ກະລຸນາໃສ່ອີເມວທີ່ຖືກຕ້ອງຂອງບັນຊີ Pasopkan ທີ່ມີຢູ່ແລ້ວ.",
-    staffAccountMissing: "ບໍ່ພົບບັນຊີ Pasopkan ທີ່ກົງກັບອີເມວນີ້. ໃຫ້ພະນັກງານເຂົ້າລະບົບກ່ອນ 1 ຄັ້ງ ຈຶ່ງຈະກຳນົດສິດໄດ້.",
+    staffEmailLabel: "ອີເມວ ຫຼື ຊື່ບັນຊີພະນັກງານ",
+    staffEmailPlaceholder: "ອີເມວ ຫຼື ຊື່ບັນຊີ",
+    staffAccountHint: "ພິມຊື່ເພື່ອເພີ່ມພະນັກງານກ່ອນມີບັນຊີໄດ້. ຖ້າມີບັນຊີແລ້ວ ໃຊ້ຊື່ທີ່ກົງກັນ ຫຼື ອີເມວເພື່ອເປີດສິດສະແກນທັນທີ. ຖ້າຊື່ຊ້ຳກັນໃຫ້ໃຊ້ອີເມວ.",
+    staffEmailInvalid: "ກະລຸນາໃສ່ຊື່ພະນັກງານ ຫຼື ອີເມວບັນຊີ.",
+    staffAccountMissing: "ບໍ່ພົບບັນຊີຕາມອີເມວນີ້. ລອງໃສ່ຊື່ພະນັກງານເພື່ອເພີ່ມກ່ອນລົງທະບຽນ.",
+    staffAccountAmbiguous: "ພົບຫຼາຍກວ່າ 1 ບັນຊີທີ່ໃຊ້ຊື່ນີ້. ກະລຸນາໃຊ້ອີເມວຂອງພະນັກງານ.",
+    staffAlreadyAssigned: "ພະນັກງານຄົນນີ້ມີສິດສະແກນໃນ Event ນີ້ແລ້ວ.",
+    staffAlreadyAdded: "ຊື່ພະນັກງານນີ້ຖືກເພີ່ມໃນ Event ແລ້ວ.",
+    staffAddedPending: "ເພີ່ມຊື່ພະນັກງານແລ້ວ. ພະນັກງານຈະສະແກນໄດ້ຫຼັງສ້າງ/ເຂົ້າບັນຊີ Pasopkan ແລະເປີດສິດດ້ວຍຊື່ເດີມ.",
+    staffPending: "ຕ້ອງຕັ້ງຄ່າບັນຊີກ່ອນສະແກນ",
     staffNameLabel: "ຊື່ປະຕູ / ຈຸດສະແກນ (ຖ້າມີ)",
     staffNamePlaceholder: "ເຊັ່ນ: ປະຕູ 1 - ທາງເຂົ້າຫຼັກ",
     generateLink: "ເພີ່ມພະນັກງານ & ຄັດລອກລິ້ງ",
@@ -399,7 +409,7 @@ export default function Account() {
     [],
   );
   const [showCreateStaffModal, setShowCreateStaffModal] = useState(false);
-  const [newStaffEmail, setNewStaffEmail] = useState("");
+  const [newStaffIdentifier, setNewStaffIdentifier] = useState("");
   const [staffFormError, setStaffFormError] = useState("");
   const [newStaffGateLabel, setNewStaffGateLabel] = useState("");
   const [isAssigningStaff, setIsAssigningStaff] = useState(false);
@@ -774,46 +784,68 @@ export default function Account() {
   };
 
   const handleAssignStaff = async () => {
-    const email = newStaffEmail.trim();
+    const identifier = newStaffIdentifier.trim();
     if (!selectedEventId || isAssigningStaff) return;
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!identifier) {
       setStaffFormError(t.staffEmailInvalid);
       return;
     }
     setStaffFormError("");
     setIsAssigningStaff(true);
     try {
-      const res = await api.assignEventStaff(selectedEventId, email, { token });
+      const res = await api.assignEventStaff(
+        selectedEventId,
+        identifier,
+        { token },
+        newStaffGateLabel.trim() || undefined,
+      );
       if (!res.ok || !res.data?.staff) {
-        if (res.error === "Validation failed") {
-          setStaffFormError(t.staffEmailInvalid);
-          return;
-        }
-        addToast(
-          (res.status === 404 ? t.staffAccountMissing : res.error) ||
-            (lang === "lo"
-              ? "ບໍ່ສາມາດເພີ່ມພະນັກງານໄດ້"
-              : "Could not assign staff"),
-          "error",
+        setStaffFormError(
+          res.status === 404
+            ? t.staffAccountMissing
+            : res.status === 409
+              ? res.error?.startsWith("More than one account")
+                ? t.staffAccountAmbiguous
+                : res.error?.startsWith("A staff entry")
+                  ? t.staffAlreadyAdded
+                : t.staffAlreadyAssigned
+              : res.status === 400
+                ? t.staffEmailInvalid
+                : (res.error || (lang === "lo" ? "ບໍ່ສາມາດເພີ່ມພະນັກງານໄດ້" : "Could not assign staff")),
         );
         return;
       }
       const staffUser = res.data.staff.user;
+      if (!staffUser) {
+        addToast(t.staffAddedPending, "success");
+        setNewStaffIdentifier("");
+        setNewStaffGateLabel("");
+        setStaffFormError("");
+        setShowCreateStaffModal(false);
+        await refreshEventStaff(selectedEventId);
+        return;
+      }
       const displayName =
-        newStaffGateLabel.trim() ||
+        res.data.staff.gateLabel ||
         [staffUser.firstName, staffUser.lastName].filter(Boolean).join(" ") ||
         staffUser.authEmail ||
-        email;
+        identifier;
       const url = buildStaffScannerUrl(displayName);
       try {
         await navigator.clipboard.writeText(url);
       } catch {}
       addToast(t.linkCopied, "success");
-      setNewStaffEmail("");
+      setNewStaffIdentifier("");
       setNewStaffGateLabel("");
       setStaffFormError("");
       setShowCreateStaffModal(false);
       await refreshEventStaff(selectedEventId);
+    } catch (error) {
+      setStaffFormError(
+        error instanceof Error
+          ? error.message
+          : (lang === "lo" ? "ບໍ່ສາມາດເພີ່ມພະນັກງານໄດ້" : "Could not assign staff"),
+      );
     } finally {
       setIsAssigningStaff(false);
     }
@@ -1772,17 +1804,12 @@ export default function Account() {
                         </div>
                       ) : (
                         eventStaffList.map((staffItem) => {
-                          const staffDisplayName =
-                            [
-                              staffItem.user.firstName,
-                              staffItem.user.lastName,
-                            ]
-                              .filter(Boolean)
-                              .join(" ") ||
-                            staffItem.user.authEmail ||
-                            "Gate Staff";
+                          const accountName = staffItem.user
+                            ? [staffItem.user.firstName, staffItem.user.lastName].filter(Boolean).join(" ") || staffItem.user.authEmail
+                            : null;
+                          const staffDisplayName = staffItem.staffName || accountName || "Gate Staff";
                           const staffUrl =
-                            buildStaffScannerUrl(staffDisplayName);
+                            buildStaffScannerUrl(staffItem.gateLabel || staffDisplayName);
                           const assignedDateStr = staffItem.assignedAt
                             ? new Date(
                                 staffItem.assignedAt,
@@ -1806,7 +1833,13 @@ export default function Account() {
                                 <span className="text-xs sm:text-sm font-black truncate">
                                   {staffDisplayName}
                                 </span>
-                                {staffItem.user.authEmail &&
+                                {staffItem.gateLabel && (
+                                  <span className="text-[11px] text-gray-400 truncate">
+                                    · {staffItem.gateLabel}
+                                  </span>
+                                )}
+                                {!staffItem.user && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">{t.staffPending}</span>}
+                                {staffItem.user?.authEmail &&
                                   staffDisplayName !==
                                     staffItem.user.authEmail && (
                                     <span className="text-[11px] text-gray-400 truncate">
@@ -1823,6 +1856,7 @@ export default function Account() {
                               </div>
 
                               <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                                {staffItem.user && <>
                                 <button
                                   type="button"
                                   onClick={() => handleCopyStaffLink(staffUrl)}
@@ -1866,11 +1900,12 @@ export default function Account() {
                                 >
                                   <ExternalLink className="w-3.5 h-3.5" />
                                 </a>
+                                </>}
 
                                 <button
                                   type="button"
                                   onClick={() =>
-                                    void handleRevokeStaff(staffItem.userId)
+                                    void handleRevokeStaff(staffItem.id)
                                   }
                                   title={t.revoke}
                                   className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 text-xs font-bold transition-all cursor-pointer"
@@ -3260,16 +3295,16 @@ export default function Account() {
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-zinc-400 mb-1.5">
                     {lang === "lo"
-                      ? "ອີເມວບັນຊີພະນັກງານ *"
-                      : "Staff Account Email *"}
+                      ? "ອີເມວ ຫຼື ຊື່ບັນຊີພະນັກງານ *"
+                      : "Staff Account Email or Name *"}
                   </label>
                   <input
-                    type="email"
-                    autoComplete="email"
+                    type="text"
+                    autoComplete="username"
                     required
-                    value={newStaffEmail}
+                    value={newStaffIdentifier}
                     onChange={(e) => {
-                      setNewStaffEmail(e.target.value);
+                      setNewStaffIdentifier(e.target.value);
                       if (staffFormError) setStaffFormError("");
                     }}
                     placeholder={t.staffEmailPlaceholder}
@@ -3305,7 +3340,7 @@ export default function Account() {
                 <button
                   type="button"
                   onClick={() => void handleAssignStaff()}
-                  disabled={!newStaffEmail.trim() || isAssigningStaff}
+                  disabled={!newStaffIdentifier.trim() || isAssigningStaff}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-adv-orange hover:bg-orange-600 disabled:opacity-40 text-white text-sm font-bold cursor-pointer"
                 >
                   {isAssigningStaff && (
