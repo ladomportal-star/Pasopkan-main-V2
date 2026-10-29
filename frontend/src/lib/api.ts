@@ -239,6 +239,43 @@ export const api = {
       opts,
     ),
 
+  listOrganizerAttendees: (
+    eventId: string,
+    query?: { q?: string; limit?: number; cursor?: string },
+    opts?: RequestOptions,
+  ) => {
+    const params = new URLSearchParams();
+    if (query?.q) params.set("q", query.q);
+    if (query?.limit) params.set("limit", String(query.limit));
+    if (query?.cursor) params.set("cursor", query.cursor);
+    const qs = params.toString();
+    return request<{
+      attendees: {
+        id: string;
+        ticketCode: string;
+        tierName: string;
+        unitPriceKip: number;
+        status: "valid" | "checked_in";
+        attendeeName: string | null;
+        attendeeEmail: string | null;
+        attendeePhone: string | null;
+        selectedDate: string | null;
+        selectedTime: string | null;
+        paidAt: string | null;
+        checkedInAt: string | null;
+        gate: string | null;
+        orderNumber: string;
+      }[];
+      stats: { totalPaid: number; checkedIn: number; notCheckedIn: number };
+      nextCursor: string | null;
+    }>(
+      "GET",
+      `/organizer/events/${encodeURIComponent(eventId)}/attendees${qs ? `?${qs}` : ""}`,
+      undefined,
+      opts,
+    );
+  },
+
   createEvent: (event: Record<string, unknown>, opts?: RequestOptions) =>
     request<{
       event: Record<string, unknown>;

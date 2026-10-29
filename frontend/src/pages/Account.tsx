@@ -317,6 +317,13 @@ export default function Account() {
   const [eventsLoadError, setEventsLoadError] = useState(false);
   const [organizerAccessUid, setOrganizerAccessUid] = useState<string | null>(null);
   const organizerAccess = Boolean(user?.id && organizerAccessUid === user.id);
+  type AttendeeData = NonNullable<Awaited<ReturnType<typeof api.listOrganizerAttendees>>["data"]>;
+  const [attendeeData, setAttendeeData] = useState<AttendeeData | null>(null);
+  const [attendeeSearch, setAttendeeSearch] = useState("");
+  const [attendeeCursor, setAttendeeCursor] = useState<string | null>(null);
+  const [attendeesLoading, setAttendeesLoading] = useState(false);
+  const [attendeesLoadingMore, setAttendeesLoadingMore] = useState(false);
+  const [attendeesLoadError, setAttendeesLoadError] = useState(false);
   const eventOwnerRef = useRef(user?.id);
   eventOwnerRef.current = user?.id;
   // A placeholder so `selectedEvent` is never undefined — while events are
@@ -386,6 +393,57 @@ export default function Account() {
       cancelled = true;
     };
   }, [user?.id, token]);
+
+  useEffect(() => {
+    setAttendeeData(null);
+    setAttendeeCursor(null);
+    setAttendeesLoadError(false);
+    if (!organizerAccess || !selectedEventId || !token) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setAttendeesLoading(true);
+      api.listOrganizerAttendees(
+        selectedEventId,
+        { q: attendeeSearch.trim() || undefined, limit: 50 },
+        { token, throwOnError: true, signal: controller.signal },
+      ).then((result) => {
+        if (controller.signal.aborted) return;
+        setAttendeeData(result.data);
+        setAttendeeCursor(result.data?.nextCursor ?? null);
+      }).catch(() => {
+        if (!controller.signal.aborted) setAttendeesLoadError(true);
+      }).finally(() => {
+        if (!controller.signal.aborted) setAttendeesLoading(false);
+      });
+    }, 200);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [organizerAccess, selectedEventId, attendeeSearch, token]);
+
+  const loadMoreAttendees = async () => {
+    if (!attendeeCursor || attendeesLoadingMore || !selectedEventId) return;
+    setAttendeesLoadingMore(true);
+    try {
+      const result = await api.listOrganizerAttendees(
+        selectedEventId,
+        { q: attendeeSearch.trim() || undefined, limit: 50, cursor: attendeeCursor },
+        { token, throwOnError: true },
+      );
+      if (result.data) {
+        setAttendeeData((current) => current ? {
+          ...result.data!,
+          attendees: [...current.attendees, ...result.data!.attendees],
+        } : result.data);
+        setAttendeeCursor(result.data.nextCursor);
+      }
+    } catch {
+      setAttendeesLoadError(true);
+    } finally {
+      setAttendeesLoadingMore(false);
+    }
+  };
 
   const [showScanner, setShowScanner] = useState(false);
   const [isLookingUpTicket, setIsLookingUpTicket] = useState(false);
@@ -1066,16 +1124,8 @@ export default function Account() {
                 lang={lang}
               />
 
-              {selectedEvent.dateType === "booking" ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-100">
-                  {lang === "lo"
-                    ? "ການຈັດການວັນຈອງ ແລະລາຍຊື່ຜູ້ຮ່ວມຍັງບໍ່ພ້ອມ ຈົນກວ່າຈະເຊື່ອມກັບ backend API. ໃຊ້ປຸ່ມສະແກນປີ້ດ້ານເທິງເພື່ອກວດປີ້ຈິງ."
-                    : "Booking-day and attendee management is unavailable until it is connected to the backend API. Use the scanner above to verify real tickets."}
-                </div>
-              ) : (
-                <>
                   {/* Seating Map (Only visible if event has one) */}
-                  {(selectedEvent.hasSeating === true ||
+                  {selectedEvent.dateType !== "booking" && (selectedEvent.hasSeating === true ||
                     String(selectedEvent.hasSeating) === "true") && (
                     <div
                       className={`rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-8 shadow-sm border transition-all ${
@@ -1127,13 +1177,36 @@ export default function Account() {
                     </div>
                   )}
 
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-100">
-                    {lang === "lo"
-                      ? "ລາຍຊື່ຜູ້ຊື້ປີ້ ແລະສະຖິຕິຕ້ອງອ່ານຈາກ backend ເທົ່ານັ້ນ; ຈະສະແດງເມື່ອມີ API ສຳລັບ organizer."
-                      : "The buyer directory and analytics require an organizer-scoped backend API. They are hidden until that API is available."}
-                  </div>
-                </>
-              )}
+                  <section className={`overflow-hidden rounded-3xl border shadow-sm ${theme === "dark" ? "border-zinc-800 bg-zinc-900 text-white" : "border-gray-100 bg-white text-adv-slate"}`}>
+                    <div className="flex flex-col gap-4 border-b border-gray-100 p-5 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                      <div>
+                        <h4 className="flex items-center gap-2 text-base font-bold sm:text-lg"><Users className="h-5 w-5 text-adv-orange" />{lang === "lo" ? "ລາຍຊື່ຜູ້ຊື້ປີ້" : "Ticket attendees"}</h4>
+                        <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">{lang === "lo" ? "ລາຍຊື່ນີ້ດຶງຈາກລາຍການຊຳລະຈິງຂອງ Event." : "Attendees are loaded from this event’s confirmed backend orders."}</p>
+                      </div>
+                      <div className="relative w-full sm:max-w-xs">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <input value={attendeeSearch} onChange={(e) => setAttendeeSearch(e.target.value)} placeholder={lang === "lo" ? "ຄົ້ນຫາຊື່, ອີເມວ, ລະຫັດປີ້..." : "Search name, email or ticket..."} className={`w-full rounded-xl border py-2.5 pl-9 pr-3 text-sm outline-none focus:border-adv-orange ${theme === "dark" ? "border-zinc-700 bg-zinc-950 text-white" : "border-gray-200 bg-gray-50 text-adv-slate"}`} />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 border-b border-gray-100 p-5 dark:border-zinc-800 sm:grid-cols-3 sm:p-6">
+                      {[
+                        { label: lang === "lo" ? "ປີ້ຊຳລະແລ້ວ" : "Paid tickets", value: attendeeData?.stats.totalPaid ?? 0, icon: Ticket, color: "text-adv-orange bg-orange-50 dark:bg-orange-950/30" },
+                        { label: lang === "lo" ? "ເຊັກອິນແລ້ວ" : "Checked in", value: attendeeData?.stats.checkedIn ?? 0, icon: UserCheck, color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" },
+                        { label: lang === "lo" ? "ລໍຖ້າເຂົ້າງານ" : "Not checked in", value: attendeeData?.stats.notCheckedIn ?? 0, icon: Clock, color: "text-blue-600 bg-blue-50 dark:bg-blue-950/30" },
+                      ].map(({ label, value, icon: Icon, color }) => <div key={label} className={`flex items-center gap-3 rounded-2xl border p-3.5 ${theme === "dark" ? "border-zinc-800 bg-zinc-950/50" : "border-gray-100 bg-gray-50/70"}`}><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${color}`}><Icon className="h-5 w-5" /></span><div><div className="text-xl font-black leading-none">{value.toLocaleString()}</div><div className="mt-1 text-xs text-gray-500 dark:text-zinc-400">{label}</div></div></div>)}
+                    </div>
+
+                    {attendeesLoadError && <div role="alert" className="m-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">{lang === "lo" ? "ໂຫຼດລາຍຊື່ຈາກ Backend ບໍ່ສຳເລັດ. ກະລຸນາລອງໃໝ່." : "Could not load attendees from the backend. Please try again."}</div>}
+                    {attendeesLoading ? <div className="flex items-center justify-center gap-2 p-10 text-sm text-gray-500"><Loader2 className="h-4 w-4 animate-spin" />{lang === "lo" ? "ກຳລັງໂຫຼດ..." : "Loading attendees..."}</div> : attendeeData?.attendees.length ? <div className="divide-y divide-gray-100 dark:divide-zinc-800">
+                      {attendeeData.attendees.map((attendee) => <div key={attendee.id} className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_auto] sm:items-center sm:px-6">
+                        <div className="min-w-0"><div className="truncate text-sm font-bold">{attendee.attendeeName || (lang === "lo" ? "ບໍ່ມີຊື່" : "Name not provided")}</div><div className="mt-1 truncate text-xs text-gray-500 dark:text-zinc-400">{attendee.attendeeEmail || attendee.attendeePhone || "—"}</div></div>
+                        <div className="min-w-0 text-xs"><div className="truncate font-semibold">{attendee.tierName} <span className="font-normal text-gray-500">· {attendee.unitPriceKip.toLocaleString()} ₭</span></div><div className="mt-1 truncate text-gray-500 dark:text-zinc-400">{attendee.selectedDate ? `${formatEventDateDDMMYYYY(attendee.selectedDate)}${attendee.selectedTime ? ` · ${attendee.selectedTime}` : ""}` : attendee.orderNumber}</div></div>
+                        <span className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${attendee.status === "checked_in" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"}`}><span className="h-1.5 w-1.5 rounded-full bg-current" />{attendee.status === "checked_in" ? (lang === "lo" ? "ເຂົ້າງານແລ້ວ" : "Checked in") : (lang === "lo" ? "ປີ້ໃຊ້ໄດ້" : "Valid ticket")}</span>
+                      </div>)}
+                    </div> : <div className="p-10 text-center"><div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-50 text-gray-400 dark:bg-zinc-800"><Users className="h-6 w-6" /></div><p className="text-sm font-semibold">{lang === "lo" ? "ຍັງບໍ່ມີປີ້ທີ່ຊຳລະສຳເລັດ" : "No paid attendees yet"}</p><p className="mt-1 text-xs text-gray-500">{lang === "lo" ? "ລາຍຊື່ຈະປາກົດຫຼັງຈາກລາຍການຊຳລະຖືກຢືນຢັນ." : "Confirmed ticket purchases will appear here."}</p></div>}
+                    {attendeeCursor && <div className="border-t border-gray-100 p-4 text-center dark:border-zinc-800"><button type="button" onClick={loadMoreAttendees} disabled={attendeesLoadingMore} className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-bold hover:bg-gray-50 disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-800">{attendeesLoadingMore ? (lang === "lo" ? "ກຳລັງໂຫຼດ..." : "Loading...") : (lang === "lo" ? "ໂຫຼດເພີ່ມ" : "Load more")}</button></div>}
+                  </section>
             </div>
           )}
         </div>}

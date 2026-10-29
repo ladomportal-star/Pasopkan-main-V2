@@ -14,6 +14,7 @@ import payoutRoutes from "./payout.routes.ts";
 import staffRoutes from "./staff.routes.ts";
 import eventSubmissionOtpRoutes from "./event-submission-otp.routes.ts";
 import organizerTermsRoutes from "./organizer-terms.routes.ts";
+import organizerRoutes from "./organizer.routes.ts";
 import { requireAuth, requireRegisteredUser } from "../middlewares/auth.middleware.ts";
 
 const apiRouter = Router();
@@ -52,5 +53,6 @@ apiRouter.use(payoutRoutes);
 apiRouter.use(staffRoutes);
 apiRouter.use(eventSubmissionOtpRoutes);
 apiRouter.use(organizerTermsRoutes);
+apiRouter.use(organizerRoutes);
 
 export default apiRouter;
