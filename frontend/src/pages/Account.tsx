@@ -102,6 +102,24 @@ const LazyScanner = React.lazy(
       }>,
 );
 
+async function copyToClipboard(value: string) {
+  try {
+    await navigator.clipboard.writeText(value);
+    return;
+  } catch {
+    const input = document.createElement("textarea");
+    input.value = value;
+    input.setAttribute("readonly", "");
+    input.style.position = "fixed";
+    input.style.opacity = "0";
+    document.body.appendChild(input);
+    input.select();
+    const copied = document.execCommand("copy");
+    input.remove();
+    if (!copied) throw new Error("Clipboard access was denied");
+  }
+}
+
 const LAO_BANKS = [
   { id: "bcel", name: "BCEL Bank", label: "BCEL One", logo: "/BCEL.png" },
   { id: "jdb", name: "JDB Bank", label: "JDB", logo: "/JDB.png" },
@@ -831,10 +849,21 @@ export default function Account() {
         staffUser.authEmail ||
         identifier;
       const url = buildStaffScannerUrl(displayName);
+      let copied = false;
       try {
-        await navigator.clipboard.writeText(url);
-      } catch {}
-      addToast(t.linkCopied, "success");
+        await copyToClipboard(url);
+        copied = true;
+      } catch {
+        // Keep the assignment even when the browser blocks clipboard access.
+      }
+      addToast(
+        copied
+          ? t.linkCopied
+          : lang === "lo"
+            ? "ເພີ່ມສິດແລ້ວ ແຕ່ຄັດລອກລິ້ງບໍ່ສຳເລັດ. ກົດປຸ່ມຄັດລອກອີກຄັ້ງ."
+            : "Staff assigned, but the link could not be copied. Use the Copy Link button.",
+        copied ? "success" : "warning",
+      );
       setNewStaffIdentifier("");
       setNewStaffGateLabel("");
       setStaffFormError("");
@@ -851,11 +880,18 @@ export default function Account() {
     }
   };
 
-  const handleCopyStaffLink = (url: string) => {
+  const handleCopyStaffLink = async (url: string) => {
     try {
-      void navigator.clipboard.writeText(url);
-    } catch {}
-    addToast(t.linkCopied, "success");
+      await copyToClipboard(url);
+      addToast(t.linkCopied, "success");
+    } catch {
+      addToast(
+        lang === "lo"
+          ? "ຄັດລອກລິ້ງບໍ່ສຳເລັດ. ກະລຸນາລອງໃໝ່."
+          : "Could not copy the link. Please try again.",
+        "error",
+      );
+    }
   };
 
   const handleRevokeStaff = async (userId: string) => {
@@ -1859,9 +1895,10 @@ export default function Account() {
                                 {staffItem.user && <>
                                 <button
                                   type="button"
-                                  onClick={() => handleCopyStaffLink(staffUrl)}
+                                  onClick={() => void handleCopyStaffLink(staffUrl)}
+                                  aria-label={t.copyLink}
                                   title={t.copyLink}
-                                  className={`px-2 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                                  className={`min-h-10 min-w-10 px-2 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
                                     theme === "dark"
                                       ? "bg-zinc-800 border-zinc-700 text-zinc-300 hover:text-white"
                                       : "bg-white border-gray-200 text-gray-700 hover:text-adv-slate"
@@ -1881,8 +1918,9 @@ export default function Account() {
                                       url: staffUrl,
                                     })
                                   }
+                                  aria-label={t.showQrCode}
                                   title={t.showQrCode}
-                                  className={`p-1.5 rounded-lg border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                                  className={`h-10 w-10 shrink-0 rounded-lg border text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
                                     theme === "dark"
                                       ? "bg-zinc-800 border-zinc-700 text-zinc-300 hover:text-white"
                                       : "bg-white border-gray-200 text-gray-700 hover:text-adv-slate"
@@ -1895,8 +1933,9 @@ export default function Account() {
                                   href={staffUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
+                                  aria-label={t.openScanner}
                                   title={t.openScanner}
-                                  className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 text-xs font-bold transition-all flex items-center gap-1"
+                                  className="h-10 w-10 shrink-0 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
                                 >
                                   <ExternalLink className="w-3.5 h-3.5" />
                                 </a>
@@ -1908,7 +1947,7 @@ export default function Account() {
                                     void handleRevokeStaff(staffItem.id)
                                   }
                                   title={t.revoke}
-                                  className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 text-xs font-bold transition-all cursor-pointer"
+                                  className="h-10 w-10 shrink-0 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 text-xs font-bold transition-all flex items-center justify-center cursor-pointer"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -3392,7 +3431,8 @@ export default function Account() {
               <div className="flex gap-2.5 pt-2">
                 <button
                   type="button"
-                  onClick={() => handleCopyStaffLink(activeStaffQrModal.url)}
+                  onClick={() => void handleCopyStaffLink(activeStaffQrModal.url)}
+                  aria-label={t.copyLink}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-gray-200 dark:border-zinc-700 text-xs font-bold text-adv-slate dark:text-white cursor-pointer"
                 >
                   <Copy className="w-3.5 h-3.5" />
@@ -3402,6 +3442,7 @@ export default function Account() {
                   href={activeStaffQrModal.url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label={t.openScanner}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-adv-orange hover:bg-orange-600 text-white text-xs font-bold"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
