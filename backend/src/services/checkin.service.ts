@@ -25,8 +25,12 @@ function checkinApi(row: any, item: any) {
     ...fields,
     ticketCode: item.ticketCode,
     eventId: item.order.eventId,
-    attendeeName: item.attendeeName,
+    attendeeName: item.attendeeName ?? item.order.buyerName,
+    attendeeEmail: item.attendeeEmail ?? item.order.buyerEmail ?? null,
+    attendeePhone: item.attendeePhone ?? item.order.buyerPhone ?? null,
     ticketType: item.tierName,
+    unitPriceKip: item.unitPriceKip ?? 0,
+    customAnswers: item.customAnswers ?? null,
     checkedInBy: staff?.email ?? staff?.authId,
   };
 }
@@ -82,11 +86,13 @@ export async function lookupTicket(ticketCode: string, uid: string) {
     orderCreatedAt: item.order.createdAt,
     tierName: item.tierName,
     unitPriceKip: item.unitPriceKip,
-    attendeeName: item.attendeeName,
-    attendeeEmail: item.attendeeEmail,
-    attendeePhone: item.attendeePhone,
+    attendeeName: item.attendeeName ?? item.order.buyerName,
+    attendeeEmail: item.attendeeEmail ?? item.order.buyerEmail ?? null,
+    attendeePhone: item.attendeePhone ?? item.order.buyerPhone ?? null,
     customAnswers: item.customAnswers,
     alreadyCheckedIn: !!item.checkIn,
     checkedInAt: item.checkIn?.checkedInAt ?? null,
+    checkedInBy: item.checkIn?.staff?.email ?? item.checkIn?.staff?.authId ?? null,
+    gate: item.checkIn?.gate ?? null,
   };
 }

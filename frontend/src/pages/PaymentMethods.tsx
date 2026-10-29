@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -23,6 +23,7 @@ import {
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { useLanguage } from '../context/LanguageContext';
+import { api } from '../lib/api';
 import SEO from '../components/SEO';
 
 const translations = {
@@ -157,9 +158,45 @@ export default function PaymentMethods() {
   const [isHoldActive, setIsHoldActive] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   // Payout history and bank-account storage are not implemented server-side.
-  const [payouts] = useState<any[]>([]);
+  const [payouts, setPayouts] = useState<any[]>([]);
 
-  const [bankAccount] = useState<BankAccount | null>(null);
+  const [bankAccount, setBankAccount] = useState<BankAccount | null>(null);
+
+  const loadPayoutData = useCallback(async () => {
+    const res = await api.getOrganizerPayouts();
+    if (!res.ok || !res.data) return;
+    if (res.data.bankAccount) {
+      setBankAccount({
+        bankName: res.data.bankAccount.bankName,
+        accountName: res.data.bankAccount.accountName,
+        accountNumber: res.data.bankAccount.accountNumber,
+      });
+      setFormData({
+        bankName: res.data.bankAccount.bankName,
+        accountName: res.data.bankAccount.accountName,
+        accountNumber: res.data.bankAccount.accountNumber,
+      });
+    } else {
+      setBankAccount(null);
+    }
+    setPayouts(
+      res.data.payouts.map((p) => ({
+        id: `PO-${p.eventId.slice(0, 6).toUpperCase()}`,
+        eventId: p.eventId,
+        date: (p.paidAt || p.eventDate || '').slice(0, 10) || '-',
+        event: p.eventTitle,
+        amount: p.payoutKip,
+        status: p.status === 'paid' ? 'Completed' : 'Processing',
+        account: p.bankName
+          ? `${p.bankName} (...${(p.accountNumber || '').slice(-4)})`
+          : '-',
+      })),
+    );
+  }, []);
+
+  useEffect(() => {
+    void loadPayoutData();
+  }, [loadPayoutData]);
 
   // Form state
   const [formData, setFormData] = useState<BankAccount>({
@@ -168,7 +205,32 @@ export default function PaymentMethods() {
     accountNumber: ''
   });
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const hadPreviousAccount = Boolean(bankAccount);
+    const res = await api.updateOrganizerBankDetails({
+      bankName: formData.bankName.trim(),
+      accountHolder: formData.accountName.trim(),
+      accountNumber: formData.accountNumber.trim(),
+    });
+    if (!res.ok || !res.data) {
+      setToastMessage(res.error || (lang === 'lo' ? 'ບໍ່ສາມາດບັນທຶກບັນຊີທະນາຄານໄດ້' : 'Failed to save bank details'));
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 5000);
+      return;
+    }
+    setBankAccount({
+      bankName: res.data.bankAccount.bankName,
+      accountName: res.data.bankAccount.accountName,
+      accountNumber: res.data.bankAccount.accountNumber,
+    });
+    setIsEditing(false);
+    if (hadPreviousAccount) setIsHoldActive(true);
+    triggerSuccess(t.changesSaved);
+    void loadPayoutData();
+  };
+
+  const _unusedOldSave = (e: React.FormEvent) => {
     e.preventDefault();
     setToastMessage(lang === 'lo'
       ? 'ຍັງບໍ່ສາມາດບັນທຶກບັນຊີຮັບເງິນໄດ້: backend payout ຍັງບໍ່ພ້ອມ.'

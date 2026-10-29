@@ -351,6 +351,15 @@ export async function getEvent(ref: string, uid?: string) {
     !!actor &&
     (actor.role === "admin" || (actor.role === "organizer" && event.organizer.userId === actor.id));
   if (ownsEvent) return db.event.findUnique({ where: { id: event.id }, include: ownerInclude });
+  if (actor) {
+    const staffAssignment = await db.eventStaff.findUnique({
+      where: { eventId_userId: { eventId: event.id, userId: actor.id } },
+      select: { revokedAt: true },
+    });
+    if (staffAssignment && !staffAssignment.revokedAt) {
+      return publicRegistration(event);
+    }
+  }
   if (
     event.eventPrivacy !== "public" ||
     !(publicStates as readonly string[]).includes(event.status)

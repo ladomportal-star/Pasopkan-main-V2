@@ -1,8 +1,8 @@
-import { EventData } from "../types";
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import { BankAccountInfo } from "../types";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import * as XLSX from "xlsx";
 import {
   User,
-  Settings,
   CreditCard,
   Bell,
   Shield,
@@ -22,7 +22,6 @@ import {
   AlertTriangle,
   Loader2,
   Image as ImageIcon,
-  Ticket,
   Download,
   Link2,
   Copy,
@@ -36,7 +35,6 @@ import {
   ChevronDown,
   DollarSign,
   Info,
-  Smartphone,
   Lock,
   Search,
   Phone,
@@ -44,28 +42,24 @@ import {
   FileText,
   Users,
   Eye,
-  Filter,
-  PieChart,
-  Sparkles,
-  UserCheck,
-  MessageSquare,
-  ClipboardList,
   CheckSquare,
   Clock,
   Globe,
-  ListFilter,
-  Check,
-  UserX,
-  BarChart3,
-  CheckCheck,
-  KeyRound,
-  RefreshCw,
   ShieldAlert,
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { api, listAllMyEvents } from "../lib/api";
+import { QRCodeSVG } from "qrcode.react";
+import {
+  api,
+  listAllMyEvents,
+  listAllOrganizerAttendees,
+  type OrganizerAttendeeRow,
+  type OrganizerCouponRedemption,
+  type OrganizerPayoutRow,
+  type EventStaffAssignment,
+} from "../lib/api";
 import { motion, AnimatePresence } from "motion/react";
-import { LaoEvent, SeatingZone, Coupon } from "../data/events";
+import { LaoEvent, Coupon } from "../data/events";
 import { fromBackendEvent, toEventPayload } from "../lib/eventPayload";
 import { formatEventDateDDMMYYYY } from "../lib/dateFormat";
 import { useAuth } from "../context/AuthContext";
@@ -73,6 +67,11 @@ import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import SEO from "../components/SEO";
 import ManageCouponsSection from "../components/ManageCouponsSection";
+import BookingDayManagement, {
+  type BookingAttendee,
+  type WalkinCreateInput,
+} from "../components/BookingDayManagement";
+import AccountMiniDashboard from "../components/AccountMiniDashboard";
 import { prepareProfilePhoto } from "../lib/profilePhoto";
 
 const LazyScanner = React.lazy(
@@ -103,6 +102,33 @@ const LazyScanner = React.lazy(
       }>,
 );
 
+const LAO_BANKS = [
+  { id: "bcel", name: "BCEL Bank", label: "BCEL One", logo: "/BCEL.png" },
+  { id: "jdb", name: "JDB Bank", label: "JDB", logo: "/JDB.png" },
+  { id: "ldb", name: "LDB Bank", label: "LDB", logo: "/LDB.png" },
+  { id: "ibcool", name: "Indochina Bank", label: "IB Cool", logo: "/IB.png" },
+  { id: "stb", name: "ST Bank", label: "STB", logo: "/ST.png" },
+  { id: "apb", name: "APB Bank", label: "APB", logo: "" },
+];
+
+function formatTimeToHHMM(timeStr?: string | null): string {
+  if (!timeStr) return "";
+  if (/^\d{2}:\d{2}$/.test(timeStr.trim())) return timeStr.trim();
+  const parsed = new Date(timeStr);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  }
+  const match = timeStr.match(/(\d{1,2}):(\d{2})/);
+  if (match) {
+    return `${match[1].padStart(2, "0")}:${match[2]}`;
+  }
+  return timeStr;
+}
+
 const translations = {
   en: {
     settings: "Settings",
@@ -118,23 +144,10 @@ const translations = {
     manageEvents: "Manage Events",
     manageEventsDesc: "Manage your events and ticket scanning",
     selectActivity: "Select Activity to Manage",
-    bookings: "Tickets",
-    attended: "Attended",
     scanQr: "Scan QR Code",
     seatingConfig: "Seating Configuration",
-    activeMap: "Active Map",
     seatingDesc: "Visual representation of ticket zones and layout",
-    frontStage: "Front Stage",
-    vipZone: "VIP Zone",
-    zoneA: "Zone A",
-    zoneB: "Zone B",
     viewFullMap: "View Full Map",
-    vipOccupancy: "VIP Occupancy",
-    liveSeatingMap: "Live Seating Map Dashboard",
-    mainStageArea: "Main Stage Area",
-    occupied: "Occupied",
-    totalCapacity: "Total Capacity",
-    revenueEstimate: "Revenue Estimate",
     closeDashboard: "Close Dashboard",
     entryScanner: "Entry Scanner",
     invalidTicket: "Invalid Ticket",
@@ -142,11 +155,8 @@ const translations = {
     confirmEntry: "Confirm Entry",
     alreadyScanned: "Ticket {id} already scanned!",
     profileUpdated: "Profile updated successfully",
-    seats: "Seats",
     scannerError: "Scanner Error",
     resetScanner: "Reset Scanner",
-    permissionDismissed:
-      "Camera permission request was dismissed. Please allow camera access and try again.",
     accessDenied: "Camera access denied",
     manualEntry: "Manual Check-in",
     enterTicketCode: "Enter ticket code (e.g. tk_123)",
@@ -157,33 +167,40 @@ const translations = {
     seat: "Seat",
     price: "Price",
     email: "Email",
-    recentCheckins: "Recent Checked-In Attendees",
-    noRecentCheckins: "No checked-in attendees yet.",
     scannedAt: "Scanned at",
     ticketDetails: "Ticket Verification Details",
+    staffScannerLinks: "Staff QR Scanner Access Links",
+    staffScannerDesc:
+      "Assign registered staff accounts by email and share dedicated scanner links for gate entry.",
+    createStaffLink: "Assign Staff Scanner",
+    staffEmailLabel: "Staff Account Email",
+    staffEmailPlaceholder: "staff@example.com",
+    staffNameLabel: "Gate / Label (Optional)",
+    staffNamePlaceholder: "e.g., Gate 1 - Main Entrance",
+    generateLink: "Assign & Copy Link",
+    copyLink: "Copy Link",
+    linkCopied: "Staff Link Copied to Clipboard!",
+    showQrCode: "Show QR Code",
+    openScanner: "Open Scanner",
+    qrCodeModalDesc:
+      "Scan this QR code on a staff device (signed into the assigned account) to open the scanner portal immediately.",
+    revoke: "Revoke",
+    noStaffLinks:
+      'No staff accounts assigned yet. Click "Assign Staff Scanner" above.',
     attendeeDirectory: "Ticket Buyers & Registration Directory",
     attendeeDirectoryDesc:
       "Track all registered ticket holders, check-in status, and their custom questionnaire responses.",
     allBuyers: "All Buyers",
     checkedIn: "Checked In",
     pendingGate: "Pending Gate Scan",
-    withFormAnswers: "With Form Answers",
     viewAnswers: "View Answers",
     questionnaireAnswers: "Questionnaire Responses",
-    questionnaireSummary: "Answers Summary",
     noAttendeesFound: "No ticket buyers match the selected filters.",
-    answersModalTitle: "Attendee Registration Details & Answers",
-    answersModalSubtitle:
-      "Full questionnaire response data submitted during ticket checkout",
-    questionnaireSummaryTitle: "Activity Questionnaire Analytics & Summary",
-    questionnaireSummarySubtitle:
-      "Aggregated breakdown of all attendee question submissions for this activity",
-    exportAllData: "Export Excel (All Data & Answers)",
     quickCheckin: "Quick Check-In",
-    appSettings: "App Settings",
-    selectLanguage: "Select Language",
-    english: "English",
-    lao: "Lao",
+    payouts: "Payout Bills",
+    payoutsEmpty: "No payouts yet",
+    cancel: "Cancel",
+    close: "Close",
   },
   lo: {
     settings: "ຕັ້ງຄ່າ",
@@ -199,23 +216,10 @@ const translations = {
     manageEvents: "ຈັດການກິດຈະກຳ",
     manageEventsDesc: "ຈັດການກິດຈະກຳ ແລະ ການສະແກນປີ້ຂອງທ່ານ",
     selectActivity: "ເລືອກກິດຈະກຳທີ່ຈະຈັດການ",
-    bookings: "ປີ້",
-    attended: "ເຂົ້າຮ່ວມແລ້ວ",
     scanQr: "ສະແກນ QR Code",
     seatingConfig: "ການຕັ້ງຄ່າບ່ອນນັ່ງ",
-    activeMap: "ແຜນຜັງທີ່ໃຊ້ງານຢູ່",
     seatingDesc: "ການສະແດງພາບຂອງເຂດປີ້ ແລະ ຮູບແບບ",
-    frontStage: "ໜ້າເວທີ",
-    vipZone: "ເຂດ VIP",
-    zoneA: "ເຂດ A",
-    zoneB: "ເຂດ B",
     viewFullMap: "ເບິ່ງແຜນຜັງທັງໝົດ",
-    vipOccupancy: "ການຄອບຄອງ VIP",
-    liveSeatingMap: "ແຜງຄວບຄຸມແຜນຜັງບ່ອນນັ່ງສົດ",
-    mainStageArea: "ພື້ນທີ່ເວທີຫຼັກ",
-    occupied: "ມີຄົນຈອງແລ້ວ",
-    totalCapacity: "ຄວາມຈຸທັງໝົດ",
-    revenueEstimate: "ລາຍໄດ້ປະມານ",
     closeDashboard: "ປິດແຜງຄວບຄຸມ",
     entryScanner: "ເຄື່ອງສະແກນທາງເຂົ້າ",
     invalidTicket: "ປີ້ບໍ່ຖືກຕ້ອງ",
@@ -223,11 +227,8 @@ const translations = {
     confirmEntry: "ຢືນຢັນການເຂົ້າ",
     alreadyScanned: "ປີ້ {id} ຖືກສະແກນແລ້ວ!",
     profileUpdated: "ອັບເດດໂປຣໄຟລ໌ສຳເລັດແລ້ວ",
-    seats: "ບ່ອນນັ່ງ",
     scannerError: "ຂໍ້ຜິດພາດຂອງເຄື່ອງສະແກນ",
     resetScanner: "ຣີເຊັດເຄື່ອງສະແກນ",
-    permissionDismissed:
-      "ການຂໍອະນຸຍາດກ້ອງຖ່າຍຮູບຖືກປະຕິເສດ. ກະລຸນາອະນຸຍາດໃຫ້ເຂົ້າເຖິງກ້ອງຖ່າຍຮູບ ແລະ ລອງໃໝ່ອີກຄັ້ງ.",
     accessDenied: "ການເຂົ້າເຖິງກ້ອງຖ່າຍຮູບຖືກປະຕິເສດ",
     manualEntry: "ເຊັກອິນດ້ວຍຕົນເອງ",
     enterTicketCode: "ປ້ອນລະຫັດປີ້ (ເຊັ່ນ: tk_123)",
@@ -238,37 +239,44 @@ const translations = {
     seat: "ບ່ອນນັ່ງ",
     price: "ລາຄາ",
     email: "ອີເມວ",
-    recentCheckins: "ຜູ້ເຂົ້າຮ່ວມທີ່ເຊັກອິນເມື່ອບໍ່ດົນມານີ້",
-    noRecentCheckins: "ຍັງບໍ່ມີຜູ້ເຂົ້າຮ່ວມທີ່ເຊັກອິນເທື່ອ.",
     scannedAt: "ສະແກນເມື່ອ",
     ticketDetails: "ລາຍລະອຽດການຢືນຢັນປີ້",
+    staffScannerLinks: "ລິ້ງສະແກນປີ້ QR ສຳລັບພະນັກງານ",
+    staffScannerDesc:
+      "ເພີ່ມອີເມວບັນຊີພະນັກງານປະຕູ ເພື່ອສ້າງລິ້ງສະແກນ QR code ແລະ ກວດສອບລາຍລະອຽດຜູ້ເຂົ້າຮ່ວມໃນອຸປະກອນຂອງເຂົາເຈົ້າ.",
+    createStaffLink: "ເພີ່ມພະນັກງານສະແກນປີ້",
+    staffEmailLabel: "ອີເມວບັນຊີພະນັກງານ",
+    staffEmailPlaceholder: "staff@example.com",
+    staffNameLabel: "ຊື່ປະຕູ / ຈຸດສະແກນ (ຖ້າມີ)",
+    staffNamePlaceholder: "ເຊັ່ນ: ປະຕູ 1 - ທາງເຂົ້າຫຼັກ",
+    generateLink: "ເພີ່ມພະນັກງານ & ຄັດລອກລິ້ງ",
+    copyLink: "ຄັດລອກລິ້ງ",
+    linkCopied: "ຄັດລອກລິ້ງພະນັກງານສຳເລັດແລ້ວ!",
+    showQrCode: "ສະແດງ QR Code",
+    openScanner: "ເປີດເຄື່ອງສະແກນ",
+    qrCodeModalDesc:
+      "ສະແກນ QR code ນີ້ໃນອຸປະກອນພະນັກງານ (ທີ່ເຂົ້າສູ່ລະບົບດ້ວຍບັນຊີທີ່ຖືກກຳນົດ) ເພື່ອເປີດໜ້າສະແກນທັນທີ.",
+    revoke: "ຍົກເລີກ",
+    noStaffLinks:
+      'ຍັງບໍ່ມີພະນັກງານສະແກນປີ້ເທື່ອ. ກົດ "ເພີ່ມພະນັກງານສະແກນປີ້" ດ້ານເທິງ.',
     attendeeDirectory: "ລາຍຊື່ຜູ້ຊື້ປີ້ ແລະ ຄຳຕອບແບບສອບຖາມ",
     attendeeDirectoryDesc:
       "ຕິດຕາມຜູ້ຖືປີ້ທັງໝົດ, ສະຖານະການເຊັກອິນ, ແລະ ຄຳຕອບແບບສອບຖາມຂອງພວກເຂົາ.",
     allBuyers: "ຜູ້ຊື້ທັງໝົດ",
     checkedIn: "ເຊັກອິນແລ້ວ",
     pendingGate: "ລໍຖ້າສະແກນ",
-    withFormAnswers: "ມີຄຳຕອບແບບສອບຖາມ",
     viewAnswers: "ເບິ່ງຄຳຕອບ",
     questionnaireAnswers: "ຄຳຕອບແບບສອບຖາມ",
-    questionnaireSummary: "ສະຫຼຸບຄຳຕອບ",
     noAttendeesFound: "ບໍ່ພົບຂໍ້ມູນຜູ້ຊື້ປີ້ຕາມເງື່ອນໄຂທີ່ເລືອກ.",
-    answersModalTitle: "ລາຍລະອຽດຜູ້ເຂົ້າຮ່ວມ ແລະ ຄຳຕອບແບບສອບຖາມ",
-    answersModalSubtitle: "ຂໍ້ມູນຄຳຕອບແບບສອບຖາມທີ່ຜູ້ຊື້ປ້ອນໃນຕອນຊື້ປີ້",
-    questionnaireSummaryTitle: "ສະຖິຕິ ແລະ ບົດສະຫຼຸບຄຳຕອບແບບສອບຖາມ",
-    questionnaireSummarySubtitle:
-      "ການລວບລວມຄຳຕອບແບບສອບຖາມທັງໝົດສຳລັບກິດຈະກຳນີ້",
-    exportAllData: "ສົ່ງອອກ Excel (ຂໍ້ມູນທັງໝົດ ແລະ ຄຳຕອບ)",
     quickCheckin: "ເຊັກອິນດ່ວນ",
-    appSettings: "ຕັ້ງຄ່າແອັບ",
-    selectLanguage: "ເລືອກພາສາ",
-    english: "ພາສາອັງກິດ",
-    lao: "ພາສາລາວ",
+    payouts: "ໃບບິນເບີກຈ່າຍ",
+    payoutsEmpty: "ຍັງບໍ່ມີປະຫວັດການເບີກຈ່າຍ",
+    cancel: "ຍົກເລີກ",
+    close: "ປິດ",
   },
 };
 
 export default function Account() {
-  // Global Toast Notifications with 5-Second Auto-Dismiss
   const [toastQueue, setToastQueue] = useState<
     {
       id: string;
@@ -277,19 +285,21 @@ export default function Account() {
     }[]
   >([]);
 
-  const addToast = (
-    text: string,
-    type: "error" | "success" | "warning" | "info" = "success",
-    duration = 5000,
-  ) => {
-    const id = Date.now().toString() + Math.random().toString();
-    setToastQueue((prev) => [...prev, { id, text, type }]);
-    setTimeout(() => {
-      setToastQueue((prev) => prev.filter((t) => t.id !== id));
-    }, duration);
-  };
+  const addToast = useCallback(
+    (
+      text: string,
+      type: "error" | "success" | "warning" | "info" = "success",
+      duration = 5000,
+    ) => {
+      const id = Date.now().toString() + Math.random().toString();
+      setToastQueue((prev) => [...prev, { id, text, type }]);
+      setTimeout(() => {
+        setToastQueue((prev) => prev.filter((item) => item.id !== id));
+      }, duration);
+    },
+    [],
+  );
 
-  // Safety timer to guarantee all notifications auto-dismiss in 5 seconds
   useEffect(() => {
     if (toastQueue.length > 0) {
       const timer = setTimeout(() => {
@@ -301,33 +311,26 @@ export default function Account() {
 
   const navigate = useNavigate();
   const { logout, user, token, syncProfileToSupabase } = useAuth();
-  const { lang, toggleLanguage } = useLanguage();
-  const { theme, toggleTheme } = useTheme();
-  const t = translations[lang] as unknown as Record<string, string>;
+  const { lang } = useLanguage();
+  const { theme } = useTheme();
+  const t = translations[lang] as Record<string, string>;
 
   const profilePic = user?.avatar || user?.photoURL || null;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSavingProfilePhoto, setIsSavingProfilePhoto] = useState(false);
+  const [showProfilePicSuccess, setShowProfilePicSuccess] = useState(false);
 
-  // A handful of legacy display-only fields (registered/scanned/tiers/...)
-  // that predate the real backend and aren't part of LaoEvent proper.
   type OrganizerEvent = LaoEvent & Record<string, any>;
   const [myEvents, setMyEvents] = useState<OrganizerEvent[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [eventsLoadError, setEventsLoadError] = useState(false);
-  const [organizerAccessUid, setOrganizerAccessUid] = useState<string | null>(null);
+  const [organizerAccessUid, setOrganizerAccessUid] = useState<string | null>(
+    null,
+  );
   const organizerAccess = Boolean(user?.id && organizerAccessUid === user.id);
-  type AttendeeData = NonNullable<Awaited<ReturnType<typeof api.listOrganizerAttendees>>["data"]>;
-  const [attendeeData, setAttendeeData] = useState<AttendeeData | null>(null);
-  const [attendeeSearch, setAttendeeSearch] = useState("");
-  const [attendeeCursor, setAttendeeCursor] = useState<string | null>(null);
-  const [attendeesLoading, setAttendeesLoading] = useState(false);
-  const [attendeesLoadingMore, setAttendeesLoadingMore] = useState(false);
-  const [attendeesLoadError, setAttendeesLoadError] = useState(false);
   const eventOwnerRef = useRef(user?.id);
   eventOwnerRef.current = user?.id;
-  // A placeholder so `selectedEvent` is never undefined — while events are
-  // still loading, and for an organizer with no events at all yet.
+
   const noEvent = useMemo(
     () =>
       ({
@@ -338,113 +341,79 @@ export default function Account() {
         location: "",
         venue: "",
         image: "",
-        category: "Other",
+        category: "Festival",
         description: "",
         ticketTiers: [],
         registered: 0,
       }) as unknown as OrganizerEvent,
     [],
   );
+
   const selectedEvent =
     myEvents.find((e) => e.id === selectedEventId) || myEvents[0] || noEvent;
 
-  // The organizer's own events (drafts included) — the real replacement for
-  // what used to be a hardcoded sample list merged with organizer_events.
-  const loadMyEvents = async () => {
-    const ownerId = user?.id;
-    if (!ownerId) return;
-    const rows = await listAllMyEvents({ token });
-    if (eventOwnerRef.current !== ownerId) return;
-    setEventsLoadError(false);
-    const mine = rows.map((e) => {
-      const mapped = fromBackendEvent(e);
-      const registered = (mapped.ticketTiers || []).reduce(
-        (sum: number, t: any) => sum + (Number(t.sold) || 0),
-        0,
-      );
-      return { ...mapped, registered };
-    });
-    setMyEvents(mine);
-    setSelectedEventId((prev) => mine.some((event) => event.id === prev) ? prev : mine[0]?.id || "");
-  };
+  // Backend Attendee Directory & Coupon Redemptions State
+  const [attendeeRows, setAttendeeRows] = useState<OrganizerAttendeeRow[]>([]);
+  const [attendeeStats, setAttendeeStats] = useState({
+    totalPaid: 0,
+    checkedIn: 0,
+    notCheckedIn: 0,
+    totalIncomeKip: 0,
+  });
+  const [couponRedemptions, setCouponRedemptions] = useState<
+    OrganizerCouponRedemption[]
+  >([]);
+  const [attendeesLoading, setAttendeesLoading] = useState(false);
+  const [attendeesLoadError, setAttendeesLoadError] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    setOrganizerAccessUid(null);
-    setMyEvents([]);
-    setSelectedEventId("");
-    setEventsLoadError(false);
-    if (user && token) {
-      api.get<{ canCreateEvent: boolean }>("/organizer/eligibility", { token, throwOnError: true })
-        .then(async ({ data }) => {
-          if (cancelled) return;
-          // Use the backend's effective capability, which verifies both role and
-          // organizer record. A stale `role: organizer` by itself must not expose
-          // organizer tabs to an ordinary account.
-          const allowed = data?.canCreateEvent === true;
-          setOrganizerAccessUid(allowed ? user.id : null);
-          if (allowed) await loadMyEvents();
-        })
-        .catch(() => {
-          if (!cancelled) setEventsLoadError(true);
-        });
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, token]);
+  // Attendee Directory UI filters & pagination
+  const [attendeeSearchQuery, setAttendeeSearchQuery] = useState("");
+  const [attendeeTierFilter, setAttendeeTierFilter] = useState("all");
+  const [attendeeFilter, setAttendeeFilter] = useState<
+    "all" | "checked_in" | "pending"
+  >("all");
+  const [attendeeListPage, setAttendeeListPage] = useState(1);
+  const [selectedAttendeeForAnswers, setSelectedAttendeeForAnswers] =
+    useState<BookingAttendee | null>(null);
+  const [checkinConfirmAttendee, setCheckinConfirmAttendee] =
+    useState<BookingAttendee | null>(null);
+  const [isQuickCheckingIn, setIsQuickCheckingIn] = useState(false);
 
-  useEffect(() => {
-    setAttendeeData(null);
-    setAttendeeCursor(null);
-    setAttendeesLoadError(false);
-    if (!organizerAccess || !selectedEventId || !token) return;
-    const controller = new AbortController();
-    const timer = window.setTimeout(() => {
-      setAttendeesLoading(true);
-      api.listOrganizerAttendees(
-        selectedEventId,
-        { q: attendeeSearch.trim() || undefined, limit: 50 },
-        { token, throwOnError: true, signal: controller.signal },
-      ).then((result) => {
-        if (controller.signal.aborted) return;
-        setAttendeeData(result.data);
-        setAttendeeCursor(result.data?.nextCursor ?? null);
-      }).catch(() => {
-        if (!controller.signal.aborted) setAttendeesLoadError(true);
-      }).finally(() => {
-        if (!controller.signal.aborted) setAttendeesLoading(false);
-      });
-    }, 200);
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [organizerAccess, selectedEventId, attendeeSearch, token]);
+  // Staff Scanner Assignments State (100% Backend)
+  const [eventStaffList, setEventStaffList] = useState<EventStaffAssignment[]>(
+    [],
+  );
+  const [showCreateStaffModal, setShowCreateStaffModal] = useState(false);
+  const [newStaffEmail, setNewStaffEmail] = useState("");
+  const [newStaffGateLabel, setNewStaffGateLabel] = useState("");
+  const [isAssigningStaff, setIsAssigningStaff] = useState(false);
+  const [activeStaffQrModal, setActiveStaffQrModal] = useState<{
+    staffLabel: string;
+    url: string;
+  } | null>(null);
 
-  const loadMoreAttendees = async () => {
-    if (!attendeeCursor || attendeesLoadingMore || !selectedEventId) return;
-    setAttendeesLoadingMore(true);
-    try {
-      const result = await api.listOrganizerAttendees(
-        selectedEventId,
-        { q: attendeeSearch.trim() || undefined, limit: 50, cursor: attendeeCursor },
-        { token, throwOnError: true },
-      );
-      if (result.data) {
-        setAttendeeData((current) => current ? {
-          ...result.data!,
-          attendees: [...current.attendees, ...result.data!.attendees],
-        } : result.data);
-        setAttendeeCursor(result.data.nextCursor);
-      }
-    } catch {
-      setAttendeesLoadError(true);
-    } finally {
-      setAttendeesLoadingMore(false);
-    }
-  };
+  // Payouts & Bank Account State (100% Backend)
+  const [bankAccount, setBankAccount] = useState<BankAccountInfo | null>(null);
+  const [isEditingBank, setIsEditingBank] = useState(false);
+  const [bankFormData, setBankFormData] = useState({
+    bankName: "",
+    accountName: "",
+    accountNumber: "",
+  });
+  const [showBankConfirmModal, setShowBankConfirmModal] = useState(false);
+  const [isSavingBank, setIsSavingBank] = useState(false);
+  const [payoutRows, setPayoutRows] = useState<OrganizerPayoutRow[]>([]);
+  const [payoutsLoading, setPayoutsLoading] = useState(false);
+  const [payoutImagePreview, setPayoutImagePreview] = useState<string | null>(
+    null,
+  );
+  const [loadingBillEventId, setLoadingBillEventId] = useState<string | null>(
+    null,
+  );
+  const [activeTxTooltip, setActiveTxTooltip] = useState<string | null>(null);
 
+  // Scanner & Seating Map Modals
+  const [showFullMap, setShowFullMap] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [isLookingUpTicket, setIsLookingUpTicket] = useState(false);
   const [isConfirmingEntry, setIsConfirmingEntry] = useState(false);
@@ -460,9 +429,9 @@ export default function Account() {
     email?: string;
     phone?: string;
   } | null>(null);
-
   const [scannerError, setScannerError] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState("");
+
   const location = useLocation();
   const [requestedTab, setActiveTab] = useState<
     "profile" | "my-event" | "payouts"
@@ -476,14 +445,144 @@ export default function Account() {
     }
   }, [location.state]);
 
-  // Re-fetch when an admin approves/rejects an event elsewhere, or another
-  // tab changes something — re-pull from the API rather than trusting
-  // whatever's sitting in localStorage.
+  const loadMyEvents = useCallback(async () => {
+    const ownerId = user?.id;
+    if (!ownerId) return;
+    const rows = await listAllMyEvents({ token });
+    if (eventOwnerRef.current !== ownerId) return;
+    setEventsLoadError(false);
+    const mine = rows.map((e) => {
+      const mapped = fromBackendEvent(e);
+      const registered = (mapped.ticketTiers || []).reduce(
+        (sum: number, tier: any) => sum + (Number(tier.sold) || 0),
+        0,
+      );
+      return { ...mapped, registered };
+    });
+    setMyEvents(mine);
+    setSelectedEventId((prev) =>
+      mine.some((ev) => ev.id === prev) ? prev : mine[0]?.id || "",
+    );
+  }, [user?.id, token]);
+
+  const refreshEventAttendees = useCallback(
+    async (targetEventId?: string) => {
+      const evId = targetEventId ?? selectedEventId;
+      if (!organizerAccess || !evId || !token) return;
+      setAttendeesLoading(true);
+      setAttendeesLoadError(false);
+      try {
+        const res = await listAllOrganizerAttendees(evId, { token });
+        setAttendeeRows(res.attendees);
+        setAttendeeStats(res.stats);
+        setCouponRedemptions(res.couponRedemptions);
+      } catch {
+        setAttendeesLoadError(true);
+      } finally {
+        setAttendeesLoading(false);
+      }
+    },
+    [organizerAccess, selectedEventId, token],
+  );
+
+  const refreshEventStaff = useCallback(
+    async (targetEventId?: string) => {
+      const evId = targetEventId ?? selectedEventId;
+      if (!organizerAccess || !evId || !token) return;
+      const res = await api.listEventStaff(evId, { token });
+      if (res.ok && res.data?.staff) {
+        setEventStaffList(res.data.staff);
+      } else {
+        setEventStaffList([]);
+      }
+    },
+    [organizerAccess, selectedEventId, token],
+  );
+
+  const refreshPayouts = useCallback(async () => {
+    if (!organizerAccess || !token) return;
+    setPayoutsLoading(true);
+    try {
+      const res = await api.getOrganizerPayouts({ token });
+      if (res.ok && res.data) {
+        setBankAccount(res.data.bankAccount);
+        if (res.data.bankAccount) {
+          setBankFormData({
+            bankName: res.data.bankAccount.bankName,
+            accountName: res.data.bankAccount.accountName,
+            accountNumber: res.data.bankAccount.accountNumber,
+          });
+        }
+        setPayoutRows(res.data.payouts || []);
+      }
+    } finally {
+      setPayoutsLoading(false);
+    }
+  }, [organizerAccess, token]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setOrganizerAccessUid(null);
+    setMyEvents([]);
+    setSelectedEventId("");
+    setEventsLoadError(false);
+    if (user && token) {
+      api
+        .get<{ canCreateEvent: boolean }>("/organizer/eligibility", {
+          token,
+          throwOnError: true,
+        })
+        .then(async ({ data }) => {
+          if (cancelled) return;
+          const allowed = data?.canCreateEvent === true;
+          setOrganizerAccessUid(allowed ? user.id : null);
+          if (allowed) await loadMyEvents();
+        })
+        .catch(() => {
+          if (!cancelled) setEventsLoadError(true);
+        });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, token, loadMyEvents]);
+
+  useEffect(() => {
+    setAttendeeRows([]);
+    setAttendeeStats({
+      totalPaid: 0,
+      checkedIn: 0,
+      notCheckedIn: 0,
+      totalIncomeKip: 0,
+    });
+    setCouponRedemptions([]);
+    setEventStaffList([]);
+    setAttendeeListPage(1);
+    setAttendeeTierFilter("all");
+    if (!organizerAccess || !selectedEventId || !token) return;
+    void refreshEventAttendees(selectedEventId);
+    void refreshEventStaff(selectedEventId);
+  }, [
+    organizerAccess,
+    selectedEventId,
+    token,
+    refreshEventAttendees,
+    refreshEventStaff,
+  ]);
+
+  useEffect(() => {
+    if (organizerAccess && token) {
+      void refreshPayouts();
+    }
+  }, [organizerAccess, token, refreshPayouts]);
+
   useEffect(() => {
     const handleSyncEvents = () => {
-      if (organizerAccess) loadMyEvents().catch(() => setEventsLoadError(true));
+      if (organizerAccess) {
+        loadMyEvents().catch(() => setEventsLoadError(true));
+        void refreshPayouts();
+      }
     };
-
     window.addEventListener("storage", handleSyncEvents);
     window.addEventListener("pasopkan_notification_added", handleSyncEvents);
     return () => {
@@ -493,40 +592,389 @@ export default function Account() {
         handleSyncEvents,
       );
     };
-  }, [organizerAccess, user?.id, token]);
+  }, [organizerAccess, loadMyEvents, refreshPayouts]);
 
+  // Map backend OrganizerAttendeeRow -> BookingAttendee UI shape
+  const eventAttendees: BookingAttendee[] = useMemo(() => {
+    return attendeeRows.map((row) => ({
+      id: row.id,
+      ticketId: row.ticketCode,
+      orderId: row.orderNumber,
+      eventId: selectedEventId,
+      attendeeName:
+        row.attendeeName || (lang === "lo" ? "ຜູ້ເຂົ້າຮ່ວມ" : "Attendee"),
+      email: row.attendeeEmail || "",
+      phone: row.attendeePhone || "",
+      ticketType: row.tierName || "Standard",
+      tierId: row.tierId,
+      price: `${(row.unitPriceKip || 0).toLocaleString()} LAK`,
+      unitPriceKip: row.unitPriceKip || 0,
+      purchaseDate: row.paidAt || row.createdAt || "",
+      visitDate:
+        row.selectedDate || (row.paidAt ? row.paidAt.slice(0, 10) : ""),
+      timeSlot: row.selectedTime || "",
+      isCheckedIn:
+        row.status === "checked_in" || Boolean(row.checkedInAt),
+      checkedInTime: row.checkedInAt
+        ? formatTimeToHHMM(row.checkedInAt)
+        : undefined,
+      staffLabel: row.checkedInBy || row.gate || undefined,
+      customAnswers: (row.customAnswers as Record<string, unknown>) || undefined,
+    }));
+  }, [attendeeRows, selectedEventId, lang]);
+
+  const totalAttendeesCount = attendeeStats.totalPaid || eventAttendees.length;
+  const checkedInCount =
+    attendeeStats.checkedIn ||
+    eventAttendees.filter((a) => a.isCheckedIn).length;
+  const pendingCount = Math.max(0, totalAttendeesCount - checkedInCount);
+
+  const filteredAttendees = useMemo(() => {
+    return eventAttendees.filter((att) => {
+      if (attendeeFilter === "checked_in" && !att.isCheckedIn) return false;
+      if (attendeeFilter === "pending" && att.isCheckedIn) return false;
+      if (
+        attendeeTierFilter !== "all" &&
+        att.ticketType !== attendeeTierFilter
+      ) {
+        return false;
+      }
+      const q = attendeeSearchQuery.toLowerCase().trim();
+      if (!q) return true;
+      const nameMatch = (att.attendeeName || "").toLowerCase().includes(q);
+      const emailMatch = (att.email || "").toLowerCase().includes(q);
+      const phoneMatch = (att.phone || "").toLowerCase().includes(q);
+      const ticketMatch = (att.ticketId || "").toLowerCase().includes(q);
+      const orderMatch = (att.orderId || "").toLowerCase().includes(q);
+      const tierMatch = (att.ticketType || "").toLowerCase().includes(q);
+      const answersMatch =
+        att.customAnswers &&
+        Object.values(att.customAnswers).some((val) => {
+          if (typeof val === "string") return val.toLowerCase().includes(q);
+          if (Array.isArray(val))
+            return val.some((item) => String(item).toLowerCase().includes(q));
+          return String(val ?? "").toLowerCase().includes(q);
+        });
+      return (
+        nameMatch ||
+        emailMatch ||
+        phoneMatch ||
+        ticketMatch ||
+        orderMatch ||
+        tierMatch ||
+        Boolean(answersMatch)
+      );
+    });
+  }, [
+    eventAttendees,
+    attendeeFilter,
+    attendeeTierFilter,
+    attendeeSearchQuery,
+  ]);
+
+  // Check-in & Booking Day Management Handlers (100% Backend)
+  const handleBackendCheckIn = async (
+    ticketCode: string,
+    gateLabel = "Organizer Desk",
+  ) => {
+    if (!selectedEventId) return;
+    const res = await api.scanCheckin(
+      {
+        ticketCode,
+        eventId: selectedEventId,
+        gate: gateLabel,
+      },
+      { token },
+    );
+    if (!res.ok || !res.data) {
+      throw new Error(res.error || "Check-in failed");
+    }
+    if (res.data.status === "already_checked_in") {
+      addToast(t.alreadyScanned.replace("{id}", ticketCode), "warning");
+    }
+    await refreshEventAttendees(selectedEventId);
+  };
+
+  const handleConfirmQuickCheckin = async () => {
+    if (!checkinConfirmAttendee || isQuickCheckingIn) return;
+    setIsQuickCheckingIn(true);
+    try {
+      await handleBackendCheckIn(
+        checkinConfirmAttendee.ticketId || checkinConfirmAttendee.id,
+        "Organizer Desk",
+      );
+      addToast(
+        lang === "en"
+          ? `Checked in ${checkinConfirmAttendee.attendeeName}`
+          : `ເຊັກອິນ ${checkinConfirmAttendee.attendeeName} ສຳເລັດແລ້ວ`,
+        "success",
+      );
+      setCheckinConfirmAttendee(null);
+    } catch (error) {
+      addToast(
+        error instanceof Error ? error.message : "Check-in failed",
+        "error",
+      );
+    } finally {
+      setIsQuickCheckingIn(false);
+    }
+  };
+
+  const handleCreateWalkin = async (input: WalkinCreateInput) => {
+    if (!selectedEventId) return;
+    const res = await api.createOrganizerWalkin(selectedEventId, input, {
+      token,
+    });
+    if (!res.ok) {
+      throw new Error(res.error || "Could not create walk-in booking");
+    }
+    await refreshEventAttendees(selectedEventId);
+    await loadMyEvents();
+  };
+
+  const handleRescheduleAttendee = async (
+    itemId: string,
+    newDate: string,
+    newSlot: string,
+  ) => {
+    if (!selectedEventId) return;
+    const res = await api.rescheduleOrganizerAttendee(
+      selectedEventId,
+      itemId,
+      { selectedDate: newDate, selectedTime: newSlot || null },
+      { token },
+    );
+    if (!res.ok) {
+      throw new Error(res.error || "Could not reschedule booking");
+    }
+    await refreshEventAttendees(selectedEventId);
+  };
+
+  // Staff Scanner Assignment Handlers (100% Backend)
+  const buildStaffScannerUrl = (staffLabel: string) => {
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "";
+    return `${origin}/staff-scanner?eventId=${encodeURIComponent(selectedEventId)}&staffLabel=${encodeURIComponent(staffLabel)}`;
+  };
+
+  const handleAssignStaff = async () => {
+    const email = newStaffEmail.trim();
+    if (!email || !selectedEventId || isAssigningStaff) return;
+    setIsAssigningStaff(true);
+    try {
+      const res = await api.assignEventStaff(selectedEventId, email, { token });
+      if (!res.ok || !res.data?.staff) {
+        addToast(
+          res.error ||
+            (lang === "lo"
+              ? "ບໍ່ສາມາດເພີ່ມພະນັກງານໄດ້"
+              : "Could not assign staff"),
+          "error",
+        );
+        return;
+      }
+      const staffUser = res.data.staff.user;
+      const displayName =
+        newStaffGateLabel.trim() ||
+        [staffUser.firstName, staffUser.lastName].filter(Boolean).join(" ") ||
+        staffUser.authEmail ||
+        email;
+      const url = buildStaffScannerUrl(displayName);
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {}
+      addToast(t.linkCopied, "success");
+      setNewStaffEmail("");
+      setNewStaffGateLabel("");
+      setShowCreateStaffModal(false);
+      await refreshEventStaff(selectedEventId);
+    } finally {
+      setIsAssigningStaff(false);
+    }
+  };
+
+  const handleCopyStaffLink = (url: string) => {
+    try {
+      void navigator.clipboard.writeText(url);
+    } catch {}
+    addToast(t.linkCopied, "success");
+  };
+
+  const handleRevokeStaff = async (userId: string) => {
+    if (!selectedEventId) return;
+    const res = await api.revokeEventStaff(selectedEventId, userId, { token });
+    if (!res.ok) {
+      addToast(res.error || "Could not revoke staff access", "error");
+      return;
+    }
+    addToast(
+      lang === "lo"
+        ? "ຍົກເລີກສິດພະນັກງານສຳເລັດແລ້ວ"
+        : "Staff access revoked",
+      "warning",
+    );
+    await refreshEventStaff(selectedEventId);
+  };
+
+  // Excel Export Handler (with dynamic questionnaire columns)
+  const handleExportToExcel = () => {
+    const configuredQuestions =
+      (selectedEvent as any)?.attendeeQuestions || [];
+    const questionKeys = new Set<string>();
+    const questionLabels: Record<string, string> = {};
+
+    configuredQuestions.forEach((q: any) => {
+      const qKey = q.id || q.label || q.title;
+      if (qKey) {
+        questionKeys.add(qKey);
+        questionLabels[qKey] = q.label || q.title || q.id;
+      }
+    });
+
+    eventAttendees.forEach((att) => {
+      if (att.customAnswers) {
+        Object.keys(att.customAnswers).forEach((key) => {
+          questionKeys.add(key);
+          if (!questionLabels[key]) {
+            const matchingQ = configuredQuestions.find(
+              (q: any) => q.id === key || q.label === key || q.title === key,
+            );
+            questionLabels[key] =
+              matchingQ?.label || matchingQ?.title || key;
+          }
+        });
+      }
+    });
+
+    const questionKeyList = Array.from(questionKeys);
+    const baseHeaders = [
+      "Ticket ID",
+      "Order ID",
+      "Attendee Full Name",
+      "Email",
+      "Phone",
+      "Ticket Tier",
+      "Price Paid",
+      "Booking Date",
+      "Time Slot",
+      "Purchase Date",
+      "Check-in Status",
+      "Check-in Time",
+      "Gate / Staff",
+    ];
+    const questionHeaderTitles = questionKeyList.map(
+      (k) => `Question: ${questionLabels[k] || k}`,
+    );
+    const allHeaders = [...baseHeaders, ...questionHeaderTitles];
+
+    const exportDataset =
+      filteredAttendees.length > 0 ? filteredAttendees : eventAttendees;
+    const rows = exportDataset.map((att) => {
+      const answersValues = questionKeyList.map((k) => {
+        if (
+          !att.customAnswers ||
+          att.customAnswers[k] === undefined ||
+          att.customAnswers[k] === null
+        ) {
+          return "-";
+        }
+        const val = att.customAnswers[k];
+        if (typeof val === "boolean") return val ? "Yes" : "No";
+        if (Array.isArray(val)) return val.join(", ");
+        return String(val);
+      });
+
+      return [
+        att.ticketId || att.id,
+        att.orderId || "N/A",
+        att.attendeeName || "Attendee",
+        att.email || "",
+        att.phone || "",
+        att.ticketType || "Standard",
+        att.price || "",
+        att.visitDate || "-",
+        att.timeSlot || "-",
+        att.purchaseDate ? new Date(att.purchaseDate).toLocaleString() : "",
+        att.isCheckedIn ? "Checked In" : "Pending Gate Scan",
+        att.checkedInTime || (att.isCheckedIn ? "Verified" : "Not Checked In"),
+        att.staffLabel || (att.isCheckedIn ? "Organizer Desk" : "-"),
+      ].concat(answersValues);
+    });
+
+    const worksheetData = [allHeaders, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Attendees");
+
+    const cleanTitle =
+      typeof selectedEvent?.title === "string" && selectedEvent.title
+        ? selectedEvent.title.replace(/[^a-zA-Z0-9_-]/g, "_")
+        : "event";
+    XLSX.writeFile(
+      wb,
+      `attendees_and_responses_${cleanTitle}_${selectedEventId}.xlsx`,
+    );
+
+    addToast(
+      lang === "en"
+        ? `Successfully exported ${exportDataset.length} attendee records & answers to Excel!`
+        : `ສົ່ງອອກຂໍ້ມູນຜູ້ຊື້ປີ້ ແລະ ຄຳຕອບແບບສອບຖາມ ${exportDataset.length} ລາຍການໄປຍັງ Excel ສຳເລັດແລ້ວ!`,
+      "success",
+    );
+  };
+
+  // QR Scanner Modal Handlers
   const lastScanRef = useRef<{ id: string; time: number } | null>(null);
 
   const handleScan = async (rawCode: string) => {
     const code = rawCode.trim();
     if (!code || !selectedEventId) return;
     const now = Date.now();
-    if (lastScanRef.current?.id === code && now - lastScanRef.current.time < 2500) return;
+    if (
+      lastScanRef.current?.id === code &&
+      now - lastScanRef.current.time < 2500
+    ) {
+      return;
+    }
     lastScanRef.current = { id: code, time: now };
     setScannerError(null);
     setScanResult(null);
     setIsLookingUpTicket(true);
     try {
-      const result = await api.lookupTicket(code);
+      const result = await api.lookupTicket(code, { token });
       const ticket = result.data?.ticket;
-      if (!result.ok || !ticket) throw new Error(result.error || t.invalidTicket);
-      if (ticket.eventId !== selectedEventId) throw new Error("Ticket belongs to another event");
-      if (ticket.orderStatus !== "confirmed" || ticket.itemStatus === "void" || ticket.itemStatus === "refunded") {
+      if (!result.ok || !ticket) {
+        throw new Error(result.error || t.invalidTicket);
+      }
+      if (ticket.eventId !== selectedEventId) {
+        throw new Error("Ticket belongs to another event");
+      }
+      if (
+        ticket.orderStatus !== "confirmed" ||
+        ticket.itemStatus === "void" ||
+        ticket.itemStatus === "refunded"
+      ) {
         throw new Error("This ticket is not valid for entry");
       }
       setScanResult({
         id: ticket.ticketCode,
         valid: true,
-        alreadyScanned: ticket.alreadyCheckedIn || ticket.itemStatus === "checked_in",
+        alreadyScanned:
+          ticket.alreadyCheckedIn || ticket.itemStatus === "checked_in",
         attendeeName: ticket.attendeeName || undefined,
         ticketType: ticket.tierName,
+        zone: ticket.zoneName || undefined,
+        seat: ticket.seatLabel || undefined,
         price: `${new Intl.NumberFormat("lo-LA").format(ticket.unitPriceKip)} ₭`,
         email: ticket.attendeeEmail || undefined,
         phone: ticket.attendeePhone || undefined,
       });
       if ("vibrate" in navigator) navigator.vibrate([100, 50, 100]);
     } catch (error) {
-      addToast(error instanceof Error ? error.message : t.invalidTicket, "error");
+      addToast(
+        error instanceof Error ? error.message : t.invalidTicket,
+        "error",
+      );
       lastScanRef.current = null;
     } finally {
       setIsLookingUpTicket(false);
@@ -534,37 +982,232 @@ export default function Account() {
   };
 
   const handleConfirmEntry = async () => {
-    if (!scanResult || scanResult.alreadyScanned || !selectedEventId || isConfirmingEntry) return;
+    if (
+      !scanResult ||
+      scanResult.alreadyScanned ||
+      !selectedEventId ||
+      isConfirmingEntry
+    ) {
+      return;
+    }
     setIsConfirmingEntry(true);
     try {
-      const result = await api.scanCheckin({
-        ticketCode: scanResult.id,
-        eventId: selectedEventId,
-        gate: "Organizer Desk",
-      });
-      if (!result.ok || !result.data) throw new Error(result.error || "Check-in failed");
+      const result = await api.scanCheckin(
+        {
+          ticketCode: scanResult.id,
+          eventId: selectedEventId,
+          gate: "Organizer Desk",
+        },
+        { token },
+      );
+      if (!result.ok || !result.data) {
+        throw new Error(result.error || "Check-in failed");
+      }
       if (result.data.status === "already_checked_in") {
         setScanResult({ ...scanResult, alreadyScanned: true });
         addToast(t.alreadyScanned.replace("{id}", scanResult.id), "warning");
         return;
       }
-      setMyEvents((prev) => prev.map((event) =>
-        event.id === selectedEventId ? { ...event, scanned: (event.scanned || 0) + 1 } : event,
-      ));
-      addToast(lang === "lo" ? "ເຊັກອິນສຳເລັດແລ້ວ" : "Ticket checked in successfully", "success");
+      await refreshEventAttendees(selectedEventId);
+      addToast(
+        lang === "lo" ? "ເຊັກອິນສຳເລັດແລ້ວ" : "Ticket checked in successfully",
+        "success",
+      );
       setScanResult(null);
     } catch (error) {
-      addToast(error instanceof Error ? error.message : "Check-in failed", "error");
+      addToast(
+        error instanceof Error ? error.message : "Check-in failed",
+        "error",
+      );
     } finally {
       setIsConfirmingEntry(false);
     }
   };
+
   const handleManualCheckIn = (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualCode.trim()) return;
-    handleScan(manualCode.trim());
+    void handleScan(manualCode.trim());
     setManualCode("");
   };
+
+  // Payouts & Bank Handlers (100% Backend)
+  const daysSinceBankUpdate = useMemo(() => {
+    if (!bankAccount?.updatedAt) return 999;
+    const last = new Date(bankAccount.updatedAt).getTime();
+    if (Number.isNaN(last)) return 999;
+    return Math.floor((Date.now() - last) / (1000 * 60 * 60 * 24));
+  }, [bankAccount?.updatedAt]);
+
+  const isBankInCoolingPeriod = Boolean(
+    bankAccount?.updatedAt && daysSinceBankUpdate < 30,
+  );
+  const coolingDaysRemaining = isBankInCoolingPeriod
+    ? 30 - daysSinceBankUpdate
+    : 0;
+  const unlockDate = bankAccount?.updatedAt
+    ? new Date(
+        new Date(bankAccount.updatedAt).getTime() + 30 * 24 * 60 * 60 * 1000,
+      ).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : "";
+
+  const pendingPayoutEvents = useMemo(
+    () => payoutRows.filter((r) => r.status === "pending" && r.payoutKip > 0),
+    [payoutRows],
+  );
+  const unclaimedRevenue = useMemo(
+    () => pendingPayoutEvents.reduce((sum, r) => sum + r.payoutKip, 0),
+    [pendingPayoutEvents],
+  );
+
+  const handleEditBankClick = () => {
+    setBankFormData(
+      bankAccount
+        ? {
+            bankName: bankAccount.bankName,
+            accountName: bankAccount.accountName,
+            accountNumber: bankAccount.accountNumber,
+          }
+        : { bankName: "", accountName: "", accountNumber: "" },
+    );
+    setIsEditingBank(true);
+  };
+
+  const handleSaveBankFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (
+      !bankFormData.bankName.trim() ||
+      !bankFormData.accountName.trim() ||
+      !bankFormData.accountNumber.trim()
+    ) {
+      addToast(
+        lang === "lo"
+          ? "ກະລຸນາປ້ອນຂໍ້ມູນໃຫ້ຄົບທຸກຊ່ອງ"
+          : "Please fill all bank fields",
+        "error",
+      );
+      return;
+    }
+    setShowBankConfirmModal(true);
+  };
+
+  const handleConfirmSaveBank = async () => {
+    if (isSavingBank) return;
+    setIsSavingBank(true);
+    try {
+      const res = await api.updateOrganizerBankDetails(
+        {
+          bankName: bankFormData.bankName.trim(),
+          accountHolder: bankFormData.accountName.trim(),
+          accountNumber: bankFormData.accountNumber.trim(),
+        },
+        { token },
+      );
+      if (!res.ok || !res.data?.bankAccount) {
+        addToast(
+          res.error ||
+            (lang === "lo"
+              ? "ບໍ່ສາມາດບັນທຶກຂໍ້ມູນທະນາຄານໄດ້"
+              : "Failed to save bank details"),
+          "error",
+        );
+        return;
+      }
+      setBankAccount(res.data.bankAccount);
+      setIsEditingBank(false);
+      setShowBankConfirmModal(false);
+      addToast(
+        lang === "lo"
+          ? "ອັບເດດຂໍ້ມູນທະນາຄານສຳເລັດແລ້ວ!"
+          : "Bank details updated successfully!",
+        "success",
+      );
+      await refreshPayouts();
+    } finally {
+      setIsSavingBank(false);
+    }
+  };
+
+  const handleOpenPayoutBill = async (eventId: string) => {
+    if (loadingBillEventId) return;
+    setLoadingBillEventId(eventId);
+    try {
+      const res = await api.getOrganizerPayoutBillUrl(eventId, { token });
+      if (res.ok && res.data?.url) {
+        setPayoutImagePreview(res.data.url);
+      } else {
+        addToast(
+          res.error ||
+            (lang === "lo"
+              ? "ຍັງບໍ່ມີຮູບໃບບິນໂອນເງິນ"
+              : "Transfer receipt is not available yet"),
+          "info",
+        );
+      }
+    } finally {
+      setLoadingBillEventId(null);
+    }
+  };
+
+  const handleUpdateEventCoupons = async (updatedCoupons: Coupon[]) => {
+    setMyEvents((prev) =>
+      prev.map((e) =>
+        String(e.id) === String(selectedEvent.id)
+          ? { ...e, coupons: updatedCoupons }
+          : e,
+      ),
+    );
+    const res = await api.updateEvent(
+      String(selectedEvent.id),
+      toEventPayload({ ...selectedEvent, coupons: updatedCoupons }),
+      { token },
+    );
+    if (!res.ok) {
+      addToast(res.error || "Failed to save coupons", "error");
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || isSavingProfilePhoto) return;
+    setIsSavingProfilePhoto(true);
+    try {
+      const profilePicDataUrl = await prepareProfilePhoto(file);
+      await syncProfileToSupabase({ profilePic: profilePicDataUrl });
+      setShowProfilePicSuccess(true);
+      setTimeout(() => setShowProfilePicSuccess(false), 5000);
+    } catch (error) {
+      addToast(
+        error instanceof Error ? error.message : "Could not save profile photo",
+        "error",
+      );
+    } finally {
+      setIsSavingProfilePhoto(false);
+      e.target.value = "";
+    }
+  };
+
+  useEffect(() => {
+    if (showScanner) {
+      if (
+        typeof window === "undefined" ||
+        !window.navigator ||
+        !window.navigator.mediaDevices
+      ) {
+        setScannerError(
+          lang === "en"
+            ? "Camera access is not supported in this frame. Please open the app in a new window/tab for camera permissions."
+            : "ບໍ່ຮອງຮັບການເຂົ້າເຖິງກ້ອງຖ່າຍຮູບໃນຫນ້ານີ້. ກະລຸນາເປີດໃນແທັບໃໝ່.",
+        );
+      } else {
+        setScannerError(null);
+      }
+    }
+  }, [showScanner, lang]);
 
   const menuItems = [
     {
@@ -635,95 +1278,6 @@ export default function Account() {
     },
   ];
 
-  const [showFullMap, setShowFullMap] = useState(false);
-  const [isSavingZone, setIsSavingZone] = useState(false);
-  const [showZoneSuccess, setShowZoneSuccess] = useState(false);
-  const [showProfilePicSuccess, setShowProfilePicSuccess] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  useEffect(() => {
-    // Instant execution for mobile responsiveness
-    setIsLoading(false);
-  }, []);
-
-  useEffect(() => {
-    if (showScanner) {
-      if (
-        typeof window === "undefined" ||
-        !window.navigator ||
-        !window.navigator.mediaDevices
-      ) {
-        setScannerError(
-          lang === "en"
-            ? "Camera access is not supported in this frame. Please open the app in a new window/tab for camera permissions."
-            : "ບໍ່ຮອງຮັບການເຂົ້າເຖິງກ້ອງຖ່າຍຮູບໃນຫນ້ານີ້. ກະລຸນາເປີດໃນແທັບໃໝ່.",
-        );
-      } else {
-        setScannerError(null);
-      }
-    }
-  }, [showScanner, lang]);
-
-  const toggleSeating = (eventId: string) => {
-    setMyEvents((prev) =>
-      prev.map((e) =>
-        e.id === eventId ? { ...e, hasSeating: !e.hasSeating } : e,
-      ),
-    );
-  };
-
-  const handleUpdateEventCoupons = async (updatedCoupons: Coupon[]) => {
-    setMyEvents((prev) =>
-      prev.map((e) =>
-        String(e.id) === String(selectedEvent.id)
-          ? { ...e, coupons: updatedCoupons }
-          : e,
-      ),
-    );
-    const res = await api.updateEvent(
-      String(selectedEvent.id),
-      toEventPayload({ ...selectedEvent, coupons: updatedCoupons }),
-    );
-    if (!res.ok) {
-      console.error("Failed to save coupons:", res.error);
-    }
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || isSavingProfilePhoto) return;
-    setIsSavingProfilePhoto(true);
-    try {
-      const profilePicDataUrl = await prepareProfilePhoto(file);
-      await syncProfileToSupabase({ profilePic: profilePicDataUrl });
-      setShowProfilePicSuccess(true);
-      setTimeout(() => setShowProfilePicSuccess(false), 5000);
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : "Could not save profile photo", "error");
-    } finally {
-      setIsSavingProfilePhoto(false);
-      e.target.value = "";
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#F9FAFB] py-12 animate-pulse">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="w-48 h-10 bg-white rounded-2xl mb-8 shadow-sm"></div>
-          <div className="bg-white rounded-3xl h-64 shadow-sm mb-8"></div>
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-16 bg-white rounded-2xl shadow-sm"
-              ></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
       className={`min-h-screen transition-colors duration-300 py-4 sm:py-8 px-3.5 sm:px-6 lg:px-8 ${
@@ -752,60 +1306,62 @@ export default function Account() {
         </div>
 
         {/* Tabs - Mobile Segmented Pill Bar */}
-        {organizerAccess && <div
-          className={`p-1 rounded-xl sm:rounded-2xl flex overflow-x-auto hide-scrollbar gap-1 mb-4 sm:mb-8 transition-colors ${
-            theme === "dark" ? "bg-zinc-900/60" : "bg-gray-200/50"
-          } sm:bg-transparent sm:p-0 sm:border-b sm:border-gray-100 sm:rounded-none sm:gap-8`}
-        >
-          <button
-            onClick={() => {
-              setActiveTab("profile");
-              window.scrollTo(0, 0);
-            }}
-            className={`flex-1 min-w-22.5 sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
-              activeTab === "profile"
-                ? theme === "dark"
-                  ? "bg-zinc-800 text-white border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange"
-                  : "bg-white text-adv-slate shadow-sm border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange"
-                : "text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300 sm:border-transparent"
-            }`}
+        {organizerAccess && (
+          <div
+            className={`p-1 rounded-xl sm:rounded-2xl flex overflow-x-auto hide-scrollbar gap-1 mb-4 sm:mb-8 transition-colors ${
+              theme === "dark" ? "bg-zinc-900/60" : "bg-gray-200/50"
+            } sm:bg-transparent sm:p-0 sm:border-b sm:border-gray-100 sm:rounded-none sm:gap-8`}
           >
-            {t.myProfile}
-          </button>
-          {organizerAccess && <button
-            onClick={() => {
-              setActiveTab("my-event");
-              window.scrollTo(0, 0);
-            }}
-            className={`flex-1 min-w-22.5 sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
-              activeTab === "my-event"
-                ? theme === "dark"
-                  ? "bg-zinc-800 text-white border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange"
-                  : "bg-white text-adv-slate shadow-sm border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange"
-                : "text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300 sm:border-transparent"
-            }`}
-          >
-            {t.manageEvent}
-          </button>}
-          {organizerAccess && <button
-            onClick={() => {
-              setActiveTab("payouts");
-              window.scrollTo(0, 0);
-            }}
-            className={`flex-1 min-w-22.5 sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 ${
-              activeTab === "payouts"
-                ? theme === "dark"
-                  ? "bg-zinc-800 text-white border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange"
-                  : "bg-white text-adv-slate shadow-sm border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange"
-                : "text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300 sm:border-transparent"
-            }`}
-          >
-            {t.payouts || (lang === "lo" ? "ໃບບິນເບີກຈ່າຍ" : "Payout Bills")}
-          </button>}
-        </div>}
+            <button
+              onClick={() => {
+                setActiveTab("profile");
+                window.scrollTo(0, 0);
+              }}
+              className={`flex-1 min-w-22.5 sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 cursor-pointer ${
+                activeTab === "profile"
+                  ? theme === "dark"
+                    ? "bg-zinc-800 text-white border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange"
+                    : "bg-white text-adv-slate shadow-sm border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300 sm:border-transparent"
+              }`}
+            >
+              {t.myProfile}
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab("my-event");
+                window.scrollTo(0, 0);
+              }}
+              className={`flex-1 min-w-22.5 sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 cursor-pointer ${
+                activeTab === "my-event"
+                  ? theme === "dark"
+                    ? "bg-zinc-800 text-white border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange"
+                    : "bg-white text-adv-slate shadow-sm border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300 sm:border-transparent"
+              }`}
+            >
+              {t.manageEvent}
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab("payouts");
+                window.scrollTo(0, 0);
+              }}
+              className={`flex-1 min-w-22.5 sm:flex-initial text-center py-2 sm:pb-4 sm:pt-0 text-xs sm:text-sm font-bold transition-all rounded-lg sm:rounded-none sm:border-b-2 cursor-pointer ${
+                activeTab === "payouts"
+                  ? theme === "dark"
+                    ? "bg-zinc-800 text-white border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange"
+                    : "bg-white text-adv-slate shadow-sm border-transparent sm:bg-transparent sm:border-adv-orange sm:text-adv-orange"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300 sm:border-transparent"
+              }`}
+            >
+              {t.payouts || (lang === "lo" ? "ໃບບິນເບີກຈ່າຍ" : "Payout Bills")}
+            </button>
+          </div>
+        )}
 
+        {/* TAB 1: PROFILE */}
         <div className={activeTab === "profile" ? "block" : "hidden"}>
-          {/* Profile Card */}
           <div
             className={`rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-8 mb-6 sm:mb-8 flex flex-col sm:flex-row items-center gap-5 sm:gap-8 shadow-sm border transition-all ${
               theme === "dark"
@@ -815,7 +1371,9 @@ export default function Account() {
           >
             <div
               className="relative group cursor-pointer shrink-0"
-              onClick={() => { if (!isSavingProfilePhoto) fileInputRef.current?.click(); }}
+              onClick={() => {
+                if (!isSavingProfilePhoto) fileInputRef.current?.click();
+              }}
             >
               <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gray-50 dark:bg-zinc-800 border border-gray-100 dark:border-zinc-700 flex items-center justify-center text-gray-300 shrink-0 overflow-hidden shadow-inner transition-transform group-hover:scale-[1.02] duration-300">
                 {profilePic ? (
@@ -842,7 +1400,8 @@ export default function Account() {
             </div>
             <div className="flex-1 text-center sm:text-left min-w-0">
               <h2 className="text-xl sm:text-2xl font-bold truncate">
-                {[user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Pasopkan"}
+                {[user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
+                  "Pasopkan"}
               </h2>
               {user?.email && (
                 <p className="text-gray-400 font-medium mb-1 text-xs sm:text-sm truncate">
@@ -857,7 +1416,6 @@ export default function Account() {
             </div>
           </div>
 
-          {/* Account Menu */}
           <div
             className={`rounded-3xl sm:rounded-[2.5rem] overflow-hidden mb-6 sm:mb-8 shadow-sm border transition-all ${
               theme === "dark"
@@ -910,7 +1468,7 @@ export default function Account() {
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={() => logout()}
-              className={`flex-1 flex items-center justify-center gap-3 p-4 rounded-2xl border transition-all font-bold text-sm sm:text-base ${
+              className={`flex-1 flex items-center justify-center gap-3 p-4 rounded-2xl border transition-all font-bold text-sm sm:text-base cursor-pointer ${
                 theme === "dark"
                   ? "bg-zinc-900 border-red-500/20 text-red-400 hover:bg-red-500/5"
                   : "bg-white border-red-50 text-red-500 hover:bg-red-50"
@@ -921,7 +1479,6 @@ export default function Account() {
             </button>
           </div>
 
-          {/* Mobile Legal Actions */}
           <div className="flex flex-col gap-3 mt-4 sm:hidden">
             <div className="flex items-center gap-3">
               <Link
@@ -950,740 +1507,2185 @@ export default function Account() {
           </div>
         </div>
 
-        {organizerAccess && <div className={activeTab === "my-event" ? "block" : "hidden"}>
-          {eventsLoadError && <p role="alert" className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {lang === "lo" ? "ບໍ່ສາມາດໂຫຼດງານຂອງທ່ານໄດ້. ກະລຸນາໂຫຼດໜ້າໃໝ່." : "Could not load your events. Please reload the page."}
-          </p>}
-          {/* Manage Event Header */}
-          <div className="mb-6 sm:mb-8">
-            <h2
-              className={`text-xl sm:text-2xl font-bold transition-colors ${
-                theme === "dark" ? "text-white" : "text-adv-slate"
-              }`}
-            >
-              {t.manageEvents}
-            </h2>
-            <p className="text-gray-400 font-medium text-xs sm:text-sm">
-              {t.manageEventsDesc}
-            </p>
-          </div>
+        {/* TAB 2: MANAGE EVENT */}
+        {organizerAccess && (
+          <div className={activeTab === "my-event" ? "block" : "hidden"}>
+            {eventsLoadError && (
+              <p
+                role="alert"
+                className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+              >
+                {lang === "lo"
+                  ? "ບໍ່ສາມາດໂຫຼດງານຂອງທ່ານໄດ້. ກະລຸນາໂຫຼດໜ້າໃໝ່."
+                  : "Could not load your events. Please reload the page."}
+              </p>
+            )}
 
-          <div className="mb-6 sm:mb-8">
-            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">
-              {t.selectActivity}
-            </label>
-            <div className="relative">
-              <select
-                value={selectedEventId}
-                onChange={(e) => setSelectedEventId(e.target.value)}
-                className={`w-full border rounded-2xl px-5 py-3.5 text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 shadow-sm appearance-none pr-12 transition-colors ${
-                  theme === "dark"
-                    ? "bg-zinc-900 border-zinc-800 text-white focus:border-adv-orange"
-                    : "bg-white border-gray-150 text-adv-slate focus:border-adv-orange"
+            <div className="mb-6 sm:mb-8">
+              <h2
+                className={`text-xl sm:text-2xl font-bold transition-colors ${
+                  theme === "dark" ? "text-white" : "text-adv-slate"
                 }`}
               >
-                {myEvents.map((event) => (
-                  <option
-                    key={event.id}
-                    value={event.id}
-                    className={
-                      theme === "dark"
-                        ? "bg-zinc-900 text-white"
-                        : "bg-white text-adv-slate"
-                    }
-                  >
-                    {event.title}
-                    {event.status === "pending" ? " (Pending Approval)" : ""}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-450 dark:text-zinc-500">
-                <ChevronRight className="w-4.5 h-4.5 rotate-90" />
-              </div>
+                {t.manageEvents}
+              </h2>
+              <p className="text-gray-400 font-medium text-xs sm:text-sm">
+                {t.manageEventsDesc}
+              </p>
             </div>
-          </div>
 
-          {myEvents.length === 0 && (
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
-              {lang === "lo" ? "ຍັງບໍ່ມີກິດຈະກຳຂອງທ່ານໃນລະບົບ" : "You do not have any events to manage yet."}
-            </div>
-          )}
-          {selectedEvent.id && (
-            <div className="space-y-6 sm:space-y-8">
-              {/* Event Card */}
-              <div
-                className={`rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm border p-4 sm:p-5 transition-all ${
-                  theme === "dark"
-                    ? "bg-zinc-900 border-zinc-800 text-white"
-                    : "bg-white border-gray-100 text-adv-slate"
-                }`}
-              >
-                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5">
-                  <div
-                    className={`w-full sm:w-28 shrink-0 rounded-xl sm:rounded-2xl overflow-hidden shadow-sm relative ${theme === "dark" ? "bg-zinc-950" : "bg-gray-100"}`}
-                  >
-                    <img
-                      src={selectedEvent.image}
-                      alt={selectedEvent.title}
-                      className="w-full h-auto object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 text-center sm:text-left min-w-0 pt-1">
-                    <div className="flex flex-wrap items-center gap-2.5 justify-center sm:justify-start mb-2 sm:mb-3">
-                      <h3 className="text-xl sm:text-2xl font-black text-adv-slate dark:text-white truncate">
-                        {selectedEvent.title}
-                      </h3>
-                      {selectedEvent.dateType === "booking" && (
-                        <span className="px-2.5 py-0.5 rounded-full bg-orange-500/10 text-adv-orange border border-orange-500/20 text-[10px] font-black uppercase tracking-wider shrink-0 flex items-center gap-1">
-                          <CalendarDays className="w-3 h-3" />
-                          {lang === "lo"
-                            ? "ກິດຈະກຳແບບຈອງລາຍວັນ"
-                            : "Booking Experience"}
-                        </span>
-                      )}
-                      {selectedEvent.status === "pending" && (
-                        <span className="px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider shrink-0 border border-amber-200 dark:border-amber-800">
-                          {lang === "lo" ? "ລໍຖ້າອະນຸມັດ" : "Pending Approval"}
-                        </span>
-                      )}
-                      {selectedEvent.status === "rejected" && (
-                        <span className="px-2.5 py-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-black uppercase tracking-wider shrink-0 border border-red-200 dark:border-red-800 flex items-center gap-1">
-                          <XCircle className="w-3 h-3" />
-                          {lang === "lo" ? "ຖືກປະຕິເສດ" : "Rejected"}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-2.5 sm:gap-5 text-sm sm:text-base text-gray-500 dark:text-gray-400 font-semibold">
-                      <span className="flex items-center gap-1.5 sm:gap-2">
-                        <CalendarIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-adv-orange shrink-0" />
-                        {selectedEvent.dateType === "booking"
-                          ? `${formatEventDateDDMMYYYY(selectedEvent.bookingStartDate || selectedEvent.date)} to ${selectedEvent.bookingEndDate ? formatEventDateDDMMYYYY(selectedEvent.bookingEndDate) : "Ongoing"} • Daily Sessions`
-                          : formatEventDateDDMMYYYY(selectedEvent.date)}
-                      </span>
-                      <span className="flex items-center gap-1.5 sm:gap-2">
-                        <MapPin className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-adv-orange shrink-0" />{" "}
-                        {selectedEvent.location}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Status Decision Notice Banner */}
-                {selectedEvent.status === "rejected" && (
-                  <div className="mt-4 p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-left">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-xl bg-red-100 dark:bg-red-900/60 text-red-600 dark:text-red-400 shrink-0">
-                        <AlertCircle className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-red-900 dark:text-red-200 text-sm">
-                          {lang === "lo"
-                            ? "ກິດຈະກຳນີ້ຖືກປະຕິເສດໂດຍແອດມິນ"
-                            : "Event Submission Rejected by Administrator"}
-                        </h4>
-                        <p className="text-xs text-red-700 dark:text-red-300 mt-1 leading-relaxed">
-                          {selectedEvent.rejectionReason
-                            ? `${lang === "lo" ? "ເຫດຜົນ: " : "Reason: "}${selectedEvent.rejectionReason}`
-                            : lang === "lo"
-                              ? "ກະລຸນາກວດສອບ ແລະ ແກ້ໄຂຂໍ້ມູນກິດຈະກຳ ຈາກນັ້ນສົ່ງໃໝ່ເພື່ອຮັບການກວດສອບ."
-                              : "Please update your event details, ticket setup, or cover image and resubmit."}
-                        </p>
-                        <Link
-                          to={`/create?adminEdit=${selectedEvent.id}`}
-                          className="inline-flex items-center gap-1.5 mt-3 px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                          <span>
-                            {lang === "lo"
-                              ? "ແກ້ໄຂ ແລະ ສົ່ງໃໝ່"
-                              : "Edit & Resubmit"}
-                          </span>
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-              {/* Action Buttons */}
-              <div className="w-full">
-                <button
-                  onClick={() => setShowScanner(true)}
-                  className="w-full flex items-center justify-center gap-3 p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-adv-slate dark:bg-white text-white dark:text-adv-slate font-bold hover:opacity-95 transition-all shadow-md active:scale-[0.98] transform cursor-pointer"
+            <div className="mb-6 sm:mb-8">
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">
+                {t.selectActivity}
+              </label>
+              <div className="relative">
+                <select
+                  value={selectedEventId}
+                  onChange={(e) => setSelectedEventId(e.target.value)}
+                  className={`w-full border rounded-2xl px-5 py-3.5 text-xs sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 shadow-sm appearance-none pr-12 transition-colors cursor-pointer ${
+                    theme === "dark"
+                      ? "bg-zinc-900 border-zinc-800 text-white focus:border-adv-orange"
+                      : "bg-white border-gray-150 text-adv-slate focus:border-adv-orange"
+                  }`}
                 >
-                  <Camera className="w-5 h-5 text-adv-orange animate-pulse" />
-                  <span className="text-sm sm:text-base">{t.scanQr}</span>
-                </button>
-              </div>
-
-              {/* Coupons & Discounts Management (Manage existing coupons created with event) */}
-              <ManageCouponsSection
-                eventId={String(selectedEvent.id)}
-                coupons={selectedEvent.coupons || []}
-                onUpdateCoupons={handleUpdateEventCoupons}
-                theme={theme}
-                lang={lang}
-              />
-
-                  {/* Seating Map (Only visible if event has one) */}
-                  {selectedEvent.dateType !== "booking" && (selectedEvent.hasSeating === true ||
-                    String(selectedEvent.hasSeating) === "true") && (
-                    <div
-                      className={`rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-8 shadow-sm border transition-all ${
+                  {myEvents.map((event) => (
+                    <option
+                      key={event.id}
+                      value={event.id}
+                      className={
                         theme === "dark"
-                          ? "bg-zinc-900 border-zinc-800 text-white"
-                          : "bg-white border-gray-100 text-adv-slate"
-                      }`}
+                          ? "bg-zinc-900 text-white"
+                          : "bg-white text-adv-slate"
+                      }
                     >
-                      <div className="mb-4 sm:mb-6">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <h4 className="text-base sm:text-lg font-bold">
-                            {t.seatingConfig}
-                          </h4>
-                        </div>
-                        <p className="text-xs sm:text-sm text-gray-400 font-medium tracking-tight">
-                          {t.seatingDesc}
-                        </p>
-                      </div>
+                      {event.title}
+                      {event.status === "pending" ? " (Pending Approval)" : ""}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-450 dark:text-zinc-500">
+                  <ChevronRight className="w-4.5 h-4.5 rotate-90" />
+                </div>
+              </div>
+            </div>
 
+            {myEvents.length === 0 && (
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+                {lang === "lo"
+                  ? "ຍັງບໍ່ມີກິດຈະກຳຂອງທ່ານໃນລະບົບ"
+                  : "You do not have any events to manage yet."}
+              </div>
+            )}
+
+            {selectedEvent.id && (
+              <>
+                <AccountMiniDashboard
+                  theme={theme}
+                  lang={lang}
+                  isSingleEvent={true}
+                  eventTitle={selectedEvent.title}
+                  totalAttendees={totalAttendeesCount}
+                  totalCheckedIn={checkedInCount}
+                  totalIncome={attendeeStats.totalIncomeKip}
+                  onNavigateToPayouts={() => {
+                    setActiveTab("payouts");
+                    window.scrollTo(0, 0);
+                  }}
+                />
+
+                <div className="space-y-6 sm:space-y-8">
+                  {/* Event Card */}
+                  <div
+                    className={`rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm border p-4 sm:p-5 transition-all ${
+                      theme === "dark"
+                        ? "bg-zinc-900 border-zinc-800 text-white"
+                        : "bg-white border-gray-100 text-adv-slate"
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5">
                       <div
-                        className={`relative w-full rounded-2xl border overflow-hidden p-4 sm:p-6 flex flex-col items-center group transition-colors ${
-                          theme === "dark"
-                            ? "bg-zinc-950/40 border-zinc-850"
-                            : "bg-[#F9FAFB] border-gray-100"
+                        className={`w-full sm:w-28 shrink-0 rounded-xl sm:rounded-2xl overflow-hidden shadow-sm relative ${
+                          theme === "dark" ? "bg-zinc-950" : "bg-gray-100"
                         }`}
                       >
                         <img
-                          src={
-                            selectedEvent.zoneImage ||
-                            "/src/assets/images/seating_map_layout_1782798956470.jpg"
-                          }
-                          alt="Seating Map Layout"
-                          className="w-full h-auto max-h-60 sm:max-h-80 object-contain rounded-xl"
-                          referrerPolicy="no-referrer"
+                          src={selectedEvent.image}
+                          alt={selectedEvent.title}
+                          className="w-full h-auto object-cover"
                         />
-
-                        {/* Interactive Hint / Action Control */}
-                        <div className="absolute bottom-2.5 right-2.5 sm:inset-0 sm:bg-black/40 sm:opacity-0 sm:group-hover:opacity-100 transition-all flex items-center justify-center sm:backdrop-blur-[2px] z-10">
-                          <button
-                            type="button"
-                            onClick={() => setShowFullMap(true)}
-                            className="px-3 py-1.5 sm:px-5 sm:py-2 bg-white/95 dark:bg-zinc-900/95 sm:bg-white text-adv-slate dark:text-white sm:text-adv-slate rounded-xl font-bold text-xs shadow-md sm:shadow-xl border border-gray-200 dark:border-zinc-750 sm:border-gray-100 flex items-center gap-1.5 sm:gap-2 hover:scale-105 active:scale-95 transition-transform cursor-pointer backdrop-blur-sm"
-                          >
-                            <ImageIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-adv-orange shrink-0" />
-                            <span>{t.viewFullMap}</span>
-                          </button>
+                      </div>
+                      <div className="flex-1 text-center sm:text-left min-w-0 pt-1">
+                        <div className="flex flex-wrap items-center gap-2.5 justify-center sm:justify-start mb-2 sm:mb-3">
+                          <h3 className="text-xl sm:text-2xl font-black text-adv-slate dark:text-white truncate">
+                            {selectedEvent.title}
+                          </h3>
+                          {selectedEvent.dateType === "booking" && (
+                            <span className="px-2.5 py-0.5 rounded-full bg-orange-500/10 text-adv-orange border border-orange-500/20 text-[10px] font-black uppercase tracking-wider shrink-0 flex items-center gap-1">
+                              <CalendarDays className="w-3 h-3" />
+                              {lang === "lo"
+                                ? "ກິດຈະກຳແບບຈອງລາຍວັນ"
+                                : "Booking Experience"}
+                            </span>
+                          )}
+                          {selectedEvent.status === "pending" && (
+                            <span className="px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider shrink-0 border border-amber-200 dark:border-amber-800">
+                              {lang === "lo"
+                                ? "ລໍຖ້າອະນຸມັດ"
+                                : "Pending Approval"}
+                            </span>
+                          )}
+                          {selectedEvent.status === "rejected" && (
+                            <span className="px-2.5 py-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-black uppercase tracking-wider shrink-0 border border-red-200 dark:border-red-800 flex items-center gap-1">
+                              <XCircle className="w-3 h-3" />
+                              {lang === "lo" ? "ຖືກປະຕິເສດ" : "Rejected"}
+                            </span>
+                          )}
                         </div>
+                        <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-2.5 sm:gap-5 text-sm sm:text-base text-gray-500 dark:text-gray-400 font-semibold">
+                          <span className="flex items-center gap-1.5 sm:gap-2">
+                            <CalendarIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-adv-orange shrink-0" />
+                            {selectedEvent.dateType === "booking"
+                              ? `${formatEventDateDDMMYYYY(selectedEvent.bookingStartDate || selectedEvent.date)} to ${selectedEvent.bookingEndDate ? formatEventDateDDMMYYYY(selectedEvent.bookingEndDate) : "Ongoing"} • Daily Sessions`
+                              : formatEventDateDDMMYYYY(selectedEvent.date)}
+                          </span>
+                          <span className="flex items-center gap-1.5 sm:gap-2">
+                            <MapPin className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-adv-orange shrink-0" />{" "}
+                            {selectedEvent.location}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {selectedEvent.status === "rejected" && (
+                      <div className="mt-4 p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-left">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 rounded-xl bg-red-100 dark:bg-red-900/60 text-red-600 dark:text-red-400 shrink-0">
+                            <AlertCircle className="w-5 h-5" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-bold text-red-900 dark:text-red-200 text-sm">
+                              {lang === "lo"
+                                ? "ກິດຈະກຳນີ້ຖືກປະຕິເສດໂດຍແອດມິນ"
+                                : "Event Submission Rejected by Administrator"}
+                            </h4>
+                            <p className="text-xs text-red-700 dark:text-red-300 mt-1 leading-relaxed">
+                              {selectedEvent.rejectionReason
+                                ? `${lang === "lo" ? "ເຫດຜົນ: " : "Reason: "}${selectedEvent.rejectionReason}`
+                                : lang === "lo"
+                                  ? "ກະລຸນາກວດສອບ ແລະ ແກ້ໄຂຂໍ້ມູນກິດຈະກຳ ຈາກນັ້ນສົ່ງໃໝ່ເພື່ອຮັບການກວດສອບ."
+                                  : "Please update your event details, ticket setup, or cover image and resubmit."}
+                            </p>
+                            <Link
+                              to={`/create?adminEdit=${selectedEvent.id}`}
+                              className="inline-flex items-center gap-1.5 mt-3 px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                              <span>
+                                {lang === "lo"
+                                  ? "ແກ້ໄຂ ແລະ ສົ່ງໃໝ່"
+                                  : "Edit & Resubmit"}
+                              </span>
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Scan QR Code Primary Button */}
+                  <div className="w-full">
+                    <button
+                      onClick={() => setShowScanner(true)}
+                      className="w-full flex items-center justify-center gap-3 p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-adv-slate dark:bg-white text-white dark:text-adv-slate font-bold hover:opacity-95 transition-all shadow-md active:scale-[0.98] transform cursor-pointer"
+                    >
+                      <Camera className="w-5 h-5 text-adv-orange animate-pulse" />
+                      <span className="text-sm sm:text-base">{t.scanQr}</span>
+                    </button>
+                  </div>
+
+                  {/* Staff QR Scanner Access Links Card */}
+                  <div
+                    className={`rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-sm border transition-all ${
+                      theme === "dark"
+                        ? "bg-zinc-900 border-zinc-800 text-white"
+                        : "bg-white border-gray-100 text-adv-slate"
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3.5 pb-3 border-b border-gray-100/50 dark:border-zinc-800/50">
+                      <div>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <div className="w-6 h-6 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                            <Link2 className="w-3.5 h-3.5" />
+                          </div>
+                          <h4 className="text-sm sm:text-base font-bold">
+                            {t.staffScannerLinks}
+                          </h4>
+                        </div>
+                        <p className="text-[11px] text-gray-400 font-medium max-w-xl">
+                          {t.staffScannerDesc}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateStaffModal(true)}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>{t.createStaffLink}</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {eventStaffList.length === 0 ? (
+                        <div className="py-6 text-center text-xs text-gray-400 font-medium">
+                          {t.noStaffLinks}
+                        </div>
+                      ) : (
+                        eventStaffList.map((staffItem) => {
+                          const staffDisplayName =
+                            [
+                              staffItem.user.firstName,
+                              staffItem.user.lastName,
+                            ]
+                              .filter(Boolean)
+                              .join(" ") ||
+                            staffItem.user.authEmail ||
+                            "Gate Staff";
+                          const staffUrl =
+                            buildStaffScannerUrl(staffDisplayName);
+                          const assignedDateStr = staffItem.assignedAt
+                            ? new Date(
+                                staffItem.assignedAt,
+                              ).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })
+                            : "";
+
+                          return (
+                            <div
+                              key={staffItem.id}
+                              className={`p-2 sm:p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-colors ${
+                                theme === "dark"
+                                  ? "bg-zinc-950/50 border-zinc-800"
+                                  : "bg-gray-50/80 border-gray-100"
+                              }`}
+                            >
+                              <div className="min-w-0 flex-1 flex flex-wrap items-center gap-2">
+                                <span className="text-xs sm:text-sm font-black truncate">
+                                  {staffDisplayName}
+                                </span>
+                                {staffItem.user.authEmail &&
+                                  staffDisplayName !==
+                                    staffItem.user.authEmail && (
+                                    <span className="text-[11px] text-gray-400 truncate">
+                                      ({staffItem.user.authEmail})
+                                    </span>
+                                  )}
+                                {assignedDateStr && (
+                                  <span className="text-[10px] text-gray-400 font-medium hidden md:inline-block shrink-0">
+                                    •{" "}
+                                    {lang === "lo" ? "ເພີ່ມເມື່ອ" : "Assigned"}:{" "}
+                                    {assignedDateStr}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyStaffLink(staffUrl)}
+                                  title={t.copyLink}
+                                  className={`px-2 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                                    theme === "dark"
+                                      ? "bg-zinc-800 border-zinc-700 text-zinc-300 hover:text-white"
+                                      : "bg-white border-gray-200 text-gray-700 hover:text-adv-slate"
+                                  }`}
+                                >
+                                  <Copy className="w-3 h-3 text-emerald-500" />
+                                  <span className="text-[10px] hidden sm:inline">
+                                    {t.copyLink}
+                                  </span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setActiveStaffQrModal({
+                                      staffLabel: staffDisplayName,
+                                      url: staffUrl,
+                                    })
+                                  }
+                                  title={t.showQrCode}
+                                  className={`p-1.5 rounded-lg border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                                    theme === "dark"
+                                      ? "bg-zinc-800 border-zinc-700 text-zinc-300 hover:text-white"
+                                      : "bg-white border-gray-200 text-gray-700 hover:text-adv-slate"
+                                  }`}
+                                >
+                                  <QrCode className="w-3.5 h-3.5 text-emerald-500" />
+                                </button>
+
+                                <a
+                                  href={staffUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title={t.openScanner}
+                                  className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 text-xs font-bold transition-all flex items-center gap-1"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void handleRevokeStaff(staffItem.userId)
+                                  }
+                                  title={t.revoke}
+                                  className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 text-xs font-bold transition-all cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Coupons & Discounts Management */}
+                  <ManageCouponsSection
+                    eventId={String(selectedEvent.id)}
+                    coupons={selectedEvent.coupons || []}
+                    redemptions={couponRedemptions}
+                    onUpdateCoupons={handleUpdateEventCoupons}
+                    theme={theme}
+                    lang={lang}
+                  />
+
+                  {selectedEvent.dateType === "booking" ? (
+                    <BookingDayManagement
+                      event={selectedEvent}
+                      attendees={eventAttendees}
+                      onCheckInAttendee={handleBackendCheckIn}
+                      onCreateWalkin={handleCreateWalkin}
+                      onRescheduleAttendee={handleRescheduleAttendee}
+                      theme={theme}
+                      lang={lang}
+                      onOpenScanner={() => setShowScanner(true)}
+                    />
+                  ) : (
+                    <>
+                      {/* Seating Map (Only visible if event has one) */}
+                      {(selectedEvent.hasSeating === true ||
+                        String(selectedEvent.hasSeating) === "true") && (
+                        <div
+                          className={`rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-8 shadow-sm border transition-all ${
+                            theme === "dark"
+                              ? "bg-zinc-900 border-zinc-800 text-white"
+                              : "bg-white border-gray-100 text-adv-slate"
+                          }`}
+                        >
+                          <div className="mb-4 sm:mb-6">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <h4 className="text-base sm:text-lg font-bold">
+                                {t.seatingConfig}
+                              </h4>
+                            </div>
+                            <p className="text-xs sm:text-sm text-gray-400 font-medium tracking-tight">
+                              {t.seatingDesc}
+                            </p>
+                          </div>
+
+                          <div
+                            className={`relative w-full rounded-2xl border overflow-hidden p-4 sm:p-6 flex flex-col items-center group transition-colors ${
+                              theme === "dark"
+                                ? "bg-zinc-950/40 border-zinc-850"
+                                : "bg-[#F9FAFB] border-gray-100"
+                            }`}
+                          >
+                            <img
+                              src={
+                                selectedEvent.zoneImage ||
+                                "/src/assets/images/seating_map_layout_1782798956470.jpg"
+                              }
+                              alt="Seating Map Layout"
+                              className="w-full h-auto max-h-60 sm:max-h-80 object-contain rounded-xl"
+                              referrerPolicy="no-referrer"
+                            />
+
+                            <div className="absolute bottom-2.5 right-2.5 sm:inset-0 sm:bg-black/40 sm:opacity-0 sm:group-hover:opacity-100 transition-all flex items-center justify-center sm:backdrop-blur-[2px] z-10">
+                              <button
+                                type="button"
+                                onClick={() => setShowFullMap(true)}
+                                className="px-3 py-1.5 sm:px-5 sm:py-2 bg-white/95 dark:bg-zinc-900/95 sm:bg-white text-adv-slate dark:text-white sm:text-adv-slate rounded-xl font-bold text-xs shadow-md sm:shadow-xl border border-gray-200 dark:border-zinc-750 sm:border-gray-100 flex items-center gap-1.5 sm:gap-2 hover:scale-105 active:scale-95 transition-transform cursor-pointer backdrop-blur-sm"
+                              >
+                                <ImageIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-adv-orange shrink-0" />
+                                <span>{t.viewFullMap}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Ticket Buyers & Registration Directory */}
+                      <div
+                        className={`rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-8 shadow-sm border transition-all ${
+                          theme === "dark"
+                            ? "bg-zinc-900 border-zinc-800 text-white"
+                            : "bg-white border-gray-100 text-adv-slate"
+                        }`}
+                      >
+                        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6">
+                          <div>
+                            <div className="flex items-center gap-2.5 mb-1">
+                              <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-adv-orange border border-orange-500/20 flex items-center justify-center shrink-0">
+                                <Users className="w-4 h-4" />
+                              </div>
+                              <h4 className="text-base sm:text-lg font-black">
+                                {t.attendeeDirectory}
+                              </h4>
+                            </div>
+                            <p className="text-xs text-gray-400 font-medium max-w-2xl">
+                              {t.attendeeDirectoryDesc}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full xl:w-auto">
+                            <div className="relative flex-1 sm:w-64">
+                              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                              <input
+                                type="text"
+                                value={attendeeSearchQuery}
+                                onChange={(e) => {
+                                  setAttendeeSearchQuery(e.target.value);
+                                  setAttendeeListPage(1);
+                                }}
+                                placeholder={
+                                  lang === "lo"
+                                    ? "ຄົ້ນຫາຊື່, ອີເມວ, ເບີໂທ, ຫຼື ລະຫັດປີ້..."
+                                    : "Search name, email, phone, or ticket ID..."
+                                }
+                                className={`w-full pl-10 pr-9 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-all ${
+                                  theme === "dark"
+                                    ? "bg-zinc-950 border-zinc-800 text-white placeholder-zinc-500"
+                                    : "bg-gray-50 border-gray-200 text-adv-slate placeholder-gray-400"
+                                }`}
+                              />
+                              {attendeeSearchQuery && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAttendeeSearchQuery("");
+                                    setAttendeeListPage(1);
+                                  }}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+
+                            {selectedEvent.ticketTiers &&
+                              selectedEvent.ticketTiers.length > 1 && (
+                                <div className="w-full sm:w-48 shrink-0">
+                                  <select
+                                    value={attendeeTierFilter}
+                                    onChange={(e) => {
+                                      setAttendeeTierFilter(e.target.value);
+                                      setAttendeeListPage(1);
+                                    }}
+                                    className={`w-full px-3 py-2.5 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-all cursor-pointer ${
+                                      theme === "dark"
+                                        ? "bg-zinc-950 border-zinc-800 text-white"
+                                        : "bg-gray-50 border-gray-200 text-adv-slate"
+                                    }`}
+                                  >
+                                    <option value="all">
+                                      {lang === "lo"
+                                        ? "ທຸກລະດັບປີ້ (Tiers)"
+                                        : "All Ticket Tiers"}
+                                    </option>
+                                    {selectedEvent.ticketTiers.map(
+                                      (tItem: any, idx: number) => (
+                                        <option key={idx} value={tItem.name}>
+                                          {tItem.name}
+                                        </option>
+                                      ),
+                                    )}
+                                  </select>
+                                </div>
+                              )}
+
+                            <button
+                              type="button"
+                              disabled={eventAttendees.length === 0}
+                              onClick={handleExportToExcel}
+                              className="px-4 py-2.5 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:scale-[1.02] active:scale-[0.98] font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 border border-emerald-500/20 shadow-sm shrink-0 cursor-pointer disabled:opacity-40"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>
+                                {lang === "en"
+                                  ? "Export Excel"
+                                  : "ສົ່ງອອກ Excel"}
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {attendeesLoadError && (
+                          <div
+                            role="alert"
+                            className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-xs font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"
+                          >
+                            {lang === "lo"
+                              ? "ໂຫຼດລາຍຊື່ຈາກ Backend ບໍ່ສຳເລັດ. ກະລຸນາລອງໃໝ່."
+                              : "Could not load attendees from the backend. Please try again."}
+                          </div>
+                        )}
+
+                        {/* 3 Status Pills */}
+                        <div className="mb-5">
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 p-1.5 bg-gray-100/80 dark:bg-zinc-950/60 rounded-xl sm:rounded-2xl border border-gray-200/50 dark:border-zinc-850">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAttendeeFilter("all");
+                                setAttendeeListPage(1);
+                              }}
+                              className={`flex-1 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer flex items-center justify-between gap-2 text-center h-full min-h-9 sm:min-h-11 ${
+                                attendeeFilter === "all"
+                                  ? "bg-adv-orange text-white shadow-sm"
+                                  : "text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-zinc-800/50"
+                              }`}
+                            >
+                              <span className="whitespace-normal leading-tight text-left flex-1 min-w-0">
+                                {t.allBuyers}
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
+                                  attendeeFilter === "all"
+                                    ? "bg-white/20 text-white"
+                                    : "bg-gray-200 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300"
+                                }`}
+                              >
+                                {totalAttendeesCount}
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAttendeeFilter("checked_in");
+                                setAttendeeListPage(1);
+                              }}
+                              className={`flex-1 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer flex items-center justify-between gap-2 text-center h-full min-h-9 sm:min-h-11 ${
+                                attendeeFilter === "checked_in"
+                                  ? "bg-emerald-600 text-white shadow-sm"
+                                  : "text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-zinc-800/50"
+                              }`}
+                            >
+                              <span className="flex items-center gap-1.5 flex-1 min-w-0">
+                                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                <span className="whitespace-normal leading-tight text-left min-w-0">
+                                  {t.checkedIn}
+                                </span>
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
+                                  attendeeFilter === "checked_in"
+                                    ? "bg-white/20 text-white"
+                                    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                }`}
+                              >
+                                {checkedInCount}
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAttendeeFilter("pending");
+                                setAttendeeListPage(1);
+                              }}
+                              className={`flex-1 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer flex items-center justify-between gap-2 text-center h-full min-h-9 sm:min-h-11 ${
+                                attendeeFilter === "pending"
+                                  ? "bg-amber-600 text-white shadow-sm"
+                                  : "text-gray-500 dark:text-gray-400 hover:text-adv-slate dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-zinc-800/50"
+                              }`}
+                            >
+                              <span className="flex items-center gap-1.5 flex-1 min-w-0">
+                                <Clock className="w-3.5 h-3.5 shrink-0" />
+                                <span className="whitespace-normal leading-tight text-left min-w-0">
+                                  {t.pendingGate}
+                                </span>
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
+                                  attendeeFilter === "pending"
+                                    ? "bg-white/20 text-white"
+                                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                }`}
+                              >
+                                {pendingCount}
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Attendees List Cards */}
+                        <div className="space-y-3.5">
+                          {attendeesLoading ? (
+                            <div className="py-12 flex items-center justify-center gap-2 text-sm text-gray-500">
+                              <Loader2 className="w-4 h-4 animate-spin text-adv-orange" />
+                              <span>
+                                {lang === "lo"
+                                  ? "ກຳລັງໂຫຼດລາຍຊື່ຜູ້ຊື້ປີ້..."
+                                  : "Loading ticket buyers..."}
+                              </span>
+                            </div>
+                          ) : filteredAttendees.length === 0 ? (
+                            <div
+                              className={`py-12 px-4 text-center rounded-2xl border border-dashed ${
+                                theme === "dark"
+                                  ? "border-zinc-800 text-zinc-400"
+                                  : "border-gray-200 text-gray-500"
+                              }`}
+                            >
+                              <Users className="w-10 h-10 mx-auto mb-2 text-gray-400 opacity-60" />
+                              <p className="font-bold text-sm mb-1">
+                                {t.noAttendeesFound}
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                {attendeeSearchQuery
+                                  ? lang === "lo"
+                                    ? "ລອງປ່ຽນຄຳຄົ້ນຫາໃໝ່"
+                                    : "Try adjusting your search terms"
+                                  : lang === "lo"
+                                    ? "ຍັງບໍ່ມີຂໍ້ມູນຜູ້ຊື້ປີ້ທີ່ຊຳລະສຳເລັດໃນໝວດນີ້"
+                                    : "No confirmed ticket buyers in this category yet"}
+                              </p>
+                            </div>
+                          ) : (
+                            (() => {
+                              const ATTENDEES_PER_PAGE = 10;
+                              const totalAttendeePages =
+                                Math.ceil(
+                                  filteredAttendees.length / ATTENDEES_PER_PAGE,
+                                ) || 1;
+                              const safePage = Math.min(
+                                attendeeListPage,
+                                totalAttendeePages,
+                              );
+                              const paginatedAttendees =
+                                filteredAttendees.slice(
+                                  (safePage - 1) * ATTENDEES_PER_PAGE,
+                                  safePage * ATTENDEES_PER_PAGE,
+                                );
+
+                              return (
+                                <>
+                                  {paginatedAttendees.map((att, index) => {
+                                    const answerEntries = att.customAnswers
+                                      ? Object.entries(
+                                          att.customAnswers,
+                                        ).filter(
+                                          ([_, val]) =>
+                                            val !== undefined &&
+                                            val !== null &&
+                                            val !== "",
+                                        )
+                                      : [];
+                                    const answerCount = answerEntries.length;
+
+                                    return (
+                                      <motion.div
+                                        key={att.id || att.ticketId || index}
+                                        initial={{ opacity: 0, y: 8 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: index * 0.02 }}
+                                        className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl border transition-all ${
+                                          theme === "dark"
+                                            ? "bg-zinc-950/50 border-zinc-850 hover:border-orange-500/20"
+                                            : "bg-[#F9FAFB] border-gray-150 hover:border-orange-200 hover:shadow-xs"
+                                        }`}
+                                      >
+                                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                          <div className="min-w-0 flex-1">
+                                            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1.5 sm:gap-2 mb-2 sm:mb-1">
+                                              <span className="text-sm sm:text-base font-black truncate max-w-[200px] sm:max-w-none">
+                                                {att.attendeeName || "Attendee"}
+                                              </span>
+                                              <span className="w-fit px-2 py-0.5 bg-adv-slate dark:bg-zinc-800 text-white rounded-lg text-[9px] font-black uppercase tracking-widest">
+                                                {att.ticketType || "Standard"}
+                                              </span>
+                                            </div>
+
+                                            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1.5 sm:gap-x-3 text-xs font-semibold text-gray-500 dark:text-zinc-400 mb-2.5 sm:mb-2">
+                                              {att.email && (
+                                                <span className="flex items-center gap-1.5 sm:gap-1 truncate">
+                                                  <Mail className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-adv-orange shrink-0" />
+                                                  <span>{att.email}</span>
+                                                </span>
+                                              )}
+                                              {att.phone && (
+                                                <span className="flex items-center gap-1.5 sm:gap-1 text-emerald-600 dark:text-emerald-400 font-bold truncate">
+                                                  <Phone className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-emerald-500 shrink-0" />
+                                                  <span>{att.phone}</span>
+                                                </span>
+                                              )}
+                                              <span className="text-[11px] font-mono text-gray-400 dark:text-zinc-500 flex items-center gap-1.5 sm:gap-0">
+                                                Ticket ID:{" "}
+                                                <span className="font-bold text-adv-slate dark:text-white sm:ml-1">
+                                                  {att.ticketId || att.id}
+                                                </span>
+                                              </span>
+                                            </div>
+
+                                            <div className="flex flex-row flex-wrap items-center gap-2.5 text-[10px] sm:text-[11px] font-bold text-gray-400 dark:text-zinc-400 uppercase tracking-wider">
+                                              {att.price && (
+                                                <span className="text-adv-orange font-mono font-black">
+                                                  {att.price}
+                                                </span>
+                                              )}
+                                              {att.checkedInTime &&
+                                                att.isCheckedIn && (
+                                                  <>
+                                                    {att.price && (
+                                                      <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />
+                                                    )}
+                                                    <span className="flex items-center gap-1 font-mono font-bold lowercase text-emerald-500">
+                                                      <Clock className="w-3.5 h-3.5 sm:w-3 sm:h-3 shrink-0" />
+                                                      <span>
+                                                        {formatTimeToHHMM(
+                                                          att.checkedInTime,
+                                                        )}
+                                                      </span>
+                                                    </span>
+                                                  </>
+                                                )}
+                                            </div>
+                                          </div>
+
+                                          <div className="flex items-center gap-2 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-200/60 dark:border-zinc-850 shrink-0 w-full sm:w-auto">
+                                            <div
+                                              className={`grid ${
+                                                answerCount > 0
+                                                  ? "grid-cols-2"
+                                                  : "grid-cols-1"
+                                              } sm:flex sm:flex-col items-center sm:items-end gap-2 w-full sm:w-auto`}
+                                            >
+                                              {answerCount > 0 ? (
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    setSelectedAttendeeForAnswers(
+                                                      att,
+                                                    )
+                                                  }
+                                                  className="w-full sm:w-[138px] h-9 px-3 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-adv-orange border border-orange-500/20 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap active:scale-95 shadow-2xs"
+                                                >
+                                                  <Eye className="w-3.5 h-3.5 shrink-0" />
+                                                  <span>{t.viewAnswers}</span>
+                                                </button>
+                                              ) : null}
+
+                                              {att.isCheckedIn ? (
+                                                <div
+                                                  className="w-full sm:w-[138px] h-9 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-2xs select-none shrink-0 whitespace-nowrap"
+                                                  title={
+                                                    att.checkedInTime
+                                                      ? `${t.checkedIn} @ ${att.checkedInTime}`
+                                                      : t.checkedIn
+                                                  }
+                                                >
+                                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                                  <span>{t.checkedIn}</span>
+                                                </div>
+                                              ) : (
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    setCheckinConfirmAttendee(
+                                                      att,
+                                                    )
+                                                  }
+                                                  className="w-full sm:w-[138px] h-9 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-xs active:scale-95 shrink-0 whitespace-nowrap"
+                                                >
+                                                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                                  <span>{t.quickCheckin}</span>
+                                                </button>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </motion.div>
+                                    );
+                                  })}
+
+                                  {totalAttendeePages > 1 && (
+                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-5 mt-4 border-t border-gray-100 dark:border-zinc-800/80">
+                                      <div className="text-xs font-bold text-gray-400">
+                                        {lang === "en"
+                                          ? `Page ${safePage} of ${totalAttendeePages} (${filteredAttendees.length} total buyers)`
+                                          : `ໜ້າ ${safePage} ຈາກ ${totalAttendeePages} (ທັງໝົດ ${filteredAttendees.length} ຜູ້ຊື້)`}
+                                      </div>
+
+                                      <div className="flex items-center gap-1.5">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setAttendeeListPage((prev) =>
+                                              Math.max(prev - 1, 1),
+                                            )
+                                          }
+                                          disabled={safePage === 1}
+                                          className="p-2 rounded-xl border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer disabled:cursor-not-allowed"
+                                        >
+                                          <ChevronLeft className="w-4 h-4" />
+                                        </button>
+
+                                        {Array.from(
+                                          { length: totalAttendeePages },
+                                          (_, i) => i + 1,
+                                        ).map((p) => {
+                                          if (
+                                            p === 1 ||
+                                            p === totalAttendeePages ||
+                                            (p >= safePage - 1 &&
+                                              p <= safePage + 1)
+                                          ) {
+                                            return (
+                                              <button
+                                                key={p}
+                                                type="button"
+                                                onClick={() =>
+                                                  setAttendeeListPage(p)
+                                                }
+                                                className={`w-8 h-8 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                                  safePage === p
+                                                    ? "bg-adv-orange text-white shadow-sm"
+                                                    : "border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800"
+                                                }`}
+                                              >
+                                                {p}
+                                              </button>
+                                            );
+                                          }
+                                          if (
+                                            p === safePage - 2 ||
+                                            p === safePage + 2
+                                          ) {
+                                            return (
+                                              <span
+                                                key={p}
+                                                className="text-gray-400 dark:text-zinc-500 font-bold px-1"
+                                              >
+                                                ...
+                                              </span>
+                                            );
+                                          }
+                                          return null;
+                                        })}
+
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setAttendeeListPage((prev) =>
+                                              Math.min(
+                                                prev + 1,
+                                                totalAttendeePages,
+                                              ),
+                                            )
+                                          }
+                                          disabled={
+                                            safePage === totalAttendeePages
+                                          }
+                                          className="p-2 rounded-xl border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer disabled:cursor-not-allowed"
+                                        >
+                                          <ChevronRight className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Payouts Tab (100% Demo UI + 100% Backend API Data) */}
+        {organizerAccess && (
+          <div className={activeTab === "payouts" ? "block" : "hidden"}>
+            <div className="space-y-6">
+              <div>
+                <h2
+                  className={`text-xl sm:text-2xl font-bold mb-1 ${
+                    theme === "dark" ? "text-white" : "text-adv-slate"
+                  }`}
+                >
+                  {lang === "lo" ? "ໃບບິນເບີກຈ່າຍ" : "Payout Bills"}
+                </h2>
+                <p
+                  className={`text-sm font-medium ${
+                    theme === "dark" ? "text-zinc-400" : "text-gray-500"
+                  }`}
+                >
+                  {lang === "lo"
+                    ? "ຕິດຕາມລາຍຮັບສຸດທິຈາກການຂາຍປີ້, ຕັ້ງຄ່າບັນຊີທະນາຄານຮັບເງິນ, ແລະ ກວດສອບໃບບິນໂອນເງິນ"
+                    : "Track net ticket revenue, configure your payout bank account, and inspect transfer receipts"}
+                </p>
+              </div>
+
+              {/* Claimable Event Revenue Card */}
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-zinc-900 to-slate-800 text-white p-6 sm:p-8 shadow-xl border border-white/10">
+                <div className="absolute -right-12 -top-12 w-48 h-48 rounded-full bg-adv-orange/15 blur-3xl pointer-events-none" />
+                <div className="relative z-10">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div>
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-[11px] font-black uppercase tracking-wider text-orange-300 mb-3">
+                        <DollarSign className="w-3.5 h-3.5" />
+                        {lang === "lo"
+                          ? "ຍອດເງິນລໍຖ້າໂອນເຂົ້າບັນຊີ"
+                          : "Claimable Event Revenue"}
+                      </div>
+                      <div className="text-3xl sm:text-4xl font-black tracking-tight">
+                        {unclaimedRevenue.toLocaleString()}{" "}
+                        <span className="text-lg sm:text-xl font-bold text-orange-400">
+                          LAK
+                        </span>
+                      </div>
+                      <p className="text-xs sm:text-sm text-zinc-400 font-medium mt-1">
+                        {lang === "lo"
+                          ? `ຈາກ ${pendingPayoutEvents.length} ກິດຈະກຳທີ່ມີຍອດຂາຍລໍຖ້າໂອນ`
+                          : `Across ${pendingPayoutEvents.length} event(s) with pending settlement`}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-xs font-bold text-zinc-300 self-start sm:self-center">
+                      <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>
+                        {lang === "lo"
+                          ? "ໂອນເງິນອັດຕະໂນມັດຫຼັງຈົບງານ 3-5 ວັນລັດຖະການ"
+                          : "Settled within 3-5 business days post-event"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Pending Payout Breakdown */}
+                  {pendingPayoutEvents.length > 0 && (
+                    <div className="space-y-2.5 mb-5 pt-4 border-t border-white/10">
+                      {pendingPayoutEvents.map((ev) => (
+                        <div
+                          key={ev.eventId}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 rounded-2xl bg-white/5 border border-white/10"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-bold text-sm text-white truncate">
+                              {ev.eventTitle}
+                            </p>
+                            <p className="text-xs text-zinc-400">
+                              {ev.eventDate
+                                ? formatEventDateDDMMYYYY(ev.eventDate)
+                                : "-"}{" "}
+                              •{" "}
+                              {lang === "lo"
+                                ? `ຂາຍແລ້ວ ${ev.ticketsSold} ປີ້`
+                                : `${ev.ticketsSold} tickets sold`}
+                            </p>
+                          </div>
+                          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                            <span className="text-sm font-black text-emerald-400">
+                              {ev.payoutKip.toLocaleString()} LAK
+                            </span>
+                            <span className="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 text-[10px] font-black uppercase tracking-wider">
+                              {lang === "lo" ? "ລໍຖ້າໂອນ" : "Pending"}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 30-Day Cooling Period Security Banner */}
+                  {isBankInCoolingPeriod && (
+                    <div className="mb-4 p-4 rounded-2xl bg-amber-500/15 border border-amber-400/30 flex items-start gap-3">
+                      <Lock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                      <div className="text-xs sm:text-sm text-amber-100 leading-relaxed">
+                        <p className="font-bold text-amber-300 mb-0.5">
+                          {lang === "lo"
+                            ? `ໄລຍະເວລາຄຸ້ມຄອງຄວາມປອດໄພບັນຊີໃໝ່ (ອີກ ${coolingDaysRemaining} ວັນ)`
+                            : `Security Cooling Period Active (${coolingDaysRemaining} days remaining)`}
+                        </p>
+                        <p className="text-amber-200/80 text-xs">
+                          {lang === "lo"
+                            ? `ບັນຊີທະນາຄານຖືກປ່ຽນເມື່ອບໍ່ດົນມານີ້. ເພື່ອປ້ອງກັນການສໍ້ໂກງ ລະບົບຈະກວດສອບກ່ອນປົດລັອກໃນວັນທີ ${unlockDate}.`
+                            : `Your payout bank was recently updated. Standard anti-fraud hold clears on ${unlockDate}.`}
+                        </p>
                       </div>
                     </div>
                   )}
 
-                  <section className={`overflow-hidden rounded-3xl border shadow-sm ${theme === "dark" ? "border-zinc-800 bg-zinc-900 text-white" : "border-gray-100 bg-white text-adv-slate"}`}>
-                    <div className="flex flex-col gap-4 border-b border-gray-100 p-5 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                  {/* Security Policy Bullet Points */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-zinc-400 pt-2">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>
+                        {lang === "lo"
+                          ? "ຄ່າທຳນຽມແພລດຟອມຄິດໄລ່ຕາມຍອດຂາຍປີ້ຈິງເທົ່ານັ້ນ"
+                          : "Platform fee calculated strictly on confirmed ticket orders"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>
+                        {lang === "lo"
+                          ? "ມີຫຼັກຖານໃບບິນໂອນເງິນຈາກລະບົບທຸກລາຍການ"
+                          : "Official transfer slip attached for every completed payout"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bank Settings Card */}
+              <div
+                className={`rounded-3xl p-6 sm:p-8 border shadow-sm transition-colors ${
+                  theme === "dark"
+                    ? "bg-zinc-900 border-zinc-800"
+                    : "bg-white border-gray-100"
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-adv-orange/10 text-adv-orange flex items-center justify-center shrink-0">
+                      <Building className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3
+                        className={`text-lg font-bold ${
+                          theme === "dark" ? "text-white" : "text-adv-slate"
+                        }`}
+                      >
+                        {lang === "lo"
+                          ? "ບັນຊີທະນາຄານຮັບເງິນ"
+                          : "Payout Bank Account"}
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium">
+                        {lang === "lo"
+                          ? "ບັນຊີສຳລັບຮັບເງິນຄ່າປີ້ຫຼັງຈົບກິດຈະກຳ"
+                          : "Destination account for event ticket settlements"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {bankAccount && !isEditingBank && (
+                    <button
+                      type="button"
+                      onClick={handleEditBankClick}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-zinc-700 hover:border-adv-orange text-xs sm:text-sm font-bold text-adv-slate dark:text-zinc-200 transition-colors cursor-pointer self-start sm:self-auto"
+                    >
+                      <Edit2 className="w-4 h-4 text-adv-orange" />
+                      {lang === "lo"
+                        ? "ແກ້ໄຂຂໍ້ມູນທະນາຄານ"
+                        : "Edit Bank Details"}
+                    </button>
+                  )}
+                </div>
+
+                {!bankAccount || isEditingBank ? (
+                  <form
+                    onSubmit={handleSaveBankFormSubmit}
+                    className="space-y-4"
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
-                        <h4 className="flex items-center gap-2 text-base font-bold sm:text-lg"><Users className="h-5 w-5 text-adv-orange" />{lang === "lo" ? "ລາຍຊື່ຜູ້ຊື້ປີ້" : "Ticket attendees"}</h4>
-                        <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">{lang === "lo" ? "ລາຍຊື່ນີ້ດຶງຈາກລາຍການຊຳລະຈິງຂອງ Event." : "Attendees are loaded from this event’s confirmed backend orders."}</p>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-zinc-400 mb-2">
+                          {lang === "lo" ? "ເລືອກທະນາຄານ" : "Select Bank"}
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={bankFormData.bankName}
+                            onChange={(e) =>
+                              setBankFormData((prev) => ({
+                                ...prev,
+                                bankName: e.target.value,
+                              }))
+                            }
+                            required
+                            className={`w-full appearance-none px-4 py-3 pr-10 rounded-xl border text-sm font-bold focus:outline-none focus:border-adv-orange ${
+                              theme === "dark"
+                                ? "bg-zinc-950 border-zinc-800 text-white"
+                                : "bg-gray-50 border-gray-200 text-adv-slate"
+                            }`}
+                          >
+                            <option value="">
+                              {lang === "lo"
+                                ? "-- ເລືອກທະນາຄານ --"
+                                : "-- Choose Bank --"}
+                            </option>
+                            {LAO_BANKS.map((bank) => (
+                              <option key={bank.id} value={bank.name}>
+                                {bank.name} ({bank.label})
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
                       </div>
-                      <div className="relative w-full sm:max-w-xs">
-                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                        <input value={attendeeSearch} onChange={(e) => setAttendeeSearch(e.target.value)} placeholder={lang === "lo" ? "ຄົ້ນຫາຊື່, ອີເມວ, ລະຫັດປີ້..." : "Search name, email or ticket..."} className={`w-full rounded-xl border py-2.5 pl-9 pr-3 text-sm outline-none focus:border-adv-orange ${theme === "dark" ? "border-zinc-700 bg-zinc-950 text-white" : "border-gray-200 bg-gray-50 text-adv-slate"}`} />
+
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-zinc-400 mb-2">
+                          {lang === "lo"
+                            ? "ຊື່ບັນຊີ (ພາສາອັງກິດ)"
+                            : "Account Holder Name"}
+                        </label>
+                        <input
+                          type="text"
+                          value={bankFormData.accountName}
+                          onChange={(e) =>
+                            setBankFormData((prev) => ({
+                              ...prev,
+                              accountName: e.target.value,
+                            }))
+                          }
+                          placeholder="SOUKPHASONE XAYAVONG"
+                          required
+                          className={`w-full px-4 py-3 rounded-xl border text-sm font-bold focus:outline-none focus:border-adv-orange ${
+                            theme === "dark"
+                              ? "bg-zinc-950 border-zinc-800 text-white"
+                              : "bg-gray-50 border-gray-200 text-adv-slate"
+                          }`}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-zinc-400 mb-2">
+                          {lang === "lo" ? "ເລກບັນຊີທະນາຄານ" : "Account Number"}
+                        </label>
+                        <input
+                          type="text"
+                          value={bankFormData.accountNumber}
+                          onChange={(e) =>
+                            setBankFormData((prev) => ({
+                              ...prev,
+                              accountNumber: e.target.value,
+                            }))
+                          }
+                          placeholder="160-12-00-xxxxx"
+                          required
+                          className={`w-full px-4 py-3 rounded-xl border text-sm font-bold font-mono focus:outline-none focus:border-adv-orange ${
+                            theme === "dark"
+                              ? "bg-zinc-950 border-zinc-800 text-white"
+                              : "bg-gray-50 border-gray-200 text-adv-slate"
+                          }`}
+                        />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 border-b border-gray-100 p-5 dark:border-zinc-800 sm:grid-cols-3 sm:p-6">
-                      {[
-                        { label: lang === "lo" ? "ປີ້ຊຳລະແລ້ວ" : "Paid tickets", value: attendeeData?.stats.totalPaid ?? 0, icon: Ticket, color: "text-adv-orange bg-orange-50 dark:bg-orange-950/30" },
-                        { label: lang === "lo" ? "ເຊັກອິນແລ້ວ" : "Checked in", value: attendeeData?.stats.checkedIn ?? 0, icon: UserCheck, color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30" },
-                        { label: lang === "lo" ? "ລໍຖ້າເຂົ້າງານ" : "Not checked in", value: attendeeData?.stats.notCheckedIn ?? 0, icon: Clock, color: "text-blue-600 bg-blue-50 dark:bg-blue-950/30" },
-                      ].map(({ label, value, icon: Icon, color }) => <div key={label} className={`flex items-center gap-3 rounded-2xl border p-3.5 ${theme === "dark" ? "border-zinc-800 bg-zinc-950/50" : "border-gray-100 bg-gray-50/70"}`}><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${color}`}><Icon className="h-5 w-5" /></span><div><div className="text-xl font-black leading-none">{value.toLocaleString()}</div><div className="mt-1 text-xs text-gray-500 dark:text-zinc-400">{label}</div></div></div>)}
+                    <div className="flex items-center justify-end gap-3 pt-2">
+                      {bankAccount && (
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingBank(false)}
+                          className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-zinc-700 text-sm font-bold text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                        >
+                          {t.cancel}
+                        </button>
+                      )}
+                      <button
+                        type="submit"
+                        className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-adv-orange hover:bg-orange-600 text-white text-sm font-bold shadow-md shadow-adv-orange/20 transition-all cursor-pointer"
+                      >
+                        <Save className="w-4 h-4" />
+                        {lang === "lo" ? "ບັນທຶກບັນຊີ" : "Save Details"}
+                      </button>
                     </div>
+                  </form>
+                ) : (
+                  (() => {
+                    const matchedBank = LAO_BANKS.find(
+                      (b) =>
+                        b.name.toLowerCase() ===
+                          bankAccount.bankName.toLowerCase() ||
+                        bankAccount.bankName
+                          .toLowerCase()
+                          .includes(b.id.toLowerCase()),
+                    );
+                    return (
+                      <div
+                        className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl border ${
+                          theme === "dark"
+                            ? "bg-zinc-950/60 border-zinc-800"
+                            : "bg-gray-50/80 border-gray-200/80"
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          {matchedBank?.logo ? (
+                            <img
+                              src={matchedBank.logo}
+                              alt={bankAccount.bankName}
+                              className="w-12 h-12 rounded-xl object-contain bg-white p-1.5 border border-gray-100 shrink-0"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-xl bg-adv-orange/10 text-adv-orange flex items-center justify-center font-black text-sm shrink-0">
+                              <CreditCard className="w-6 h-6" />
+                            </div>
+                          )}
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span
+                                className={`font-black text-base ${
+                                  theme === "dark"
+                                    ? "text-white"
+                                    : "text-adv-slate"
+                                }`}
+                              >
+                                {bankAccount.bankName}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider">
+                                {lang === "lo" ? "ເຊື່ອມຕໍ່ແລ້ວ" : "Connected"}
+                              </span>
+                            </div>
+                            <p className="text-sm font-bold text-gray-600 dark:text-zinc-300 mt-0.5">
+                              {bankAccount.accountName}
+                            </p>
+                            <p className="text-xs font-mono text-gray-500 dark:text-zinc-400 mt-0.5">
+                              {bankAccount.accountNumber}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()
+                )}
+              </div>
 
-                    {attendeesLoadError && <div role="alert" className="m-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">{lang === "lo" ? "ໂຫຼດລາຍຊື່ຈາກ Backend ບໍ່ສຳເລັດ. ກະລຸນາລອງໃໝ່." : "Could not load attendees from the backend. Please try again."}</div>}
-                    {attendeesLoading ? <div className="flex items-center justify-center gap-2 p-10 text-sm text-gray-500"><Loader2 className="h-4 w-4 animate-spin" />{lang === "lo" ? "ກຳລັງໂຫຼດ..." : "Loading attendees..."}</div> : attendeeData?.attendees.length ? <div className="divide-y divide-gray-100 dark:divide-zinc-800">
-                      {attendeeData.attendees.map((attendee) => <div key={attendee.id} className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_auto] sm:items-center sm:px-6">
-                        <div className="min-w-0"><div className="truncate text-sm font-bold">{attendee.attendeeName || (lang === "lo" ? "ບໍ່ມີຊື່" : "Name not provided")}</div><div className="mt-1 truncate text-xs text-gray-500 dark:text-zinc-400">{attendee.attendeeEmail || attendee.attendeePhone || "—"}</div></div>
-                        <div className="min-w-0 text-xs"><div className="truncate font-semibold">{attendee.tierName} <span className="font-normal text-gray-500">· {attendee.unitPriceKip.toLocaleString()} ₭</span></div><div className="mt-1 truncate text-gray-500 dark:text-zinc-400">{attendee.selectedDate ? `${formatEventDateDDMMYYYY(attendee.selectedDate)}${attendee.selectedTime ? ` · ${attendee.selectedTime}` : ""}` : attendee.orderNumber}</div></div>
-                        <span className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${attendee.status === "checked_in" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"}`}><span className="h-1.5 w-1.5 rounded-full bg-current" />{attendee.status === "checked_in" ? (lang === "lo" ? "ເຂົ້າງານແລ້ວ" : "Checked in") : (lang === "lo" ? "ປີ້ໃຊ້ໄດ້" : "Valid ticket")}</span>
-                      </div>)}
-                    </div> : <div className="p-10 text-center"><div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-50 text-gray-400 dark:bg-zinc-800"><Users className="h-6 w-6" /></div><p className="text-sm font-semibold">{lang === "lo" ? "ຍັງບໍ່ມີປີ້ທີ່ຊຳລະສຳເລັດ" : "No paid attendees yet"}</p><p className="mt-1 text-xs text-gray-500">{lang === "lo" ? "ລາຍຊື່ຈະປາກົດຫຼັງຈາກລາຍການຊຳລະຖືກຢືນຢັນ." : "Confirmed ticket purchases will appear here."}</p></div>}
-                    {attendeeCursor && <div className="border-t border-gray-100 p-4 text-center dark:border-zinc-800"><button type="button" onClick={loadMoreAttendees} disabled={attendeesLoadingMore} className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-bold hover:bg-gray-50 disabled:opacity-60 dark:border-zinc-700 dark:hover:bg-zinc-800">{attendeesLoadingMore ? (lang === "lo" ? "ກຳລັງໂຫຼດ..." : "Loading...") : (lang === "lo" ? "ໂຫຼດເພີ່ມ" : "Load more")}</button></div>}
-                  </section>
+              {/* Payout History List */}
+              <div
+                className={`rounded-3xl p-6 sm:p-8 border shadow-sm transition-colors ${
+                  theme === "dark"
+                    ? "bg-zinc-900 border-zinc-800"
+                    : "bg-white border-gray-100"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3
+                      className={`text-lg font-bold ${
+                        theme === "dark" ? "text-white" : "text-adv-slate"
+                      }`}
+                    >
+                      {lang === "lo"
+                        ? "ປະຫວັດການໂອນເງິນ & ໃບບິນ"
+                        : "Payout History & Receipts"}
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium mt-0.5">
+                      {lang === "lo"
+                        ? "ລາຍການສະຫຼຸບຍອດຂາຍ, ຄ່າທຳນຽມ, ແລະ ໃບບິນໂອນເງິນຂອງແຕ່ລະກິດຈະກຳ"
+                        : "Per-event gross sales, platform fee, net payout, and transfer slip"}
+                    </p>
+                  </div>
+                </div>
+
+                {payoutsLoading ? (
+                  <div className="py-12 flex flex-col items-center justify-center text-gray-400">
+                    <Loader2 className="w-7 h-7 animate-spin text-adv-orange mb-2" />
+                    <span className="text-xs font-bold">
+                      {lang === "lo"
+                        ? "ກຳລັງໂຫຼດຂໍ້ມູນການເບີກຈ່າຍ..."
+                        : "Loading payout history..."}
+                    </span>
+                  </div>
+                ) : payoutRows.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <FileText className="w-10 h-10 text-gray-300 dark:text-zinc-700 mx-auto mb-3" />
+                    <p className="text-sm font-bold text-gray-500 dark:text-zinc-400">
+                      {t.payoutsEmpty}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {payoutRows.map((row) => {
+                      const isCompleted = row.status === "paid";
+                      return (
+                        <div
+                          key={row.eventId}
+                          className={`p-4 sm:p-5 rounded-2xl border transition-all ${
+                            theme === "dark"
+                              ? "bg-zinc-950/60 border-zinc-800 hover:border-zinc-700"
+                              : "bg-gray-50/70 border-gray-200/80 hover:border-gray-300"
+                          }`}
+                        >
+                          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                            <div className="min-w-0 space-y-1">
+                              <div className="flex items-center gap-2.5 flex-wrap">
+                                <h4
+                                  className={`font-bold text-base truncate ${
+                                    theme === "dark"
+                                      ? "text-white"
+                                      : "text-adv-slate"
+                                  }`}
+                                >
+                                  {row.eventTitle}
+                                </h4>
+                                <span
+                                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                    isCompleted
+                                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                      : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                  }`}
+                                >
+                                  {isCompleted
+                                    ? lang === "lo"
+                                      ? "ໂອນສຳເລັດແລ້ວ"
+                                      : "Completed"
+                                    : lang === "lo"
+                                      ? "ລໍຖ້າໂອນ"
+                                      : "Pending"}
+                                </span>
+                                {bankAccount && (
+                                  <div className="relative">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setActiveTxTooltip((prev) =>
+                                          prev === row.eventId
+                                            ? null
+                                            : row.eventId,
+                                        )
+                                      }
+                                      className="text-gray-400 hover:text-adv-orange transition-colors cursor-pointer"
+                                      title={
+                                        lang === "lo"
+                                          ? "ຂໍ້ມູນບັນຊີຮັບເງິນ"
+                                          : "Destination Account Info"
+                                      }
+                                    >
+                                      <Info className="w-4 h-4" />
+                                    </button>
+                                    {activeTxTooltip === row.eventId && (
+                                      <div className="absolute left-0 top-6 z-30 w-64 p-3 rounded-xl bg-slate-900 text-white text-xs shadow-xl border border-white/10">
+                                        <p className="font-bold text-orange-300 mb-1">
+                                          {bankAccount.bankName}
+                                        </p>
+                                        <p className="font-semibold">
+                                          {bankAccount.accountName}
+                                        </p>
+                                        <p className="font-mono text-zinc-400">
+                                          {bankAccount.accountNumber}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium">
+                                {row.eventDate
+                                  ? formatEventDateDDMMYYYY(row.eventDate)
+                                  : "-"}{" "}
+                                •{" "}
+                                {lang === "lo"
+                                  ? `ຂາຍໄດ້ ${row.ticketsSold} ປີ້`
+                                  : `${row.ticketsSold} tickets sold`}
+                                {row.paidAt
+                                  ? ` • ${lang === "lo" ? "ໂອນເມື່ອ" : "Paid"} ${formatEventDateDDMMYYYY(row.paidAt)}`
+                                  : ""}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap sm:flex-nowrap items-center justify-between lg:justify-end gap-4 sm:gap-6 pt-3 lg:pt-0 border-t lg:border-t-0 border-gray-200/60 dark:border-zinc-800">
+                              <div className="text-left sm:text-right">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                                  {lang === "lo" ? "ຍອດຂາຍລວມ" : "Gross Sales"}
+                                </p>
+                                <p className="text-xs sm:text-sm font-bold text-gray-700 dark:text-zinc-300">
+                                  {row.grossKip.toLocaleString()} ₭
+                                </p>
+                              </div>
+                              <div className="text-left sm:text-right">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                                  {lang === "lo"
+                                    ? `ຄ່າທຳນຽມ (${row.feePercent}%)`
+                                    : `Fee (${row.feePercent}%)`}
+                                </p>
+                                <p className="text-xs sm:text-sm font-bold text-rose-500">
+                                  -{row.feeKip.toLocaleString()} ₭
+                                </p>
+                              </div>
+                              <div className="text-left sm:text-right">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                                  {lang === "lo" ? "ຍອດຮັບສຸດທິ" : "Net Payout"}
+                                </p>
+                                <p className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400">
+                                  {row.payoutKip.toLocaleString()} ₭
+                                </p>
+                              </div>
+
+                              {row.hasBill && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void handleOpenPayoutBill(row.eventId)
+                                  }
+                                  disabled={loadingBillEventId === row.eventId}
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-adv-orange/10 hover:bg-adv-orange text-adv-orange hover:text-white text-xs font-bold transition-all cursor-pointer shrink-0"
+                                >
+                                  {loadingBillEventId === row.eventId ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <ImageIcon className="w-3.5 h-3.5" />
+                                  )}
+                                  {lang === "lo" ? "ເບິ່ງໃບບິນ" : "View Slip"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-        </div>}
-
-        {organizerAccess && <div className={activeTab === "payouts" ? "block" : "hidden"}>
-          <div className="rounded-3xl border border-amber-200 bg-amber-50 p-6 text-amber-950 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-100">
-            <h2 className="text-xl font-bold">{lang === "lo" ? "ການເບີກຈ່າຍຍັງບໍ່ພ້ອມ" : "Payouts are not available yet"}</h2>
-            <p className="mt-3 text-sm leading-relaxed">{lang === "lo" ? "ຂໍ້ມູນທະນາຄານ, ຍອດເງິນ ແລະ ການຂໍເບີກຈ່າຍຈະສະແດງຢູ່ນີ້ເມື່ອມີ API ທີ່ປອດໄພ ແລະຂັ້ນຕອນອະນຸມັດໂດຍ Admin. ບໍ່ມີການໂອນເງິນຈາກໜ້ານີ້." : "Bank details, balances and payout requests will appear here after a secure backend API and admin approval flow are available. This page does not transfer money."}</p>
           </div>
-        </div>}
+        )}
       </div>
 
+      {/* 1. Full Seating Map Modal */}
       <AnimatePresence>
-        {showFullMap && (
+        {showFullMap && selectedEvent?.seatingMap && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-100 flex items-center justify-center p-3.5 sm:p-6 lg:p-8 overflow-y-auto"
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowFullMap(false)}
           >
-            {/* Backdrop */}
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowFullMap(false)}
-              className="absolute inset-0 bg-zinc-950/80 dark:bg-zinc-950/90 backdrop-blur-md"
-            />
-
-            {/* Modal Content */}
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className={`relative w-full max-w-4xl rounded-3xl sm:rounded-[3rem] overflow-hidden shadow-2xl flex flex-col max-h-[90vh] border transition-colors ${
-                theme === "dark"
-                  ? "bg-zinc-900 border-zinc-800 text-white"
-                  : "bg-white border-gray-100 text-adv-slate"
-              }`}
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-4xl w-full bg-white dark:bg-zinc-900 rounded-3xl overflow-hidden shadow-2xl border border-gray-100 dark:border-zinc-800"
             >
-              {/* Header */}
-              <div
-                className={`p-5 sm:p-8 border-b flex items-center justify-between transition-colors ${
-                  theme === "dark" ? "border-zinc-800" : "border-gray-50"
-                }`}
-              >
-                <div className="min-w-0">
-                  <h3 className="text-lg sm:text-2xl font-black truncate uppercase tracking-tight">
-                    {selectedEvent.title}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-xs text-gray-400 font-bold">
-                      {t.seatingConfig}
-                    </span>
-                  </div>
-                </div>
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-zinc-800">
+                <h3 className="font-bold text-lg text-adv-slate dark:text-white">
+                  {t.seatingConfig}
+                </h3>
                 <button
+                  type="button"
                   onClick={() => setShowFullMap(false)}
-                  className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center transition-all group shrink-0 ${
-                    theme === "dark"
-                      ? "bg-zinc-800 text-zinc-400 hover:text-adv-orange hover:bg-zinc-700"
-                      : "bg-gray-50 text-gray-400 hover:text-adv-orange hover:bg-orange-50"
-                  }`}
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-500 cursor-pointer"
                 >
-                  <X className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
-
-              {/* Map Container */}
-              <div
-                className={`flex-1 overflow-auto p-4 sm:p-12 flex items-center justify-center transition-colors ${
-                  theme === "dark" ? "bg-zinc-950/40" : "bg-[#F9FAFB]"
-                }`}
-              >
+              <div className="p-4 sm:p-6 max-h-[80vh] overflow-auto flex items-center justify-center bg-gray-50 dark:bg-zinc-950">
                 <img
-                  src={
-                    selectedEvent.zoneImage ||
-                    "/src/assets/images/seating_map_layout_1782798956470.jpg"
-                  }
-                  alt="Seating Map Layout"
-                  className={`max-w-full max-h-[50vh] sm:max-h-[60vh] object-contain rounded-2xl sm:rounded-3xl shadow-md border ${
-                    theme === "dark" ? "border-zinc-850" : "border-gray-100"
-                  }`}
-                  referrerPolicy="no-referrer"
+                  src={selectedEvent.seatingMap}
+                  alt={t.seatingConfig}
+                  className="max-w-full max-h-[70vh] object-contain rounded-xl"
                 />
-              </div>
-
-              {/* Footer */}
-              <div
-                className={`p-5 sm:p-8 border-t flex items-center justify-end transition-colors ${
-                  theme === "dark"
-                    ? "bg-zinc-900 border-zinc-800"
-                    : "bg-white border-gray-50"
-                }`}
-              >
-                <button
-                  onClick={() => setShowFullMap(false)}
-                  className="px-8 sm:px-10 py-3 sm:py-4 bg-adv-slate dark:bg-white text-white dark:text-adv-slate rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-md w-full sm:w-auto"
-                >
-                  {t.closeDashboard}
-                </button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* QR Scanner Modal */}
+      {/* 2. QR Scanner Modal (100% Real Camera + Backend Ticket Lookup) */}
       <AnimatePresence>
         {showScanner && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className={`rounded-[2.5rem] overflow-hidden w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] border transition-colors ${
-                theme === "dark"
-                  ? "bg-zinc-900 border-zinc-850 text-white"
-                  : "bg-white border-gray-100 text-adv-slate"
-              }`}
-              onClick={(e) => e.stopPropagation()}
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl overflow-hidden shadow-2xl border border-gray-100 dark:border-zinc-800"
             >
-              <div
-                className={`flex items-center justify-between p-6 border-b shrink-0 transition-colors ${
-                  theme === "dark" ? "border-zinc-800" : "border-gray-50"
-                }`}
-              >
-                <h3 className="text-xl font-bold flex items-center gap-3">
-                  <Camera className="w-6 h-6 text-adv-orange animate-pulse" />
-                  {t.entryScanner}
-                </h3>
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-zinc-800">
+                <div className="flex items-center gap-2.5">
+                  <QrCode className="w-5 h-5 text-adv-orange" />
+                  <h3 className="font-bold text-base sm:text-lg text-adv-slate dark:text-white">
+                    {t.entryScanner}
+                  </h3>
+                </div>
                 <button
+                  type="button"
                   onClick={() => {
                     setShowScanner(false);
                     setScanResult(null);
+                    setScannerError(null);
                   }}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                    theme === "dark"
-                      ? "bg-zinc-800 text-zinc-400 hover:text-white"
-                      : "bg-gray-50 text-gray-400 hover:text-adv-slate"
-                  }`}
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-500 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div
-                className={`p-6 sm:p-8 relative flex-1 overflow-y-auto transition-colors ${
-                  theme === "dark" ? "bg-zinc-950/40" : "bg-[#F9FAFB]"
-                }`}
-              >
-                <div
-                  className={`rounded-3xl overflow-hidden border-4 shadow-lg relative aspect-square ${
-                    theme === "dark" ? "border-zinc-800" : "border-white"
-                  }`}
-                >
-                  {!scannerError &&
-                    typeof window !== "undefined" &&
-                    window.navigator &&
-                    window.navigator.mediaDevices && (
-                      <React.Suspense
-                        fallback={
-                          <div
-                            className={`absolute inset-0 flex items-center justify-center ${theme === "dark" ? "bg-zinc-900" : "bg-white"}`}
+              <div className="p-5 space-y-4">
+                {!scanResult ? (
+                  <>
+                    <div className="relative aspect-square rounded-2xl overflow-hidden bg-black border border-gray-200 dark:border-zinc-800">
+                      {scannerError ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-zinc-950 text-white">
+                          <AlertCircle className="w-10 h-10 text-red-400 mb-3" />
+                          <p className="text-xs sm:text-sm font-medium text-zinc-300 mb-4">
+                            {scannerError}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setScannerError(null)}
+                            className="px-4 py-2 rounded-xl bg-adv-orange text-white text-xs font-bold cursor-pointer"
                           >
-                            <Loader2 className="w-8 h-8 animate-spin text-adv-orange" />
-                          </div>
-                        }
-                      >
-                        <LazyScanner
-                          onScan={(result) =>
-                            result &&
-                            result.length > 0 &&
-                            handleScan(result[0].rawValue)
+                            {t.resetScanner}
+                          </button>
+                        </div>
+                      ) : (
+                        <React.Suspense
+                          fallback={
+                            <div className="absolute inset-0 flex items-center justify-center text-white">
+                              <Loader2 className="w-8 h-8 animate-spin text-adv-orange" />
+                            </div>
                           }
-                          onError={(error) => {
-                            const errorMessage =
-                              error instanceof Error
-                                ? error.message
-                                : String(error);
-                            console.warn(
-                              "Camera scanner warning (safe handling):",
-                              errorMessage,
-                            );
-
-                            if (
-                              errorMessage
-                                .toLowerCase()
-                                .includes("not allowed") ||
-                              errorMessage
-                                .toLowerCase()
-                                .includes("permission") ||
-                              errorMessage.toLowerCase().includes("denied") ||
-                              errorMessage.toLowerCase().includes("restricted")
-                            ) {
-                              setScannerError(
-                                lang === "en"
-                                  ? "Camera access is restricted or denied in this browser. Allow camera access or enter the ticket code below."
-                                  : "ການເຂົ້າເຖິງກ້ອງຖືກຈຳກັດ. ກະລຸນາອະນຸຍາດໃຫ້ໃຊ້ກ້ອງ ຫຼືປ້ອນລະຫັດປີ້ຢູ່ດ້ານລຸ່ມ.",
-                              );
-                            } else {
-                              setScannerError(errorMessage || t.accessDenied);
-                            }
-                          }}
-                        />
-                      </React.Suspense>
-                    )}
-
-                  {scannerError && (
-                    <div
-                      className={`absolute inset-0 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center z-20 transition-colors ${
-                        theme === "dark" ? "bg-zinc-900/95" : "bg-white/95"
-                      }`}
-                    >
-                      <div
-                        className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 border ${
-                          theme === "dark"
-                            ? "bg-orange-500/10 text-adv-orange border-orange-500/20"
-                            : "bg-orange-50 text-adv-orange border-orange-100"
-                        }`}
-                      >
-                        <AlertCircle className="w-7 h-7 animate-pulse" />
-                      </div>
-                      <h4
-                        className={`text-lg font-black uppercase tracking-tight mb-1.5 ${theme === "dark" ? "text-white" : "text-adv-slate"}`}
-                      >
-                        {t.scannerError}
-                      </h4>
-                      <p className="text-gray-400 mb-6 font-bold text-xs leading-relaxed max-w-xs">
-                        {scannerError}
-                      </p>
-                      <div className="flex flex-col gap-2 w-full max-w-60">
-                        <button
-                          onClick={() => setScannerError(null)}
-                          className={`px-6 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest border transition-colors ${
-                            theme === "dark"
-                              ? "border-zinc-800 text-zinc-400 hover:bg-zinc-850"
-                              : "border-gray-200 text-gray-500 hover:bg-gray-50"
-                          }`}
                         >
-                          {t.resetScanner}
-                        </button>
-                      </div>
+                          <LazyScanner
+                            onScan={(detected) => {
+                              const val = detected?.[0]?.rawValue;
+                              if (val) void handleScan(val);
+                            }}
+                            onError={(err: unknown) => {
+                              console.error("QR scanner error:", err);
+                              setScannerError(t.accessDenied);
+                            }}
+                          />
+                        </React.Suspense>
+                      )}
+                      {isLookingUpTicket && (
+                        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white z-20">
+                          <Loader2 className="w-8 h-8 animate-spin text-adv-orange mb-2" />
+                          <span className="text-xs font-bold">
+                            {lang === "lo"
+                              ? "ກຳລັງກວດສອບປີ້..."
+                              : "Verifying ticket..."}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  <div className="absolute inset-0 pointer-events-none border-2 border-adv-orange/30 rounded-2xl m-10">
-                    <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-adv-orange -mt-1 -ml-1"></div>
-                    <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-adv-orange -mt-1 -mr-1"></div>
-                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-adv-orange -mb-1 -ml-1"></div>
-                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-adv-orange -mb-1 -mr-1"></div>
-                  </div>
-                </div>
 
-                <AnimatePresence>
-                  {scanResult && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                      className={`absolute inset-0 z-30 p-4 flex flex-col justify-between overflow-y-auto transition-colors ${
-                        theme === "dark" ? "bg-zinc-900 text-white" : "bg-white"
-                      }`}
-                    >
-                      <div className="flex-1 space-y-2.5">
-                        {/* Status Header */}
-                        <div
-                          className={`flex items-center gap-2 pb-2.5 border-b ${theme === "dark" ? "border-zinc-800" : "border-gray-100"}`}
-                        >
-                          <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                              scanResult.alreadyScanned
-                                ? "bg-amber-500/10 text-amber-500"
-                                : theme === "dark"
-                                  ? "bg-emerald-500/10 text-emerald-400"
-                                  : "bg-emerald-50 text-emerald-500"
-                            }`}
-                          >
-                            {scanResult.alreadyScanned ? (
-                              <AlertCircle className="w-5 h-5 text-amber-500 animate-pulse" />
-                            ) : (
-                              <CheckCircle2 className="w-5 h-5" />
-                            )}
-                          </div>
-                          <div>
-                            <span
-                              className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
-                                scanResult.alreadyScanned
-                                  ? "bg-amber-500/15 text-amber-600"
-                                  : theme === "dark"
-                                    ? "bg-emerald-500/10 text-emerald-400"
-                                    : "bg-emerald-50 text-emerald-600"
-                              }`}
-                            >
-                              {scanResult.alreadyScanned
-                                ? lang === "en"
-                                  ? "Already Scanned / Checked In"
-                                  : "ສະແກນແລ້ວ / ເຊັກອິນແລ້ວ"
-                                : t.validTicket}
-                            </span>
-                            <h4 className="text-xs font-bold mt-0.5">
-                              {t.ticketDetails}
-                            </h4>
-                          </div>
-                        </div>
-
-                        {/* Compact card layout */}
-                        <div
-                          className={`p-3 rounded-xl border space-y-2 text-[11px] transition-colors ${
-                            theme === "dark"
-                              ? "bg-zinc-950/40 border-zinc-850"
-                              : "bg-gray-50/80 border-gray-100"
-                          }`}
-                        >
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-widest">
-                                {t.attendee}
-                              </span>
-                              <span className="font-extrabold block truncate text-adv-slate dark:text-zinc-200">
-                                {scanResult.attendeeName}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-widest">
-                                {t.ticketCode}
-                              </span>
-                              <span className="font-mono font-bold block truncate text-adv-slate dark:text-zinc-200">
-                                {scanResult.id}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="border-t border-gray-200/40 dark:border-zinc-800/60 pt-2 grid grid-cols-2 gap-2">
-                            <div>
-                              <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-widest">
-                                {t.zone}
-                              </span>
-                              <span className="font-bold block truncate text-xs text-adv-slate dark:text-zinc-300">
-                                {scanResult.zone || "—"}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-widest">
-                                {t.seat}
-                              </span>
-                              <span className="font-bold block truncate text-xs text-adv-slate dark:text-zinc-300">
-                                {scanResult.seat || "—"}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="border-t border-gray-200/40 dark:border-zinc-800/60 pt-2">
-                            <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-widest">
-                              {t.email}
-                            </span>
-                            <span className="font-semibold block truncate text-xs text-gray-500 dark:text-zinc-400">
-                              {scanResult.email}
-                            </span>
-                          </div>
-
-                          <div className="border-t border-gray-200/40 dark:border-zinc-800/60 pt-2 grid grid-cols-2 gap-2">
-                            <div>
-                              <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-widest">
-                                {t.price}
-                              </span>
-                              <span className="font-black text-adv-orange block">
-                                {scanResult.price}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-widest">
-                                {t.scannedAt}
-                              </span>
-                              <span className="font-bold text-gray-500 block">
-                                {scanResult.alreadyScanned
-                                  ? (lang === "lo" ? "ເຊັກອິນແລ້ວ" : "Already checked in")
-                                  : (lang === "lo" ? "ຍັງບໍ່ເຊັກອິນ" : "Not checked in")}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div
-                        className={`mt-4 flex gap-2 shrink-0 pt-3 border-t ${theme === "dark" ? "border-zinc-800" : "border-gray-100"}`}
+                    <form onSubmit={handleManualCheckIn} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={manualCode}
+                        onChange={(e) => setManualCode(e.target.value)}
+                        placeholder={
+                          lang === "lo"
+                            ? "ປ້ອນລະຫັດປີ້ດ້ວຍມື (ເຊັ່ນ PK-...)"
+                            : "Enter ticket code manually..."
+                        }
+                        className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-950 text-sm font-bold text-adv-slate dark:text-white focus:outline-none focus:border-adv-orange"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!manualCode.trim() || isLookingUpTicket}
+                        className="px-4 py-2.5 rounded-xl bg-adv-orange hover:bg-orange-600 disabled:opacity-40 text-white text-xs sm:text-sm font-bold cursor-pointer"
                       >
-                        <button
-                          onClick={() => setScanResult(null)}
-                          className={`flex-1 py-2.5 rounded-xl font-bold transition-all text-[10px] uppercase tracking-widest ${
-                            theme === "dark"
-                              ? "bg-zinc-850 text-zinc-300 hover:bg-zinc-800"
-                              : "bg-gray-100 text-gray-500 hover:bg-gray-150"
-                          }`}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={handleConfirmEntry}
-                          disabled={isConfirmingEntry || scanResult.alreadyScanned}
-                          className="flex-2 py-2.5 rounded-xl bg-adv-orange text-white font-black hover:opacity-95 transition-all text-[10px] uppercase tracking-widest shadow-md"
-                        >
-                          {isConfirmingEntry ? (lang === "lo" ? "ກຳລັງກວດ..." : "Checking...") : t.confirmEntry}
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Manual ticket-code entry uses the same server-side verification as camera scanning. */}
-                <div
-                  className={`mt-6 pt-6 border-t ${theme === "dark" ? "border-zinc-800" : "border-gray-100"}`}
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                      {t.manualEntry}
-                    </span>
-                    <span
-                      className={`h-px flex-1 ${theme === "dark" ? "bg-zinc-850" : "bg-gray-100"}`}
-                    />
-                  </div>
-
-                  <form
-                    onSubmit={handleManualCheckIn}
-                    className="flex gap-2 mb-3"
-                  >
-                    <input
-                      type="text"
-                      value={manualCode}
-                      onChange={(e) => setManualCode(e.target.value)}
-                      placeholder={t.enterTicketCode}
-                      className={`flex-1 px-4 py-3 rounded-xl border text-xs font-bold placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-adv-orange/20 focus:border-adv-orange transition-all ${
-                        theme === "dark"
-                          ? "bg-zinc-900 border-zinc-800 text-white"
-                          : "bg-white border-gray-100 text-adv-slate"
+                        {lang === "lo" ? "ກວດສອບ" : "Check"}
+                      </button>
+                    </form>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    <div
+                      className={`p-5 rounded-2xl border text-center ${
+                        scanResult.alreadyScanned
+                          ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
+                          : "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800"
                       }`}
-                    />
-                    <button
-                      type="submit"
-                      disabled={isLookingUpTicket || !selectedEventId}
-                      className="px-5 py-3 rounded-xl bg-adv-slate dark:bg-white text-white dark:text-adv-slate text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all"
                     >
-                      {isLookingUpTicket ? (lang === "lo" ? "ກຳລັງກວດ..." : "Looking up...") : t.checkIn}
-                    </button>
-                  </form>
+                      {scanResult.alreadyScanned ? (
+                        <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-2" />
+                      ) : (
+                        <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-2" />
+                      )}
+                      <h4 className="font-black text-lg text-adv-slate dark:text-white">
+                        {scanResult.alreadyScanned
+                          ? t.alreadyScanned.replace("{id}", scanResult.id)
+                          : t.validTicket}
+                      </h4>
+                      <p className="text-xs font-mono text-gray-500 dark:text-zinc-400 mt-1">
+                        {scanResult.id}
+                      </p>
+                    </div>
 
-                </div>
+                    <div className="space-y-2 text-sm bg-gray-50 dark:bg-zinc-950 p-4 rounded-2xl border border-gray-100 dark:border-zinc-800">
+                      {scanResult.attendeeName && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">
+                            {lang === "lo" ? "ຜູ້ຖືປີ້" : "Attendee"}
+                          </span>
+                          <span className="font-bold text-adv-slate dark:text-white">
+                            {scanResult.attendeeName}
+                          </span>
+                        </div>
+                      )}
+                      {scanResult.ticketType && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">
+                            {lang === "lo" ? "ປະເພດປີ້" : "Tier"}
+                          </span>
+                          <span className="font-bold text-adv-orange">
+                            {scanResult.ticketType}
+                          </span>
+                        </div>
+                      )}
+                      {scanResult.price && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">
+                            {lang === "lo" ? "ລາຄາ" : "Price"}
+                          </span>
+                          <span className="font-bold text-adv-slate dark:text-white">
+                            {scanResult.price}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setScanResult(null)}
+                        className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-zinc-700 font-bold text-sm text-gray-600 dark:text-zinc-300 cursor-pointer"
+                      >
+                        {lang === "lo" ? "ສະແກນໃບຕໍ່ໄປ" : "Scan Next"}
+                      </button>
+                      {!scanResult.alreadyScanned && (
+                        <button
+                          type="button"
+                          onClick={() => void handleConfirmEntry()}
+                          disabled={isConfirmingEntry}
+                          className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          {isConfirmingEntry && (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          )}
+                          {t.confirmEntry}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-      {/* Toast Container with 5-Second Auto-Dismiss Indicator */}
-      <div className="fixed bottom-24 sm:bottom-12 right-1/2 translate-x-1/2 z-300 flex flex-col gap-3 w-full max-w-sm px-6 pointer-events-none">
-        <AnimatePresence>
-          {toastQueue.map((toast) => (
+
+      {/* 3. Assign Staff Scanner Modal */}
+      <AnimatePresence>
+        {showCreateStaffModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowCreateStaffModal(false)}
+          >
             <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, y: 20, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-              className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-2xl flex items-center gap-3.5 border relative overflow-hidden pointer-events-auto bg-white border-gray-200 text-black"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-2xl border border-gray-100 dark:border-zinc-800 space-y-5"
             >
-              <span className="font-bold text-xs sm:text-sm flex-1 leading-snug text-black">
-                {toast.text}
-              </span>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-adv-slate dark:text-white">
+                  {t.createStaffLink}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateStaffModal(false)}
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-500 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-zinc-400 mb-1.5">
+                    {lang === "lo"
+                      ? "ອີເມວບັນຊີພະນັກງານ *"
+                      : "Staff Account Email *"}
+                  </label>
+                  <input
+                    type="email"
+                    value={newStaffEmail}
+                    onChange={(e) => setNewStaffEmail(e.target.value)}
+                    placeholder="staff@example.com"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-950 text-sm font-bold text-adv-slate dark:text-white focus:outline-none focus:border-adv-orange"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-zinc-400 mb-1.5">
+                    {t.staffNameLabel}
+                  </label>
+                  <input
+                    type="text"
+                    value={newStaffGateLabel}
+                    onChange={(e) => setNewStaffGateLabel(e.target.value)}
+                    placeholder={t.staffNamePlaceholder}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-950 text-sm font-bold text-adv-slate dark:text-white focus:outline-none focus:border-adv-orange"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateStaffModal(false)}
+                  className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-zinc-700 text-sm font-bold text-gray-600 dark:text-zinc-300 cursor-pointer"
+                >
+                  {t.cancel}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleAssignStaff()}
+                  disabled={!newStaffEmail.trim() || isAssigningStaff}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-adv-orange hover:bg-orange-600 disabled:opacity-40 text-white text-sm font-bold cursor-pointer"
+                >
+                  {isAssigningStaff && (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  )}
+                  {t.generateLink}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 4. Staff QR Code Modal */}
+      <AnimatePresence>
+        {activeStaffQrModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setActiveStaffQrModal(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-3xl p-6 text-center shadow-2xl border border-gray-100 dark:border-zinc-800 space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-base text-adv-slate dark:text-white truncate">
+                  {activeStaffQrModal.staffLabel}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setActiveStaffQrModal(null)}
+                  className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-500 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-zinc-400">
+                {t.qrCodeModalDesc}
+              </p>
+              <div className="bg-white p-5 rounded-2xl inline-block border border-gray-100 shadow-inner">
+                <QRCodeSVG value={activeStaffQrModal.url} size={200} />
+              </div>
+              <div className="flex gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleCopyStaffLink(activeStaffQrModal.url)}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-gray-200 dark:border-zinc-700 text-xs font-bold text-adv-slate dark:text-white cursor-pointer"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  {t.copyLink}
+                </button>
+                <a
+                  href={activeStaffQrModal.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-adv-orange hover:bg-orange-600 text-white text-xs font-bold"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  {t.openScanner}
+                </a>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 5. Payout Transfer Receipt Preview Modal */}
+      <AnimatePresence>
+        {payoutImagePreview && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setPayoutImagePreview(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-lg w-full bg-white dark:bg-zinc-900 rounded-3xl overflow-hidden shadow-2xl border border-gray-100 dark:border-zinc-800"
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-zinc-800">
+                <h3 className="font-bold text-base text-adv-slate dark:text-white">
+                  {lang === "lo" ? "ໃບບິນໂອນເງິນ" : "Payout Transfer Receipt"}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setPayoutImagePreview(null)}
+                  className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-500 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4 bg-gray-50 dark:bg-zinc-950 flex items-center justify-center max-h-[75vh] overflow-auto">
+                <img
+                  src={payoutImagePreview}
+                  alt="Payout Receipt"
+                  className="max-w-full max-h-[68vh] object-contain rounded-xl"
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 6. Confirm Bank Account Update Modal */}
+      <AnimatePresence>
+        {showBankConfirmModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => !isSavingBank && setShowBankConfirmModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-2xl border border-gray-100 dark:border-zinc-800 space-y-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0">
+                  <ShieldAlert className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-adv-slate dark:text-white">
+                    {lang === "lo"
+                      ? "ຢືນຢັນຂໍ້ມູນບັນຊີທະນາຄານ"
+                      : "Confirm Bank Account"}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-zinc-400">
+                    {lang === "lo"
+                      ? "ກະລຸນາກວດສອບຊື່ ແລະ ເລກບັນຊີໃຫ້ຖືກຕ້ອງກ່ອນບັນທຶກ"
+                      : "Please verify your account holder name and number"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-gray-50 dark:bg-zinc-950 border border-gray-100 dark:border-zinc-800 space-y-1.5 text-sm">
+                <p className="font-bold text-adv-orange">
+                  {bankFormData.bankName}
+                </p>
+                <p className="font-bold text-adv-slate dark:text-white">
+                  {bankFormData.accountName}
+                </p>
+                <p className="font-mono text-gray-600 dark:text-zinc-400">
+                  {bankFormData.accountNumber}
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={isSavingBank}
+                  onClick={() => setShowBankConfirmModal(false)}
+                  className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-zinc-700 text-sm font-bold text-gray-600 dark:text-zinc-300 cursor-pointer"
+                >
+                  {t.cancel}
+                </button>
+                <button
+                  type="button"
+                  disabled={isSavingBank}
+                  onClick={() => void handleConfirmSaveBank()}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-adv-orange hover:bg-orange-600 text-white text-sm font-bold cursor-pointer"
+                >
+                  {isSavingBank && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {lang === "lo" ? "ຢືນຢັນບັນທຶກ" : "Confirm & Save"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 7. Attendee Questionnaire Answers Modal (Exact Demo UI) */}
+      <AnimatePresence>
+        {selectedAttendeeForAnswers && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setSelectedAttendeeForAnswers(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-3xl overflow-hidden shadow-2xl border border-gray-100 dark:border-zinc-800"
+            >
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-zinc-800">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-2xl bg-adv-orange/10 text-adv-orange flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-base sm:text-lg text-adv-slate dark:text-white truncate">
+                      {t.questionnaireAnswers}
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-zinc-400 truncate">
+                      {selectedAttendeeForAnswers.attendeeName} •{" "}
+                      {selectedAttendeeForAnswers.ticketId}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedAttendeeForAnswers(null)}
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-500 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 max-h-[65vh] overflow-y-auto space-y-3">
+                {selectedAttendeeForAnswers.customAnswers &&
+                Object.keys(selectedAttendeeForAnswers.customAnswers).length >
+                  0 ? (
+                  Object.entries(selectedAttendeeForAnswers.customAnswers).map(
+                    ([key, val]) => {
+                      const configuredQuestions =
+                        (selectedEvent as any)?.attendeeQuestions || [];
+                      const qConfig = configuredQuestions.find(
+                        (q: any) =>
+                          q.id === key || q.label === key || q.title === key,
+                      );
+                      const label = qConfig?.label || qConfig?.title || key;
+                      const formattedVal =
+                        typeof val === "boolean"
+                          ? val
+                            ? lang === "lo"
+                              ? "ແມ່ນ"
+                              : "Yes"
+                            : lang === "lo"
+                              ? "ບໍ່"
+                              : "No"
+                          : Array.isArray(val)
+                            ? val.join(", ")
+                            : String(val ?? "-");
+
+                      return (
+                        <div
+                          key={key}
+                          className="p-4 rounded-2xl bg-gray-50 dark:bg-zinc-950 border border-gray-100 dark:border-zinc-800"
+                        >
+                          <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 mb-1">
+                            {label}
+                          </p>
+                          <p className="text-sm font-bold text-adv-slate dark:text-white break-words">
+                            {formattedVal || "-"}
+                          </p>
+                        </div>
+                      );
+                    },
+                  )
+                ) : (
+                  <p className="text-sm text-center text-gray-500 py-6">
+                    {lang === "lo"
+                      ? "ບໍ່ມີຄຳຕອບແບບສອບຖາມ"
+                      : "No questionnaire responses recorded."}
+                  </p>
+                )}
+              </div>
+
+              <div className="px-6 py-4 border-t border-gray-100 dark:border-zinc-800 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setSelectedAttendeeForAnswers(null)}
+                  className="px-6 py-2.5 rounded-xl bg-adv-slate dark:bg-zinc-800 text-white text-sm font-bold cursor-pointer"
+                >
+                  {t.close}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 8. Quick Check-In Confirmation Modal (Exact Demo UI) */}
+      <AnimatePresence>
+        {checkinConfirmAttendee && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() =>
+              !isQuickCheckingIn && setCheckinConfirmAttendee(null)
+            }
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-2xl border border-gray-100 dark:border-zinc-800 space-y-5"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <CheckSquare className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-adv-slate dark:text-white">
+                    {lang === "lo"
+                      ? "ຢືນຢັນການເຊັກອິນເຂົ້າງານ"
+                      : "Confirm Attendee Check-In"}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-zinc-400">
+                    {lang === "lo"
+                      ? "ກະລຸນາກວດສອບຂໍ້ມູນຜູ້ຖືປີ້ກ່ອນຢືນຢັນເຂົ້າງານ"
+                      : "Verify attendee ticket details before marking checked in"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-gray-50 dark:bg-zinc-950 border border-gray-100 dark:border-zinc-800 space-y-2 text-sm">
+                <div className="flex justify-between gap-2">
+                  <span className="text-gray-500">
+                    {lang === "lo" ? "ຊື່ຜູ້ເຂົ້າຮ່ວມ" : "Attendee"}
+                  </span>
+                  <span className="font-bold text-adv-slate dark:text-white text-right">
+                    {checkinConfirmAttendee.attendeeName}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-gray-500">
+                    {lang === "lo" ? "ລະຫັດປີ້" : "Ticket Code"}
+                  </span>
+                  <span className="font-mono font-bold text-adv-orange">
+                    {checkinConfirmAttendee.ticketId}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-gray-500">
+                    {lang === "lo" ? "ປະເພດປີ້" : "Tier"}
+                  </span>
+                  <span className="font-bold text-adv-slate dark:text-white">
+                    {checkinConfirmAttendee.ticketType}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  disabled={isQuickCheckingIn}
+                  onClick={() => setCheckinConfirmAttendee(null)}
+                  className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-zinc-700 text-sm font-bold text-gray-600 dark:text-zinc-300 cursor-pointer"
+                >
+                  {t.cancel}
+                </button>
+                <button
+                  type="button"
+                  disabled={isQuickCheckingIn}
+                  onClick={() => void handleConfirmQuickCheckin()}
+                  className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 cursor-pointer"
+                >
+                  {isQuickCheckingIn ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4" />
+                  )}
+                  {lang === "lo" ? "ຢືນຢັນເຊັກອິນ" : "Confirm Check-In"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 9. Toast Queue & Profile Photo Success Toast */}
+      <div className="fixed bottom-5 right-5 z-[60] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-4 sm:px-0">
+        <AnimatePresence>
+          {showProfilePicSuccess && (
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              className="pointer-events-auto flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-emerald-600 text-white shadow-xl text-sm font-bold"
+            >
+              <CheckCircle2 className="w-5 h-5 shrink-0" />
+              <span>{t.profileUpdated}</span>
+            </motion.div>
+          )}
+          {toastQueue.map((item) => (
+            <motion.div
+              key={item.id}
+              initial={{ opacity: 0, y: 16, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              className={`pointer-events-auto flex items-center justify-between gap-3 px-4 py-3.5 rounded-2xl text-white shadow-xl text-xs sm:text-sm font-bold ${
+                item.type === "error"
+                  ? "bg-red-600"
+                  : item.type === "warning"
+                    ? "bg-amber-600"
+                    : item.type === "info"
+                      ? "bg-slate-800"
+                      : "bg-emerald-600"
+              }`}
+            >
+              <span className="leading-snug">{item.text}</span>
               <button
+                type="button"
                 onClick={() =>
-                  setToastQueue((prev) => prev.filter((t) => t.id !== toast.id))
+                  setToastQueue((prev) => prev.filter((t) => t.id !== item.id))
                 }
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-1 cursor-pointer"
-                title="Dismiss"
+                className="p-1 rounded-full hover:bg-white/20 shrink-0 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1691,24 +3693,6 @@ export default function Account() {
           ))}
         </AnimatePresence>
       </div>
-
-      {/* Success Toast (Old simple one, keeping it for profile pic but updated style) */}
-      <AnimatePresence>
-        {showProfilePicSuccess && (
-          <div className="fixed bottom-24 sm:bottom-12 right-1/2 translate-x-1/2 z-300 flex flex-col gap-3 w-full max-w-sm px-6 pointer-events-none">
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-              className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-2xl flex items-center gap-3.5 border relative overflow-hidden pointer-events-auto bg-white border-gray-200 text-black"
-            >
-              <span className="font-bold text-xs sm:text-sm flex-1 leading-snug text-black">
-                {t.profileUpdated}
-              </span>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

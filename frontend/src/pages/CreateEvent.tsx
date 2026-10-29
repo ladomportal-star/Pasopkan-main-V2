@@ -46,6 +46,7 @@ import {
   MessageCircle,
   GripVertical,
   Info,
+  BarChart3,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLanguage } from "../context/LanguageContext";
@@ -75,6 +76,8 @@ import {
 } from "../lib/siteSettings";
 import { renderTermIcon } from "../lib/termIcons";
 import SEO from "../components/SEO";
+import { OrganizerEventAnalytics } from "../components/OrganizerEventAnalytics";
+import { EventDetailGraphSection } from "../components/EventDetailGraphSection";
 import { compressImage } from "../lib/imageCompression";
 
 const translations = {
@@ -7343,19 +7346,23 @@ export default function CreateEvent() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <h2 className="text-2xl sm:text-3xl font-black text-adv-slate flex items-center gap-2.5">
-                      <Calendar className="w-7 h-7 text-adv-orange shrink-0" />
-                      <span>{t.myEvents}</span>
+                      <BarChart3 className="w-7 h-7 text-adv-orange shrink-0" />
+                      <span>
+                        {lang === "lo"
+                          ? "ການວິເຄາະ & ສະຖິຕິກຣາບ"
+                          : "Analytics & Sales Intelligence"}
+                      </span>
                     </h2>
                     <p className="text-gray-500 font-medium text-xs sm:text-sm mt-1">
                       {lang === "lo"
-                        ? "ສະແດງສະເພາະກິດຈະກຳທີ່ທ່ານສ້າງ"
-                        : "Only events owned by your account are shown."}
+                        ? "ສູນກາງຕິດຕາມຍອດຂາຍປີ້, ລາຍຮັບກ່ອນຫັກຄ່າທຳນຽມ, ແລະ ຄວາມຄືບໜ້າຂອງທຸກກິດຈະກຳ"
+                        : "Monitor real-time ticket sales performance, revenue before fee curves, and attendance rates."}
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={startNewEvent}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-adv-orange px-4 py-3 text-sm font-bold text-white"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-adv-orange hover:bg-orange-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition-colors cursor-pointer shrink-0"
                   >
                     <Plus className="h-4 w-4" /> {t.createEvent}
                   </button>
@@ -7379,35 +7386,13 @@ export default function CreateEvent() {
                       ? "ບໍ່ສາມາດໂຫຼດງານຂອງທ່ານໄດ້. ກະລຸນາໂຫຼດໜ້າໃໝ່."
                       : "Could not load your events. Please reload the page."}
                   </p>
-                ) : localEvents.length === 0 ? (
-                  <p className="rounded-2xl border border-gray-200 bg-white p-5 text-gray-600">
-                    {lang === "lo"
-                      ? "ທ່ານຍັງບໍ່ມີກິດຈະກຳ."
-                      : "You have not created an event yet."}
-                  </p>
                 ) : (
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {localEvents.map((event) => (
-                      <button
-                        key={event.id}
-                        type="button"
-                        onClick={() => setSelectedEvent(event)}
-                        className="rounded-2xl border border-gray-200 bg-white p-5 text-left shadow-sm hover:border-orange-400"
-                      >
-                        <h3 className="font-bold text-adv-slate">
-                          {event.title}
-                        </h3>
-                        <p className="mt-2 text-sm text-gray-500">
-                          {event.venue ||
-                            event.location ||
-                            (lang === "lo" ? "ບໍ່ມີສະຖານທີ່" : "Venue not set")}
-                        </p>
-                        <p className="mt-2 text-xs font-semibold text-orange-600">
-                          {event.status}
-                        </p>
-                      </button>
-                    ))}
-                  </div>
+                  <OrganizerEventAnalytics
+                    events={localEvents}
+                    lang={lang as "en" | "lo"}
+                    currency={currency}
+                    onSelectEventForModal={(event) => setSelectedEvent(event)}
+                  />
                 )}
               </div>
             )}
@@ -7673,6 +7658,13 @@ export default function CreateEvent() {
                         />
                       </div>
                     )}
+
+                    {/* Interactive Event Analytics & Performance Graph */}
+                    <EventDetailGraphSection
+                      event={selectedEvent}
+                      lang={lang as "en" | "lo"}
+                      currency={currency}
+                    />
 
                     {/* Ticket Price & Tiers Information */}
                     <div className="bg-gray-50/80 p-6 rounded-[24px] border border-gray-100 space-y-4 shadow-sm">

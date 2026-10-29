@@ -70,10 +70,113 @@ export interface BackendCheckIn {
   ticketCode: string;
   eventId: string;
   attendeeName: string | null;
+  attendeeEmail?: string | null;
+  attendeePhone?: string | null;
   ticketType: string;
+  unitPriceKip?: number;
+  customAnswers?: Record<string, string | string[]> | null;
   checkedInAt: string;
   checkedInBy: string;
   gate: string | null;
+}
+
+export interface OrganizerAttendeeRow {
+  id: string;
+  tierId?: string;
+  ticketCode: string;
+  tierName: string;
+  unitPriceKip: number;
+  status: "valid" | "checked_in";
+  attendeeName: string | null;
+  attendeeEmail: string | null;
+  attendeePhone: string | null;
+  customAnswers?: Record<string, string | string[]> | null;
+  createdAt?: string;
+  selectedDate: string | null;
+  selectedTime: string | null;
+  paidAt: string | null;
+  checkedInAt: string | null;
+  gate: string | null;
+  checkedInBy?: string | null;
+  orderNumber: string;
+}
+
+export interface OrganizerCouponRedemption {
+  id: string;
+  couponCode: string;
+  eventId: string;
+  eventTitle: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userPhone?: string;
+  orderId: string;
+  tierName: string;
+  discountSaved: number;
+  totalPaid: number;
+  usedAt: string;
+}
+
+export interface OrganizerPayoutRow {
+  eventId: string;
+  eventTitle: string;
+  eventStatus: string;
+  eventDate: string | null;
+  ticketsSold: number;
+  grossKip: number;
+  feePercent: number;
+  feeKip: number;
+  payoutKip: number;
+  status: "pending" | "paid";
+  hasBill: boolean;
+  paidAt: string | null;
+  bankName: string | null;
+  accountName: string | null;
+  accountNumber: string | null;
+}
+
+export interface OrganizerAnalyticsEvent {
+  id: string;
+  title: string;
+  category: string;
+  date: string;
+  ticketsSold: number;
+  totalCapacity: number;
+  grossRevenue: number;
+  feePercent: number;
+  netPayout: number;
+  checkInCount: number;
+  tierBreakdown: Array<{
+    id: string;
+    name: string;
+    price: number;
+    available: number;
+    sold: number;
+    revenue: number;
+    fillRate: number;
+  }>;
+  dailySales: Array<{
+    date: string;
+    dayOfWeek: number;
+    revenue: number;
+    cumulativeRevenue: number;
+    tickets: number;
+    cumulativeTickets: number;
+  }>;
+  hourlyPurchases24: number[];
+  hourlyCheckins24: number[];
+  demographics: {
+    gender: {
+      male: number;
+      female: number;
+      unspecified: number;
+    };
+    ageGroups: Array<{
+      age: string;
+      male: number;
+      female: number;
+    }>;
+  };
 }
 
 export interface EventStaffAssignment {
@@ -250,23 +353,14 @@ export const api = {
     if (query?.cursor) params.set("cursor", query.cursor);
     const qs = params.toString();
     return request<{
-      attendees: {
-        id: string;
-        ticketCode: string;
-        tierName: string;
-        unitPriceKip: number;
-        status: "valid" | "checked_in";
-        attendeeName: string | null;
-        attendeeEmail: string | null;
-        attendeePhone: string | null;
-        selectedDate: string | null;
-        selectedTime: string | null;
-        paidAt: string | null;
-        checkedInAt: string | null;
-        gate: string | null;
-        orderNumber: string;
-      }[];
-      stats: { totalPaid: number; checkedIn: number; notCheckedIn: number };
+      attendees: OrganizerAttendeeRow[];
+      stats: {
+        totalPaid: number;
+        checkedIn: number;
+        notCheckedIn: number;
+        totalIncomeKip: number;
+      };
+      couponRedemptions: OrganizerCouponRedemption[];
       nextCursor: string | null;
     }>(
       "GET",
@@ -275,6 +369,107 @@ export const api = {
       opts,
     );
   },
+
+  rescheduleOrganizerAttendee: (
+    eventId: string,
+    itemId: string,
+    body: { selectedDate: string; selectedTime?: string | null },
+    opts?: RequestOptions,
+  ) =>
+    request<{
+      booking: {
+        id: string;
+        orderNumber: string;
+        selectedDate: string | null;
+        selectedTime: string | null;
+      };
+    }>(
+      "PATCH",
+      `/organizer/events/${encodeURIComponent(eventId)}/attendees/${encodeURIComponent(itemId)}/schedule`,
+      body,
+      opts,
+    ),
+
+  createOrganizerWalkin: (
+    eventId: string,
+    body: {
+      attendeeName: string;
+      attendeePhone?: string | null;
+      attendeeEmail?: string | null;
+      selectedDate: string;
+      selectedTime?: string | null;
+      tierId?: string;
+      quantity?: number;
+      markCheckedIn?: boolean;
+    },
+    opts?: RequestOptions,
+  ) =>
+    request<{ orderNumber: string; items: Record<string, unknown>[] }>(
+      "POST",
+      `/organizer/events/${encodeURIComponent(eventId)}/walkin`,
+      body,
+      opts,
+    ),
+
+  getBookingOverrides: (eventId: string, opts?: RequestOptions) =>
+    request<{ overrides: Record<string, unknown> }>(
+      "GET",
+      `/organizer/events/${encodeURIComponent(eventId)}/booking-overrides`,
+      undefined,
+      opts,
+    ),
+
+  saveBookingOverrides: (
+    eventId: string,
+    overrides: Record<string, unknown>,
+    opts?: RequestOptions,
+  ) =>
+    request<{ overrides: Record<string, unknown> }>(
+      "PUT",
+      `/organizer/events/${encodeURIComponent(eventId)}/booking-overrides`,
+      { overrides },
+      opts,
+    ),
+
+  getOrganizerPayouts: (opts?: RequestOptions) =>
+    request<{
+      bankAccount: {
+        bankName: string;
+        accountName: string;
+        accountNumber: string;
+        updatedAt: string;
+      } | null;
+      payouts: OrganizerPayoutRow[];
+    }>("GET", "/organizer/payouts", undefined, opts),
+
+  getOrganizerPayoutBillUrl: (eventId: string, opts?: RequestOptions) =>
+    request<{ url: string }>(
+      "GET",
+      `/organizer/payouts/${encodeURIComponent(eventId)}/bill`,
+      undefined,
+      opts,
+    ),
+
+  updateOrganizerBankDetails: (
+    body: { bankName: string; accountHolder: string; accountNumber: string },
+    opts?: RequestOptions,
+  ) =>
+    request<{
+      bankAccount: {
+        bankName: string;
+        accountName: string;
+        accountNumber: string;
+        updatedAt: string;
+      };
+    }>("PUT", "/organizer/bank-details", body, opts),
+
+  getOrganizerAnalytics: (opts?: RequestOptions) =>
+    request<{ events: OrganizerAnalyticsEvent[] }>(
+      "GET",
+      "/organizer/analytics",
+      undefined,
+      opts,
+    ),
 
   createEvent: (event: Record<string, unknown>, opts?: RequestOptions) =>
     request<{
@@ -451,6 +646,8 @@ export const api = {
         customAnswers: Record<string, string | string[]> | null;
         alreadyCheckedIn: boolean;
         checkedInAt: string | null;
+        checkedInBy?: string | null;
+        gate?: string | null;
       };
     }>("GET", `/checkins/lookup/${encodeURIComponent(code)}`, undefined, opts),
 
@@ -531,4 +728,43 @@ export async function listAllMyEvents(
     cursor = result.data.nextCursor ?? undefined;
   } while (cursor);
   return events;
+}
+
+/** Fetch every page of paid attendees + stats + coupon redemptions for an organizer event. */
+export async function listAllOrganizerAttendees(
+  eventId: string,
+  opts?: RequestOptions,
+): Promise<{
+  attendees: OrganizerAttendeeRow[];
+  stats: {
+    totalPaid: number;
+    checkedIn: number;
+    notCheckedIn: number;
+    totalIncomeKip: number;
+  };
+  couponRedemptions: OrganizerCouponRedemption[];
+}> {
+  const attendees: OrganizerAttendeeRow[] = [];
+  let stats = { totalPaid: 0, checkedIn: 0, notCheckedIn: 0, totalIncomeKip: 0 };
+  let couponRedemptions: OrganizerCouponRedemption[] = [];
+  let cursor: string | undefined;
+  let isFirstPage = true;
+  do {
+    const res = await api.listOrganizerAttendees(
+      eventId,
+      { limit: 500, cursor },
+      opts,
+    );
+    if (!res.ok || !res.data) {
+      throw new Error(res.error || "Could not load attendees");
+    }
+    attendees.push(...res.data.attendees);
+    if (isFirstPage) {
+      stats = res.data.stats;
+      couponRedemptions = res.data.couponRedemptions ?? [];
+      isFirstPage = false;
+    }
+    cursor = res.data.nextCursor ?? undefined;
+  } while (cursor);
+  return { attendees, stats, couponRedemptions };
 }

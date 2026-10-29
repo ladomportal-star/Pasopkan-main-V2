@@ -29,7 +29,7 @@ import { formatToDDMMYYYY } from './DateInputDDMMYYYY';
 
 export interface CouponRedemption {
   id: string;
-  couponId: string;
+  couponId?: string;
   couponCode: string;
   eventId: string;
   eventTitle: string;
@@ -48,6 +48,7 @@ export interface CouponRedemption {
 interface ManageCouponsSectionProps {
   eventId: string;
   coupons?: Coupon[];
+  redemptions?: CouponRedemption[];
   onUpdateCoupons: (updatedCoupons: Coupon[]) => void;
   theme?: 'light' | 'dark';
   lang?: 'en' | 'lo';
@@ -57,6 +58,7 @@ interface ManageCouponsSectionProps {
 export const ManageCouponsSection: React.FC<ManageCouponsSectionProps> = ({
   eventId,
   coupons = [],
+  redemptions = [],
   onUpdateCoupons,
   theme = 'light',
   lang = 'en',
@@ -67,7 +69,7 @@ export const ManageCouponsSection: React.FC<ManageCouponsSectionProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   // Redemption history is intentionally empty until the backend provides a
   // persisted, event-scoped redemption endpoint. Never read browser records.
-  const redemptions: CouponRedemption[] = [];
+
 
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);
