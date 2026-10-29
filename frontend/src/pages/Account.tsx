@@ -368,10 +368,13 @@ export default function Account() {
     setSelectedEventId("");
     setEventsLoadError(false);
     if (user && token) {
-      api.get<{ role: string }>("/organizer/eligibility", { token, throwOnError: true })
+      api.get<{ canCreateEvent: boolean }>("/organizer/eligibility", { token, throwOnError: true })
         .then(async ({ data }) => {
           if (cancelled) return;
-          const allowed = data?.role === "organizer" || data?.role === "admin";
+          // Use the backend's effective capability, which verifies both role and
+          // organizer record. A stale `role: organizer` by itself must not expose
+          // organizer tabs to an ordinary account.
+          const allowed = data?.canCreateEvent === true;
           setOrganizerAccessUid(allowed ? user.id : null);
           if (allowed) await loadMyEvents();
         })
