@@ -19,6 +19,23 @@ async function staffFor(tx: Prisma.TransactionClient, eventId: string, uid: stri
   return actor;
 }
 const include = { order: true, checkIn: { include: { staff: true } } } as const;
+type TicketFinder = Pick<Prisma.TransactionClient, "orderItem">;
+
+async function findTicketItem(exec: TicketFinder, ticketCode: string) {
+  const exact = await exec.orderItem.findUnique({ where: { ticketCode }, include });
+  if (exact) return exact;
+
+  // Older tickets included a UUID after this compact prefix. Keep those QR
+  // codes valid while allowing staff to enter the shorter printed ID.
+  if (!/^PSK-\d{12}-\d+$/i.test(ticketCode)) return null;
+  const matches = await exec.orderItem.findMany({
+    where: { ticketCode: { startsWith: `${ticketCode}-` } },
+    take: 2,
+    include,
+  });
+  return matches.length === 1 ? matches[0] : null;
+}
+
 function checkinApi(row: any, item: any) {
   const { staff, ...fields } = row;
   return {
@@ -38,7 +55,7 @@ export async function scanTicket(body: CreateCheckinBody, uid: string) {
   return db.$transaction(async (tx) => {
     // Authorize the requested event before revealing anything about a ticket code.
     const staff = await staffFor(tx, body.eventId, uid);
-    const item = await tx.orderItem.findUnique({ where: { ticketCode: body.ticketCode }, include });
+    const item = await findTicketItem(tx, body.ticketCode);
     if (!item) throw new HttpError(404, "Ticket not found");
     if (body.eventId !== item.order.eventId)
       throw new HttpError(409, "Ticket belongs to another event");
@@ -74,7 +91,7 @@ export async function listCheckins(eventId: string, uid: string) {
   return rows.map((row) => checkinApi(row, row.orderItem));
 }
 export async function lookupTicket(ticketCode: string, uid: string) {
-  const item = await db.orderItem.findUnique({ where: { ticketCode }, include });
+  const item = await findTicketItem(db, ticketCode);
   if (!item) return null;
   await staffFor(db, item.order.eventId, uid);
   return {

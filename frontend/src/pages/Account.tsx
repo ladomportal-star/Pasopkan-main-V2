@@ -159,7 +159,7 @@ const translations = {
     resetScanner: "Reset Scanner",
     accessDenied: "Camera access denied",
     manualEntry: "Manual Check-in",
-    enterTicketCode: "Enter ticket code (e.g. tk_123)",
+    enterTicketCode: "Enter ticket code (e.g. PSK-123456789012-1)",
     checkIn: "Check In",
     ticketCode: "Ticket Code",
     attendee: "Attendee",
@@ -234,7 +234,7 @@ const translations = {
     resetScanner: "ຣີເຊັດເຄື່ອງສະແກນ",
     accessDenied: "ການເຂົ້າເຖິງກ້ອງຖ່າຍຮູບຖືກປະຕິເສດ",
     manualEntry: "ເຊັກອິນດ້ວຍຕົນເອງ",
-    enterTicketCode: "ປ້ອນລະຫັດປີ້ (ເຊັ່ນ: tk_123)",
+    enterTicketCode: "ປ້ອນລະຫັດປີ້ (ເຊັ່ນ: PSK-123456789012-1)",
     checkIn: "ເຊັກອິນ",
     ticketCode: "ລະຫັດປີ້",
     attendee: "ຜູ້ເຂົ້າຮ່ວມ",
@@ -281,6 +281,15 @@ const translations = {
     close: "ປິດ",
   },
 };
+
+/** Display legacy UUID ticket codes in their new compact form. QR codes keep
+ * the original stored value, and the backend accepts this compact alias. */
+function compactTicketCode(ticketCode: string): string {
+  return ticketCode.replace(
+    /^(PSK-\d{12}-\d+)-[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    "$1",
+  );
+}
 
 export default function Account() {
   const [toastQueue, setToastQueue] = useState<
@@ -2260,7 +2269,7 @@ export default function Account() {
                                               <span className="text-[11px] font-mono text-gray-400 dark:text-zinc-500 flex items-center gap-1.5 sm:gap-0">
                                                 Ticket ID:{" "}
                                                 <span className="font-bold text-adv-slate dark:text-white sm:ml-1">
-                                                  {att.ticketId || att.id}
+                                                  {compactTicketCode(att.ticketId || att.id)}
                                                 </span>
                                               </span>
                                             </div>

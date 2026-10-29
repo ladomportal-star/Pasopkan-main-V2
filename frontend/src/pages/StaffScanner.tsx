@@ -85,7 +85,7 @@ const translations = {
     scanTitle: 'Scan Ticket QR Code',
     scanDesc: 'Point staff camera at attendee ticket QR code or enter ticket code manually below.',
     manualTitle: 'Manual Ticket Verification',
-    enterCodePlaceholder: 'Enter ticket code (e.g., tk_981245 or TK-123)',
+    enterCodePlaceholder: 'Enter ticket code (e.g., PSK-123456789012-1)',
     verifyBtn: 'Verify Code',
     validTicket: 'VALID TICKET - UNCHECKED',
     alreadyScanned: 'ALREADY CHECKED IN',

@@ -1,4 +1,4 @@
-import { randomInt, randomUUID } from "node:crypto";
+import { randomInt } from "node:crypto";
 import { db } from "../config/database.ts";
 import { env } from "../config/env.ts";
 import { HttpError } from "../middlewares/error.middleware.ts";
@@ -368,7 +368,9 @@ export async function createOrder(input: CreateOrderInput) {
               tierId: tier.id,
               tierName: tier.name,
               unitPriceKip: tier.priceKip,
-              ticketCode: ticketPrefix + "-" + (i + 1) + "-" + randomUUID(),
+              // The order number is already unique; append the item index to
+              // keep each ticket in a multi-ticket order unique without a UUID.
+              ticketCode: ticketPrefix + "-" + (i + 1),
               status: paid ? ("valid" as const) : ("pending" as const),
               attendeeName: [a?.firstName, a?.lastName].filter(Boolean).join(" ") || null,
               attendeeEmail: a?.email,
