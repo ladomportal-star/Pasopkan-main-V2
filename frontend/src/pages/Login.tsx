@@ -325,23 +325,8 @@ export default function Login({
             </Link>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-linear-to-br from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/25">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            {/* <span
-              className={`rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ${
-                dark
-                  ? "bg-emerald-400/10 text-emerald-300"
-                  : "bg-emerald-50 text-emerald-700"
-              }`}
-            >
-              {lo ? "ປອດໄພດ້ວຍ Supabase" : "Secured by Supabase"}
-            </span> */}
-          </div>
-
           <h2
-            className={`mt-7 text-3xl font-black tracking-[-0.035em] sm:text-4xl ${dark ? "text-white!" : "text-slate-950!"}`}
+            className={`mt-0 text-3xl font-black tracking-[-0.035em] sm:text-4xl ${dark ? "text-white!" : "text-slate-950!"}`}
           >
             {copy.title}
           </h2>
@@ -509,21 +494,6 @@ export default function Login({
             </form>
           )}
 
-          <div
-            className={`mt-6 flex items-start gap-3 rounded-2xl px-4 py-3.5 ${dark ? "bg-white/[0.035]" : "bg-slate-50"}`}
-          >
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-            <p className={`text-xs leading-5 ${dark ? "text-zinc-400" : "text-slate-500"}`}>
-              {method === "phone"
-                ? lo
-                  ? "OTP ໃຊ້ໄດ້ຄັ້ງດຽວ. Pasopkan ບໍ່ເຄີຍຂໍລະຫັດນີ້ຜ່ານການໂທ."
-                  : "Your OTP is single-use. Pasopkan will never ask for it by phone call."
-                : lo
-                  ? "Pasopkan ບໍ່ເຫັນ ຫຼືເກັບລະຫັດຜ່ານ Google ຂອງທ່ານ."
-                  : "Pasopkan never sees or stores your Google password."}
-            </p>
-          </div>
-
           <p
             className={`mt-7 text-center text-xs leading-5 ${dark ? "text-zinc-500" : "text-slate-500"}`}
           >
@@ -545,30 +515,6 @@ export default function Login({
             </Link>
           </p>
 
-          <div
-            className={`mt-8 border-t pt-5 text-center text-sm ${dark ? "border-white/10 text-zinc-400" : "border-slate-100 text-slate-500"}`}
-          >
-            {registering
-              ? lo
-                ? "ມີບັນຊີແລ້ວ?"
-                : "Already have an account?"
-              : lo
-                ? "ຍັງບໍ່ມີບັນຊີ?"
-                : "New to Pasopkan?"}{" "}
-            <Link
-              to={registering ? "/login" : "/register"}
-              state={{ returnTo: destination, returnState: location.state?.returnState }}
-              className="font-bold text-adv-orange hover:text-orange-600"
-            >
-              {registering
-                ? lo
-                  ? "ເຂົ້າລະບົບ"
-                  : "Sign in"
-                : lo
-                  ? "ສ້າງບັນຊີ"
-                  : "Create account"}
-            </Link>
-          </div>
         </motion.section>
       </div>
     </main>
