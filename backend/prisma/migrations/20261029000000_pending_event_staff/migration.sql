@@ -1,0 +1,3 @@
+ALTER TABLE "EventStaff" ALTER COLUMN "userId" DROP NOT NULL;
+ALTER TABLE "EventStaff" ADD COLUMN "staffName" TEXT;
+ALTER TABLE "EventStaff" ADD COLUMN "gateLabel" TEXT;
