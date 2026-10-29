@@ -2552,12 +2552,12 @@ export default function Account() {
               </div>
 
               {/* Claimable Event Revenue Card */}
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-zinc-900 to-slate-800 text-white p-6 sm:p-8 shadow-xl border border-white/10">
-                <div className="absolute -right-12 -top-12 w-48 h-48 rounded-full bg-adv-orange/15 blur-3xl pointer-events-none" />
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white via-gray-50 to-slate-100 text-adv-slate p-6 sm:p-8 shadow-sm border border-gray-200">
+                <div className="absolute -right-12 -top-12 w-48 h-48 rounded-full bg-adv-orange/10 blur-3xl pointer-events-none" />
                 <div className="relative z-10">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                     <div>
-                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-[11px] font-black uppercase tracking-wider text-orange-300 mb-3">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 border border-orange-100 text-[11px] font-black uppercase tracking-wider text-orange-700 mb-3">
                         <DollarSign className="w-3.5 h-3.5" />
                         {lang === "lo"
                           ? "ຍອດເງິນລໍຖ້າໂອນເຂົ້າບັນຊີ"
@@ -2565,19 +2565,19 @@ export default function Account() {
                       </div>
                       <div className="text-3xl sm:text-4xl font-black tracking-tight">
                         {unclaimedRevenue.toLocaleString()}{" "}
-                        <span className="text-lg sm:text-xl font-bold text-orange-400">
+                        <span className="text-lg sm:text-xl font-bold text-adv-orange">
                           LAK
                         </span>
                       </div>
-                      <p className="text-xs sm:text-sm text-zinc-400 font-medium mt-1">
+                      <p className="text-xs sm:text-sm text-gray-500 font-medium mt-1">
                         {lang === "lo"
                           ? `ຈາກ ${pendingPayoutEvents.length} ກິດຈະກຳທີ່ມີຍອດຂາຍລໍຖ້າໂອນ`
                           : `Across ${pendingPayoutEvents.length} event(s) with pending settlement`}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-xs font-bold text-zinc-300 self-start sm:self-center">
-                      <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white border border-gray-200 text-xs font-bold text-gray-600 self-start sm:self-center">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>
                         {lang === "lo"
                           ? "ໂອນເງິນອັດຕະໂນມັດຫຼັງຈົບງານ 3-5 ວັນລັດຖະການ"
@@ -2588,17 +2588,17 @@ export default function Account() {
 
                   {/* Pending Payout Breakdown */}
                   {pendingPayoutEvents.length > 0 && (
-                    <div className="space-y-2.5 mb-5 pt-4 border-t border-white/10">
+                    <div className="space-y-2.5 mb-5 pt-4 border-t border-gray-200">
                       {pendingPayoutEvents.map((ev) => (
                         <div
                           key={ev.eventId}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 rounded-2xl bg-white/5 border border-white/10"
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 rounded-2xl bg-white border border-gray-200"
                         >
                           <div className="min-w-0">
-                            <p className="font-bold text-sm text-white truncate">
+                            <p className="font-bold text-sm text-adv-slate truncate">
                               {ev.eventTitle}
                             </p>
-                            <p className="text-xs text-zinc-400">
+                            <p className="text-xs text-gray-500">
                               {ev.eventDate
                                 ? formatEventDateDDMMYYYY(ev.eventDate)
                                 : "-"}{" "}
@@ -2609,10 +2609,10 @@ export default function Account() {
                             </p>
                           </div>
                           <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                            <span className="text-sm font-black text-emerald-400">
+                            <span className="text-sm font-black text-emerald-700">
                               {ev.payoutKip.toLocaleString()} LAK
                             </span>
-                            <span className="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 text-[10px] font-black uppercase tracking-wider">
+                            <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-black uppercase tracking-wider">
                               {lang === "lo" ? "ລໍຖ້າໂອນ" : "Pending"}
                             </span>
                           </div>
@@ -2623,15 +2623,15 @@ export default function Account() {
 
                   {/* 30-Day Cooling Period Security Banner */}
                   {isBankInCoolingPeriod && (
-                    <div className="mb-4 p-4 rounded-2xl bg-amber-500/15 border border-amber-400/30 flex items-start gap-3">
-                      <Lock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                      <div className="text-xs sm:text-sm text-amber-100 leading-relaxed">
-                        <p className="font-bold text-amber-300 mb-0.5">
+                    <div className="mb-4 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+                      <Lock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                      <div className="text-xs sm:text-sm text-amber-900 leading-relaxed">
+                        <p className="font-bold text-amber-800 mb-0.5">
                           {lang === "lo"
                             ? `ໄລຍະເວລາຄຸ້ມຄອງຄວາມປອດໄພບັນຊີໃໝ່ (ອີກ ${coolingDaysRemaining} ວັນ)`
                             : `Security Cooling Period Active (${coolingDaysRemaining} days remaining)`}
                         </p>
-                        <p className="text-amber-200/80 text-xs">
+                        <p className="text-amber-800/80 text-xs">
                           {lang === "lo"
                             ? `ບັນຊີທະນາຄານຖືກປ່ຽນເມື່ອບໍ່ດົນມານີ້. ເພື່ອປ້ອງກັນການສໍ້ໂກງ ລະບົບຈະກວດສອບກ່ອນປົດລັອກໃນວັນທີ ${unlockDate}.`
                             : `Your payout bank was recently updated. Standard anti-fraud hold clears on ${unlockDate}.`}
@@ -2641,9 +2641,9 @@ export default function Account() {
                   )}
 
                   {/* Security Policy Bullet Points */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-zinc-400 pt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-gray-600 pt-2">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                       <span>
                         {lang === "lo"
                           ? "ຄ່າທຳນຽມແພລດຟອມຄິດໄລ່ຕາມຍອດຂາຍປີ້ຈິງເທົ່ານັ້ນ"
@@ -2651,7 +2651,7 @@ export default function Account() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                       <span>
                         {lang === "lo"
                           ? "ມີຫຼັກຖານໃບບິນໂອນເງິນຈາກລະບົບທຸກລາຍການ"
