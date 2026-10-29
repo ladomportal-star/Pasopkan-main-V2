@@ -305,6 +305,11 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
 
   // Determine final safe embed source
   const finalEmbedSrc = resolvedEmbedSrc || syncEmbedSrc || fallbackEmbedSrc;
+  const satelliteEmbedSrc = useMemo(() => {
+    const [source, fragment] = finalEmbedSrc.split("#", 2);
+    const separator = source.includes("?") ? "&" : "?";
+    return `${source}${separator}t=k${fragment ? `#${fragment}` : ""}`;
+  }, [finalEmbedSrc]);
   const externalMapLink = getExternalMapUrl();
 
   if (isReadOnly) {
@@ -327,7 +332,7 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
             <div className="w-full h-[140px] sm:h-[180px] md:h-[220px] relative overflow-hidden pointer-events-none flex items-center justify-center">
               <iframe
                 key={finalEmbedSrc}
-                src={finalEmbedSrc}
+                src={satelliteEmbedSrc}
                 style={{
                   border: 0,
                   width: "calc(100% + 120px)",

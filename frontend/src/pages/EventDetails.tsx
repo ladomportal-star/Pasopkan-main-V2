@@ -1030,6 +1030,18 @@ export default function EventDetails({
     );
   }
 
+  const locationParts = [
+    event.location?.replace(/^,\s*/, "").trim()
+      ? `${lang === "lo" ? "ບ້ານ" : "Village"} ${event.location.replace(/^,\s*/, "").trim()}`
+      : "",
+    event.district?.trim()
+      ? `${lang === "lo" ? "ເມືອງ" : "District"} ${event.district.trim()}`
+      : "",
+    event.province?.trim()
+      ? `${lang === "lo" ? "ແຂວງ" : "Province"} ${event.province.trim()}`
+      : "",
+  ].filter(Boolean);
+
   const handleCheckout = () => {
     if (
       (event.dateType === "flexible" || event.dateType === "booking") &&
@@ -1697,19 +1709,11 @@ export default function EventDetails({
 
                         {/* Specific Address, District & Province */}
                         <p className="text-gray-700 text-xs sm:text-sm font-medium mt-1 leading-relaxed">
-                          {event.location && (
-                            <span className="text-gray-800 font-semibold">
-                              {event.location}
-                            </span>
-                          )}
-                          {event.district && (
-                            <span className="text-gray-600">
-                              , {event.district}
-                            </span>
-                          )}
-                          {!event.location && !event.district && (
+                          {locationParts.length > 0 ? (
+                            locationParts.join(", ")
+                          ) : (
                             <span className="text-gray-500 italic">
-                              Vientiane, Laos
+                              {lang === "lo" ? "ລາວ" : "Laos"}
                             </span>
                           )}
                         </p>
