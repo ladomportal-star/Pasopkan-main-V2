@@ -225,7 +225,17 @@ export default function StaffScanner() {
     api.getEvent(eventId, { token }).then((res) => {
       if (cancelled) return;
       if (res.data?.event) {
-        setSelectedEvent(fromBackendEvent(res.data.event));
+        const event = fromBackendEvent(res.data.event);
+        const summary = scannerEvents.find((item) => item.id === eventId);
+        // Scanner event summaries include the venue even when the full event
+        // response omits it, so preserve that real API value for the header.
+        if (!event.venue && summary?.venueName) {
+          event.venue = summary.venueName;
+        }
+        if (!event.location && summary?.venueName) {
+          event.location = summary.venueName;
+        }
+        setSelectedEvent(event);
       } else {
         const summary = scannerEvents.find((ev) => ev.id === eventId);
         if (summary) {

@@ -200,7 +200,6 @@ const translations = {
     staffAlreadyAssigned: "This person already has scanner access for this event.",
     staffAlreadyAdded: "This staff name has already been added to this event.",
     staffAddedPending: "Staff name added. They can scan after creating/signing into a Pasopkan account and being activated with the same name.",
-    staffPending: "Account setup needed before scanning",
     staffNameLabel: "Gate / Label (Optional)",
     staffNamePlaceholder: "e.g., Gate 1 - Main Entrance",
     generateLink: "Assign & Copy Link",
@@ -280,7 +279,6 @@ const translations = {
     staffAlreadyAssigned: "ພະນັກງານຄົນນີ້ມີສິດສະແກນໃນ Event ນີ້ແລ້ວ.",
     staffAlreadyAdded: "ຊື່ພະນັກງານນີ້ຖືກເພີ່ມໃນ Event ແລ້ວ.",
     staffAddedPending: "ເພີ່ມຊື່ພະນັກງານແລ້ວ. ພະນັກງານຈະສະແກນໄດ້ຫຼັງສ້າງ/ເຂົ້າບັນຊີ Pasopkan ແລະເປີດສິດດ້ວຍຊື່ເດີມ.",
-    staffPending: "ຕ້ອງຕັ້ງຄ່າບັນຊີກ່ອນສະແກນ",
     staffNameLabel: "ຊື່ປະຕູ / ຈຸດສະແກນ (ຖ້າມີ)",
     staffNamePlaceholder: "ເຊັ່ນ: ປະຕູ 1 - ທາງເຂົ້າຫຼັກ",
     generateLink: "ເພີ່ມພະນັກງານ & ຄັດລອກລິ້ງ",
@@ -1874,7 +1872,6 @@ export default function Account() {
                                     · {staffItem.gateLabel}
                                   </span>
                                 )}
-                                {!staffItem.user && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">{t.staffPending}</span>}
                                 {staffItem.user?.authEmail &&
                                   staffDisplayName !==
                                     staffItem.user.authEmail && (
