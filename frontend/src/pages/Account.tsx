@@ -1892,7 +1892,6 @@ export default function Account() {
                               </div>
 
                               <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-                                {staffItem.user && <>
                                 <button
                                   type="button"
                                   onClick={() => void handleCopyStaffLink(staffUrl)}
@@ -1939,7 +1938,6 @@ export default function Account() {
                                 >
                                   <ExternalLink className="w-3.5 h-3.5" />
                                 </a>
-                                </>}
 
                                 <button
                                   type="button"
