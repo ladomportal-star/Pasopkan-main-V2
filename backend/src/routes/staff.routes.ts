@@ -24,7 +24,11 @@ router.post(
   requireRegisteredUser,
   validate({
     params: eventParams,
-    body: z.object({ email: z.email().trim().toLowerCase() }),
+    body: z.object({
+      email: z.string().trim().toLowerCase().pipe(
+        z.email({ error: "Enter the registered staff account email address" }),
+      ),
+    }),
   }),
   async (req, res) => {
     res

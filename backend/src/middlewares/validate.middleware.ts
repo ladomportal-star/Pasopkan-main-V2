@@ -15,7 +15,7 @@ export function validate(schemas: Schemas) {
       const result = schema.safeParse(req[key]);
       if (!result.success) {
         return res.status(400).json({
-          error: "Validation failed",
+          error: result.error.issues[0]?.message || "Validation failed",
           details: z.flattenError(result.error).fieldErrors,
         });
       }

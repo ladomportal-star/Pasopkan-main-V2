@@ -88,15 +88,10 @@ router.put(
   },
 );
 
-router.get(
-  "/organizer/payouts",
-  requireAuth,
-  requireRegisteredUser,
-  async (req, res) => {
-    const data = await getOrganizerPayoutsAndBank(req.user!.uid);
-    res.json(data);
-  },
-);
+router.get("/organizer/payouts", requireAuth, requireRegisteredUser, async (req, res) => {
+  const data = await getOrganizerPayoutsAndBank(req.user!.uid);
+  res.json(data);
+});
 
 router.get(
   "/organizer/payouts/:eventId/bill",
@@ -121,14 +116,9 @@ router.put(
   },
 );
 
-router.get(
-  "/organizer/analytics",
-  requireAuth,
-  requireRegisteredUser,
-  async (req, res) => {
-    const data = await getOrganizerAnalytics(req.user!.uid);
-    res.json(data);
-  },
-);
+router.get("/organizer/analytics", requireAuth, requireRegisteredUser, async (req, res) => {
+  const data = await getOrganizerAnalytics(req.user!.uid);
+  res.json(data);
+});
 
 export default router;

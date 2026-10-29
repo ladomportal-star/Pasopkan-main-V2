@@ -175,6 +175,9 @@ const translations = {
     createStaffLink: "Assign Staff Scanner",
     staffEmailLabel: "Staff Account Email",
     staffEmailPlaceholder: "staff@example.com",
+    staffAccountHint: "Use the email of an existing Pasopkan account. The staff member must sign in at least once before you assign scanner access.",
+    staffEmailInvalid: "Enter a valid email address for an existing Pasopkan account.",
+    staffAccountMissing: "No Pasopkan account matches that email. The staff member must sign in once before being assigned.",
     staffNameLabel: "Gate / Label (Optional)",
     staffNamePlaceholder: "e.g., Gate 1 - Main Entrance",
     generateLink: "Assign & Copy Link",
@@ -247,6 +250,9 @@ const translations = {
     createStaffLink: "ເພີ່ມພະນັກງານສະແກນປີ້",
     staffEmailLabel: "ອີເມວບັນຊີພະນັກງານ",
     staffEmailPlaceholder: "staff@example.com",
+    staffAccountHint: "ໃສ່ອີເມວບັນຊີ Pasopkan ທີ່ມີຢູ່ແລ້ວ. ພະນັກງານຕ້ອງເຂົ້າລະບົບຢ່າງໜ້ອຍ 1 ຄັ້ງ ກ່ອນຈຶ່ງຈະກຳນົດສິດສະແກນໄດ້.",
+    staffEmailInvalid: "ກະລຸນາໃສ່ອີເມວທີ່ຖືກຕ້ອງຂອງບັນຊີ Pasopkan ທີ່ມີຢູ່ແລ້ວ.",
+    staffAccountMissing: "ບໍ່ພົບບັນຊີ Pasopkan ທີ່ກົງກັບອີເມວນີ້. ໃຫ້ພະນັກງານເຂົ້າລະບົບກ່ອນ 1 ຄັ້ງ ຈຶ່ງຈະກຳນົດສິດໄດ້.",
     staffNameLabel: "ຊື່ປະຕູ / ຈຸດສະແກນ (ຖ້າມີ)",
     staffNamePlaceholder: "ເຊັ່ນ: ປະຕູ 1 - ທາງເຂົ້າຫຼັກ",
     generateLink: "ເພີ່ມພະນັກງານ & ຄັດລອກລິ້ງ",
@@ -385,6 +391,7 @@ export default function Account() {
   );
   const [showCreateStaffModal, setShowCreateStaffModal] = useState(false);
   const [newStaffEmail, setNewStaffEmail] = useState("");
+  const [staffFormError, setStaffFormError] = useState("");
   const [newStaffGateLabel, setNewStaffGateLabel] = useState("");
   const [isAssigningStaff, setIsAssigningStaff] = useState(false);
   const [activeStaffQrModal, setActiveStaffQrModal] = useState<{
@@ -759,13 +766,22 @@ export default function Account() {
 
   const handleAssignStaff = async () => {
     const email = newStaffEmail.trim();
-    if (!email || !selectedEventId || isAssigningStaff) return;
+    if (!selectedEventId || isAssigningStaff) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setStaffFormError(t.staffEmailInvalid);
+      return;
+    }
+    setStaffFormError("");
     setIsAssigningStaff(true);
     try {
       const res = await api.assignEventStaff(selectedEventId, email, { token });
       if (!res.ok || !res.data?.staff) {
+        if (res.error === "Validation failed") {
+          setStaffFormError(t.staffEmailInvalid);
+          return;
+        }
         addToast(
-          res.error ||
+          (res.status === 404 ? t.staffAccountMissing : res.error) ||
             (lang === "lo"
               ? "ບໍ່ສາມາດເພີ່ມພະນັກງານໄດ້"
               : "Could not assign staff"),
@@ -786,6 +802,7 @@ export default function Account() {
       addToast(t.linkCopied, "success");
       setNewStaffEmail("");
       setNewStaffGateLabel("");
+      setStaffFormError("");
       setShowCreateStaffModal(false);
       await refreshEventStaff(selectedEventId);
     } finally {
@@ -1728,7 +1745,10 @@ export default function Account() {
 
                       <button
                         type="button"
-                        onClick={() => setShowCreateStaffModal(true)}
+                        onClick={() => {
+                          setStaffFormError("");
+                          setShowCreateStaffModal(true);
+                        }}
                         className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -3236,11 +3256,20 @@ export default function Account() {
                   </label>
                   <input
                     type="email"
+                    autoComplete="email"
+                    required
                     value={newStaffEmail}
-                    onChange={(e) => setNewStaffEmail(e.target.value)}
-                    placeholder="staff@example.com"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-950 text-sm font-bold text-adv-slate dark:text-white focus:outline-none focus:border-adv-orange"
+                    onChange={(e) => {
+                      setNewStaffEmail(e.target.value);
+                      if (staffFormError) setStaffFormError("");
+                    }}
+                    placeholder={t.staffEmailPlaceholder}
+                    aria-invalid={Boolean(staffFormError)}
+                    aria-describedby="staff-email-hint"
+                    className={`w-full px-4 py-3 rounded-xl border bg-gray-50 text-sm font-bold text-adv-slate focus:outline-none dark:bg-zinc-950 dark:text-white ${staffFormError ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-adv-orange dark:border-zinc-700"}`}
                   />
+                  <p id="staff-email-hint" className="mt-2 text-xs leading-relaxed text-gray-500 dark:text-zinc-400">{t.staffAccountHint}</p>
+                  {staffFormError && <p role="alert" className="mt-2 text-xs font-semibold text-red-600 dark:text-red-400">{staffFormError}</p>}
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-zinc-400 mb-1.5">

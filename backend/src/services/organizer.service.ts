@@ -1,11 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { db } from "../config/database.ts";
 import { HttpError } from "../middlewares/error.middleware.ts";
-import {
-  computePayout,
-  DEFAULT_PAYOUT_FEE_PERCENT,
-  getPayoutBillUrl,
-} from "./payout.service.ts";
+import { computePayout, DEFAULT_PAYOUT_FEE_PERCENT, getPayoutBillUrl } from "./payout.service.ts";
 import type {
   CreateWalkinBody,
   OrganizerAttendeesQuery,
@@ -702,8 +698,7 @@ export async function getOrganizerAnalytics(uid: string) {
 
       if (order.user.dateOfBirth && (isMale || isFemale)) {
         const age = currentYear - order.user.dateOfBirth.getUTCFullYear();
-        const bucketKey =
-          age < 25 ? "18-24" : age < 35 ? "25-34" : age < 45 ? "35-44" : "45+";
+        const bucketKey = age < 25 ? "18-24" : age < 35 ? "25-34" : age < 45 ? "35-44" : "45+";
         if (isMale) ageBuckets[bucketKey].male += itemCount;
         if (isFemale) ageBuckets[bucketKey].female += itemCount;
       }
