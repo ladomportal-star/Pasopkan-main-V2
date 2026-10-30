@@ -1052,9 +1052,7 @@ export default function EventDetails({
     : event.district?.trim() || "";
 
   const locationParts = [
-    provinceDisplayName
-      ? `${lang === "lo" ? "ແຂວງ/ນະຄອນ" : "Province"} ${provinceDisplayName}`
-      : "",
+    provinceDisplayName,
     districtDisplayName
       ? `${lang === "lo" ? "ເມືອງ" : "District"} ${districtDisplayName}`
       : "",
