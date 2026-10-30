@@ -2225,6 +2225,13 @@ export default function CreateEvent() {
   };
 
   const handleEditorInput = () => {
+    if (editorRef.current) {
+      const html = editorRef.current.innerHTML;
+      if (html !== editorContent) {
+        isInternalEditorUpdateRef.current = true;
+        setEditorContent(html);
+      }
+    }
     if (selectedImage && !document.body.contains(selectedImage)) {
       setSelectedImage(null);
     } else {
