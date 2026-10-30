@@ -59,6 +59,10 @@ import { LaoEvent, TicketTier } from "../data/events";
 import { api } from "../lib/api";
 import { fromBackendEvent } from "../lib/eventPayload";
 import { formatEventDateDDMMYYYY } from "../lib/dateFormat";
+import {
+  getDistrictsForProvince,
+  laosProvinces,
+} from "../lib/laosLocations";
 import { useLanguage } from "../context/LanguageContext";
 import { EventMapPicker } from "../components/EventMapPicker";
 import { AdaptiveImage } from "../components/AdaptiveImage";
@@ -1030,12 +1034,29 @@ export default function EventDetails({
     );
   }
 
+  const provinceOption = laosProvinces.find(
+    (province) => province.id === event.province,
+  );
+  const districtOption = getDistrictsForProvince(event.province || "").find(
+    (district) => district.id === event.district,
+  );
+  const provinceDisplayName = provinceOption
+    ? lang === "lo"
+      ? provinceOption.nameLo
+      : provinceOption.name
+    : event.province?.trim() || "";
+  const districtDisplayName = districtOption
+    ? lang === "lo"
+      ? districtOption.nameLo
+      : districtOption.name
+    : event.district?.trim() || "";
+
   const locationParts = [
-    event.province?.trim()
-      ? `${lang === "lo" ? "ແຂວງ/ນະຄອນ" : "Province"} ${event.province.trim()}`
+    provinceDisplayName
+      ? `${lang === "lo" ? "ແຂວງ/ນະຄອນ" : "Province"} ${provinceDisplayName}`
       : "",
-    event.district?.trim()
-      ? `${lang === "lo" ? "ເມືອງ" : "District"} ${event.district.trim()}`
+    districtDisplayName
+      ? `${lang === "lo" ? "ເມືອງ" : "District"} ${districtDisplayName}`
       : "",
   ].filter(Boolean);
 
@@ -1674,7 +1695,7 @@ export default function EventDetails({
                     <h2 className="text-sm font-bold text-adv-slate uppercase tracking-wider mb-2">
                       {t.aboutEvent}
                     </h2>
-                    <div className="text-gray-800 leading-relaxed text-sm rich-text-content">
+                    <div className="event-description text-gray-800 leading-relaxed text-sm rich-text-content">
                       {renderFormattedDescription(event.description)}
                     </div>
                   </div>
@@ -1722,8 +1743,8 @@ export default function EventDetails({
                       venue={event.venue}
                       address={event.location}
                       googleMapUrl={event.googleMapUrl}
-                      province={event.province}
-                      district={event.district}
+                      province={provinceDisplayName}
+                      district={districtDisplayName}
                       latitude={event.latitude}
                       longitude={event.longitude}
                       lang={lang as "en" | "lo"}

@@ -205,3 +205,10 @@ body {
   .rich-text a:hover, .rich-text-content a:hover {
     color: #EA580C;
   }
+
+  /* Event descriptions may contain a text color saved by the rich-text editor.
+     Keep public detail text readable on the white event card. */
+  .event-description,
+  .event-description :where(p, div, span, li, strong, em, b, i, u) {
+    color: #1f2937 !important;
+  }
