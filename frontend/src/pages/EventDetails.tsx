@@ -1031,14 +1031,11 @@ export default function EventDetails({
   }
 
   const locationParts = [
-    event.location?.replace(/^,\s*/, "").trim()
-      ? `${lang === "lo" ? "ບ້ານ" : "Village"} ${event.location.replace(/^,\s*/, "").trim()}`
+    event.province?.trim()
+      ? `${lang === "lo" ? "ແຂວງ/ນະຄອນ" : "Province"} ${event.province.trim()}`
       : "",
     event.district?.trim()
       ? `${lang === "lo" ? "ເມືອງ" : "District"} ${event.district.trim()}`
-      : "",
-    event.province?.trim()
-      ? `${lang === "lo" ? "ແຂວງ" : "Province"} ${event.province.trim()}`
       : "",
   ].filter(Boolean);
 
