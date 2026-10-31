@@ -1872,11 +1872,11 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                       </div>
 
                       {/* White E-Ticket Inner Card */}
-                      <div className="relative flex-1 flex flex-col justify-between bg-white rounded-[22px] text-gray-900 shadow-xl overflow-hidden pt-3.5 pb-3 px-4 min-h-0">
+                      <div className="relative flex-1 flex flex-col justify-between bg-white rounded-[22px] text-gray-900 shadow-xl overflow-hidden pt-0 pb-3 px-4 min-h-0">
                         {/* Top Ticket Details */}
-                        <div className="flex-1 flex flex-col justify-center min-h-0">
-                          {/* Event Image Banner Header */}
-                          <div className="w-full h-24 sm:h-28 rounded-xl sm:rounded-2xl overflow-hidden mb-2 sm:mb-2.5 shrink-0 bg-gray-100 shadow-xs border border-gray-100">
+                        <div className="flex-1 flex flex-col justify-start min-h-0">
+                          {/* Event Image Banner Header - Flush to top edge and sides */}
+                          <div className="-mx-4 h-28 sm:h-32 overflow-hidden mb-2.5 shrink-0 bg-gray-100 border-b border-gray-100">
                             <img 
                               src={ticketPreview?.eventImage || '/pasopkan_logo.png'} 
                               alt={ticketPreview?.eventTitle || 'Event'} 
