@@ -81,18 +81,19 @@ describe("authentication (real JWT verification, nothing bypassed)", () => {
     );
   });
 
-  it("exposes the public catalog without login but protects event details", async () => {
+  it("exposes the public catalog and event details without login, but protects ticket purchase", async () => {
     const catalog = await request(app).get("/api/events");
     expect(catalog.status).toBe(200);
     expect(catalog.body.events).toEqual(expect.any(Array));
 
     const detail = await request(app).get("/api/events/example");
-    expect(detail.status).toBe(401);
+    expect(detail.status).toBe(404);
+
+    const purchase = await request(app).post("/api/tickets").send({});
+    expect(purchase.status).toBe(401);
   });
 
   it.each([
-    "/events/example",
-    "/media/url?reference=x",
     "/resolve-map-url?url=x",
     "/tickets",
     "/notifications",

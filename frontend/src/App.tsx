@@ -84,10 +84,10 @@ function AnimatedRoutes() {
           }
         >
           <Route index element={<Home />} />
-          {/* Event catalogs are public. Only opening an individual event requires an account. */}
+          {/* Event catalogs and event details are public. Getting tickets requires an account. */}
           <Route path="category/:categoryId" element={<CategoryEvents />} />
+          <Route path="event/:id" element={<EventDetails />} />
           <Route element={<RequireAccount />}>
-            <Route path="event/:id" element={<EventDetails />} />
             <Route path="checkout" element={<Checkout />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="account" element={<Account />} />

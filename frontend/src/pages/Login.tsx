@@ -113,7 +113,13 @@ export default function Login({
     setBusy(true);
     setError("");
     try {
-      try { sessionStorage.setItem(LOGIN_RETURN_KEY, destination); } catch {}
+      try {
+        const oauthReturn =
+          /^\/checkout(?:[?#]|$)/.test(destination) && location.state?.returnState?.event?.id
+            ? `/event/${location.state.returnState.event.id}`
+            : destination;
+        sessionStorage.setItem(LOGIN_RETURN_KEY, oauthReturn);
+      } catch {}
       await loginWithGoogle();
     } catch {
       const message = lo

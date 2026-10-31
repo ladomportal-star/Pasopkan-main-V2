@@ -324,7 +324,7 @@ describe("events", () => {
       .set(await as("catalog-reader"));
     expect(pub.body.events.map((e: { title: string }) => e.title)).not.toContain("Secret Draft");
 
-    expect((await request(app).get(`/api/events/${draft.id}`)).status).toBe(401);
+    expect((await request(app).get(`/api/events/${draft.id}`)).status).toBe(404);
     expect(
       (
         await request(app)
@@ -335,12 +335,15 @@ describe("events", () => {
     expect((await request(app).get(`/api/events/${draft.id}`).set(owner)).status).toBe(200);
   });
 
-  it("lets signed-in accounts discover published events and resolve them by id", async () => {
+  it("lets guests and signed-in accounts discover published events and resolve them by id", async () => {
     const event = await createEvent(app, await as("org-3"), { title: "Public Show" });
     const list = await request(app)
       .get("/api/events")
       .set(await as("catalog-reader"));
     expect(list.body.events.map((e: { title: string }) => e.title)).toContain("Public Show");
+    const guestOne = await request(app).get(`/api/events/${event.id}`);
+    expect(guestOne.status).toBe(200);
+    expect(guestOne.body.event.title).toBe("Public Show");
     const one = await request(app)
       .get(`/api/events/${event.id}`)
       .set(await as("catalog-reader"));

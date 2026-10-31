@@ -43,7 +43,6 @@ describe("protected application pages", () => {
     return { html, mounted };
   }
   it.each([
-    "/event/one",
     "/checkout",
     "/account",
     "/dashboard",
@@ -68,7 +67,7 @@ describe("protected application pages", () => {
   ])("does not mount data on %s before login", (path) => {
     expect(render(path)).toEqual({ html: "", mounted: false });
   });
-  it.each(["/", "/category/festival"])("allows public event discovery at %s", (path) => {
+  it.each(["/", "/category/festival", "/event/one"])("allows public event discovery at %s", (path) => {
     const html = renderToString(
       h(
         MemoryRouter,
@@ -80,11 +79,11 @@ describe("protected application pages", () => {
   });
   it("does not flash protected pages while session loading or for anonymous sessions", () => {
     auth.loading = true;
-    expect(render("/event/one").mounted).toBe(false);
+    expect(render("/checkout").mounted).toBe(false);
     auth.loading = false;
     auth.user = { id: "guest", is_anonymous: true };
     auth.token = "guest-token";
-    expect(render("/event/one").mounted).toBe(false);
+    expect(render("/checkout").mounted).toBe(false);
   });
   it("requires both an account and its session and stops rendering after logout", () => {
     auth.token = "stored-token-only";

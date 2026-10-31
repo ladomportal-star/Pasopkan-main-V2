@@ -987,13 +987,13 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                 </div>
               </div>
 
-              <div className="relative w-full aspect-[16/9] flex flex-col items-center justify-center text-center p-6 overflow-hidden">
+              <div className="relative h-48 sm:h-64 md:h-72 w-full flex flex-col items-center justify-center text-center p-6 overflow-hidden">
                 {/* Background image preview */}
                 {homeHeroForm.slides[previewSlideIdx]?.imageUrl ? (
                   <img
                     src={homeHeroForm.slides[previewSlideIdx].imageUrl}
                     alt="Preview"
-                    className="absolute inset-0 w-full h-full object-cover object-center transition-all duration-700"
+                    className="absolute inset-0 w-full h-full object-cover transition-all duration-700"
                     onError={(e) => {
                       (e.target as HTMLElement).style.display = 'none';
                     }}

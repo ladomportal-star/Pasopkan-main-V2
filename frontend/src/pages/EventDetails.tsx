@@ -69,6 +69,7 @@ import { AdaptiveImage } from "../components/AdaptiveImage";
 
 import DotsLoader from "../components/DotsLoader";
 import { useAuth } from "../context/AuthContext";
+import { LOGIN_RETURN_KEY } from "../lib/authAccess";
 import { supabase } from "../lib/supabase";
 import SEO from "../components/SEO";
 
@@ -501,36 +502,18 @@ function InlineCalendar({
 }
 
 const getGalleryImages = (evt: LaoEvent) => {
-  const list = [evt.image, ...(evt.exampleImages || [])].filter(Boolean);
-  if (list.length > 1) return list;
-
-  // If only 1 image, generate some category-based beautiful fallback images for a rich gallery experience
-  const categoryDefaults: Record<string, string[]> = {
-    Festival: [
-      "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1000&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1540039155732-d6824b5ce1fd?q=80&w=1000&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1528127269322-539801943592?q=80&w=1000&auto=format&fit=crop",
-    ],
-    Workshop: [
-      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1000&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1513151233558-d860c5398176?q=80&w=1000&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=80&w=1000&auto=format&fit=crop",
-    ],
-    Sports: [
-      "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=1000&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1501555088652-021faa106b9b?q=80&w=1000&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1533240332313-0db49b439ad3?q=80&w=1000&auto=format&fit=crop",
-    ],
-    Voucher: [
-      "https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=1000&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=1000&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?q=80&w=1000&auto=format&fit=crop",
-    ],
-  };
-
-  const fallbacks =
-    categoryDefaults[evt.category] || categoryDefaults["Festival"];
-  return [evt.image, ...fallbacks];
+  const raw = [evt.image, ...(evt.exampleImages || [])].filter(Boolean);
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const url of raw) {
+    const canonical = evt.mediaReferences?.[url] || url;
+    if (!seen.has(canonical) && !seen.has(url)) {
+      seen.add(canonical);
+      seen.add(url);
+      unique.push(url);
+    }
+  }
+  return unique;
 };
 
 const formatHtmlLinks = (html: string): string => {
@@ -1099,16 +1082,31 @@ export default function EventDetails({
       selectedTier ||
       (event.ticketTiers ? event.ticketTiers[0] : null);
 
+    const checkoutState = {
+      event,
+      tier: primaryTier,
+      quantity: totalQuantity,
+      selectedTiers: selectedTiersList,
+      selectedDate: selectedVisitDate,
+      selectedTime: selectedTimeSlot || event.time,
+      initialDiscountCode: appliedPromo,
+    };
+
+    if (!isAuthenticated) {
+      try {
+        sessionStorage.setItem(LOGIN_RETURN_KEY, `/event/${event.id}`);
+      } catch {}
+      navigate("/login", {
+        state: {
+          returnTo: "/checkout",
+          returnState: checkoutState,
+        },
+      });
+      return;
+    }
+
     navigate("/checkout", {
-      state: {
-        event,
-        tier: primaryTier,
-        quantity: totalQuantity,
-        selectedTiers: selectedTiersList,
-        selectedDate: selectedVisitDate,
-        selectedTime: selectedTimeSlot || event.time,
-        initialDiscountCode: appliedPromo,
-      },
+      state: checkoutState,
     });
   };
 
