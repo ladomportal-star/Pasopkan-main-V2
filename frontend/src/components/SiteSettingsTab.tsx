@@ -1870,7 +1870,7 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                       {/* White E-Ticket Inner Card */}
                       <div className="relative flex-1 flex flex-col justify-between bg-white rounded-[22px] text-gray-900 shadow-xl overflow-hidden pt-3.5 pb-3 px-4 min-h-0">
                         {/* Top Ticket Details */}
-                        <div className="shrink-0">
+                        <div className="flex-1 flex flex-col justify-center min-h-0">
                           {/* Brand Logo Header Bar */}
                           <div className="flex items-center justify-center pb-2 mb-2 border-b border-gray-100 shrink-0">
                             <img 
@@ -1930,42 +1930,45 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                           </div>
                         </div>
 
-                        {/* Perforated Divider with Circular Concave Cutouts */}
-                        <div className="relative my-2.5 -mx-4 py-1 flex items-center shrink-0">
-                          {/* Left Cutout */}
-                          <div className="absolute -left-3.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#F24E00] z-10" />
-                          
-                          {/* Dashed Perforation Line */}
-                          <div className="w-full border-t-2 border-dashed border-gray-200 mx-4" />
+                        {/* Bottom QR Section: Cutting Line placed directly near the QR Code */}
+                        <div className="shrink-0 flex flex-col pt-1">
+                          {/* Perforated Divider with Circular Concave Cutouts */}
+                          <div className="relative my-2.5 -mx-4 py-1 flex items-center shrink-0">
+                            {/* Left Cutout */}
+                            <div className="absolute -left-3.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#F24E00] z-10" />
+                            
+                            {/* Dashed Perforation Line */}
+                            <div className="w-full border-t-2 border-dashed border-gray-200 mx-4" />
 
-                          {/* Right Cutout */}
-                          <div className="absolute -right-3.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#F24E00] z-10" />
-                        </div>
+                            {/* Right Cutout */}
+                            <div className="absolute -right-3.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#F24E00] z-10" />
+                          </div>
 
-                        {/* Direct QR Code Section */}
-                        <div className="py-1 flex-1 flex flex-col items-center justify-center min-h-0">
-                          <div className="p-2 sm:p-4 bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-md flex items-center justify-center shrink-0">
-                            {ticketPreviewLoading ? (
-                              <div className="grid h-64 w-64 place-items-center text-sm font-semibold text-gray-400">
-                                {lang === 'en' ? 'Loading account tickets…' : 'ກຳລັງໂຫຼດປີ້ຂອງບັນຊີ…'}
-                              </div>
-                            ) : ticketPreviewError ? (
-                              <div className="grid h-64 w-64 place-items-center px-6 text-center text-sm font-semibold text-red-600">
-                                {lang === 'en' ? 'Could not load a real ticket from the backend.' : 'ບໍ່ສາມາດໂຫຼດປີ້ຈິງຈາກ Backend ໄດ້'}
-                              </div>
-                            ) : ticketPreview ? (
-                              <QRCodeSVG
-                                value={ticketPreview.ticketCode}
-                                size={360}
-                                className="w-64 h-64 min-[390px]:w-[272px] min-[390px]:h-[272px] sm:w-60 sm:h-60 md:w-64 md:h-64"
-                                level="H"
-                                includeMargin={false}
-                              />
-                            ) : (
-                              <div className="grid h-64 w-64 place-items-center px-6 text-center text-sm font-semibold text-gray-400">
-                                {lang === 'en' ? 'No confirmed ticket is available on this account.' : 'ບັນຊີນີ້ບໍ່ມີປີ້ທີ່ຢືນຢັນຈາກ Backend'}
-                              </div>
-                            )}
+                          {/* Direct QR Code Section */}
+                          <div className="py-1 flex flex-col items-center justify-center min-h-0">
+                            <div className="p-2 sm:p-4 bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-md flex items-center justify-center shrink-0">
+                              {ticketPreviewLoading ? (
+                                <div className="grid h-64 w-64 place-items-center text-sm font-semibold text-gray-400">
+                                  {lang === 'en' ? 'Loading account tickets…' : 'ກຳລັງໂຫຼດປີ້ຂອງບັນຊີ…'}
+                                </div>
+                              ) : ticketPreviewError ? (
+                                <div className="grid h-64 w-64 place-items-center px-6 text-center text-sm font-semibold text-red-600">
+                                  {lang === 'en' ? 'Could not load a real ticket from the backend.' : 'ບໍ່ສາມາດໂຫຼດປີ້ຈິງຈາກ Backend ໄດ້'}
+                                </div>
+                              ) : ticketPreview ? (
+                                <QRCodeSVG
+                                  value={ticketPreview.ticketCode}
+                                  size={360}
+                                  className="w-64 h-64 min-[390px]:w-[272px] min-[390px]:h-[272px] sm:w-60 sm:h-60 md:w-64 md:h-64"
+                                  level="H"
+                                  includeMargin={false}
+                                />
+                              ) : (
+                                <div className="grid h-64 w-64 place-items-center px-6 text-center text-sm font-semibold text-gray-400">
+                                  {lang === 'en' ? 'No confirmed ticket is available on this account.' : 'ບັນຊີນີ້ບໍ່ມີປີ້ທີ່ຢືນຢັນຈາກ Backend'}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
 

@@ -278,76 +278,78 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
           {/* White E-Ticket Card */}
           <div className="relative flex-1 flex flex-col justify-between bg-white rounded-[22px] sm:rounded-[26px] text-gray-900 shadow-xl overflow-hidden px-3 sm:px-5 pt-2 pb-1.5 sm:pt-3.5 sm:pb-3 min-h-0">
             {/* Top Ticket Details */}
-            <div className="shrink-0">
+            <div className="flex-1 flex flex-col justify-center min-h-0">
               {/* Brand Logo Header Bar */}
-              <div className="flex items-center justify-center border-b border-gray-100 pb-1 mb-1 sm:pb-2 sm:mb-2 shrink-0">
+              <div className="flex items-center justify-center border-b border-gray-100 pb-1.5 mb-1.5 sm:pb-2.5 sm:mb-2.5 shrink-0">
                 <img 
                   src="/pasopkan_logo.png" 
                   alt="Pasopkan" 
-                  className="h-8 sm:h-12 md:h-14 w-auto max-w-[220px] sm:max-w-[240px] object-contain drop-shadow-sm transition-transform" 
+                  className="h-12 sm:h-14 md:h-16 w-auto max-w-[260px] sm:max-w-[280px] object-contain drop-shadow-sm transition-transform" 
                   referrerPolicy="no-referrer"
                 />
               </div>
 
               {/* Event Title */}
-              <h1 className="text-sm sm:text-lg md:text-xl font-black text-gray-950 leading-tight tracking-tight mb-1 sm:mb-1.5 line-clamp-2">
+              <h1 className="text-base sm:text-lg md:text-xl font-black text-gray-950 leading-tight tracking-tight mb-1 sm:mb-1.5 line-clamp-2">
                 {ticket.event.title}
               </h1>
 
               {/* 2-Column Info Grid */}
-              <div className="grid grid-cols-2 gap-x-2.5 sm:gap-x-4 gap-y-0.5 sm:gap-y-1.5 mb-1">
+              <div className="grid grid-cols-2 gap-x-2.5 sm:gap-x-4 gap-y-1 sm:gap-y-1.5 mb-1">
                 <div>
-                  <p className="text-[9px] sm:text-[10.5px] font-bold text-gray-500 uppercase tracking-wider">
+                  <p className="text-[9.5px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                     {lang === 'lo' ? 'ວັນທີ' : 'Date'}
                   </p>
-                  <p className="text-[11.5px] sm:text-sm font-bold text-gray-950 leading-tight mt-0.5">
+                  <p className="text-[12px] sm:text-sm font-bold text-gray-950 leading-tight mt-0.5">
                     {formatEventDate()}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-[9px] sm:text-[10.5px] font-bold text-gray-500 uppercase tracking-wider">
+                  <p className="text-[9.5px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                     {lang === 'lo' ? 'ເວລາເລີ່ມງານ' : 'Start Time'}
                   </p>
-                  <p className="text-[11.5px] sm:text-sm font-bold text-gray-950 leading-tight mt-0.5">
+                  <p className="text-[12px] sm:text-sm font-bold text-gray-950 leading-tight mt-0.5">
                     {formatEventTime()}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-[9px] sm:text-[10.5px] font-bold text-gray-500 uppercase tracking-wider">
+                  <p className="text-[9.5px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                     {lang === 'lo' ? 'ປະເພດການເຂົ້າ' : 'Check In Type'}
                   </p>
-                  <p className="text-[11.5px] sm:text-sm font-bold text-gray-950 leading-tight truncate mt-0.5">
+                  <p className="text-[12px] sm:text-sm font-bold text-gray-950 leading-tight truncate mt-0.5">
                     {ticket.tier.name || 'VIP A'}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-[9px] sm:text-[10.5px] font-bold text-gray-500 uppercase tracking-wider">
+                  <p className="text-[9.5px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                     {lang === 'lo' ? 'ລະຫັດອໍເດີ' : 'Order ID'}
                   </p>
-                  <p className="text-[11.5px] sm:text-sm font-bold text-gray-950 font-mono tracking-tight leading-tight mt-0.5">
+                  <p className="text-[12px] sm:text-sm font-bold text-gray-950 font-mono tracking-tight leading-tight mt-0.5">
                     {formattedOrderId}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Perforated Divider with Circular Concave Cutouts */}
-            <div className="relative -mx-3 sm:-mx-5 py-0.5 my-1 sm:my-2 flex items-center shrink-0">
-              {/* Left Cutout */}
-              <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#F24E00] z-10" />
-              
-              {/* Dashed Perforation Line */}
-              <div className="w-full border-t-2 border-dashed border-gray-200 mx-3.5 sm:mx-5" />
+            {/* Bottom QR Section: Cutting Line placed directly near the QR Code */}
+            <div className="shrink-0 flex flex-col pt-1">
+              {/* Perforated Divider with Circular Concave Cutouts */}
+              <div className="relative -mx-3 sm:-mx-5 py-0.5 mb-1.5 sm:mb-2 flex items-center shrink-0">
+                {/* Left Cutout */}
+                <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#F24E00] z-10" />
+                
+                {/* Dashed Perforation Line */}
+                <div className="w-full border-t-2 border-dashed border-gray-200 mx-3.5 sm:mx-5" />
 
-              {/* Right Cutout */}
-              <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#F24E00] z-10" />
-            </div>
+                {/* Right Cutout */}
+                <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#F24E00] z-10" />
+              </div>
 
-            {/* Direct QR Code Section (Enlarged and optimized for fast scanning) */}
-            <div className="flex-1 flex flex-col items-center justify-center min-h-0 py-0.5 sm:py-1">
+              {/* Direct QR Code Section (Enlarged and optimized for fast scanning) */}
+              <div className="flex flex-col items-center justify-center min-h-0 py-0.5 sm:py-1">
               {/* Scanned / Status Notification Badge */}
               {isRefunded ? (
                 <div className="mb-1 flex items-center justify-center">
@@ -460,8 +462,9 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                 )}
               </div>
             </div>
+          </div>
 
-            {/* Dynamic Sponsor Ad Banner under QR Code */}
+          {/* Dynamic Sponsor Ad Banner under QR Code */}
             {sponsorSettings?.isEnabled && (() => {
               const resolvedAd = resolveTicketAd(sponsorSettings);
               if (!resolvedAd.isDisplayed || !resolvedAd.bannerUrl) return null;
