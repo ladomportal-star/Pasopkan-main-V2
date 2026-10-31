@@ -276,11 +276,11 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
           )}
 
           {/* White E-Ticket Card */}
-          <div className="relative flex-1 flex flex-col justify-between bg-white rounded-[22px] sm:rounded-[26px] text-gray-900 shadow-xl overflow-hidden px-3.5 sm:px-5 pt-0 pb-2.5 sm:pb-3.5 min-h-0">
+          <div className="relative flex-1 flex flex-col justify-between bg-white rounded-[22px] sm:rounded-[26px] text-gray-900 shadow-xl overflow-hidden px-3.5 sm:px-5 pt-2 sm:pt-2.5 pb-2.5 sm:pb-3.5 min-h-0">
             {/* Top Ticket Details */}
             <div className="flex-1 flex flex-col justify-start min-h-0">
-              {/* Event Image Banner Header - Flush to top edge and sides */}
-              <div className="-mx-3.5 sm:-mx-5 h-28 min-[390px]:h-32 sm:h-36 overflow-hidden mb-2.5 sm:mb-3 shrink-0 bg-gray-100 border-b border-gray-100">
+              {/* Event Image Banner Header */}
+              <div className="w-full h-26 min-[390px]:h-28 sm:h-32 rounded-xl sm:rounded-2xl overflow-hidden mb-2.5 sm:mb-3 shrink-0 bg-gray-100 shadow-2xs border border-gray-100">
                 <img 
                   src={ticket.event.image || '/pasopkan_logo.png'} 
                   alt={ticket.event.title} 
