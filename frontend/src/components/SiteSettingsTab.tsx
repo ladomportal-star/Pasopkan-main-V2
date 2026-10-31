@@ -97,6 +97,8 @@ type SubTab = 'home_hero' | 'ticket_sponsors' | 'contact' | 'support' | 'terms' 
 
 type BackendTicketPreview = {
   eventTitle?: string;
+  eventImage?: string;
+  event?: { image?: string };
   orderNumber?: string;
   selectedDate?: string | null;
   selectedTime?: string | null;
@@ -110,6 +112,7 @@ type BackendTicketPreview = {
 
 type TicketPreview = {
   eventTitle: string;
+  eventImage?: string;
   orderNumber: string;
   selectedDate: string;
   selectedTime: string;
@@ -185,6 +188,7 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
             if (!item?.ticketCode) continue;
             latestTicket = {
               eventTitle: order.eventTitle || '',
+              eventImage: order.eventImage || order.event?.image || '',
               orderNumber: order.orderNumber || '',
               selectedDate: order.selectedDate || '',
               selectedTime: order.selectedTime || '',
@@ -1871,13 +1875,16 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                       <div className="relative flex-1 flex flex-col justify-between bg-white rounded-[22px] text-gray-900 shadow-xl overflow-hidden pt-3.5 pb-3 px-4 min-h-0">
                         {/* Top Ticket Details */}
                         <div className="flex-1 flex flex-col justify-center min-h-0">
-                          {/* Brand Logo Header Bar */}
-                          <div className="flex items-center justify-center pb-2.5 mb-2 border-b border-gray-100 shrink-0">
+                          {/* Event Image Banner Header */}
+                          <div className="w-full h-24 sm:h-28 rounded-xl sm:rounded-2xl overflow-hidden mb-2 sm:mb-2.5 shrink-0 bg-gray-100 shadow-xs border border-gray-100">
                             <img 
-                              src="/pasopkan_logo.png" 
-                              alt="Pasopkan" 
-                              className="h-16 min-[390px]:h-20 sm:h-22 md:h-24 w-auto max-w-[300px] sm:max-w-[340px] object-contain drop-shadow-sm transition-transform" 
+                              src={ticketPreview?.eventImage || '/pasopkan_logo.png'} 
+                              alt={ticketPreview?.eventTitle || 'Event'} 
+                              className="w-full h-full object-cover object-center" 
                               referrerPolicy="no-referrer"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/pasopkan_logo.png';
+                              }}
                             />
                           </div>
 

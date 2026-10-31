@@ -279,13 +279,16 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
           <div className="relative flex-1 flex flex-col justify-between bg-white rounded-[22px] sm:rounded-[26px] text-gray-900 shadow-xl overflow-hidden px-3.5 sm:px-5 pt-3 pb-2.5 sm:pt-4 sm:pb-3.5 min-h-0">
             {/* Top Ticket Details */}
             <div className="flex-1 flex flex-col justify-center min-h-0">
-              {/* Brand Logo Header Bar */}
-              <div className="flex items-center justify-center border-b border-gray-100 pb-2 mb-2 sm:pb-3 sm:mb-3 shrink-0">
+              {/* Event Image Banner Header */}
+              <div className="w-full h-24 min-[390px]:h-28 sm:h-32 rounded-xl sm:rounded-2xl overflow-hidden mb-2 sm:mb-2.5 shrink-0 bg-gray-100 shadow-xs border border-gray-100">
                 <img 
-                  src="/pasopkan_logo.png" 
-                  alt="Pasopkan" 
-                  className="h-16 min-[390px]:h-20 sm:h-22 md:h-24 w-auto max-w-[300px] sm:max-w-[340px] object-contain drop-shadow-sm transition-transform" 
+                  src={ticket.event.image || '/pasopkan_logo.png'} 
+                  alt={ticket.event.title} 
+                  className="w-full h-full object-cover object-center" 
                   referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/pasopkan_logo.png';
+                  }}
                 />
               </div>
 
