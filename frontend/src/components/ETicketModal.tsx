@@ -276,58 +276,58 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
           )}
 
           {/* White E-Ticket Card */}
-          <div className="relative flex-1 flex flex-col justify-between bg-white rounded-[22px] sm:rounded-[26px] text-gray-900 shadow-xl overflow-hidden px-3 sm:px-5 pt-2 pb-1.5 sm:pt-3.5 sm:pb-3 min-h-0">
+          <div className="relative flex-1 flex flex-col justify-between bg-white rounded-[22px] sm:rounded-[26px] text-gray-900 shadow-xl overflow-hidden px-3.5 sm:px-5 pt-3 pb-2.5 sm:pt-4 sm:pb-3.5 min-h-0">
             {/* Top Ticket Details */}
             <div className="flex-1 flex flex-col justify-center min-h-0">
               {/* Brand Logo Header Bar */}
-              <div className="flex items-center justify-center border-b border-gray-100 pb-1.5 mb-1.5 sm:pb-2.5 sm:mb-2.5 shrink-0">
+              <div className="flex items-center justify-center border-b border-gray-100 pb-2 mb-2 sm:pb-3 sm:mb-3 shrink-0">
                 <img 
                   src="/pasopkan_logo.png" 
                   alt="Pasopkan" 
-                  className="h-12 sm:h-14 md:h-16 w-auto max-w-[260px] sm:max-w-[280px] object-contain drop-shadow-sm transition-transform" 
+                  className="h-14 sm:h-16 md:h-20 w-auto max-w-[270px] sm:max-w-[300px] object-contain drop-shadow-sm transition-transform" 
                   referrerPolicy="no-referrer"
                 />
               </div>
 
               {/* Event Title */}
-              <h1 className="text-base sm:text-lg md:text-xl font-black text-gray-950 leading-tight tracking-tight mb-1 sm:mb-1.5 line-clamp-2">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-black text-gray-950 leading-tight tracking-tight mb-2 sm:mb-2.5 line-clamp-2">
                 {ticket.event.title}
               </h1>
 
               {/* 2-Column Info Grid */}
-              <div className="grid grid-cols-2 gap-x-2.5 sm:gap-x-4 gap-y-1 sm:gap-y-1.5 mb-1">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:gap-y-3 mb-2">
                 <div>
-                  <p className="text-[9.5px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                  <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
                     {lang === 'lo' ? 'ວັນທີ' : 'Date'}
                   </p>
-                  <p className="text-[12px] sm:text-sm font-bold text-gray-950 leading-tight mt-0.5">
+                  <p className="text-sm sm:text-base font-black text-gray-950 leading-tight mt-0.5">
                     {formatEventDate()}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-[9.5px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                  <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
                     {lang === 'lo' ? 'ເວລາເລີ່ມງານ' : 'Start Time'}
                   </p>
-                  <p className="text-[12px] sm:text-sm font-bold text-gray-950 leading-tight mt-0.5">
+                  <p className="text-sm sm:text-base font-black text-gray-950 leading-tight mt-0.5">
                     {formatEventTime()}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-[9.5px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                  <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
                     {lang === 'lo' ? 'ປະເພດການເຂົ້າ' : 'Check In Type'}
                   </p>
-                  <p className="text-[12px] sm:text-sm font-bold text-gray-950 leading-tight truncate mt-0.5">
+                  <p className="text-sm sm:text-base font-black text-gray-950 leading-tight truncate mt-0.5">
                     {ticket.tier.name || 'VIP A'}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-[9.5px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                  <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
                     {lang === 'lo' ? 'ລະຫັດອໍເດີ' : 'Order ID'}
                   </p>
-                  <p className="text-[12px] sm:text-sm font-bold text-gray-950 font-mono tracking-tight leading-tight mt-0.5">
+                  <p className="text-sm sm:text-base font-black text-gray-950 font-mono tracking-tight leading-tight mt-0.5">
                     {formattedOrderId}
                   </p>
                 </div>
@@ -337,177 +337,185 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
             {/* Bottom QR Section: Cutting Line placed directly near the QR Code */}
             <div className="shrink-0 flex flex-col pt-1">
               {/* Perforated Divider with Circular Concave Cutouts */}
-              <div className="relative -mx-3 sm:-mx-5 py-0.5 mb-1.5 sm:mb-2 flex items-center shrink-0">
+              <div className="relative -mx-3.5 sm:-mx-5 py-0.5 mb-2 sm:mb-2.5 flex items-center shrink-0">
                 {/* Left Cutout */}
-                <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#F24E00] z-10" />
+                <div className="absolute -left-3.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#F24E00] z-10" />
                 
                 {/* Dashed Perforation Line */}
-                <div className="w-full border-t-2 border-dashed border-gray-200 mx-3.5 sm:mx-5" />
+                <div className="w-full border-t-2 border-dashed border-gray-200 mx-4 sm:mx-5" />
 
                 {/* Right Cutout */}
-                <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#F24E00] z-10" />
+                <div className="absolute -right-3.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#F24E00] z-10" />
               </div>
 
               {/* Direct QR Code Section (Enlarged and optimized for fast scanning) */}
-              <div className="flex flex-col items-center justify-center min-h-0 py-0.5 sm:py-1">
-              {/* Scanned / Status Notification Badge */}
-              {isRefunded ? (
-                <div className="mb-1 flex items-center justify-center">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 sm:px-4 sm:py-1.5 bg-red-600 text-white rounded-full text-[10.5px] sm:text-xs font-black uppercase tracking-wider shadow-xs animate-in fade-in zoom-in-95 duration-200">
-                    <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
-                    <span>{lang === 'lo' ? 'ປີ້ຖືກຄືນເງິນແລ້ວ (ໂມຄະ)' : 'REFUNDED - QR VOIDED'}</span>
-                  </span>
-                </div>
-              ) : isScanned ? (
-                <div className="mb-1 flex items-center justify-center">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 sm:px-4 sm:py-1.5 bg-emerald-600 dark:bg-emerald-500 text-white rounded-full text-[10.5px] sm:text-xs font-black uppercase tracking-wider shadow-xs animate-in fade-in zoom-in-95 duration-200">
-                    <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
-                    <span>{lang === 'lo' ? 'ສະແກນແລ້ວ' : 'ALREADY SCANNED'}</span>
-                  </span>
-                </div>
-              ) : isExpired ? (
-                <div className="mb-1 flex items-center justify-center">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 sm:px-4 sm:py-1.5 bg-red-500 dark:bg-red-500 text-white rounded-full text-[10.5px] sm:text-xs font-black uppercase tracking-wider shadow-xs animate-in fade-in zoom-in-95 duration-200">
-                    <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
-                    <span>{lang === 'lo' ? 'ໝົດອາຍຸ' : 'EXPIRED'}</span>
-                  </span>
-                </div>
-              ) : (
-                <div className="mb-1 text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider text-center">
-                  {lang === 'lo' ? 'ສະແກນ QR ເພື່ອເຂົ້າງານ' : 'Scan to enter'}
-                </div>
-              )}
-
-              {/* Subtitle / Notice for Refunded */}
-              {isRefunded && (
-                <div className="mb-1 text-[10px] sm:text-xs font-bold text-red-500 uppercase tracking-wider text-center">
-                  {lang === 'lo' ? 'QR Code ຖືກຍົກເລີກແລ້ວ ບໍ່ສາມາດສະແກນໄດ້' : 'QR code deactivated - Entry prohibited'}
-                </div>
-              )}
-
-              <div className="relative bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-md p-2 sm:p-4 flex items-center justify-center overflow-hidden shrink-0">
+              <div className="flex flex-col items-center justify-center min-h-0 py-0.5">
+                {/* Scanned / Status Notification Badge */}
                 {isRefunded ? (
-                  <div className="w-64 h-64 sm:w-60 sm:h-60 md:w-64 md:h-64 flex flex-col items-center justify-center text-center p-4 bg-red-50/70 rounded-xl border-2 border-dashed border-red-300">
-                    <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-2.5 shadow-inner">
-                      <XCircle className="w-7 h-7 sm:w-8 sm:h-8 stroke-[2.5]" />
-                    </div>
-                    <div className="text-xs sm:text-sm font-black text-red-600 uppercase tracking-wider">
-                      {lang === 'lo' ? 'QR Code ຖືກຍົກເລີກແລ້ວ' : 'QR CODE VOIDED'}
-                    </div>
-                    <p className="text-[10px] sm:text-xs font-medium text-gray-500 mt-1.5 leading-relaxed max-w-[210px]">
-                      {lang === 'lo' 
-                        ? 'ປີ້ໃບນີ້ໄດ້ຖືກຂໍຄືນເງິນແລ້ວ ລະຫັດຖືກຍົກເລີກ ແລະ ບໍ່ສາມາດສະແກນເຂົ້າງານໄດ້ອີກຕໍ່ໄປ.' 
-                        : 'This ticket was refunded. The QR code has been permanently deactivated and cannot be scanned.'}
-                    </p>
-                    <div className="mt-3 px-3 py-0.5 rounded-full bg-red-500/10 text-red-600 text-[9.5px] font-black uppercase tracking-wider border border-red-500/20">
-                      {lang === 'lo' ? 'ສະຖານະ: ໂມຄະ' : 'STATUS: VOID'}
-                    </div>
+                  <div className="mb-1 flex items-center justify-center">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 sm:px-4 sm:py-1.5 bg-red-600 text-white rounded-full text-[10.5px] sm:text-xs font-black uppercase tracking-wider shadow-xs animate-in fade-in zoom-in-95 duration-200">
+                      <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+                      <span>{lang === 'lo' ? 'ປີ້ຖືກຄືນເງິນແລ້ວ (ໂມຄະ)' : 'REFUNDED - QR VOIDED'}</span>
+                    </span>
                   </div>
-                ) : currentTicketId ? (
-                  <>
-                    <QRCodeSVG
-                      value={currentTicketId}
-                      size={360}
-                      className={`w-64 h-64 min-[390px]:w-[272px] min-[390px]:h-[272px] sm:w-60 sm:h-60 md:w-64 md:h-64 transition-all duration-300 ${
-                        isScanned || isExpired ? 'opacity-35 grayscale-[40%]' : 'opacity-100'
-                      }`}
-                      level="H"
-                      includeMargin={false}
-                    />
-
-                    {/* Scanned Badge Stamp Overlay */}
-                    {isScanned && (
-                      <motion.div 
-                        initial={{ scale: 0.85, opacity: 0, rotate: -4 }}
-                        animate={{ scale: 1, opacity: 1, rotate: -4 }}
-                        transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-                        className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-2"
-                      >
-                        <div className="bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-xl border-2 border-white flex flex-col items-center justify-center text-center">
-                          <div className="flex items-center gap-1.5 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow-xs">
-                            <CheckCircle2 className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
-                            <span>{lang === 'lo' ? 'ສະແກນແລ້ວ' : 'ALREADY SCANNED'}</span>
-                          </div>
-                          <span className="text-[9px] sm:text-[10px] font-bold text-emerald-100 tracking-wide mt-0.5">
-                            {lang === 'lo' ? 'ກວດສອບການເຂົ້າຮ່ວມແລ້ວ' : 'Entry Verified'}
-                          </span>
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {/* Expired Badge Stamp Overlay */}
-                    {isExpired && (
-                      <motion.div 
-                        initial={{ scale: 0.85, opacity: 0, rotate: -4 }}
-                        animate={{ scale: 1, opacity: 1, rotate: -4 }}
-                        transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-                        className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-2"
-                      >
-                        <div className="bg-red-500 text-white px-4 py-2 rounded-xl shadow-xl border-2 border-white flex flex-col items-center justify-center text-center">
-                          <div className="flex items-center gap-1.5 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow-xs">
-                            <XCircle className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
-                            <span>{lang === 'lo' ? 'ໝົດອາຍຸ' : 'EXPIRED'}</span>
-                          </div>
-                          <span className="text-[9px] sm:text-[10px] font-bold text-red-100 tracking-wide mt-0.5">
-                            {lang === 'lo' ? 'ກິດຈະກຳສິ້ນສຸດແລ້ວ' : 'Event Ended'}
-                          </span>
-                        </div>
-                      </motion.div>
-                    )}
-                  </>
+                ) : isScanned ? (
+                  <div className="mb-1 flex items-center justify-center">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 sm:px-4 sm:py-1.5 bg-emerald-600 dark:bg-emerald-500 text-white rounded-full text-[10.5px] sm:text-xs font-black uppercase tracking-wider shadow-xs animate-in fade-in zoom-in-95 duration-200">
+                      <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+                      <span>{lang === 'lo' ? 'ສະແກນແລ້ວ' : 'ALREADY SCANNED'}</span>
+                    </span>
+                  </div>
+                ) : isExpired ? (
+                  <div className="mb-1 flex items-center justify-center">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 sm:px-4 sm:py-1.5 bg-red-500 dark:bg-red-500 text-white rounded-full text-[10.5px] sm:text-xs font-black uppercase tracking-wider shadow-xs animate-in fade-in zoom-in-95 duration-200">
+                      <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+                      <span>{lang === 'lo' ? 'ໝົດອາຍຸ' : 'EXPIRED'}</span>
+                    </span>
+                  </div>
                 ) : (
-                  <p className="px-5 py-8 text-center text-sm font-semibold text-gray-500">
-                    {lang === 'lo' ? 'ບໍ່ພົບ QR ປີ້ຈາກ Backend' : 'Ticket QR is unavailable from the backend'}
-                  </p>
+                  <div className="mb-1 text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider text-center">
+                    {lang === 'lo' ? 'ສະແກນ QR ເພື່ອເຂົ້າງານ' : 'Scan to enter'}
+                  </div>
+                )}
+
+                {/* Subtitle / Notice for Refunded */}
+                {isRefunded && (
+                  <div className="mb-1 text-[10px] sm:text-xs font-bold text-red-500 uppercase tracking-wider text-center">
+                    {lang === 'lo' ? 'QR Code ຖືກຍົກເລີກແລ້ວ ບໍ່ສາມາດສະແກນໄດ້' : 'QR code deactivated - Entry prohibited'}
+                  </div>
+                )}
+
+                <div className="relative bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-md p-2 sm:p-3 flex items-center justify-center overflow-hidden shrink-0">
+                  {isRefunded ? (
+                    <div className="w-48 h-48 sm:w-52 sm:h-52 flex flex-col items-center justify-center text-center p-3 bg-red-50/70 rounded-xl border-2 border-dashed border-red-300">
+                      <div className="w-11 h-11 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-2 shadow-inner">
+                        <XCircle className="w-6 h-6 stroke-[2.5]" />
+                      </div>
+                      <div className="text-xs sm:text-sm font-black text-red-600 uppercase tracking-wider">
+                        {lang === 'lo' ? 'QR Code ຖືກຍົກເລີກແລ້ວ' : 'QR CODE VOIDED'}
+                      </div>
+                      <p className="text-[10px] sm:text-xs font-medium text-gray-500 mt-1 leading-relaxed max-w-[190px]">
+                        {lang === 'lo' 
+                          ? 'ປີ້ໃບນີ້ໄດ້ຖືກຂໍຄືນເງິນແລ້ວ ລະຫັດຖືກຍົກເລີກ ແລະ ບໍ່ສາມາດສະແກນເຂົ້າງານໄດ້.' 
+                          : 'This ticket was refunded. The QR code has been deactivated.'}
+                      </p>
+                    </div>
+                  ) : currentTicketId ? (
+                    <>
+                      <QRCodeSVG
+                        value={currentTicketId}
+                        size={320}
+                        className={`w-44 h-44 min-[390px]:w-48 min-[390px]:h-48 sm:w-52 sm:h-52 md:w-56 md:h-56 transition-all duration-300 ${
+                          isScanned || isExpired ? 'opacity-35 grayscale-[40%]' : 'opacity-100'
+                        }`}
+                        level="H"
+                        includeMargin={false}
+                      />
+
+                      {/* Scanned Badge Stamp Overlay */}
+                      {isScanned && (
+                        <motion.div 
+                          initial={{ scale: 0.85, opacity: 0, rotate: -4 }}
+                          animate={{ scale: 1, opacity: 1, rotate: -4 }}
+                          transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                          className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-2"
+                        >
+                          <div className="bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-xl border-2 border-white flex flex-col items-center justify-center text-center">
+                            <div className="flex items-center gap-1.5 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow-xs">
+                              <CheckCircle2 className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
+                              <span>{lang === 'lo' ? 'ສະແກນແລ້ວ' : 'ALREADY SCANNED'}</span>
+                            </div>
+                            <span className="text-[9px] sm:text-[10px] font-bold text-emerald-100 tracking-wide mt-0.5">
+                              {lang === 'lo' ? 'ກວດສອບການເຂົ້າຮ່ວມແລ້ວ' : 'Entry Verified'}
+                            </span>
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {/* Expired Badge Stamp Overlay */}
+                      {isExpired && (
+                        <motion.div 
+                          initial={{ scale: 0.85, opacity: 0, rotate: -4 }}
+                          animate={{ scale: 1, opacity: 1, rotate: -4 }}
+                          transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                          className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-2"
+                        >
+                          <div className="bg-red-500 text-white px-4 py-2 rounded-xl shadow-xl border-2 border-white flex flex-col items-center justify-center text-center">
+                            <div className="flex items-center gap-1.5 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow-xs">
+                              <XCircle className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
+                              <span>{lang === 'lo' ? 'ໝົດອາຍຸ' : 'EXPIRED'}</span>
+                            </div>
+                            <span className="text-[9px] sm:text-[10px] font-bold text-red-100 tracking-wide mt-0.5">
+                              {lang === 'lo' ? 'ກິດຈະກຳສິ້ນສຸດແລ້ວ' : 'Event Ended'}
+                            </span>
+                          </div>
+                        </motion.div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="px-5 py-8 text-center text-sm font-semibold text-gray-500">
+                      {lang === 'lo' ? 'ບໍ່ພົບ QR ປີ້ຈາກ Backend' : 'Ticket QR is unavailable from the backend'}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Space under for ads: Dedicated ad banner area */}
+              <div className="shrink-0 w-full pt-2 pb-0.5 mt-1 border-t border-gray-100 flex items-center justify-center">
+                {sponsorSettings?.isEnabled && (() => {
+                  const resolvedAd = resolveTicketAd(sponsorSettings);
+                  if (resolvedAd.isDisplayed && resolvedAd.bannerUrl) {
+                    return (
+                      <div className="w-full h-12 sm:h-14 rounded-xl overflow-hidden bg-gray-50 border border-gray-200/80 shadow-2xs">
+                        {resolvedAd.websiteUrl ? (
+                          <a
+                            href={resolvedAd.websiteUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full h-full block relative group"
+                            title={resolvedAd.name}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <img 
+                              src={resolvedAd.bannerUrl} 
+                              alt={resolvedAd.name || 'Ad Banner'} 
+                              className="w-full h-full object-cover object-center rounded-xl group-hover:scale-[1.02] transition-transform duration-200" 
+                              referrerPolicy="no-referrer" 
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/Pasopkan ads.png';
+                              }}
+                            />
+                          </a>
+                        ) : (
+                          <img 
+                            src={resolvedAd.bannerUrl} 
+                            alt={resolvedAd.name || 'Ad Banner'} 
+                            className="w-full h-full object-cover object-center rounded-xl" 
+                            referrerPolicy="no-referrer" 
+                            title={resolvedAd.name}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/Pasopkan ads.png';
+                            }}
+                          />
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                })() || (
+                  <div className="w-full h-12 sm:h-14 rounded-xl overflow-hidden bg-gray-50/80 border border-gray-200/80 shadow-2xs flex items-center justify-center">
+                    <img 
+                      src="/Pasopkan ads.png" 
+                      alt="Pasopkan Sponsor Ad" 
+                      className="w-full h-full object-cover object-center rounded-xl"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
                 )}
               </div>
             </div>
-          </div>
-
-          {/* Dynamic Sponsor Ad Banner under QR Code */}
-            {sponsorSettings?.isEnabled && (() => {
-              const resolvedAd = resolveTicketAd(sponsorSettings);
-              if (!resolvedAd.isDisplayed || !resolvedAd.bannerUrl) return null;
-
-              return (
-                <div className="flex flex-col items-center justify-center shrink-0 border-t border-gray-100/80 w-full pt-1.5 pb-0.5 mt-1">
-                  {/* Full-width sponsor banner filling the entire frame width cleanly */}
-                  <div className="w-full h-13 sm:h-15 rounded-xl overflow-hidden bg-gray-50 border border-gray-200/80 shadow-2xs">
-                    {resolvedAd.websiteUrl ? (
-                      <a
-                        href={resolvedAd.websiteUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full h-full block relative group"
-                        title={resolvedAd.name}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <img 
-                          src={resolvedAd.bannerUrl} 
-                          alt={resolvedAd.name || 'Ad Banner'} 
-                          className="w-full h-full object-cover object-center rounded-xl group-hover:scale-[1.02] transition-transform duration-200" 
-                          referrerPolicy="no-referrer" 
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/Pasopkan ads.png';
-                          }}
-                        />
-                      </a>
-                    ) : (
-                      <img 
-                        src={resolvedAd.bannerUrl} 
-                        alt={resolvedAd.name || 'Ad Banner'} 
-                        className="w-full h-full object-cover object-center rounded-xl" 
-                        referrerPolicy="no-referrer" 
-                        title={resolvedAd.name}
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = '/Pasopkan ads.png';
-                        }}
-                      />
-                    )}
-                  </div>
-                </div>
-              );
-            })()}
           </div>
         </motion.div>
       </div>

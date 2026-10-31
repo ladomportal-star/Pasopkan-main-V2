@@ -1872,29 +1872,29 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                         {/* Top Ticket Details */}
                         <div className="flex-1 flex flex-col justify-center min-h-0">
                           {/* Brand Logo Header Bar */}
-                          <div className="flex items-center justify-center pb-2 mb-2 border-b border-gray-100 shrink-0">
+                          <div className="flex items-center justify-center pb-2.5 mb-2 border-b border-gray-100 shrink-0">
                             <img 
                               src="/pasopkan_logo.png" 
                               alt="Pasopkan" 
-                              className="h-12 sm:h-14 md:h-16 w-auto max-w-[260px] object-contain drop-shadow-sm transition-transform" 
+                              className="h-14 sm:h-16 md:h-18 w-auto max-w-[270px] sm:max-w-[300px] object-contain drop-shadow-sm transition-transform" 
                               referrerPolicy="no-referrer"
                             />
                           </div>
 
                           {/* Event Title */}
-                          <h1 className="text-base sm:text-lg md:text-xl font-black text-gray-950 leading-tight mb-2 tracking-tight line-clamp-1">
+                          <h1 className="text-lg sm:text-xl md:text-2xl font-black text-gray-950 leading-tight mb-2 tracking-tight line-clamp-1">
                             {ticketPreview?.eventTitle || (ticketPreviewLoading
                               ? (lang === 'en' ? 'Loading ticket…' : 'ກຳລັງໂຫຼດປີ້…')
                               : (lang === 'en' ? 'No issued ticket' : 'ບໍ່ມີປີ້ທີ່ອອກແລ້ວ'))}
                           </h1>
 
                           {/* 2-Column Info Grid */}
-                          <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 mb-2">
+                          <div className="grid grid-cols-2 gap-x-3 gap-y-2 mb-2">
                             <div>
-                              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                              <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
                                 {lang === 'lo' ? 'ວັນທີ' : 'Date'}
                               </p>
-                              <p className="text-xs font-bold text-gray-950 leading-tight">
+                              <p className="text-sm sm:text-base font-black text-gray-950 leading-tight mt-0.5">
                                 {ticketPreview?.selectedDate
                                   ? formatEventDateDDMMYYYY(ticketPreview.selectedDate)
                                   : '—'}
@@ -1902,28 +1902,28 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                             </div>
 
                             <div>
-                              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                              <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
                                 {lang === 'lo' ? 'ເວລາ' : 'Time'}
                               </p>
-                              <p className="text-xs font-bold text-gray-950 leading-tight">
+                              <p className="text-sm sm:text-base font-black text-gray-950 leading-tight mt-0.5">
                                 {ticketPreview?.selectedTime || '—'}
                               </p>
                             </div>
 
                             <div>
-                              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                              <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
                                 {lang === 'lo' ? 'ປະເພດການເຂົ້າ' : 'Check In Type'}
                               </p>
-                              <p className="text-xs font-bold text-gray-950 leading-tight truncate">
+                              <p className="text-sm sm:text-base font-black text-gray-950 leading-tight truncate mt-0.5">
                                 {ticketPreview?.tierName || '—'}
                               </p>
                             </div>
 
                             <div>
-                              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                              <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
                                 {lang === 'lo' ? 'ລະຫັດອໍເດີ' : 'Order ID'}
                               </p>
-                              <p className="text-xs font-bold text-gray-950 font-mono tracking-tight leading-tight">
+                              <p className="text-sm sm:text-base font-black text-gray-950 font-mono tracking-tight leading-tight mt-0.5">
                                 {ticketPreview?.orderNumber || '—'}
                               </p>
                             </div>
@@ -1933,38 +1933,38 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                         {/* Bottom QR Section: Cutting Line placed directly near the QR Code */}
                         <div className="shrink-0 flex flex-col pt-1">
                           {/* Perforated Divider with Circular Concave Cutouts */}
-                          <div className="relative my-2.5 -mx-4 py-1 flex items-center shrink-0">
+                          <div className="relative my-2 -mx-4 py-0.5 flex items-center shrink-0">
                             {/* Left Cutout */}
-                            <div className="absolute -left-3.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#F24E00] z-10" />
+                            <div className="absolute -left-3.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#F24E00] z-10" />
                             
                             {/* Dashed Perforation Line */}
                             <div className="w-full border-t-2 border-dashed border-gray-200 mx-4" />
 
                             {/* Right Cutout */}
-                            <div className="absolute -right-3.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#F24E00] z-10" />
+                            <div className="absolute -right-3.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#F24E00] z-10" />
                           </div>
 
                           {/* Direct QR Code Section */}
-                          <div className="py-1 flex flex-col items-center justify-center min-h-0">
-                            <div className="p-2 sm:p-4 bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-md flex items-center justify-center shrink-0">
+                          <div className="py-0.5 flex flex-col items-center justify-center min-h-0">
+                            <div className="p-2 sm:p-3 bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-md flex items-center justify-center shrink-0">
                               {ticketPreviewLoading ? (
-                                <div className="grid h-64 w-64 place-items-center text-sm font-semibold text-gray-400">
+                                <div className="grid h-48 w-48 place-items-center text-sm font-semibold text-gray-400">
                                   {lang === 'en' ? 'Loading account tickets…' : 'ກຳລັງໂຫຼດປີ້ຂອງບັນຊີ…'}
                                 </div>
                               ) : ticketPreviewError ? (
-                                <div className="grid h-64 w-64 place-items-center px-6 text-center text-sm font-semibold text-red-600">
+                                <div className="grid h-48 w-48 place-items-center px-4 text-center text-xs font-semibold text-red-600">
                                   {lang === 'en' ? 'Could not load a real ticket from the backend.' : 'ບໍ່ສາມາດໂຫຼດປີ້ຈິງຈາກ Backend ໄດ້'}
                                 </div>
                               ) : ticketPreview ? (
                                 <QRCodeSVG
                                   value={ticketPreview.ticketCode}
-                                  size={360}
-                                  className="w-64 h-64 min-[390px]:w-[272px] min-[390px]:h-[272px] sm:w-60 sm:h-60 md:w-64 md:h-64"
+                                  size={320}
+                                  className="w-44 h-44 sm:w-48 sm:h-48 md:w-52 md:h-52"
                                   level="H"
                                   includeMargin={false}
                                 />
                               ) : (
-                                <div className="grid h-64 w-64 place-items-center px-6 text-center text-sm font-semibold text-gray-400">
+                                <div className="grid h-48 w-48 place-items-center px-4 text-center text-xs font-semibold text-gray-400">
                                   {lang === 'en' ? 'No confirmed ticket is available on this account.' : 'ບັນຊີນີ້ບໍ່ມີປີ້ທີ່ຢືນຢັນຈາກ Backend'}
                                 </div>
                               )}
