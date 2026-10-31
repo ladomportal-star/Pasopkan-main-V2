@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -55,8 +55,10 @@ export default function Login({
   let savedReturn: string | null = null;
   try { savedReturn = sessionStorage.getItem(LOGIN_RETURN_KEY); } catch {}
   const destination = safeLoginReturn(location.state?.returnTo ?? savedReturn);
+  const redirected = useRef(false);
   useEffect(() => {
-    if (!loading && isAuthenticated) {
+    if (!loading && isAuthenticated && !redirected.current) {
+      redirected.current = true;
       try { sessionStorage.removeItem(LOGIN_RETURN_KEY); } catch {}
       navigate(/^\/checkout(?:[?#]|$)/.test(destination) && !location.state?.returnState ? '/' : destination,
         { replace: true, state: location.state?.returnState });
