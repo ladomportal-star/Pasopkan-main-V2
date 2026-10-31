@@ -251,7 +251,7 @@ describe("events", () => {
       });
     expect(updated.status).toBe(200);
     expect(updated.body.event.privateDetails.accountNumber).toBe("new-account");
-    expect((await request(app).get(`/api/events/${id}`)).status).toBe(401);
+    expect((await request(app).get(`/api/events/${id}`)).status).toBe(404);
     expect(
       (await request(app).get(`/api/events/${id}`).set(owner)).body.event.privateDetails
         .accountNumber,

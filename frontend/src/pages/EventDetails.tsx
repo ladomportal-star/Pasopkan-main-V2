@@ -57,6 +57,7 @@ import {
 } from "lucide-react";
 import { LaoEvent, TicketTier } from "../data/events";
 import { api } from "../lib/api";
+import { listAllPublicEvents } from "../lib/publicEvents";
 import { fromBackendEvent } from "../lib/eventPayload";
 import { formatEventDateDDMMYYYY } from "../lib/dateFormat";
 import {
@@ -877,10 +878,26 @@ export default function EventDetails({
     if (previewEventData) {
       applyEvent(previewEventData);
     } else if (id) {
-      api.getEvent(id).then((res) => {
-        applyEvent(
-          res.data?.event ? fromBackendEvent(res.data.event) : undefined,
+      const stateEvent = location.state?.event as LaoEvent | undefined;
+      if (stateEvent && String(stateEvent.id) === String(id)) {
+        applyEvent(stateEvent);
+      }
+      api.getEvent(id).then(async (res) => {
+        if (res.data?.event) {
+          applyEvent(fromBackendEvent(res.data.event));
+          return;
+        }
+        const catalog = await listAllPublicEvents();
+        if (cancelled || !catalog.ok) return;
+        const found = catalog.events.find(
+          (item) =>
+            String(item.id) === String(id) ||
+            String(item.slug) === String(id) ||
+            String(item.legacyId) === String(id),
         );
+        if (found) {
+          applyEvent(fromBackendEvent(found));
+        }
       });
     }
 

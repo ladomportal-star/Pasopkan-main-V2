@@ -195,7 +195,8 @@ export interface EventStaffAssignment {
 }
 
 function authToken(explicit?: string | null): string | null {
-  return explicit ?? safeStorage.getItem("token") ?? null;
+  if (explicit !== undefined) return explicit;
+  return safeStorage.getItem("token") ?? null;
 }
 
 async function request<T>(
@@ -239,6 +240,9 @@ async function request<T>(
       if (res.status === 401 && token && !path.startsWith("/otp/")) {
         safeStorage.removeItem("token");
         window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+        if (method === "GET" && opts.token === undefined) {
+          return request<T>(method, path, body, { ...opts, token: null });
+        }
       }
       const error = (data as { error?: string })?.error || `HTTP ${res.status}`;
       if (opts.throwOnError) throw new Error(error);

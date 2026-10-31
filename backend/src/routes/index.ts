@@ -31,6 +31,7 @@ apiRouter.use(async (req, res, next) => {
     (req.method === "GET" && path === "/events") ||
     (req.method === "GET" && /^\/events\/[^/]+$/.test(path)) ||
     (req.method === "GET" && path === "/media/url") ||
+    (req.method === "GET" && path === "/resolve-map-url") ||
     (req.method === "GET" && path === "/blogs") ||
     (req.method === "GET" && path.startsWith("/site-settings/")) ||
     (req.method === "GET" && ["/webhook/payment", "/payment/webhook"].includes(path)) ||

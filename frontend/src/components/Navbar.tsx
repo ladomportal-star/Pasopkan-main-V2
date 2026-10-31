@@ -214,7 +214,7 @@ export default function Navbar() {
           <div className="flex items-center gap-2 lg:gap-6">
             {/* Search Trigger */}
             <button
-              onClick={() => isAuthenticated ? setIsSearchOpen(true) : navigate('/login')}
+              onClick={() => setIsSearchOpen(true)}
               className="lg:flex items-center gap-3 px-4 py-2 bg-gray-100 rounded-full text-gray-400 hover:bg-gray-200 transition-all group hidden md:flex min-w-[200px]"
             >
               <Search className="w-4 h-4" />
@@ -223,7 +223,7 @@ export default function Navbar() {
 
             {/* Mobile Search Trigger */}
             <button
-              onClick={() => isAuthenticated ? setIsSearchOpen(true) : navigate('/login')}
+              onClick={() => setIsSearchOpen(true)}
               className="md:hidden p-2 text-adv-slate hover:text-adv-orange transition-all rounded-full hover:bg-gray-50"
               title={t.search}
             >

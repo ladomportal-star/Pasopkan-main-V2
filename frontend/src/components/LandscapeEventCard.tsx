@@ -109,7 +109,7 @@ const LandscapeEventCard: React.FC<LandscapeEventCardProps> = ({ event, index, u
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       viewport={{ once: true }}
       className={`group relative flex flex-col commerce-card overflow-hidden cursor-pointer snap-start rounded-2xl sm:rounded-[2rem] ${className || 'shrink-0 w-[200px] sm:w-[240px] md:w-[280px]'}`}
-      onClick={() => navigate(`/event/${event.id}`, { state: { from: location.pathname + location.search } })}
+      onClick={() => navigate(`/event/${event.id}`, { state: { from: location.pathname + location.search, event } })}
     >
       {/* Visual Header */}
       <div className="relative aspect-[4/5] overflow-hidden bg-gray-100">

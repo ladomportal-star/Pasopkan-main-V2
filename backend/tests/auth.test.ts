@@ -94,7 +94,6 @@ describe("authentication (real JWT verification, nothing bypassed)", () => {
   });
 
   it.each([
-    "/resolve-map-url?url=x",
     "/tickets",
     "/notifications",
     "/account/sync",

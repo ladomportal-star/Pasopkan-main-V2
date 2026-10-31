@@ -91,7 +91,8 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     });
 
   const handleSelect = (id: string) => {
-    navigate(`/event/${id}`, { state: { from: location.pathname + location.search } });
+    const matched = searchEvents.find((evt) => String(evt.id) === String(id));
+    navigate(`/event/${id}`, { state: { from: location.pathname + location.search, event: matched } });
     onClose();
   };
 

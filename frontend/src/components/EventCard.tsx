@@ -123,7 +123,7 @@ export default function EventCard({ event, index = 0, userCoords }: EventCardPro
       viewport={{ once: true, margin: "-20px" }}
       transition={{ duration: 0.5, delay: index * 0.04, ease: [0.22, 1, 0.36, 1] }}
       className="group relative flex flex-col commerce-card w-full h-full overflow-hidden cursor-pointer rounded-2xl sm:rounded-[2rem]"
-      onClick={() => navigate(`/event/${event.id}`, { state: { from: location.pathname + location.search } })}
+      onClick={() => navigate(`/event/${event.id}`, { state: { from: location.pathname + location.search, event } })}
     >
       {/* Visual Header */}
       <div className="relative aspect-[4/5] w-full overflow-hidden bg-gray-100 shrink-0">
