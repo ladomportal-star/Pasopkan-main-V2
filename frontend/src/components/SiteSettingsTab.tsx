@@ -1882,19 +1882,19 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                           </div>
 
                           {/* Event Title */}
-                          <h1 className="text-lg sm:text-xl md:text-2xl font-black text-gray-950 leading-tight mb-2 tracking-tight line-clamp-1">
+                          <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-gray-950 leading-tight mb-2.5 tracking-tight line-clamp-1">
                             {ticketPreview?.eventTitle || (ticketPreviewLoading
                               ? (lang === 'en' ? 'Loading ticket…' : 'ກຳລັງໂຫຼດປີ້…')
                               : (lang === 'en' ? 'No issued ticket' : 'ບໍ່ມີປີ້ທີ່ອອກແລ້ວ'))}
                           </h1>
 
                           {/* 2-Column Info Grid */}
-                          <div className="grid grid-cols-2 gap-x-3 gap-y-2 mb-2">
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 mb-2.5">
                             <div>
-                              <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
+                              <p className="text-xs sm:text-sm font-bold text-gray-500 uppercase tracking-wider">
                                 {lang === 'lo' ? 'ວັນທີ' : 'Date'}
                               </p>
-                              <p className="text-sm sm:text-base font-black text-gray-950 leading-tight mt-0.5">
+                              <p className="text-base sm:text-lg md:text-xl font-black text-gray-950 leading-tight mt-0.5">
                                 {ticketPreview?.selectedDate
                                   ? formatEventDateDDMMYYYY(ticketPreview.selectedDate)
                                   : '—'}
@@ -1902,28 +1902,28 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                             </div>
 
                             <div>
-                              <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
+                              <p className="text-xs sm:text-sm font-bold text-gray-500 uppercase tracking-wider">
                                 {lang === 'lo' ? 'ເວລາ' : 'Time'}
                               </p>
-                              <p className="text-sm sm:text-base font-black text-gray-950 leading-tight mt-0.5">
+                              <p className="text-base sm:text-lg md:text-xl font-black text-gray-950 leading-tight mt-0.5">
                                 {ticketPreview?.selectedTime || '—'}
                               </p>
                             </div>
 
                             <div>
-                              <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
+                              <p className="text-xs sm:text-sm font-bold text-gray-500 uppercase tracking-wider">
                                 {lang === 'lo' ? 'ປະເພດການເຂົ້າ' : 'Check In Type'}
                               </p>
-                              <p className="text-sm sm:text-base font-black text-gray-950 leading-tight truncate mt-0.5">
+                              <p className="text-base sm:text-lg md:text-xl font-black text-gray-950 leading-tight truncate mt-0.5">
                                 {ticketPreview?.tierName || '—'}
                               </p>
                             </div>
 
                             <div>
-                              <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
+                              <p className="text-xs sm:text-sm font-bold text-gray-500 uppercase tracking-wider">
                                 {lang === 'lo' ? 'ລະຫັດອໍເດີ' : 'Order ID'}
                               </p>
-                              <p className="text-sm sm:text-base font-black text-gray-950 font-mono tracking-tight leading-tight mt-0.5">
+                              <p className="text-base sm:text-lg md:text-xl font-black text-gray-950 font-mono tracking-tight leading-tight mt-0.5">
                                 {ticketPreview?.orderNumber || '—'}
                               </p>
                             </div>

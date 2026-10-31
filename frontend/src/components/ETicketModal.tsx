@@ -290,44 +290,44 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
               </div>
 
               {/* Event Title */}
-              <h1 className="text-lg sm:text-xl md:text-2xl font-black text-gray-950 leading-tight tracking-tight mb-2 sm:mb-2.5 line-clamp-2">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-gray-950 leading-tight tracking-tight mb-2.5 sm:mb-3 line-clamp-2">
                 {ticket.event.title}
               </h1>
 
               {/* 2-Column Info Grid */}
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:gap-y-3 mb-2">
+              <div className="grid grid-cols-2 gap-x-5 gap-y-2.5 sm:gap-y-3.5 mb-2.5 sm:mb-3">
                 <div>
-                  <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  <p className="text-xs sm:text-sm font-bold text-gray-500 uppercase tracking-wider">
                     {lang === 'lo' ? 'ວັນທີ' : 'Date'}
                   </p>
-                  <p className="text-sm sm:text-base font-black text-gray-950 leading-tight mt-0.5">
+                  <p className="text-base sm:text-lg md:text-xl font-black text-gray-950 leading-tight mt-0.5">
                     {formatEventDate()}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  <p className="text-xs sm:text-sm font-bold text-gray-500 uppercase tracking-wider">
                     {lang === 'lo' ? 'ເວລາເລີ່ມງານ' : 'Start Time'}
                   </p>
-                  <p className="text-sm sm:text-base font-black text-gray-950 leading-tight mt-0.5">
+                  <p className="text-base sm:text-lg md:text-xl font-black text-gray-950 leading-tight mt-0.5">
                     {formatEventTime()}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  <p className="text-xs sm:text-sm font-bold text-gray-500 uppercase tracking-wider">
                     {lang === 'lo' ? 'ປະເພດການເຂົ້າ' : 'Check In Type'}
                   </p>
-                  <p className="text-sm sm:text-base font-black text-gray-950 leading-tight truncate mt-0.5">
+                  <p className="text-base sm:text-lg md:text-xl font-black text-gray-950 leading-tight truncate mt-0.5">
                     {ticket.tier.name || 'VIP A'}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  <p className="text-xs sm:text-sm font-bold text-gray-500 uppercase tracking-wider">
                     {lang === 'lo' ? 'ລະຫັດອໍເດີ' : 'Order ID'}
                   </p>
-                  <p className="text-sm sm:text-base font-black text-gray-950 font-mono tracking-tight leading-tight mt-0.5">
+                  <p className="text-base sm:text-lg md:text-xl font-black text-gray-950 font-mono tracking-tight leading-tight mt-0.5">
                     {formattedOrderId}
                   </p>
                 </div>
