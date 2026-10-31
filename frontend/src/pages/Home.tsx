@@ -544,7 +544,7 @@ export default function Home() {
       
       <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 pt-2 sm:pt-3">
         <section 
-          className="relative h-[220px] sm:h-[360px] landscape:h-[260px] lg:h-[1080px] flex flex-col justify-center items-center overflow-hidden rounded-[1.5rem] sm:rounded-[2rem] touch-pan-y select-none cursor-grab active:cursor-grabbing"
+          className="relative w-full aspect-[16/9] flex flex-col justify-center items-center overflow-hidden rounded-[1.5rem] sm:rounded-[2rem] touch-pan-y select-none cursor-grab active:cursor-grabbing"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -568,7 +568,7 @@ export default function Home() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3, ease: "linear" }}
-                className="absolute inset-0 w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full object-cover object-center"
                 alt={currentSlide.title}
                 onError={() => setFailedHeroImage(currentSlide.image)}
                 fetchPriority="high"
