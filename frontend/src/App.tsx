@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -13,34 +13,40 @@ import { NotificationsProvider } from './context/NotificationsContext';
 import Layout from './components/Layout';
 import BottomNav from './components/BottomNav';
 import ScrollToTop from './components/ScrollToTop';
+import DotsLoader from './components/DotsLoader';
 import { ThemeProvider } from './context/ThemeContext';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { lazyWithRetry } from './lib/lazyWithRetry';
 
-// Import pages statically to guarantee zero dynamic chunk fetching errors
+// High-frequency public pages are bundled statically for instantaneous first paint
 import Home from './pages/Home';
 import EventDetails from './pages/EventDetails';
-import Checkout from './pages/Checkout';
-import Dashboard from './pages/Dashboard';
-import Account from './pages/Account';
-import EditProfile from './pages/EditProfile';
-import Notifications from './pages/Notifications';
-import NotificationSettings from './pages/NotificationSettings';
-import LanguageSettings from './pages/LanguageSettings';
-import Security from './pages/Security';
-import UpdatePassword from './pages/UpdatePassword';
-import PaymentMethods from './pages/PaymentMethods';
-import Help from './pages/Help';
+import CategoryEvents from './pages/CategoryEvents';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import PastEvents from './pages/PastEvents';
-import CategoryEvents from './pages/CategoryEvents';
-import Contact from './pages/Contact';
-import About from './pages/About';
-import Terms from './pages/Terms';
-import Privacy from './pages/Privacy';
-import ApprovalCenter from './pages/ApprovalCenter';
-import { OrganizerCreateGate } from './components/OrganizerPhoneModal';
-import StaffScanner from './pages/StaffScanner';
+
+// Secondary, account, and admin routes are code-split with automatic retry to keep initial load lightweight
+const Checkout = lazyWithRetry(() => import('./pages/Checkout'));
+const Dashboard = lazyWithRetry(() => import('./pages/Dashboard'));
+const Account = lazyWithRetry(() => import('./pages/Account'));
+const EditProfile = lazyWithRetry(() => import('./pages/EditProfile'));
+const Notifications = lazyWithRetry(() => import('./pages/Notifications'));
+const NotificationSettings = lazyWithRetry(() => import('./pages/NotificationSettings'));
+const LanguageSettings = lazyWithRetry(() => import('./pages/LanguageSettings'));
+const Security = lazyWithRetry(() => import('./pages/Security'));
+const UpdatePassword = lazyWithRetry(() => import('./pages/UpdatePassword'));
+const PaymentMethods = lazyWithRetry(() => import('./pages/PaymentMethods'));
+const Help = lazyWithRetry(() => import('./pages/Help'));
+const PastEvents = lazyWithRetry(() => import('./pages/PastEvents'));
+const Contact = lazyWithRetry(() => import('./pages/Contact'));
+const About = lazyWithRetry(() => import('./pages/About'));
+const Terms = lazyWithRetry(() => import('./pages/Terms'));
+const Privacy = lazyWithRetry(() => import('./pages/Privacy'));
+const ApprovalCenter = lazyWithRetry(() => import('./pages/ApprovalCenter'));
+const StaffScanner = lazyWithRetry(() => import('./pages/StaffScanner'));
+const OrganizerCreateGate = lazyWithRetry(() =>
+  import('./components/OrganizerPhoneModal').then((m) => ({ default: m.OrganizerCreateGate }))
+);
 
 // A wrapper to animate individual standalone pages
 const PageTransition = ({ children }: { children: React.ReactNode }) => (
@@ -142,7 +148,9 @@ function SessionContent() {
   return (
     <NotificationsProvider key={isAuthenticated ? user!.id : 'signed-out'}>
       <div className="pb-16 md:pb-0 min-h-screen flex flex-col bg-white text-adv-slate transition-colors duration-300">
-        <AnimatedRoutes />
+        <Suspense fallback={<div className="grid min-h-screen place-items-center" role="status"><DotsLoader /></div>}>
+          <AnimatedRoutes />
+        </Suspense>
         <BottomNav />
         <OfflineIndicator />
       </div>
