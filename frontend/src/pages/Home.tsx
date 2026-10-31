@@ -555,7 +555,7 @@ export default function Home() {
             if (touchStartX !== null) handleTouchEnd();
           }}
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-800 to-orange-900 pointer-events-none">
+          <div className="absolute inset-0 bg-gray-100 pointer-events-none">
             <AnimatePresence mode="wait">
               {currentSlide && failedHeroImage !== currentSlide.image && <motion.img
                 key={currentSlide.id}
@@ -574,13 +574,12 @@ export default function Home() {
                 fetchPriority="high"
               />}
             </AnimatePresence>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10" />
           </div>
 
           <h1 className="sr-only">{currentSlide?.title ?? 'Pasopkan'}</h1>
-          {!currentSlide && <div className="relative z-10 px-6 text-center text-white pointer-events-none">
-            <Compass className="mx-auto mb-4 h-10 w-10 text-orange-300" />
-            <p className="text-sm sm:text-lg text-white/80">
+          {!currentSlide && <div className="relative z-10 px-6 text-center text-slate-600 pointer-events-none">
+            <Compass className="mx-auto mb-4 h-10 w-10 text-adv-orange" />
+            <p className="text-sm sm:text-lg text-slate-500 font-medium">
               {homeHeroSettings === null ? t.loadingSlides : t.noSlides}
             </p>
           </div>}
