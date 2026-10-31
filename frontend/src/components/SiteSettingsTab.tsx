@@ -1876,7 +1876,7 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                             <img 
                               src="/pasopkan_logo.png" 
                               alt="Pasopkan" 
-                              className="h-14 sm:h-16 md:h-18 w-auto max-w-[270px] sm:max-w-[300px] object-contain drop-shadow-sm transition-transform" 
+                              className="h-16 min-[390px]:h-20 sm:h-22 md:h-24 w-auto max-w-[300px] sm:max-w-[340px] object-contain drop-shadow-sm transition-transform" 
                               referrerPolicy="no-referrer"
                             />
                           </div>
@@ -1948,23 +1948,23 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                           <div className="py-0.5 flex flex-col items-center justify-center min-h-0">
                             <div className="p-2 sm:p-3 bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-md flex items-center justify-center shrink-0">
                               {ticketPreviewLoading ? (
-                                <div className="grid h-48 w-48 place-items-center text-sm font-semibold text-gray-400">
+                                <div className="grid h-56 w-56 place-items-center text-sm font-semibold text-gray-400">
                                   {lang === 'en' ? 'Loading account tickets…' : 'ກຳລັງໂຫຼດປີ້ຂອງບັນຊີ…'}
                                 </div>
                               ) : ticketPreviewError ? (
-                                <div className="grid h-48 w-48 place-items-center px-4 text-center text-xs font-semibold text-red-600">
+                                <div className="grid h-56 w-56 place-items-center px-4 text-center text-xs font-semibold text-red-600">
                                   {lang === 'en' ? 'Could not load a real ticket from the backend.' : 'ບໍ່ສາມາດໂຫຼດປີ້ຈິງຈາກ Backend ໄດ້'}
                                 </div>
                               ) : ticketPreview ? (
                                 <QRCodeSVG
                                   value={ticketPreview.ticketCode}
-                                  size={320}
-                                  className="w-44 h-44 sm:w-48 sm:h-48 md:w-52 md:h-52"
+                                  size={360}
+                                  className="w-56 h-56 min-[390px]:w-[245px] min-[390px]:h-[245px] sm:w-[255px] sm:h-[255px]"
                                   level="H"
                                   includeMargin={false}
                                 />
                               ) : (
-                                <div className="grid h-48 w-48 place-items-center px-4 text-center text-xs font-semibold text-gray-400">
+                                <div className="grid h-56 w-56 place-items-center px-4 text-center text-xs font-semibold text-gray-400">
                                   {lang === 'en' ? 'No confirmed ticket is available on this account.' : 'ບັນຊີນີ້ບໍ່ມີປີ້ທີ່ຢືນຢັນຈາກ Backend'}
                                 </div>
                               )}

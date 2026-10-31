@@ -284,7 +284,7 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                 <img 
                   src="/pasopkan_logo.png" 
                   alt="Pasopkan" 
-                  className="h-14 sm:h-16 md:h-20 w-auto max-w-[270px] sm:max-w-[300px] object-contain drop-shadow-sm transition-transform" 
+                  className="h-16 min-[390px]:h-20 sm:h-22 md:h-24 w-auto max-w-[300px] sm:max-w-[340px] object-contain drop-shadow-sm transition-transform" 
                   referrerPolicy="no-referrer"
                 />
               </div>
@@ -387,8 +387,8 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
 
                 <div className="relative bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-md p-2 sm:p-3 flex items-center justify-center overflow-hidden shrink-0">
                   {isRefunded ? (
-                    <div className="w-48 h-48 sm:w-52 sm:h-52 flex flex-col items-center justify-center text-center p-3 bg-red-50/70 rounded-xl border-2 border-dashed border-red-300">
-                      <div className="w-11 h-11 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-2 shadow-inner">
+                    <div className="w-56 h-56 min-[390px]:w-[245px] min-[390px]:h-[245px] sm:w-[255px] sm:h-[255px] flex flex-col items-center justify-center text-center p-3 bg-red-50/70 rounded-xl border-2 border-dashed border-red-300">
+                      <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-2 shadow-inner">
                         <XCircle className="w-6 h-6 stroke-[2.5]" />
                       </div>
                       <div className="text-xs sm:text-sm font-black text-red-600 uppercase tracking-wider">
@@ -404,8 +404,8 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                     <>
                       <QRCodeSVG
                         value={currentTicketId}
-                        size={320}
-                        className={`w-44 h-44 min-[390px]:w-48 min-[390px]:h-48 sm:w-52 sm:h-52 md:w-56 md:h-56 transition-all duration-300 ${
+                        size={360}
+                        className={`w-56 h-56 min-[390px]:w-[245px] min-[390px]:h-[245px] sm:w-[255px] sm:h-[255px] transition-all duration-300 ${
                           isScanned || isExpired ? 'opacity-35 grayscale-[40%]' : 'opacity-100'
                         }`}
                         level="H"
