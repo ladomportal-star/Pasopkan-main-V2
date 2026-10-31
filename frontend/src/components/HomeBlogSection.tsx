@@ -125,33 +125,30 @@ export default function HomeBlogSection() {
       </div>
 
       {/* 2-Column Editorial Magazine Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
         {/* Left Column: Big Featured Hero Card */}
         <div className="lg:col-span-7 flex">
           <motion.article
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             onClick={() => handleOpenBlog(heroBlog)}
-            className="relative w-full rounded-2xl sm:rounded-3xl overflow-hidden bg-gray-900 group cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 min-h-[320px] sm:min-h-[420px] lg:min-h-[460px] flex flex-col justify-end"
+            className="relative w-full aspect-[16/9] rounded-2xl sm:rounded-3xl overflow-hidden bg-gray-100 group cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-end"
           >
             {/* Background Cover Image */}
             <img
               src={heroBlog.coverImageDisplay || heroBlog.coverImage}
               alt={heroTitle}
-              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+              className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
               loading="lazy"
             />
 
-            {/* Gradient Overlay for high text readability */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/10 transition-opacity duration-300 group-hover:from-black" />
-
             {/* Card Content at bottom overlay */}
             <div className="relative z-10 p-6 sm:p-8 md:p-10 flex flex-col justify-end">
-              <h3 className="text-lg sm:text-xl md:text-2xl lg:text-2xl xl:text-3xl font-black text-white leading-snug sm:leading-tight tracking-tight drop-shadow-md group-hover:text-orange-100 transition-colors flex items-start gap-2.5">
+              <h3 className="text-lg sm:text-xl md:text-2xl lg:text-2xl xl:text-3xl font-black text-white leading-snug sm:leading-tight tracking-tight drop-shadow-[0_2px_6px_rgba(0,0,0,0.75)] group-hover:text-orange-100 transition-colors flex items-start gap-2.5">
                 <span className="line-clamp-2">{heroTitle}</span>
               </h3>
 
-              <div className="text-xs sm:text-sm text-gray-300 font-medium mt-3 flex items-center gap-2">
+              <div className="text-xs sm:text-sm text-white/95 drop-shadow-[0_1px_4px_rgba(0,0,0,0.75)] font-medium mt-3 flex items-center gap-2">
                 <span>{formatCardDate(heroBlog.publishedAt, isLao)}</span>
               </div>
             </div>
@@ -159,7 +156,7 @@ export default function HomeBlogSection() {
         </div>
 
         {/* Right Column: Stack of Horizontal Article Cards */}
-        <div className="lg:col-span-5 flex flex-col justify-between space-y-4 sm:space-y-6 lg:space-y-0">
+        <div className="lg:col-span-5 flex flex-col justify-between space-y-4 sm:space-y-5">
           {sideBlogs.map((blog, idx) => {
             const displayTitle = isLao && blog.titleLao ? blog.titleLao : blog.title;
 
@@ -173,11 +170,11 @@ export default function HomeBlogSection() {
                 className="group cursor-pointer flex items-center gap-4 sm:gap-5 p-2 rounded-2xl hover:bg-gray-50/90 transition-all duration-200"
               >
                 {/* Horizontal Thumbnail */}
-                <div className="relative w-32 sm:w-44 lg:w-36 xl:w-44 aspect-[16/10] shrink-0 rounded-xl sm:rounded-2xl overflow-hidden bg-gray-100 shadow-2xs">
+                <div className="relative w-32 sm:w-44 lg:w-36 xl:w-44 aspect-[16/9] shrink-0 rounded-xl sm:rounded-2xl overflow-hidden bg-gray-100 shadow-2xs">
                   <img
                     src={blog.coverImageDisplay || blog.coverImage}
                     alt={displayTitle}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
                   />
                 </div>
@@ -229,11 +226,11 @@ export default function HomeBlogSection() {
                       onClick={() => handleOpenBlog(blog)}
                       className="group cursor-pointer bg-white rounded-2xl sm:rounded-3xl border border-gray-100 overflow-hidden shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col"
                     >
-                      <div className="relative aspect-[16/10] overflow-hidden bg-gray-100">
+                      <div className="relative aspect-[16/9] overflow-hidden bg-gray-100">
                         <img
                           src={blog.coverImageDisplay || blog.coverImage}
                           alt={displayTitle}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
                           loading="lazy"
                         />
                       </div>
