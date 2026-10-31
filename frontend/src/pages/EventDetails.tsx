@@ -1350,13 +1350,13 @@ export default function EventDetails({
               {event.image && (
                 <div className="block lg:hidden w-full relative">
                   <div
-                    className="relative w-full aspect-square sm:aspect-[4/3] overflow-hidden rounded-t-3xl touch-pan-y select-none cursor-grab active:cursor-grabbing"
+                    className="relative w-full overflow-hidden rounded-t-3xl touch-pan-y select-none cursor-grab active:cursor-grabbing"
                     onTouchStart={handleMobileTouchStart}
                     onTouchMove={handleMobileTouchMove}
                     onTouchEnd={handleMobileTouchEnd}
                     onClick={() => setFullscreenImageIndex(activeImageIndex)}
                   >
-                    <div className="absolute inset-0">
+                    <div className="relative w-full">
                       <AnimatePresence mode="wait">
                         <motion.img
                           key={activeImageIndex}
@@ -1365,7 +1365,7 @@ export default function EventDetails({
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
                           transition={{ duration: 0.3, ease: "linear" }}
-                          className="absolute inset-0 w-full h-full object-cover"
+                          className="w-full h-auto block object-contain"
                           alt={event.title}
                         />
                       </AnimatePresence>
@@ -1502,10 +1502,10 @@ export default function EventDetails({
                     />
 
                     <div
-                      className="relative h-72 sm:h-[360px] md:h-[420px] lg:h-[460px] w-full cursor-zoom-in overflow-hidden rounded-3xl"
+                      className="relative w-full cursor-zoom-in overflow-hidden rounded-3xl"
                       onClick={() => setFullscreenImageIndex(activeImageIndex)}
                     >
-                      <div className="absolute inset-0">
+                      <div className="relative w-full">
                         <AnimatePresence mode="wait">
                           <motion.img
                             key={activeImageIndex}
@@ -1514,7 +1514,7 @@ export default function EventDetails({
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.3, ease: "linear" }}
-                            className="absolute inset-0 w-full h-full object-cover"
+                            className="w-full h-auto block object-contain"
                             alt={event.title}
                           />
                         </AnimatePresence>
