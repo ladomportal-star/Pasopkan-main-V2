@@ -280,7 +280,7 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
             {/* Top Ticket Details */}
             <div className="flex-1 flex flex-col justify-start min-h-0">
               {/* Event Image Banner Header */}
-              <div className="w-full h-26 min-[390px]:h-28 sm:h-32 rounded-xl sm:rounded-2xl overflow-hidden mb-2.5 sm:mb-3 shrink-0 bg-gray-100 shadow-2xs border border-gray-100">
+              <div className="w-full h-32 min-[390px]:h-36 sm:h-40 rounded-xl sm:rounded-2xl overflow-hidden mb-2.5 sm:mb-3 shrink-0 bg-gray-100 shadow-2xs border border-gray-100">
                 <img 
                   src={ticket.event.image || '/pasopkan_logo.png'} 
                   alt={ticket.event.title} 
