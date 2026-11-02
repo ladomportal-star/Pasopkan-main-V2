@@ -24,20 +24,57 @@ interface EventMapPickerProps {
   showOpenInMapsButton?: boolean;
 }
 
+// Helper to extract clean URL from iframes, multi-word mobile share strings, or URLs missing https://
+function cleanInputMapUrl(input: string): string {
+  if (!input || typeof input !== "string") return "";
+  let val = input.trim();
+  const iframeMatch = val.match(/src=["'](https?:\/\/[^"']+)["']/i);
+  if (iframeMatch) {
+    return iframeMatch[1];
+  }
+  const urlMatch = val.match(/(https?:\/\/[^\s"'<>]+)/i);
+  if (urlMatch) {
+    return urlMatch[1];
+  }
+  const noProtoMatch = val.match(
+    /^((?:maps\.app\.goo\.gl|goo\.gl\/maps|google\.com\/maps|www\.google\.com\/maps)[^\s"'<>]*)/i,
+  );
+  if (noProtoMatch) {
+    return `https://${noProtoMatch[1]}`;
+  }
+  return val;
+}
+
+// Helper to extract coordinates from URL if present
+function extractCoordsFromMapUrl(
+  url: string,
+): { lat: number; lng: number } | null {
+  if (!url) return null;
+  const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (atMatch)
+    return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
+
+  const protoMatch = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+  if (protoMatch)
+    return { lat: parseFloat(protoMatch[1]), lng: parseFloat(protoMatch[2]) };
+
+  const coordParam = url.match(
+    /[?&](?:q|query|ll|center)=(-?\d+\.\d+),(-?\d+\.\d+)/,
+  );
+  if (coordParam)
+    return { lat: parseFloat(coordParam[1]), lng: parseFloat(coordParam[2]) };
+
+  return null;
+}
+
 // Parses a user-provided Google Maps URL/embed code/My Maps link/coordinate string into
 // a safe embed URL. Never pass an HTTP(S) URL into `q=` directly — Google Maps classic
 // treats it as a deprecated KML file and errors ("Some custom on-map content...").
 function parseMapEmbedUrl(rawUrl: string, lang = "en"): string | null {
   if (!rawUrl || typeof rawUrl !== "string") return null;
-  let url = rawUrl.trim();
+  let url = cleanInputMapUrl(rawUrl);
 
-  // 1. If user pasted an <iframe> embed snippet from Google Maps
-  const iframeMatch = url.match(/src=["'](https?:\/\/[^"']+)["']/i);
-  if (iframeMatch) {
-    url = iframeMatch[1];
-  }
-
-  // 2. If it's already an official Google Maps embed or output=embed
+  // 1. If it's already an official Google Maps embed or output=embed
   if (url.includes("google.com/maps/embed") || url.includes("output=embed")) {
     return url.includes("disableDefaultUI=1")
       ? url
@@ -178,7 +215,7 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
   // Automatically resolve Google Maps shortlinks (e.g. https://maps.app.goo.gl/...)
   useEffect(() => {
     let isMounted = true;
-    const cleanUrl = url?.trim();
+    const cleanUrl = cleanInputMapUrl(url);
 
     if (!cleanUrl) {
       setResolvedEmbedSrc(null);
@@ -192,6 +229,11 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
       setResolvedEmbedSrc(syncEmbedSrc);
       setResolvedSuccess(true);
       setIsResolving(false);
+
+      const syncCoords = extractCoordsFromMapUrl(cleanUrl);
+      if (syncCoords && onChangeAddress) {
+        onChangeAddress(address, syncCoords.lat, syncCoords.lng);
+      }
       return;
     }
 
@@ -227,7 +269,7 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
               setResolvedSuccess(true);
               if (onChangeAddress && resData.coords) {
                 onChangeAddress(
-                  address,
+                  address || resData.placeName || "",
                   resData.coords.lat,
                   resData.coords.lng,
                 );
@@ -238,7 +280,7 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
               setResolvedSuccess(true);
               if (onChangeAddress) {
                 onChangeAddress(
-                  address,
+                  address || resData.placeName || "",
                   resData.coords.lat,
                   resData.coords.lng,
                 );
@@ -247,6 +289,9 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
               const src = `https://maps.google.com/maps?q=${encodeURIComponent(resData.placeName)}&hl=${lang}&z=15&output=embed&disableDefaultUI=1`;
               setResolvedEmbedSrc(src);
               setResolvedSuccess(true);
+              if (onChangeAddress && !address) {
+                onChangeAddress(resData.placeName);
+              }
             } else if (resData?.resolvedUrl) {
               // Try parsing the resolved URL
               const parsedAfterRedirect = parseMapEmbedUrl(
@@ -286,16 +331,18 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
   }, [url, syncEmbedSrc, fallbackEmbedSrc, lang, address, onChangeAddress]);
 
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newUrl = e.target.value;
-    setUrl(newUrl);
+    const rawVal = e.target.value;
+    const cleaned = cleanInputMapUrl(rawVal);
+    setUrl(cleaned);
     if (onChangeGoogleMapUrl) {
-      onChangeGoogleMapUrl(newUrl);
+      onChangeGoogleMapUrl(cleaned);
     }
   };
 
   const getExternalMapUrl = () => {
-    if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
-      return url;
+    const cleaned = cleanInputMapUrl(url);
+    if (cleaned && (cleaned.startsWith("http://") || cleaned.startsWith("https://"))) {
+      return cleaned;
     }
     if (latitude && longitude) {
       return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;

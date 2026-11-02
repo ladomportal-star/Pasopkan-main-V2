@@ -2,10 +2,28 @@ import type { Request, Response } from "express";
 import { ok, fail } from "../utils/response.util.ts";
 import { logger } from "../utils/logger.ts";
 
+/** Helper to clean raw URL in controller */
+function normalizeUrl(rawUrl: string): string {
+  if (!rawUrl || typeof rawUrl !== "string") return "";
+  let val = rawUrl.trim();
+  const iframeMatch = val.match(/src=["'](https?:\/\/[^"']+)["']/i);
+  if (iframeMatch) {
+    val = iframeMatch[1];
+  } else {
+    const urlMatch = val.match(/(https?:\/\/[^\s"'<>]+)/i);
+    if (urlMatch) {
+      val = urlMatch[1];
+    } else if (/^(?:maps\.app\.goo\.gl|goo\.gl\/maps|google\.com\/maps|www\.google\.com\/maps)/i.test(val)) {
+      val = `https://${val}`;
+    }
+  }
+  return val;
+}
+
 /** Resolve Google Maps shortlinks (maps.app.goo.gl/…) to coords + place name + clean embed URL. */
 export async function resolveMapUrl(req: Request, res: Response) {
   try {
-    const targetUrl = req.query.url as string;
+    let targetUrl = normalizeUrl((req.query.url as string) || "");
     if (
       !targetUrl ||
       (!targetUrl.includes("goo.gl") &&
@@ -15,16 +33,72 @@ export async function resolveMapUrl(req: Request, res: Response) {
       return fail(res, "Invalid URL provided", 400);
     }
 
+    // If it's already an official embed or My Maps embed, return immediately
+    if (targetUrl.includes("google.com/maps/embed") || targetUrl.includes("/maps/d/embed")) {
+      return ok(res, {
+        resolvedUrl: targetUrl,
+        coords: null,
+        placeName: null,
+        cleanEmbedUrl: targetUrl,
+        isMyMaps: targetUrl.includes("/maps/d/"),
+      });
+    }
+
     const response = await fetch(targetUrl, {
       method: "GET",
       redirect: "follow",
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
       },
     });
 
-    const finalUrl = response.url || targetUrl;
+    let finalUrl = response.url || targetUrl;
+
+    // Handle Google Consent redirect: https://consent.google.com/m?continue=...
+    if (finalUrl.includes("consent.google.com")) {
+      try {
+        const u = new URL(finalUrl);
+        const cont = u.searchParams.get("continue");
+        if (cont && (cont.includes("google.com/maps") || cont.includes("goo.gl"))) {
+          finalUrl = cont;
+        }
+      } catch {}
+    }
+
+    // Read response HTML (first 150KB) to find meta tags, canonical link, or embedded coordinates
+    let responseHtml = "";
+    try {
+      responseHtml = await response.text();
+    } catch {}
+
+    // Check meta refresh or canonical in HTML if still on a shortlink or consent page
+    if (
+      finalUrl.includes("goo.gl") ||
+      finalUrl.includes("consent.google.com") ||
+      !finalUrl.includes("@")
+    ) {
+      const metaRefreshMatch = responseHtml.match(
+        /<meta[^>]*http-equiv=["']refresh["'][^>]*content=["'][^"']*url=([^"'>]+)["']/i,
+      );
+      if (metaRefreshMatch && metaRefreshMatch[1]) {
+        let refreshUrl = metaRefreshMatch[1].trim();
+        if (refreshUrl.startsWith("'") || refreshUrl.startsWith('"')) {
+          refreshUrl = refreshUrl.slice(1, -1);
+        }
+        if (refreshUrl.includes("google.com/maps")) {
+          finalUrl = refreshUrl;
+        }
+      }
+
+      const canonicalMatch = responseHtml.match(
+        /<link[^>]*rel=["']canonical["'][^>]*href=["']([^"']+)["']/i,
+      );
+      if (canonicalMatch && canonicalMatch[1] && canonicalMatch[1].includes("google.com/maps")) {
+        finalUrl = canonicalMatch[1];
+      }
+    }
 
     // 1. Check for My Maps (/maps/d/)
     let myMapsMid: string | null = null;
@@ -39,14 +113,18 @@ export async function resolveMapUrl(req: Request, res: Response) {
     let coords: { lat: number; lng: number } | null = null;
 
     // Format A: @lat,lng
-    const atMatch = finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    const atMatch =
+      finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+      responseHtml.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
     if (atMatch) {
       coords = { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
     }
 
     // Format B: !3dlat!4dlng (protobuf format in modern Google Maps URLs)
     if (!coords) {
-      const protoMatch = finalUrl.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+      const protoMatch =
+        finalUrl.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) ||
+        responseHtml.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
       if (protoMatch) {
         coords = { lat: parseFloat(protoMatch[1]), lng: parseFloat(protoMatch[2]) };
       }
@@ -54,9 +132,19 @@ export async function resolveMapUrl(req: Request, res: Response) {
 
     // Format C: ?q=lat,lng or ?query=lat,lng or ?ll=lat,lng
     if (!coords) {
-      const paramCoordMatch = finalUrl.match(/[?&](?:q|query|ll|center)=(-?\d+\.\d+),(-?\d+\.\d+)/);
+      const paramCoordMatch = finalUrl.match(
+        /[?&](?:q|query|ll|center)=(-?\d+\.\d+),(-?\d+\.\d+)/,
+      );
       if (paramCoordMatch) {
         coords = { lat: parseFloat(paramCoordMatch[1]), lng: parseFloat(paramCoordMatch[2]) };
+      }
+    }
+
+    // Format D: [null,null,lat,lng] in Google Maps script state
+    if (!coords && responseHtml) {
+      const arrayCoordMatch = responseHtml.match(/\[null,null,(-?\d+\.\d+),(-?\d+\.\d+)\]/);
+      if (arrayCoordMatch) {
+        coords = { lat: parseFloat(arrayCoordMatch[1]), lng: parseFloat(arrayCoordMatch[2]) };
       }
     }
 
@@ -71,6 +159,23 @@ export async function resolveMapUrl(req: Request, res: Response) {
       const searchPart = finalUrl.split("/maps/search/")[1]?.split("/")[0]?.split("?")[0];
       if (searchPart && !searchPart.startsWith("http")) {
         placeName = decodeURIComponent(searchPart.replace(/\+/g, " "));
+      }
+    }
+
+    // Fallback placeName from HTML title / og:title
+    if (!placeName && responseHtml) {
+      const titleMatch =
+        responseHtml.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i) ||
+        responseHtml.match(/<title>([^<]+)<\/title>/i);
+      if (titleMatch && titleMatch[1]) {
+        let extractedTitle = titleMatch[1].replace(/ - Google Maps/i, "").trim();
+        if (
+          extractedTitle &&
+          !extractedTitle.toLowerCase().includes("google maps") &&
+          !extractedTitle.toLowerCase().includes("before you continue")
+        ) {
+          placeName = extractedTitle;
+        }
       }
     }
 

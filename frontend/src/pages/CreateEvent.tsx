@@ -3907,7 +3907,7 @@ export default function CreateEvent() {
                               <div className="mt-3">
                                 <div className="space-y-4">
                                   <EventMapPicker
-                                    showOpenInMapsButton={false}
+                                    venue={venueName}
                                     address={streetAddress}
                                     onChangeAddress={(addr, lat, lng) => {
                                       setStreetAddress(addr);
