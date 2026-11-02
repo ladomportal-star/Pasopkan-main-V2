@@ -1816,40 +1816,121 @@ export default function CreateEvent() {
     setSelectedFontSize(sizePx);
     setShowFontSizeMenu(false);
 
-    // Restore selection if saved
-    if (savedSelectionRange) {
-      const sel = window.getSelection();
-      if (sel) {
-        sel.removeAllRanges();
-        sel.addRange(savedSelectionRange);
-      }
+    if (!editorRef.current) return;
+
+    // Determine range to use: preference to saved selection ref or current window selection
+    const sel = window.getSelection();
+    let rangeToUse: Range | null = null;
+
+    if (
+      savedSelectionRangeRef.current &&
+      editorRef.current.contains(
+        savedSelectionRangeRef.current.commonAncestorContainer,
+      )
+    ) {
+      rangeToUse = savedSelectionRangeRef.current;
+    } else if (
+      sel &&
+      sel.rangeCount > 0 &&
+      editorRef.current.contains(sel.anchorNode)
+    ) {
+      rangeToUse = sel.getRangeAt(0);
+    } else if (
+      savedSelectionRange &&
+      editorRef.current.contains(savedSelectionRange.commonAncestorContainer)
+    ) {
+      rangeToUse = savedSelectionRange;
     }
 
-    const sel = window.getSelection();
-    if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+    editorRef.current.focus();
+
+    if (
+      rangeToUse &&
+      !rangeToUse.collapsed &&
+      editorRef.current.contains(rangeToUse.commonAncestorContainer)
+    ) {
+      const currentSel = window.getSelection();
+      if (currentSel) {
+        currentSel.removeAllRanges();
+        currentSel.addRange(rangeToUse);
+      }
+
+      // 1. Temporarily turn off styleWithCSS so execCommand generates <font size="7">
+      try {
+        document.execCommand("styleWithCSS", false, "false");
+      } catch {}
       document.execCommand("fontSize", false, "7");
-      if (editorRef.current) {
-        const fontElements =
-          editorRef.current.querySelectorAll('font[size="7"]');
+
+      // 2. Query any font[size="7"] or webkit styled spans created by execCommand
+      const fontElements = editorRef.current.querySelectorAll(
+        'font[size="7"], font[size="xxx-large"], span[style*="-webkit-xxx-large"], span[style*="xxx-large"]',
+      );
+
+      if (fontElements.length > 0) {
         fontElements.forEach((el) => {
           el.removeAttribute("size");
           (el as HTMLElement).style.fontSize = `${sizePx}px`;
+          // Clear any conflicting inline font-size on children so new size displays accurately
+          el.querySelectorAll("*").forEach((child) => {
+            if ((child as HTMLElement).style?.fontSize) {
+              (child as HTMLElement).style.fontSize = "";
+            }
+          });
         });
-        isInternalEditorUpdateRef.current = true;
-        setEditorContent(editorRef.current.innerHTML);
+      } else {
+        // Fallback: wrap range contents in a span directly
+        try {
+          const span = document.createElement("span");
+          span.style.fontSize = `${sizePx}px`;
+          span.appendChild(rangeToUse.extractContents());
+          rangeToUse.insertNode(span);
+          const newRange = document.createRange();
+          newRange.selectNodeContents(span);
+          if (currentSel) {
+            currentSel.removeAllRanges();
+            currentSel.addRange(newRange);
+          }
+        } catch {}
       }
-    } else if (editorRef.current) {
-      editorRef.current.focus();
-      document.execCommand("fontSize", false, "7");
-      const fontElements = editorRef.current.querySelectorAll('font[size="7"]');
-      fontElements.forEach((el) => {
-        el.removeAttribute("size");
-        (el as HTMLElement).style.fontSize = `${sizePx}px`;
-      });
-      isInternalEditorUpdateRef.current = true;
-      setEditorContent(editorRef.current.innerHTML);
+
+      // Re-capture active range so subsequent font size or color changes keep working
+      const postSel = window.getSelection();
+      if (
+        postSel &&
+        postSel.rangeCount > 0 &&
+        editorRef.current.contains(postSel.anchorNode)
+      ) {
+        const postRange = postSel.getRangeAt(0).cloneRange();
+        savedSelectionRangeRef.current = postRange;
+        setSavedSelectionRange(postRange);
+      }
+    } else if (rangeToUse) {
+      // Insertion point (cursor is collapsed)
+      // Insert a zero-width space span so typing continues in this font-size
+      const currentSel = window.getSelection();
+      if (currentSel) {
+        currentSel.removeAllRanges();
+        currentSel.addRange(rangeToUse);
+
+        const span = document.createElement("span");
+        span.style.fontSize = `${sizePx}px`;
+        const textNode = document.createTextNode("\u200B");
+        span.appendChild(textNode);
+        rangeToUse.insertNode(span);
+
+        const newRange = document.createRange();
+        newRange.setStart(textNode, 1);
+        newRange.setEnd(textNode, 1);
+        currentSel.removeAllRanges();
+        currentSel.addRange(newRange);
+
+        savedSelectionRangeRef.current = newRange.cloneRange();
+        setSavedSelectionRange(newRange.cloneRange());
+      }
     }
-    setSavedSelectionRange(null);
+
+    isInternalEditorUpdateRef.current = true;
+    setEditorContent(editorRef.current.innerHTML);
   };
 
   // Helper to validate and normalize HEX color
@@ -1958,11 +2039,26 @@ export default function CreateEvent() {
   useEffect(() => {
     const handleSelectionChange = () => {
       const sel = window.getSelection();
-      if (sel && sel.rangeCount > 0 && !sel.isCollapsed && editorRef.current) {
+      if (sel && sel.rangeCount > 0 && editorRef.current) {
         const range = sel.getRangeAt(0);
         if (editorRef.current.contains(range.commonAncestorContainer)) {
           savedSelectionRangeRef.current = range.cloneRange();
           setSavedSelectionRange(range.cloneRange());
+
+          // Detect active font size at cursor / selection
+          const container = range.commonAncestorContainer;
+          const element =
+            container.nodeType === Node.ELEMENT_NODE
+              ? (container as HTMLElement)
+              : container.parentElement;
+
+          if (element && editorRef.current.contains(element)) {
+            const computed = window.getComputedStyle(element);
+            const sizeMatch = computed.fontSize.match(/^(\d+)px$/);
+            if (sizeMatch && fontSizeOptions.includes(sizeMatch[1])) {
+              setSelectedFontSize(sizeMatch[1]);
+            }
+          }
         }
       }
     };
@@ -2008,11 +2104,16 @@ export default function CreateEvent() {
       const htmlToInsert = `<a href="${formattedUrl}" target="_blank" rel="noopener noreferrer" class="text-adv-orange underline hover:text-orange-600 font-semibold transition-colors">${textToDisplay}</a>&nbsp;`;
 
       // Restore selection if we saved it
-      if (savedSelectionRange) {
+      const rangeToRestore =
+        savedSelectionRangeRef.current || savedSelectionRange;
+      if (
+        rangeToRestore &&
+        editorRef.current?.contains(rangeToRestore.commonAncestorContainer)
+      ) {
         const sel = window.getSelection();
         if (sel) {
           sel.removeAllRanges();
-          sel.addRange(savedSelectionRange);
+          sel.addRange(rangeToRestore);
         }
       } else if (editorRef.current) {
         // Focus editor and place cursor at end if no selection saved
@@ -2038,6 +2139,7 @@ export default function CreateEvent() {
     setToolbarLinkUrl("");
     setToolbarLinkText("");
     setSavedSelectionRange(null);
+    savedSelectionRangeRef.current = null;
   };
 
   const handleEditorPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
@@ -2200,19 +2302,22 @@ export default function CreateEvent() {
     const targetEl = e.target as HTMLElement;
     const anchor = targetEl.closest("a");
     if (anchor) {
-      let href = anchor.getAttribute("href");
-      if (href) {
-        if (
-          !/^https?:\/\//i.test(href) &&
-          !href.startsWith("mailto:") &&
-          !href.startsWith("tel:")
-        ) {
-          href = `https://${href}`;
+      // Only open link in a new tab if user holds Ctrl or Cmd, allowing normal clicks to place cursor and edit
+      if (e.metaKey || e.ctrlKey) {
+        let href = anchor.getAttribute("href");
+        if (href) {
+          if (
+            !/^https?:\/\//i.test(href) &&
+            !href.startsWith("mailto:") &&
+            !href.startsWith("tel:")
+          ) {
+            href = `https://${href}`;
+          }
+          e.preventDefault();
+          e.stopPropagation();
+          window.open(href, "_blank", "noopener,noreferrer");
+          return;
         }
-        e.preventDefault();
-        e.stopPropagation();
-        window.open(href, "_blank", "noopener,noreferrer");
-        return;
       }
     }
 
@@ -2727,6 +2832,7 @@ export default function CreateEvent() {
   ) => {
     if (e.target.files && e.target.files[0]) {
       simulateUpload(e.target.files[0], setImage, setProgress);
+      e.target.value = "";
     }
   };
 
@@ -2740,6 +2846,7 @@ export default function CreateEvent() {
   ) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+    e.target.value = "";
 
     const remainingSlots = 10 - galleryImages.length;
     if (remainingSlots <= 0) {
@@ -4170,22 +4277,22 @@ export default function CreateEvent() {
                             <div ref={fontSizeDropdownRef} className="relative">
                               <button
                                 type="button"
-                                onMouseDown={() => {
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
                                   const sel = window.getSelection();
-                                  if (sel && sel.rangeCount > 0) {
-                                    setSavedSelectionRange(
-                                      sel.getRangeAt(0).cloneRange(),
-                                    );
+                                  if (
+                                    sel &&
+                                    sel.rangeCount > 0 &&
+                                    editorRef.current?.contains(sel.anchorNode)
+                                  ) {
+                                    const range = sel.getRangeAt(0).cloneRange();
+                                    savedSelectionRangeRef.current = range;
+                                    setSavedSelectionRange(range);
                                   }
                                 }}
                                 onClick={() => {
-                                  const sel = window.getSelection();
-                                  if (sel && sel.rangeCount > 0) {
-                                    setSavedSelectionRange(
-                                      sel.getRangeAt(0).cloneRange(),
-                                    );
-                                  }
                                   setShowFontSizeMenu(!showFontSizeMenu);
+                                  setShowColorMenu(false);
                                   setShowToolbarLinkModal(false);
                                 }}
                                 className="h-8 bg-[#EAE8E2] hover:bg-[#E2DFD8] active:scale-95 text-gray-800 text-xs font-semibold px-2.5 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-xs border border-black/5"
@@ -4704,15 +4811,23 @@ export default function CreateEvent() {
                               )}
                               <button
                                 type="button"
-                                onClick={() => {
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
                                   const sel = window.getSelection();
-                                  if (sel && sel.rangeCount > 0) {
-                                    const range = sel.getRangeAt(0);
-                                    setSavedSelectionRange(range.cloneRange());
+                                  if (
+                                    sel &&
+                                    sel.rangeCount > 0 &&
+                                    editorRef.current?.contains(sel.anchorNode)
+                                  ) {
+                                    const range = sel.getRangeAt(0).cloneRange();
+                                    savedSelectionRangeRef.current = range;
+                                    setSavedSelectionRange(range);
                                     setToolbarLinkText(range.toString());
                                   } else {
                                     setToolbarLinkText("");
                                   }
+                                }}
+                                onClick={() => {
                                   setShowToolbarLinkModal(true);
                                   setShowColorMenu(false);
                                   setShowFontSizeMenu(false);
@@ -4737,6 +4852,16 @@ export default function CreateEvent() {
                         </div>
                         <div className="border border-gray-200 rounded-xl bg-white shadow-sm relative focus-within:ring-2 focus-within:ring-adv-orange/20 focus-within:border-adv-orange transition-all overflow-hidden">
                           <div className="p-4 relative">
+                            {/* Editor Placeholder */}
+                            {(!editorContent ||
+                              editorContent.trim() === "" ||
+                              editorContent === "<p><br></p>" ||
+                              editorContent === "<br>") && (
+                              <div className="pointer-events-none absolute top-4 left-4 text-gray-400 text-sm font-normal select-none">
+                                {t.bodyPlaceholder}
+                              </div>
+                            )}
+
                             {/* Editor Area */}
                             <div
                               ref={editorRef}
