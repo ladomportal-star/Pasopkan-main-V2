@@ -50,19 +50,27 @@ function extractCoordsFromMapUrl(
   url: string,
 ): { lat: number; lng: number } | null {
   if (!url) return null;
-  const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (atMatch)
-    return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
 
-  const protoMatch = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
-  if (protoMatch)
-    return { lat: parseFloat(protoMatch[1]), lng: parseFloat(protoMatch[2]) };
+  // 1. Protobuf coordinates: !3dlat!4dlng (exact place pin marker)
+  const proto3d = url.match(/!3d(-?\d+\.\d+)/);
+  const proto4d = url.match(/!4d(-?\d+\.\d+)/);
+  if (proto3d && proto4d) {
+    return { lat: parseFloat(proto3d[1]), lng: parseFloat(proto4d[1]) };
+  }
 
+  // 2. Query param coordinates: ?q=lat,lng or ?query= or ?ll=
   const coordParam = url.match(
     /[?&](?:q|query|ll|center)=(-?\d+\.\d+),(-?\d+\.\d+)/,
   );
-  if (coordParam)
+  if (coordParam) {
     return { lat: parseFloat(coordParam[1]), lng: parseFloat(coordParam[2]) };
+  }
+
+  // 3. Fallback: Camera center coordinates @lat,lng (only if no pin coordinates)
+  const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (atMatch) {
+    return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
+  }
 
   return null;
 }
@@ -81,7 +89,7 @@ function parseMapEmbedUrl(rawUrl: string, lang = "en"): string | null {
       : `${url}&disableDefaultUI=1`;
   }
 
-  // 3. Google My Maps (/maps/d/) -> must use /maps/d/embed?mid=...
+  // 2. Google My Maps (/maps/d/) -> must use /maps/d/embed?mid=...
   if (url.includes("/maps/d/")) {
     const midMatch = url.match(/[?&]mid=([^&#]+)/);
     if (midMatch) {
@@ -95,30 +103,24 @@ function parseMapEmbedUrl(rawUrl: string, lang = "en"): string | null {
     }
   }
 
-  // 4. Coordinates: @lat,lng
-  const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (atMatch) {
-    const base = `https://maps.google.com/maps?q=${atMatch[1]},${atMatch[2]}&hl=${lang}&z=15&output=embed`;
+  // 3. Protobuf coordinates: !3dlat!4dlng (CRITICAL: exact place pin marker, prioritize over camera @lat,lng)
+  const proto3d = url.match(/!3d(-?\d+\.\d+)/);
+  const proto4d = url.match(/!4d(-?\d+\.\d+)/);
+  if (proto3d && proto4d) {
+    const base = `https://maps.google.com/maps?q=${proto3d[1]},${proto4d[1]}&hl=${lang}&z=16&output=embed`;
     return `${base}&disableDefaultUI=1`;
   }
 
-  // 5. Protobuf coordinates: !3dlat!4dlng
-  const protoMatch = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
-  if (protoMatch) {
-    const base = `https://maps.google.com/maps?q=${protoMatch[1]},${protoMatch[2]}&hl=${lang}&z=15&output=embed`;
-    return `${base}&disableDefaultUI=1`;
-  }
-
-  // 6. Parameter coordinates: ?q=lat,lng or ?query=lat,lng or ?ll=lat,lng
+  // 4. Parameter coordinates: ?q=lat,lng or ?query=lat,lng or ?ll=lat,lng
   const coordParam = url.match(
     /[?&](?:q|query|ll|center)=(-?\d+\.\d+),(-?\d+\.\d+)/,
   );
   if (coordParam) {
-    const base = `https://maps.google.com/maps?q=${coordParam[1]},${coordParam[2]}&hl=${lang}&z=15&output=embed`;
+    const base = `https://maps.google.com/maps?q=${coordParam[1]},${coordParam[2]}&hl=${lang}&z=16&output=embed`;
     return `${base}&disableDefaultUI=1`;
   }
 
-  // 7. Place name in path: /maps/place/<PlaceName>
+  // 5. Place name in path: /maps/place/<PlaceName>
   if (url.includes("/maps/place/")) {
     const placePart = url
       .split("/maps/place/")[1]
@@ -126,25 +128,32 @@ function parseMapEmbedUrl(rawUrl: string, lang = "en"): string | null {
       ?.split("?")[0];
     if (placePart && !placePart.startsWith("http")) {
       const cleanName = decodeURIComponent(placePart.replace(/\+/g, " "));
-      const base = `https://maps.google.com/maps?q=${encodeURIComponent(cleanName)}&hl=${lang}&z=15&output=embed`;
+      const base = `https://maps.google.com/maps?q=${encodeURIComponent(cleanName)}&hl=${lang}&z=16&output=embed`;
       return `${base}&disableDefaultUI=1`;
     }
   }
 
-  // 8. Search in path: /maps/search/<Query>
+  // 6. Search in path: /maps/search/<Query>
   if (url.includes("/maps/search/")) {
     const searchPart = url
       .split("/maps/search/")[1]
       ?.split("/")[0]
       ?.split("?")[0];
     if (searchPart && !searchPart.startsWith("http")) {
-      const cleanQuery = decodeURIComponent(searchPart.replace(/\+/g, " "));
-      const base = `https://maps.google.com/maps?q=${encodeURIComponent(cleanQuery)}&hl=${lang}&z=15&output=embed`;
+      const cleanSearch = decodeURIComponent(searchPart.replace(/\+/g, " "));
+      const base = `https://maps.google.com/maps?q=${encodeURIComponent(cleanSearch)}&hl=${lang}&z=16&output=embed`;
       return `${base}&disableDefaultUI=1`;
     }
   }
 
-  // 9. Query param text: ?q=text or ?query=text (only if NOT an HTTP URL)
+  // 7. Fallback: Camera coordinates @lat,lng (only if no pin marker or place name is available)
+  const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (atMatch) {
+    const base = `https://maps.google.com/maps?q=${atMatch[1]},${atMatch[2]}&hl=${lang}&z=16&output=embed`;
+    return `${base}&disableDefaultUI=1`;
+  }
+
+  // 8. Query param text: ?q=text or ?query=text (only if NOT an HTTP URL)
   const qParam = url.match(/[?&](?:q|query)=([^&#]+)/);
   if (qParam) {
     const val = decodeURIComponent(qParam[1].replace(/\+/g, " "));
@@ -202,9 +211,9 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
   // Fallback embed URL (never fails or shows KML error)
   const fallbackEmbedSrc = useMemo(() => {
     if (latitude && longitude) {
-      return `https://maps.google.com/maps?q=${latitude},${longitude}&hl=${lang}&z=15&output=embed&disableDefaultUI=1`;
+      return `https://maps.google.com/maps?q=${latitude},${longitude}&hl=${lang}&z=16&output=embed&disableDefaultUI=1`;
     }
-    return `https://maps.google.com/maps?q=${encodeURIComponent(fallbackQuery)}&hl=${lang}&z=15&output=embed&disableDefaultUI=1`;
+    return `https://maps.google.com/maps?q=${encodeURIComponent(fallbackQuery)}&hl=${lang}&z=16&output=embed&disableDefaultUI=1`;
   }, [latitude, longitude, fallbackQuery, lang]);
 
   // Synchronously attempt to parse the URL
@@ -275,7 +284,7 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
                 );
               }
             } else if (resData?.coords) {
-              const src = `https://maps.google.com/maps?q=${resData.coords.lat},${resData.coords.lng}&hl=${lang}&z=15&output=embed&disableDefaultUI=1`;
+              const src = `https://maps.google.com/maps?q=${resData.coords.lat},${resData.coords.lng}&hl=${lang}&z=16&output=embed&disableDefaultUI=1`;
               setResolvedEmbedSrc(src);
               setResolvedSuccess(true);
               if (onChangeAddress) {
@@ -286,7 +295,7 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
                 );
               }
             } else if (resData?.placeName) {
-              const src = `https://maps.google.com/maps?q=${encodeURIComponent(resData.placeName)}&hl=${lang}&z=15&output=embed&disableDefaultUI=1`;
+              const src = `https://maps.google.com/maps?q=${encodeURIComponent(resData.placeName)}&hl=${lang}&z=16&output=embed&disableDefaultUI=1`;
               setResolvedEmbedSrc(src);
               setResolvedSuccess(true);
               if (onChangeAddress && !address) {
@@ -352,11 +361,6 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
 
   // Determine final safe embed source
   const finalEmbedSrc = resolvedEmbedSrc || syncEmbedSrc || fallbackEmbedSrc;
-  const satelliteEmbedSrc = useMemo(() => {
-    const [source, fragment] = finalEmbedSrc.split("#", 2);
-    const separator = source.includes("?") ? "&" : "?";
-    return `${source}${separator}t=k${fragment ? `#${fragment}` : ""}`;
-  }, [finalEmbedSrc]);
   const externalMapLink = getExternalMapUrl();
 
   if (isReadOnly) {
@@ -379,19 +383,16 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
             <div className="w-full h-[140px] sm:h-[180px] md:h-[220px] relative overflow-hidden pointer-events-none flex items-center justify-center">
               <iframe
                 key={finalEmbedSrc}
-                src={satelliteEmbedSrc}
+                src={finalEmbedSrc}
                 style={{
                   border: 0,
-                  width: "calc(100% + 120px)",
-                  height: "calc(100% + 120px)",
-                  position: "absolute",
-                  top: "-60px",
-                  left: "-60px",
+                  width: "100%",
+                  height: "100%",
                 }}
                 allowFullScreen
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
-                className="bg-white block pointer-events-none max-w-none"
+                className="bg-white block pointer-events-none max-w-none w-full h-full"
               />
             </div>
             {/* The overlay MUST intercept clicks to trigger the outer <a> tag's href, while hiding map UI controls */}
@@ -448,16 +449,13 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
               key={finalEmbedSrc}
               style={{
                 border: 0,
-                width: "calc(100% + 150px)",
-                height: "calc(100% + 150px)",
-                position: "absolute",
-                top: "-75px",
-                left: "-75px",
+                width: "100%",
+                height: "100%",
               }}
               loading="lazy"
               allowFullScreen
               src={finalEmbedSrc}
-              className="bg-white block pointer-events-none max-w-none"
+              className="bg-white block pointer-events-none max-w-none w-full h-full"
             />
             {/* Overlay intercepts clicks to block iframe map UI */}
             <div className="absolute inset-0 z-[5] bg-transparent" />

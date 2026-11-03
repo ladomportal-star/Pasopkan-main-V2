@@ -110,27 +110,21 @@ export async function resolveMapUrl(req: Request, res: Response) {
     }
 
     // 2. Extract Coordinates from multiple formats
+    // CRITICAL: Prioritize exact place pin coordinates (!3d!4d) over camera viewport center (@lat,lng)
     let coords: { lat: number; lng: number } | null = null;
 
-    // Format A: @lat,lng
-    const atMatch =
-      finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-      responseHtml.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-    if (atMatch) {
-      coords = { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
+    // Format A: Protobuf coordinates !3dlat and !4dlng (exact place pin marker in Google Maps)
+    const proto3d =
+      finalUrl.match(/!3d(-?\d+\.\d+)/) ||
+      (responseHtml ? responseHtml.match(/!3d(-?\d+\.\d+)/) : null);
+    const proto4d =
+      finalUrl.match(/!4d(-?\d+\.\d+)/) ||
+      (responseHtml ? responseHtml.match(/!4d(-?\d+\.\d+)/) : null);
+    if (proto3d && proto4d) {
+      coords = { lat: parseFloat(proto3d[1]), lng: parseFloat(proto4d[1]) };
     }
 
-    // Format B: !3dlat!4dlng (protobuf format in modern Google Maps URLs)
-    if (!coords) {
-      const protoMatch =
-        finalUrl.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) ||
-        responseHtml.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
-      if (protoMatch) {
-        coords = { lat: parseFloat(protoMatch[1]), lng: parseFloat(protoMatch[2]) };
-      }
-    }
-
-    // Format C: ?q=lat,lng or ?query=lat,lng or ?ll=lat,lng
+    // Format B: Explicit parameter coordinates: ?q=lat,lng or ?query=lat,lng or ?ll=lat,lng
     if (!coords) {
       const paramCoordMatch = finalUrl.match(
         /[?&](?:q|query|ll|center)=(-?\d+\.\d+),(-?\d+\.\d+)/,
@@ -140,11 +134,21 @@ export async function resolveMapUrl(req: Request, res: Response) {
       }
     }
 
-    // Format D: [null,null,lat,lng] in Google Maps script state
+    // Format C: [null,null,lat,lng] in Google Maps script state
     if (!coords && responseHtml) {
       const arrayCoordMatch = responseHtml.match(/\[null,null,(-?\d+\.\d+),(-?\d+\.\d+)\]/);
       if (arrayCoordMatch) {
         coords = { lat: parseFloat(arrayCoordMatch[1]), lng: parseFloat(arrayCoordMatch[2]) };
+      }
+    }
+
+    // Format D: Fallback to @lat,lng (camera viewport center - only if no pin coordinates found)
+    if (!coords) {
+      const atMatch =
+        finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+        (responseHtml ? responseHtml.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) : null);
+      if (atMatch) {
+        coords = { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
       }
     }
 
@@ -184,9 +188,9 @@ export async function resolveMapUrl(req: Request, res: Response) {
     if (myMapsMid) {
       cleanEmbedUrl = `https://www.google.com/maps/d/embed?mid=${encodeURIComponent(myMapsMid)}`;
     } else if (coords) {
-      cleanEmbedUrl = `https://maps.google.com/maps?q=${coords.lat},${coords.lng}&z=15&output=embed`;
+      cleanEmbedUrl = `https://maps.google.com/maps?q=${coords.lat},${coords.lng}&z=16&output=embed`;
     } else if (placeName) {
-      cleanEmbedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(placeName)}&z=15&output=embed`;
+      cleanEmbedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(placeName)}&z=16&output=embed`;
     }
 
     return ok(res, {
