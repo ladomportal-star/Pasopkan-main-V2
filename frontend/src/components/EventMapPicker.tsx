@@ -8,6 +8,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { apiUrl } from "../lib/api";
+import { laosProvinces, getDistrictsForProvince } from "../lib/laosLocations";
 
 interface EventMapPickerProps {
   venue?: string;
@@ -103,11 +104,11 @@ function parseMapEmbedUrl(rawUrl: string, lang = "en"): string | null {
     }
   }
 
-  // 3. Protobuf coordinates: !3dlat!4dlng (CRITICAL: exact place pin marker, prioritize over camera @lat,lng)
+  // 3. Protobuf coordinates: !3dlat!4dlng (CRITICAL: exact place pin marker)
   const proto3d = url.match(/!3d(-?\d+\.\d+)/);
   const proto4d = url.match(/!4d(-?\d+\.\d+)/);
   if (proto3d && proto4d) {
-    const base = `https://maps.google.com/maps?q=${proto3d[1]},${proto4d[1]}&hl=${lang}&z=16&output=embed`;
+    const base = `https://maps.google.com/maps?ll=${proto3d[1]},${proto4d[1]}&q=${proto3d[1]},${proto4d[1]}&hl=${lang}&z=16&output=embed`;
     return `${base}&disableDefaultUI=1`;
   }
 
@@ -116,49 +117,58 @@ function parseMapEmbedUrl(rawUrl: string, lang = "en"): string | null {
     /[?&](?:q|query|ll|center)=(-?\d+\.\d+),(-?\d+\.\d+)/,
   );
   if (coordParam) {
-    const base = `https://maps.google.com/maps?q=${coordParam[1]},${coordParam[2]}&hl=${lang}&z=16&output=embed`;
+    const base = `https://maps.google.com/maps?ll=${coordParam[1]},${coordParam[2]}&q=${coordParam[1]},${coordParam[2]}&hl=${lang}&z=16&output=embed`;
     return `${base}&disableDefaultUI=1`;
   }
 
-  // 5. Place name in path: /maps/place/<PlaceName>
+  // 5. Camera coordinates in URL: @lat,lng (prioritize over text search to prevent wrong-country geocoding)
+  const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (atMatch) {
+    const base = `https://maps.google.com/maps?ll=${atMatch[1]},${atMatch[2]}&q=${atMatch[1]},${atMatch[2]}&hl=${lang}&z=16&output=embed`;
+    return `${base}&disableDefaultUI=1`;
+  }
+
+  // 6. Place name in path: /maps/place/<PlaceName>
   if (url.includes("/maps/place/")) {
     const placePart = url
       .split("/maps/place/")[1]
       ?.split("/")[0]
       ?.split("?")[0];
     if (placePart && !placePart.startsWith("http")) {
-      const cleanName = decodeURIComponent(placePart.replace(/\+/g, " "));
+      let cleanName = decodeURIComponent(placePart.replace(/\+/g, " "));
+      if (!cleanName.toLowerCase().includes("laos")) {
+        cleanName = `${cleanName}, Laos`;
+      }
       const base = `https://maps.google.com/maps?q=${encodeURIComponent(cleanName)}&hl=${lang}&z=16&output=embed`;
       return `${base}&disableDefaultUI=1`;
     }
   }
 
-  // 6. Search in path: /maps/search/<Query>
+  // 7. Search in path: /maps/search/<Query>
   if (url.includes("/maps/search/")) {
     const searchPart = url
       .split("/maps/search/")[1]
       ?.split("/")[0]
       ?.split("?")[0];
     if (searchPart && !searchPart.startsWith("http")) {
-      const cleanSearch = decodeURIComponent(searchPart.replace(/\+/g, " "));
+      let cleanSearch = decodeURIComponent(searchPart.replace(/\+/g, " "));
+      if (!cleanSearch.toLowerCase().includes("laos")) {
+        cleanSearch = `${cleanSearch}, Laos`;
+      }
       const base = `https://maps.google.com/maps?q=${encodeURIComponent(cleanSearch)}&hl=${lang}&z=16&output=embed`;
       return `${base}&disableDefaultUI=1`;
     }
   }
 
-  // 7. Fallback: Camera coordinates @lat,lng (only if no pin marker or place name is available)
-  const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (atMatch) {
-    const base = `https://maps.google.com/maps?q=${atMatch[1]},${atMatch[2]}&hl=${lang}&z=16&output=embed`;
-    return `${base}&disableDefaultUI=1`;
-  }
-
   // 8. Query param text: ?q=text or ?query=text (only if NOT an HTTP URL)
   const qParam = url.match(/[?&](?:q|query)=([^&#]+)/);
   if (qParam) {
-    const val = decodeURIComponent(qParam[1].replace(/\+/g, " "));
+    let val = decodeURIComponent(qParam[1].replace(/\+/g, " "));
     if (!val.startsWith("http://") && !val.startsWith("https://")) {
-      const base = `https://maps.google.com/maps?q=${encodeURIComponent(val)}&hl=${lang}&z=15&output=embed`;
+      if (!val.toLowerCase().includes("laos")) {
+        val = `${val}, Laos`;
+      }
+      const base = `https://maps.google.com/maps?q=${encodeURIComponent(val)}&hl=${lang}&z=16&output=embed`;
       return `${base}&disableDefaultUI=1`;
     }
   }
@@ -174,7 +184,8 @@ function parseMapEmbedUrl(rawUrl: string, lang = "en"): string | null {
   }
 
   // If the user typed a plain text place/address directly
-  const base = `https://maps.google.com/maps?q=${encodeURIComponent(url)}&hl=${lang}&z=15&output=embed`;
+  const query = url.toLowerCase().includes("laos") ? url : `${url}, Laos`;
+  const base = `https://maps.google.com/maps?q=${encodeURIComponent(query)}&hl=${lang}&z=16&output=embed`;
   return `${base}&disableDefaultUI=1`;
 }
 
@@ -202,19 +213,59 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
     setUrl(googleMapUrl);
   }, [googleMapUrl]);
 
+  const cleanProvince = useMemo(() => {
+    if (!province) return "";
+    const p = laosProvinces.find(
+      (item) =>
+        item.id === province ||
+        item.name.toLowerCase() === province.toLowerCase() ||
+        item.nameLo === province,
+    );
+    return p ? (lang === "lo" ? p.nameLo : p.name) : province;
+  }, [province, lang]);
+
+  const cleanDistrict = useMemo(() => {
+    if (!district) return "";
+    const p = laosProvinces.find(
+      (item) =>
+        item.id === province ||
+        item.name.toLowerCase() === province.toLowerCase() ||
+        item.nameLo === province,
+    );
+    const pId = p ? p.id : province;
+    const dList = getDistrictsForProvince(pId || "");
+    const d = dList.find(
+      (item) =>
+        item.id === district ||
+        item.name.toLowerCase() === district.toLowerCase() ||
+        item.nameLo === district,
+    );
+    return d ? (lang === "lo" ? d.nameLo : d.name) : district;
+  }, [district, province, lang]);
+
   // Construct a safe fallback query from location props
   const fallbackQuery = useMemo(() => {
-    const parts = [venue, address, district, province, "Laos"].filter(Boolean);
+    const parts = [venue, address, cleanDistrict, cleanProvince, "Laos"].filter(Boolean);
     return parts.length > 0 ? parts.join(", ") : "Vientiane, Laos";
-  }, [venue, address, district, province]);
+  }, [venue, address, cleanDistrict, cleanProvince]);
 
   // Fallback embed URL (never fails or shows KML error)
   const fallbackEmbedSrc = useMemo(() => {
     if (latitude && longitude) {
-      return `https://maps.google.com/maps?q=${latitude},${longitude}&hl=${lang}&z=16&output=embed&disableDefaultUI=1`;
+      return `https://maps.google.com/maps?ll=${latitude},${longitude}&q=${latitude},${longitude}&hl=${lang}&z=16&output=embed&disableDefaultUI=1`;
     }
     return `https://maps.google.com/maps?q=${encodeURIComponent(fallbackQuery)}&hl=${lang}&z=16&output=embed&disableDefaultUI=1`;
   }, [latitude, longitude, fallbackQuery, lang]);
+
+  // Exact coordinates embed URL if latitude and longitude are valid numbers
+  const coordsEmbedSrc = useMemo(() => {
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) {
+      return `https://maps.google.com/maps?ll=${lat},${lng}&q=${lat},${lng}&hl=${lang}&z=16&output=embed&disableDefaultUI=1`;
+    }
+    return null;
+  }, [latitude, longitude, lang]);
 
   // Synchronously attempt to parse the URL
   const syncEmbedSrc = useMemo(() => {
@@ -284,7 +335,7 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
                 );
               }
             } else if (resData?.coords) {
-              const src = `https://maps.google.com/maps?q=${resData.coords.lat},${resData.coords.lng}&hl=${lang}&z=16&output=embed&disableDefaultUI=1`;
+              const src = `https://maps.google.com/maps?ll=${resData.coords.lat},${resData.coords.lng}&q=${resData.coords.lat},${resData.coords.lng}&hl=${lang}&z=16&output=embed&disableDefaultUI=1`;
               setResolvedEmbedSrc(src);
               setResolvedSuccess(true);
               if (onChangeAddress) {
@@ -295,7 +346,10 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
                 );
               }
             } else if (resData?.placeName) {
-              const src = `https://maps.google.com/maps?q=${encodeURIComponent(resData.placeName)}&hl=${lang}&z=16&output=embed&disableDefaultUI=1`;
+              const q = resData.placeName.toLowerCase().includes("laos")
+                ? resData.placeName
+                : `${resData.placeName}, Laos`;
+              const src = `https://maps.google.com/maps?q=${encodeURIComponent(q)}&hl=${lang}&z=16&output=embed&disableDefaultUI=1`;
               setResolvedEmbedSrc(src);
               setResolvedSuccess(true);
               if (onChangeAddress && !address) {
@@ -346,21 +400,35 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
     if (onChangeGoogleMapUrl) {
       onChangeGoogleMapUrl(cleaned);
     }
+    const coords = extractCoordsFromMapUrl(cleaned);
+    if (coords && onChangeAddress) {
+      onChangeAddress(address, coords.lat, coords.lng);
+    }
   };
 
   const getExternalMapUrl = () => {
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) {
+      return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    }
     const cleaned = cleanInputMapUrl(url);
     if (cleaned && (cleaned.startsWith("http://") || cleaned.startsWith("https://"))) {
       return cleaned;
     }
-    if (latitude && longitude) {
-      return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
-    }
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fallbackQuery)}`;
   };
 
-  // Determine final safe embed source
-  const finalEmbedSrc = resolvedEmbedSrc || syncEmbedSrc || fallbackEmbedSrc;
+  const isMyMaps = useMemo(() => {
+    return !!(url && url.includes("/maps/d/"));
+  }, [url]);
+
+  // Determine final safe embed source:
+  // If exact coordinates are provided, prioritize coordsEmbedSrc to guarantee the marker is centered and accurate!
+  // If My Maps, prioritize My Maps embed.
+  const finalEmbedSrc = isMyMaps
+    ? resolvedEmbedSrc || syncEmbedSrc || coordsEmbedSrc || fallbackEmbedSrc
+    : coordsEmbedSrc || resolvedEmbedSrc || syncEmbedSrc || fallbackEmbedSrc;
   const externalMapLink = getExternalMapUrl();
 
   if (isReadOnly) {
@@ -372,7 +440,7 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
         className="relative block rounded-xl sm:rounded-2xl overflow-hidden border border-gray-200/80 shadow-xs bg-gray-100 group cursor-pointer hover:border-adv-orange/30 hover:shadow-sm transition-all"
       >
         {isResolving ? (
-          <div className="w-full h-[140px] sm:h-[180px] md:h-[220px] flex flex-col items-center justify-center bg-gray-50 text-gray-500 gap-2">
+          <div className="w-full h-[180px] sm:h-[220px] md:h-[260px] flex flex-col items-center justify-center bg-gray-50 text-gray-500 gap-2">
             <Loader2 className="w-5 h-5 text-adv-orange animate-spin" />
             <span className="text-[11px] sm:text-xs font-medium">
               {lang === "lo" ? "ກຳລັງໂຫລດແຜນທີ່..." : "Loading map location..."}
@@ -380,7 +448,7 @@ export const EventMapPicker: React.FC<EventMapPickerProps> = ({
           </div>
         ) : (
           <>
-            <div className="w-full h-[140px] sm:h-[180px] md:h-[220px] relative overflow-hidden pointer-events-none flex items-center justify-center">
+            <div className="w-full h-[180px] sm:h-[220px] md:h-[260px] relative overflow-hidden pointer-events-none flex items-center justify-center">
               <iframe
                 key={finalEmbedSrc}
                 src={finalEmbedSrc}

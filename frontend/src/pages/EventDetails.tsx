@@ -1811,8 +1811,16 @@ export default function EventDetails({
                       googleMapUrl={event.googleMapUrl}
                       province={provinceDisplayName}
                       district={districtDisplayName}
-                      latitude={event.latitude}
-                      longitude={event.longitude}
+                      latitude={
+                        event.latitude != null && event.latitude !== ""
+                          ? Number(event.latitude)
+                          : undefined
+                      }
+                      longitude={
+                        event.longitude != null && event.longitude !== ""
+                          ? Number(event.longitude)
+                          : undefined
+                      }
                       lang={lang as "en" | "lo"}
                     />
                   </div>

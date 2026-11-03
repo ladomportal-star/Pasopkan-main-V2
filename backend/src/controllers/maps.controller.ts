@@ -44,17 +44,22 @@ export async function resolveMapUrl(req: Request, res: Response) {
       });
     }
 
+    const headers = {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Cookie":
+        "SOCS=CAISNQgDEitib3FfaWRlbnRpdHlmcm9udGVuZHVpc2VydmVyXzIwMjMwODI5LjA2X3AxGgJlbiACGgYIgLCtpgY; CONSENT=YES+1",
+    };
+
     const response = await fetch(targetUrl, {
       method: "GET",
       redirect: "follow",
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9",
-      },
+      headers,
     });
 
     let finalUrl = response.url || targetUrl;
+    let responseHtml = "";
 
     // Handle Google Consent redirect: https://consent.google.com/m?continue=...
     if (finalUrl.includes("consent.google.com")) {
@@ -63,15 +68,21 @@ export async function resolveMapUrl(req: Request, res: Response) {
         const cont = u.searchParams.get("continue");
         if (cont && (cont.includes("google.com/maps") || cont.includes("goo.gl"))) {
           finalUrl = cont;
+          // Follow continue URL with consent cookies to get real Maps page
+          const secondResponse = await fetch(cont, {
+            method: "GET",
+            redirect: "follow",
+            headers,
+          });
+          finalUrl = secondResponse.url || cont;
+          responseHtml = await secondResponse.text();
         }
       } catch {}
+    } else {
+      try {
+        responseHtml = await response.text();
+      } catch {}
     }
-
-    // Read response HTML (first 150KB) to find meta tags, canonical link, or embedded coordinates
-    let responseHtml = "";
-    try {
-      responseHtml = await response.text();
-    } catch {}
 
     // Check meta refresh or canonical in HTML if still on a shortlink or consent page
     if (
@@ -110,7 +121,7 @@ export async function resolveMapUrl(req: Request, res: Response) {
     }
 
     // 2. Extract Coordinates from multiple formats
-    // CRITICAL: Prioritize exact place pin coordinates (!3d!4d) over camera viewport center (@lat,lng)
+    // CRITICAL: Prioritize exact place pin coordinates (!3d!4d, static map markers, meta) over camera viewport center (@lat,lng)
     let coords: { lat: number; lng: number } | null = null;
 
     // Format A: Protobuf coordinates !3dlat and !4dlng (exact place pin marker in Google Maps)
@@ -124,7 +135,30 @@ export async function resolveMapUrl(req: Request, res: Response) {
       coords = { lat: parseFloat(proto3d[1]), lng: parseFloat(proto4d[1]) };
     }
 
-    // Format B: Explicit parameter coordinates: ?q=lat,lng or ?query=lat,lng or ?ll=lat,lng
+    // Format B: Google static map markers in meta tags (og:image / itemprop="image")
+    if (!coords && responseHtml) {
+      const markerMatch =
+        responseHtml.match(/markers=(-?\d+\.\d+)%2C(-?\d+\.\d+)/i) ||
+        responseHtml.match(/markers=(-?\d+\.\d+),(-?\d+\.\d+)/i);
+      if (markerMatch) {
+        coords = { lat: parseFloat(markerMatch[1]), lng: parseFloat(markerMatch[2]) };
+      }
+    }
+
+    // Format C: Standard schema itemprop latitude/longitude or geo.position
+    if (!coords && responseHtml) {
+      const itemLat =
+        responseHtml.match(/itemprop=["']latitude["'][^>]*content=["'](-?\d+\.\d+)["']/i) ||
+        responseHtml.match(/content=["'](-?\d+\.\d+)["'][^>]*itemprop=["']latitude["']/i);
+      const itemLng =
+        responseHtml.match(/itemprop=["']longitude["'][^>]*content=["'](-?\d+\.\d+)["']/i) ||
+        responseHtml.match(/content=["'](-?\d+\.\d+)["'][^>]*itemprop=["']longitude["']/i);
+      if (itemLat && itemLng) {
+        coords = { lat: parseFloat(itemLat[1]), lng: parseFloat(itemLng[1]) };
+      }
+    }
+
+    // Format D: Explicit parameter coordinates: ?q=lat,lng or ?query=lat,lng or ?ll=lat,lng
     if (!coords) {
       const paramCoordMatch = finalUrl.match(
         /[?&](?:q|query|ll|center)=(-?\d+\.\d+),(-?\d+\.\d+)/,
@@ -134,7 +168,7 @@ export async function resolveMapUrl(req: Request, res: Response) {
       }
     }
 
-    // Format C: [null,null,lat,lng] in Google Maps script state
+    // Format E: [null,null,lat,lng] in Google Maps script state
     if (!coords && responseHtml) {
       const arrayCoordMatch = responseHtml.match(/\[null,null,(-?\d+\.\d+),(-?\d+\.\d+)\]/);
       if (arrayCoordMatch) {
@@ -142,7 +176,7 @@ export async function resolveMapUrl(req: Request, res: Response) {
       }
     }
 
-    // Format D: Fallback to @lat,lng (camera viewport center - only if no pin coordinates found)
+    // Format F: Fallback to @lat,lng (camera viewport center - only if no pin coordinates found)
     if (!coords) {
       const atMatch =
         finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
@@ -188,9 +222,10 @@ export async function resolveMapUrl(req: Request, res: Response) {
     if (myMapsMid) {
       cleanEmbedUrl = `https://www.google.com/maps/d/embed?mid=${encodeURIComponent(myMapsMid)}`;
     } else if (coords) {
-      cleanEmbedUrl = `https://maps.google.com/maps?q=${coords.lat},${coords.lng}&z=16&output=embed`;
+      cleanEmbedUrl = `https://maps.google.com/maps?ll=${coords.lat},${coords.lng}&q=${coords.lat},${coords.lng}&z=16&output=embed`;
     } else if (placeName) {
-      cleanEmbedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(placeName)}&z=16&output=embed`;
+      const q = placeName.toLowerCase().includes("laos") ? placeName : `${placeName}, Laos`;
+      cleanEmbedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=16&output=embed`;
     }
 
     return ok(res, {

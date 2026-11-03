@@ -8163,8 +8163,16 @@ export default function CreateEvent() {
                             googleMapUrl={selectedEvent.googleMapUrl}
                             province={selectedEvent.province}
                             district={selectedEvent.district}
-                            latitude={selectedEvent.latitude}
-                            longitude={selectedEvent.longitude}
+                            latitude={
+                              selectedEvent.latitude != null && selectedEvent.latitude !== ""
+                                ? Number(selectedEvent.latitude)
+                                : undefined
+                            }
+                            longitude={
+                              selectedEvent.longitude != null && selectedEvent.longitude !== ""
+                                ? Number(selectedEvent.longitude)
+                                : undefined
+                            }
                             lang={lang as "en" | "lo"}
                           />
                         </div>
