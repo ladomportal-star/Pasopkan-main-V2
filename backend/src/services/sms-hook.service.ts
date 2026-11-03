@@ -91,7 +91,8 @@ function parsePayload(body: Buffer) {
 
 function checkedWenovaConfig() {
   const { wenovaToken, wenovaScriptId, header, apiUrl } = env.smsHook;
-  const scriptId = !wenovaToken && wenovaScriptId ? Number(wenovaScriptId) : undefined;
+  const cleanScriptId = wenovaScriptId ? Number(wenovaScriptId.replace(/\D/g, "")) : undefined;
+  const scriptId = !wenovaToken && cleanScriptId ? cleanScriptId : undefined;
   if (
     (!wenovaToken && !scriptId) ||
     (!wenovaToken && wenovaScriptId && (!Number.isSafeInteger(scriptId) || (scriptId ?? 0) <= 0)) ||
