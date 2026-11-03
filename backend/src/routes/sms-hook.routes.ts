@@ -8,7 +8,7 @@ const router = Router();
 // Mount BEFORE express.json(): Standard Webhooks signs exact raw bytes.
 router.post(
   "/auth-hooks/send-sms",
-  express.raw({ type: "application/json", limit: "32kb" }),
+  express.raw({ type: ["application/json", "application/*+json", "*/*"], limit: "64kb" }),
   async (req: Request, res: Response) => {
     res.setHeader("Cache-Control", "no-store");
     if (!Buffer.isBuffer(req.body)) {

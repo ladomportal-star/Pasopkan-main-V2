@@ -18,17 +18,17 @@ function phoneAuthClient() {
   return client;
 }
 
-function providerError(error: { status?: number }, action: "send" | "verify"): never {
+function providerError(error: { status?: number; message?: string }, action: "send" | "verify"): never {
   if (error.status === 429) {
     throw new HttpError(429, "Too many OTP attempts. Please wait and try again");
   }
   if (action === "verify") {
-    throw new HttpError(400, "Invalid or expired verification code");
+    throw new HttpError(400, error.message || "Invalid or expired verification code");
   }
   if (error.status && error.status >= 500) {
     throw new HttpError(503, "SMS service is temporarily unavailable");
   }
-  throw new HttpError(400, "Could not send verification code");
+  throw new HttpError(400, error.message || "Could not send verification code");
 }
 
 export async function sendPhoneOtp(phone: string, captchaToken?: string) {

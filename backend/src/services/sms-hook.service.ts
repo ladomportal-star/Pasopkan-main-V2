@@ -68,16 +68,22 @@ function parsePayload(body: Buffer) {
   }
   // sms.phone is the actual recipient for phone_change; user.phone may still be the old number.
   // Supabase can include phone_change as an empty string for ordinary sign-in.
-  const recipient = [payload.sms?.phone, payload.user?.phone_change, payload.user?.phone].find(
+  const recipient = [
+    payload.sms?.phone,
+    payload.user?.phone_change,
+    payload.user?.phone,
+    (payload as { phone?: unknown }).phone,
+  ].find(
     (value): value is string => typeof value === "string" && value.trim().length > 0,
   );
-  const otp = payload.sms?.otp;
+  const rawOtp = payload.sms?.otp;
+  const otp = rawOtp !== undefined && rawOtp !== null ? String(rawOtp).trim() : "";
   // Supabase may store a Lao phone with or without its leading +. Normalize only
   // recognized Lao mobile formats; never send to an arbitrary recipient.
   if (typeof recipient !== "string") throw new SmsHookError(400, "Invalid SMS hook recipient");
   const normalized = normalizeLaoMobilePhone(recipient);
   if (!isLaoMobilePhone(normalized)) throw new SmsHookError(400, "Invalid SMS hook recipient");
-  if (typeof otp !== "string" || !/^\d{4,10}$/.test(otp)) {
+  if (!/^\d{4,10}$/.test(otp)) {
     throw new SmsHookError(400, "Invalid SMS hook OTP");
   }
   return { phoneNumber: normalized.slice(4), otp };
@@ -109,6 +115,7 @@ async function sendThroughWenova(
   phoneNumber: string,
   message: string,
   config: ReturnType<typeof checkedWenovaConfig>,
+  timeoutMs = 3200, // Supabase HTTP hooks have a 5-second deadline; direct calls allow longer.
 ) {
   const body = {
     header: config.header,
@@ -123,7 +130,7 @@ async function sendThroughWenova(
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(3200), // Supabase HTTP hooks have a 5-second deadline.
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch {
     // The gateway might have accepted the request before a timeout. Do not automatically resend.
@@ -189,8 +196,15 @@ async function sendThroughWenova(
 
 /** Send a fresh event-submission code to an already confirmed account phone. */
 export async function sendEventSubmissionOtp(phone: string, code: string) {
+  const normalized = normalizeLaoMobilePhone(phone);
+  if (!isLaoMobilePhone(normalized)) throw new SmsHookError(400, "Invalid phone number");
   const config = checkedWenovaConfig();
-  await sendThroughWenova(phone.slice(4), `Pasopkan event submission code: ${code}`, config);
+  await sendThroughWenova(
+    normalized.slice(4),
+    `Pasopkan event submission code: ${code}`,
+    config,
+    8000,
+  );
 }
 
 /** Send a non-OTP transactional alert to an already-verified Lao mobile. */
@@ -198,7 +212,7 @@ export async function sendTransactionalSms(phone: string, message: string) {
   const normalized = normalizeLaoMobilePhone(phone);
   if (!isLaoMobilePhone(normalized) || !message.trim() || message.length > 320)
     throw new SmsHookError(400, "Invalid SMS notification");
-  await sendThroughWenova(normalized.slice(4), message.trim(), checkedWenovaConfig());
+  await sendThroughWenova(normalized.slice(4), message.trim(), checkedWenovaConfig(), 8000);
 }
 
 /** Signed, idempotent Supabase Auth SMS delivery. Never store or log the OTP. */
