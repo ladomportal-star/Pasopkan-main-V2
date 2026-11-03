@@ -5,7 +5,7 @@
 // Pass `{ throwOnError: true }` to get an exception instead.
 import { safeStorage } from "./storage";
 import { prepareMedia, resolveMedia } from "./media";
-import { SESSION_EXPIRED_EVENT } from "./authAccess";
+import { SESSION_EXPIRED_EVENT, recordUserActivity } from "./authAccess";
 
 const configuredApiOrigin = String(import.meta.env.VITE_API_URL ?? "").trim();
 
@@ -209,7 +209,10 @@ async function request<T>(
     "Content-Type": "application/json",
   };
   const token = authToken(opts.token);
-  if (token) headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+    recordUserActivity();
+  }
 
   try {
     const mediaRequest = path.startsWith("/media");

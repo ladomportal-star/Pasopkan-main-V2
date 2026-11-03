@@ -5,7 +5,16 @@ import { User } from '@supabase/supabase-js';
 import { safeStorage } from '../lib/storage';
 import { api, BackendUser } from '../lib/api';
 import DotsLoader from '../components/DotsLoader';
-import { hasAccountSession, SESSION_EXPIRED_EVENT } from '../lib/authAccess';
+import {
+  hasAccountSession,
+  SESSION_EXPIRED_EVENT,
+  LAST_ACTIVITY_KEY,
+  USER_ACTIVITY_EVENT,
+  getIdleTimeoutMs,
+  recordUserActivity,
+  getLastActivityTime,
+  clearLastActivity,
+} from '../lib/authAccess';
 
 export type AppUser = User & {
   publicId?: string;
@@ -83,6 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
     setUser(null);
     safeStorage.removeItem('token');
+    clearLastActivity();
     setLoading(false);
   };
 
@@ -90,10 +100,107 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const expire = () => {
       clearAccount();
       void supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+      const currentPath = window.location.pathname + window.location.search + window.location.hash;
+      const returnTo = !/^\/(login|register)\/?$/i.test(window.location.pathname) ? currentPath : undefined;
+      navigate('/login?reason=expired', {
+        replace: true,
+        state: { reason: 'expired', returnTo },
+      });
     };
     window.addEventListener(SESSION_EXPIRED_EVENT, expire);
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, expire);
-  }, []);
+  }, [navigate]);
+
+  const isAuthenticated = hasAccountSession(user, token);
+  const lastActivityRef = useRef<number>(Date.now());
+
+  const handleTimeoutLogout = useCallback(async () => {
+    profileVersion.current += 1;
+    activeAccountId.current = null;
+    clearLastActivity();
+    safeStorage.removeItem('token');
+    setToken(null);
+    setUser(null);
+    setLoading(false);
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch (e) {
+      console.error('Sign out on idle timeout failed:', e);
+    }
+    const currentPath = window.location.pathname + window.location.search + window.location.hash;
+    const returnTo = !/^\/(login|register)\/?$/i.test(window.location.pathname) ? currentPath : undefined;
+    navigate('/login?reason=timeout', {
+      replace: true,
+      state: { reason: 'timeout', returnTo },
+    });
+  }, [navigate]);
+
+  // Standard idle timeout watcher
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const idleTimeoutMs = getIdleTimeoutMs();
+    const now = Date.now();
+    const existingActivity = getLastActivityTime();
+    if (!existingActivity || now - existingActivity >= idleTimeoutMs) {
+      recordUserActivity();
+      lastActivityRef.current = now;
+    } else {
+      lastActivityRef.current = existingActivity;
+    }
+
+    const onUserActivity = () => {
+      lastActivityRef.current = Date.now();
+      recordUserActivity();
+    };
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === LAST_ACTIVITY_KEY && e.newValue) {
+        const parsed = parseInt(e.newValue, 10);
+        if (parsed) lastActivityRef.current = Math.max(lastActivityRef.current, parsed);
+      }
+    };
+
+    const onActivityEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ timestamp?: number }>;
+      if (customEvent.detail?.timestamp) {
+        lastActivityRef.current = Math.max(lastActivityRef.current, customEvent.detail.timestamp);
+      }
+    };
+
+    const checkTimeout = () => {
+      const latestActivity = Math.max(lastActivityRef.current, getLastActivityTime());
+      if (Date.now() - latestActivity >= idleTimeoutMs) {
+        void handleTimeoutLogout();
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkTimeout();
+      }
+    };
+
+    const events = ['mousedown', 'keydown', 'touchstart', 'scroll', 'click'] as const;
+    events.forEach((eventName) => {
+      window.addEventListener(eventName, onUserActivity, { passive: true });
+    });
+    window.addEventListener('storage', onStorage);
+    window.addEventListener(USER_ACTIVITY_EVENT, onActivityEvent);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    const intervalId = window.setInterval(checkTimeout, 10000);
+
+    return () => {
+      events.forEach((eventName) => {
+        window.removeEventListener(eventName, onUserActivity);
+      });
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener(USER_ACTIVITY_EVENT, onActivityEvent);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.clearInterval(intervalId);
+    };
+  }, [isAuthenticated, handleTimeoutLogout]);
 
   // Private avatar links expire after five minutes; refresh only their display URL.
   useEffect(() => {
@@ -128,6 +235,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       activeAccountId.current = session.user.id;
       setToken(session.access_token);
       safeStorage.setItem('token', session.access_token);
+      recordUserActivity();
       void fetchAndSetUserProfile(session.user, session.access_token);
     };
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -233,6 +341,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     setLoading(true);
     profileVersion.current += 1;
+    clearLastActivity();
     try {
       await supabase.auth.signOut();
     } catch (error) {

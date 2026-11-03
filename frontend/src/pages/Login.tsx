@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
+  Clock,
   Globe2,
   KeyRound,
   Loader2,
@@ -75,6 +76,13 @@ export default function Login({
   const [cooldown, setCooldown] = useState(0);
   const lo = lang === "lo";
   const dark = theme === "dark";
+
+  const isTimeout =
+    location.state?.reason === "timeout" ||
+    new URLSearchParams(location.search).get("reason") === "timeout";
+  const isExpired =
+    location.state?.reason === "expired" ||
+    new URLSearchParams(location.search).get("reason") === "expired";
 
   const copy = {
     title: registering
@@ -343,6 +351,21 @@ export default function Login({
           >
             {copy.subtitle}
           </p>
+
+          {(isTimeout || isExpired) && (
+            <div className="mt-4 flex items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs sm:text-sm text-amber-800 dark:text-amber-200">
+              <Clock className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span className="leading-snug">
+                {isTimeout
+                  ? lo
+                    ? "ເຊດຊັນຂອງທ່ານໝົດເວລາເນື່ອງຈາກບໍ່ມີການເຄື່ອນໄຫວ. ກະລຸນາເຂົ້າສູ່ລະບົບໃໝ່ເພື່ອສືບຕໍ່."
+                    : "Your session has timed out due to inactivity. Please sign in again to continue."
+                  : lo
+                    ? "ເຊດຊັນຂອງທ່ານໝົດອາຍຸແລ້ວ. ກະລຸນາເຂົ້າສູ່ລະບົບໃໝ່."
+                    : "Your session has expired. Please sign in again."}
+              </span>
+            </div>
+          )}
 
           <div
             role="tablist"
