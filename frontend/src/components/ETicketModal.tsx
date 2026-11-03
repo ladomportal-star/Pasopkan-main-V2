@@ -187,7 +187,7 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
   return (
     <AnimatePresence>
       <div 
-        className="fixed inset-0 z-[120] flex items-center justify-center p-2.5 sm:p-4 overflow-hidden select-none overscroll-none touch-none"
+        className="fixed inset-0 z-[120] flex items-center justify-center p-2.5 sm:p-4 md:p-6 overflow-y-auto select-none overscroll-none"
         onClick={handleDismiss}
       >
         {/* Backdrop: White on mobile devices, dark dimmed on desktop */}
@@ -213,7 +213,7 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
             ease: [0.22, 1, 0.36, 1]
           }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-[390px] sm:max-w-[420px] md:max-w-[440px] h-[98dvh] sm:h-auto sm:max-h-[92vh] rounded-[28px] sm:rounded-[36px] bg-gradient-to-b from-[#FF5500] via-[#F24E00] to-[#E04500] text-white p-2.5 sm:p-4 md:p-5 shadow-2xl flex flex-col justify-between overflow-hidden border border-orange-400/30"
+          className="relative w-full max-w-[390px] sm:max-w-[420px] md:max-w-[440px] h-[98dvh] sm:h-auto sm:max-h-[94vh] rounded-[28px] sm:rounded-[36px] bg-gradient-to-b from-[#FF5500] via-[#F24E00] to-[#E04500] text-white p-2.5 sm:p-4 md:p-4.5 shadow-2xl flex flex-col justify-between overflow-y-auto sm:overflow-y-auto border border-orange-400/30"
         >
           {/* Top Bar Header */}
           <div className="flex items-center justify-between px-1 pt-0.5 shrink-0 mb-1 sm:mb-1.5">
@@ -276,11 +276,11 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
           )}
 
           {/* White E-Ticket Card */}
-          <div className="relative flex-1 flex flex-col justify-between bg-white rounded-[22px] sm:rounded-[26px] text-gray-900 shadow-xl overflow-hidden px-3.5 sm:px-5 pt-2 sm:pt-2.5 pb-2.5 sm:pb-3.5 min-h-0">
+          <div className="relative flex-1 flex flex-col justify-between bg-white rounded-[22px] sm:rounded-[26px] text-gray-900 shadow-xl overflow-y-auto sm:overflow-visible px-3.5 sm:px-5 pt-2 sm:pt-2.5 pb-2.5 sm:pb-3.5">
             {/* Top Ticket Details */}
-            <div className="flex-1 flex flex-col justify-start min-h-0">
-              {/* Event Image Banner Header */}
-              <div className="w-full h-32 min-[390px]:h-36 sm:h-40 rounded-xl sm:rounded-2xl overflow-hidden mb-2.5 sm:mb-3 shrink-0 bg-gray-100 shadow-2xs border border-gray-100">
+            <div className="w-full flex flex-col justify-start shrink-0">
+              {/* Event Image Banner Header: Compact height on desktop mode to prevent overlay */}
+              <div className="w-full h-28 min-[390px]:h-32 sm:h-28 md:h-32 rounded-xl sm:rounded-2xl overflow-hidden mb-2 sm:mb-2.5 shrink-0 bg-gray-100 shadow-2xs border border-gray-100">
                 <img 
                   src={ticket.event.image || '/pasopkan_logo.png'} 
                   alt={ticket.event.title} 
@@ -293,44 +293,44 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
               </div>
 
               {/* Event Title */}
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-gray-950 leading-tight tracking-tight mb-2.5 sm:mb-3 line-clamp-2">
+              <h1 className="text-lg sm:text-xl font-black text-gray-950 leading-snug tracking-tight mb-2 sm:mb-2.5 line-clamp-2">
                 {ticket.event.title}
               </h1>
 
               {/* 2-Column Info Grid */}
-              <div className="grid grid-cols-2 gap-x-5 gap-y-2.5 sm:gap-y-3.5 mb-2.5 sm:mb-3">
+              <div className="grid grid-cols-2 gap-x-4 sm:gap-x-5 gap-y-1.5 sm:gap-y-2 mb-2 sm:mb-2.5">
                 <div>
-                  <p className="text-xs sm:text-sm font-bold text-gray-500 uppercase tracking-wider">
+                  <p className="text-[10px] min-[390px]:text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
                     {lang === 'lo' ? 'ວັນທີ' : 'Date'}
                   </p>
-                  <p className="text-base sm:text-lg md:text-xl font-black text-gray-950 leading-tight mt-0.5">
+                  <p className="text-sm sm:text-base font-black text-gray-950 leading-tight mt-0.5 truncate">
                     {formatEventDate()}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-xs sm:text-sm font-bold text-gray-500 uppercase tracking-wider">
+                  <p className="text-[10px] min-[390px]:text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
                     {lang === 'lo' ? 'ເວລາເລີ່ມງານ' : 'Start Time'}
                   </p>
-                  <p className="text-base sm:text-lg md:text-xl font-black text-gray-950 leading-tight mt-0.5">
+                  <p className="text-sm sm:text-base font-black text-gray-950 leading-tight mt-0.5 truncate">
                     {formatEventTime()}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-xs sm:text-sm font-bold text-gray-500 uppercase tracking-wider">
+                  <p className="text-[10px] min-[390px]:text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
                     {lang === 'lo' ? 'ປະເພດການເຂົ້າ' : 'Check In Type'}
                   </p>
-                  <p className="text-base sm:text-lg md:text-xl font-black text-gray-950 leading-tight truncate mt-0.5">
+                  <p className="text-sm sm:text-base font-black text-gray-950 leading-tight truncate mt-0.5" title={ticket.tier.name || 'VIP A'}>
                     {ticket.tier.name || 'VIP A'}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-xs sm:text-sm font-bold text-gray-500 uppercase tracking-wider">
+                  <p className="text-[10px] min-[390px]:text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
                     {lang === 'lo' ? 'ລະຫັດອໍເດີ' : 'Order ID'}
                   </p>
-                  <p className="text-base sm:text-lg md:text-xl font-black text-gray-950 font-mono tracking-tight leading-tight mt-0.5">
+                  <p className="text-xs sm:text-sm font-black text-gray-950 font-mono tracking-tight leading-tight mt-0.5 truncate" title={formattedOrderId}>
                     {formattedOrderId}
                   </p>
                 </div>
@@ -338,9 +338,9 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
             </div>
 
             {/* Bottom QR Section: Cutting Line placed directly near the QR Code */}
-            <div className="shrink-0 flex flex-col pt-1">
+            <div className="w-full flex flex-col shrink-0 pt-0.5">
               {/* Perforated Divider with Circular Concave Cutouts */}
-              <div className="relative -mx-3.5 sm:-mx-5 py-0.5 mb-2 sm:mb-2.5 flex items-center shrink-0">
+              <div className="relative -mx-3.5 sm:-mx-5 py-0.5 mb-1.5 sm:mb-2 flex items-center shrink-0">
                 {/* Left Cutout */}
                 <div className="absolute -left-3.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#F24E00] z-10" />
                 
@@ -351,53 +351,53 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                 <div className="absolute -right-3.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#F24E00] z-10" />
               </div>
 
-              {/* Direct QR Code Section (Enlarged and optimized for fast scanning) */}
+              {/* Direct QR Code Section (Resized for desktop so it never overlays) */}
               <div className="flex flex-col items-center justify-center min-h-0 py-0.5">
                 {/* Scanned / Status Notification Badge */}
                 {isRefunded ? (
                   <div className="mb-1 flex items-center justify-center">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 sm:px-4 sm:py-1.5 bg-red-600 text-white rounded-full text-[10.5px] sm:text-xs font-black uppercase tracking-wider shadow-xs animate-in fade-in zoom-in-95 duration-200">
-                      <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 sm:px-4 sm:py-1 bg-red-600 text-white rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-xs animate-in fade-in zoom-in-95 duration-200">
+                      <XCircle className="w-3.5 h-3.5 stroke-[2.5]" />
                       <span>{lang === 'lo' ? 'ປີ້ຖືກຄືນເງິນແລ້ວ (ໂມຄະ)' : 'REFUNDED - QR VOIDED'}</span>
                     </span>
                   </div>
                 ) : isScanned ? (
                   <div className="mb-1 flex items-center justify-center">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 sm:px-4 sm:py-1.5 bg-emerald-600 dark:bg-emerald-500 text-white rounded-full text-[10.5px] sm:text-xs font-black uppercase tracking-wider shadow-xs animate-in fade-in zoom-in-95 duration-200">
-                      <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 sm:px-4 sm:py-1 bg-emerald-600 dark:bg-emerald-500 text-white rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-xs animate-in fade-in zoom-in-95 duration-200">
+                      <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.5]" />
                       <span>{lang === 'lo' ? 'ສະແກນແລ້ວ' : 'ALREADY SCANNED'}</span>
                     </span>
                   </div>
                 ) : isExpired ? (
                   <div className="mb-1 flex items-center justify-center">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 sm:px-4 sm:py-1.5 bg-red-500 dark:bg-red-500 text-white rounded-full text-[10.5px] sm:text-xs font-black uppercase tracking-wider shadow-xs animate-in fade-in zoom-in-95 duration-200">
-                      <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 sm:px-4 sm:py-1 bg-red-500 dark:bg-red-500 text-white rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-xs animate-in fade-in zoom-in-95 duration-200">
+                      <XCircle className="w-3.5 h-3.5 stroke-[2.5]" />
                       <span>{lang === 'lo' ? 'ໝົດອາຍຸ' : 'EXPIRED'}</span>
                     </span>
                   </div>
                 ) : (
-                  <div className="mb-1 text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider text-center">
+                  <div className="mb-1 text-[10.5px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider text-center">
                     {lang === 'lo' ? 'ສະແກນ QR ເພື່ອເຂົ້າງານ' : 'Scan to enter'}
                   </div>
                 )}
 
                 {/* Subtitle / Notice for Refunded */}
                 {isRefunded && (
-                  <div className="mb-1 text-[10px] sm:text-xs font-bold text-red-500 uppercase tracking-wider text-center">
+                  <div className="mb-1 text-[10px] sm:text-[11px] font-bold text-red-500 uppercase tracking-wider text-center">
                     {lang === 'lo' ? 'QR Code ຖືກຍົກເລີກແລ້ວ ບໍ່ສາມາດສະແກນໄດ້' : 'QR code deactivated - Entry prohibited'}
                   </div>
                 )}
 
-                <div className="relative bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-md p-2 sm:p-3 flex items-center justify-center overflow-hidden shrink-0">
+                <div className="relative bg-white rounded-2xl border border-gray-200 shadow-md p-2 sm:p-2.5 flex items-center justify-center overflow-hidden shrink-0">
                   {isRefunded ? (
-                    <div className="w-56 h-56 min-[390px]:w-[245px] min-[390px]:h-[245px] sm:w-[255px] sm:h-[255px] flex flex-col items-center justify-center text-center p-3 bg-red-50/70 rounded-xl border-2 border-dashed border-red-300">
-                      <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-2 shadow-inner">
-                        <XCircle className="w-6 h-6 stroke-[2.5]" />
+                    <div className="w-44 h-44 min-[390px]:w-48 min-[390px]:h-48 sm:w-[170px] sm:h-[170px] md:w-[180px] md:h-[180px] flex flex-col items-center justify-center text-center p-2.5 bg-red-50/70 rounded-xl border-2 border-dashed border-red-300">
+                      <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-1.5 shadow-inner">
+                        <XCircle className="w-5 h-5 stroke-[2.5]" />
                       </div>
-                      <div className="text-xs sm:text-sm font-black text-red-600 uppercase tracking-wider">
+                      <div className="text-xs font-black text-red-600 uppercase tracking-wider">
                         {lang === 'lo' ? 'QR Code ຖືກຍົກເລີກແລ້ວ' : 'QR CODE VOIDED'}
                       </div>
-                      <p className="text-[10px] sm:text-xs font-medium text-gray-500 mt-1 leading-relaxed max-w-[190px]">
+                      <p className="text-[9.5px] sm:text-[10px] font-medium text-gray-500 mt-1 leading-relaxed max-w-[170px]">
                         {lang === 'lo' 
                           ? 'ປີ້ໃບນີ້ໄດ້ຖືກຂໍຄືນເງິນແລ້ວ ລະຫັດຖືກຍົກເລີກ ແລະ ບໍ່ສາມາດສະແກນເຂົ້າງານໄດ້.' 
                           : 'This ticket was refunded. The QR code has been deactivated.'}
@@ -407,8 +407,8 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                     <>
                       <QRCodeSVG
                         value={currentTicketId}
-                        size={360}
-                        className={`w-56 h-56 min-[390px]:w-[245px] min-[390px]:h-[245px] sm:w-[255px] sm:h-[255px] transition-all duration-300 ${
+                        size={320}
+                        className={`w-44 h-44 min-[390px]:w-48 min-[390px]:h-48 sm:w-[170px] sm:h-[170px] md:w-[180px] md:h-[180px] transition-all duration-300 ${
                           isScanned || isExpired ? 'opacity-35 grayscale-[40%]' : 'opacity-100'
                         }`}
                         level="H"
@@ -423,12 +423,12 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                           transition={{ type: 'spring', damping: 20, stiffness: 300 }}
                           className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-2"
                         >
-                          <div className="bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-xl border-2 border-white flex flex-col items-center justify-center text-center">
+                          <div className="bg-emerald-600 text-white px-3.5 py-1.5 rounded-xl shadow-xl border-2 border-white flex flex-col items-center justify-center text-center">
                             <div className="flex items-center gap-1.5 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow-xs">
-                              <CheckCircle2 className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
+                              <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
                               <span>{lang === 'lo' ? 'ສະແກນແລ້ວ' : 'ALREADY SCANNED'}</span>
                             </div>
-                            <span className="text-[9px] sm:text-[10px] font-bold text-emerald-100 tracking-wide mt-0.5">
+                            <span className="text-[8.5px] sm:text-[9.5px] font-bold text-emerald-100 tracking-wide mt-0.5">
                               {lang === 'lo' ? 'ກວດສອບການເຂົ້າຮ່ວມແລ້ວ' : 'Entry Verified'}
                             </span>
                           </div>
@@ -443,12 +443,12 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                           transition={{ type: 'spring', damping: 20, stiffness: 300 }}
                           className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-2"
                         >
-                          <div className="bg-red-500 text-white px-4 py-2 rounded-xl shadow-xl border-2 border-white flex flex-col items-center justify-center text-center">
+                          <div className="bg-red-500 text-white px-3.5 py-1.5 rounded-xl shadow-xl border-2 border-white flex flex-col items-center justify-center text-center">
                             <div className="flex items-center gap-1.5 font-black text-xs sm:text-sm tracking-wider uppercase drop-shadow-xs">
-                              <XCircle className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
+                              <XCircle className="w-4 h-4 stroke-[2.5]" />
                               <span>{lang === 'lo' ? 'ໝົດອາຍຸ' : 'EXPIRED'}</span>
                             </div>
-                            <span className="text-[9px] sm:text-[10px] font-bold text-red-100 tracking-wide mt-0.5">
+                            <span className="text-[8.5px] sm:text-[9.5px] font-bold text-red-100 tracking-wide mt-0.5">
                               {lang === 'lo' ? 'ກິດຈະກຳສິ້ນສຸດແລ້ວ' : 'Event Ended'}
                             </span>
                           </div>
@@ -461,15 +461,23 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                     </p>
                   )}
                 </div>
+
+                {/* Ticket Code Display under QR Code */}
+                {currentTicketId && (
+                  <div className="mt-1.5 flex items-center justify-center gap-1.5 font-mono text-[11px] sm:text-xs font-bold text-gray-700 bg-gray-50 px-2.5 py-0.5 rounded-md border border-gray-200/80">
+                    <span className="text-gray-400 font-sans text-[10px] uppercase">{lang === 'lo' ? 'ລະຫັດປີ້:' : 'Code:'}</span>
+                    <span>{currentTicketId}</span>
+                  </div>
+                )}
               </div>
 
               {/* Space under for ads: Dedicated ad banner area */}
-              <div className="shrink-0 w-full pt-2 pb-0.5 mt-1 border-t border-gray-100 flex items-center justify-center">
+              <div className="shrink-0 w-full pt-1.5 pb-0.5 mt-1 border-t border-gray-100 flex items-center justify-center">
                 {sponsorSettings?.isEnabled && (() => {
                   const resolvedAd = resolveTicketAd(sponsorSettings);
                   if (resolvedAd.isDisplayed && resolvedAd.bannerUrl) {
                     return (
-                      <div className="w-full h-12 sm:h-14 rounded-xl overflow-hidden bg-gray-50 border border-gray-200/80 shadow-2xs">
+                      <div className="w-full h-10 sm:h-12 rounded-xl overflow-hidden bg-gray-50 border border-gray-200/80 shadow-2xs">
                         {resolvedAd.websiteUrl ? (
                           <a
                             href={resolvedAd.websiteUrl}
@@ -506,7 +514,7 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                   }
                   return null;
                 })() || (
-                  <div className="w-full h-12 sm:h-14 rounded-xl overflow-hidden bg-gray-50/80 border border-gray-200/80 shadow-2xs flex items-center justify-center">
+                  <div className="w-full h-10 sm:h-12 rounded-xl overflow-hidden bg-gray-50/80 border border-gray-200/80 shadow-2xs flex items-center justify-center">
                     <img 
                       src="/Pasopkan ads.png" 
                       alt="Pasopkan Sponsor Ad" 
