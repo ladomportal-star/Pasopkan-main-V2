@@ -2,14 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Clock,
+  FileText,
   Globe2,
   KeyRound,
   Loader2,
   Phone,
   RotateCcw,
   ShieldCheck,
+  X,
 } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -20,6 +22,14 @@ import OtpInput from "../components/OtpInput";
 import SEO from "../components/SEO";
 import { LOGIN_RETURN_KEY, safeLoginReturn } from "../lib/authAccess";
 import { showErrorAlert } from "../lib/alerts";
+import {
+  getTermsSettings,
+  getPrivacySettings,
+  TermsSettings,
+  PrivacySettings,
+  DEFAULT_TERMS_SETTINGS,
+  DEFAULT_PRIVACY_SETTINGS,
+} from "../lib/siteSettings";
 
 const GoogleMark = ({ className = "h-5 w-5 shrink-0" }: { className?: string }) => (
   <svg aria-hidden="true" viewBox="0 0 24 24" className={className}>
@@ -73,6 +83,33 @@ export default function Login({
   const [cooldown, setCooldown] = useState(0);
   const lo = lang === "lo";
   const dark = theme === "dark";
+
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+  const [termsSettings, setTermsSettings] = useState<TermsSettings>(DEFAULT_TERMS_SETTINGS);
+  const [privacySettings, setPrivacySettings] = useState<PrivacySettings>(DEFAULT_PRIVACY_SETTINGS);
+
+  useEffect(() => {
+    let active = true;
+    const loadSettings = async () => {
+      try {
+        const [terms, privacy] = await Promise.all([
+          getTermsSettings(),
+          getPrivacySettings(),
+        ]);
+        if (active) {
+          if (terms?.sections) setTermsSettings(terms);
+          if (privacy?.sections) setPrivacySettings(privacy);
+        }
+      } catch (err) {
+        console.warn("Failed to load terms/privacy settings on login:", err);
+      }
+    };
+    loadSettings();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const isTimeout =
     location.state?.reason === "timeout" ||
@@ -503,23 +540,203 @@ export default function Login({
             {lo
               ? "ການສືບຕໍ່ໝາຍເຖິງທ່ານຍອມຮັບ"
               : "By continuing, you agree to our"}{" "}
-            <Link
-              to="/terms"
-              className="font-semibold text-adv-orange underline decoration-orange-300 underline-offset-4 hover:text-orange-600"
+            <button
+              type="button"
+              onClick={() => setIsTermsOpen(true)}
+              className="font-semibold text-adv-orange underline decoration-orange-300 underline-offset-4 hover:text-orange-600 cursor-pointer"
             >
               {lo ? "ຂໍ້ກຳນົດ" : "Terms"}
-            </Link>{" "}
+            </button>{" "}
             {lo ? "ແລະ" : "and"}{" "}
-            <Link
-              to="/privacy"
-              className="font-semibold text-adv-orange underline decoration-orange-300 underline-offset-4 hover:text-orange-600"
+            <button
+              type="button"
+              onClick={() => setIsPrivacyOpen(true)}
+              className="font-semibold text-adv-orange underline decoration-orange-300 underline-offset-4 hover:text-orange-600 cursor-pointer"
             >
               {lo ? "ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ" : "Privacy Policy"}
-            </Link>
+            </button>
           </p>
 
         </motion.section>
       </div>
+
+      {/* Terms & Conditions Modal */}
+      <AnimatePresence>
+        {isTermsOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsTermsOpen(false)}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className={`relative w-full max-w-2xl rounded-3xl shadow-2xl border overflow-hidden z-10 ${
+                dark
+                  ? "bg-zinc-900 border-zinc-800 text-zinc-100"
+                  : "bg-white border-gray-100 text-slate-900"
+              }`}
+            >
+              <div
+                className={`p-5 sm:p-6 border-b flex items-center justify-between ${
+                  dark ? "border-zinc-800" : "border-gray-100"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-adv-orange">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-black tracking-tight">
+                    {lo ? "ຂໍ້ກຳນົດ ແລະ ເງື່ອນໄຂ" : "Terms & Conditions"}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsTermsOpen(false)}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                    dark
+                      ? "hover:bg-zinc-800 text-zinc-400 hover:text-white"
+                      : "hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                  }`}
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div
+                className={`p-5 sm:p-6 max-h-[60vh] overflow-y-auto space-y-6 text-sm leading-relaxed font-sans ${
+                  dark ? "text-zinc-300" : "text-gray-600"
+                }`}
+              >
+                {termsSettings.sections &&
+                  termsSettings.sections.map((section, idx) => (
+                    <div key={idx} className="space-y-1.5">
+                      <h4
+                        className={`font-bold text-base ${
+                          dark ? "text-white" : "text-adv-slate"
+                        }`}
+                      >
+                        {lo ? section.title_lo : section.title_en}
+                      </h4>
+                      <p className="whitespace-pre-wrap">
+                        {lo ? section.content_lo : section.content_en}
+                      </p>
+                    </div>
+                  ))}
+              </div>
+              <div
+                className={`p-4 border-t flex justify-end ${
+                  dark
+                    ? "border-zinc-800 bg-zinc-900/60"
+                    : "border-gray-100 bg-gray-50"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setIsTermsOpen(false)}
+                  className="px-5 py-2.5 rounded-xl bg-adv-orange hover:bg-orange-600 text-white font-bold text-xs sm:text-sm transition-colors cursor-pointer shadow-sm"
+                >
+                  {lo ? "ຂ້ອຍເຂົ້າໃຈແລ້ວ" : "I Understand"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Privacy Policy Modal */}
+      <AnimatePresence>
+        {isPrivacyOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsPrivacyOpen(false)}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className={`relative w-full max-w-2xl rounded-3xl shadow-2xl border overflow-hidden z-10 ${
+                dark
+                  ? "bg-zinc-900 border-zinc-800 text-zinc-100"
+                  : "bg-white border-gray-100 text-slate-900"
+              }`}
+            >
+              <div
+                className={`p-5 sm:p-6 border-b flex items-center justify-between ${
+                  dark ? "border-zinc-800" : "border-gray-100"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-adv-orange">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-black tracking-tight">
+                    {lo ? "ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ" : "Privacy Policy"}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsPrivacyOpen(false)}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                    dark
+                      ? "hover:bg-zinc-800 text-zinc-400 hover:text-white"
+                      : "hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                  }`}
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div
+                className={`p-5 sm:p-6 max-h-[60vh] overflow-y-auto space-y-6 text-sm leading-relaxed font-sans ${
+                  dark ? "text-zinc-300" : "text-gray-600"
+                }`}
+              >
+                {privacySettings.sections &&
+                  privacySettings.sections.map((section, idx) => (
+                    <div key={idx} className="space-y-1.5">
+                      <h4
+                        className={`font-bold text-base ${
+                          dark ? "text-white" : "text-adv-slate"
+                        }`}
+                      >
+                        {lo ? section.title_lo : section.title_en}
+                      </h4>
+                      <p className="whitespace-pre-wrap">
+                        {lo ? section.content_lo : section.content_en}
+                      </p>
+                    </div>
+                  ))}
+              </div>
+              <div
+                className={`p-4 border-t flex justify-end ${
+                  dark
+                    ? "border-zinc-800 bg-zinc-900/60"
+                    : "border-gray-100 bg-gray-50"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setIsPrivacyOpen(false)}
+                  className="px-5 py-2.5 rounded-xl bg-adv-orange hover:bg-orange-600 text-white font-bold text-xs sm:text-sm transition-colors cursor-pointer shadow-sm"
+                >
+                  {lo ? "ຂ້ອຍເຂົ້າໃຈແລ້ວ" : "I Understand"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

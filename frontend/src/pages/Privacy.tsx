@@ -5,16 +5,15 @@ import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import {
   DEFAULT_PRIVACY_SETTINGS,
+  getPrivacySettings,
   type PrivacySettings,
 } from "../lib/siteSettings";
 
-// Public legal content is bundled with the app, not fetched from a private API.
-// This makes the policy immediately available even before authentication.
 export default function Privacy() {
   const navigate = useNavigate();
   const { lang } = useLanguage();
   const { theme } = useTheme();
-  const [privacySettings] = useState<PrivacySettings>(DEFAULT_PRIVACY_SETTINGS);
+  const [privacySettings, setPrivacySettings] = useState<PrivacySettings>(DEFAULT_PRIVACY_SETTINGS);
   const isLao = lang === "lo";
   const dark = theme === "dark";
 
@@ -23,6 +22,18 @@ export default function Privacy() {
     document.title = isLao
       ? "ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ | Pasopkan"
       : "Privacy Policy | Pasopkan";
+
+    const loadSettings = async () => {
+      try {
+        const data = await getPrivacySettings();
+        if (data && data.sections) {
+          setPrivacySettings(data);
+        }
+      } catch (err) {
+        console.warn("Error loading privacy document:", err);
+      }
+    };
+    loadSettings();
   }, [isLao]);
 
   return (
