@@ -102,10 +102,11 @@ const translations = {
     lastSaved: "Last saved: ",
     continue: "Continue",
     publish: "Publish Event",
-    successTitle: "Event Created Successfully!",
+    successTitle: "Event Submitted Successfully!",
     successDesc:
-      "Your event has been submitted and is now pending approval from the admin. You will be notified once it is live.",
-    goToDashboard: "Go to Dashboard",
+      "Your event has been submitted and is currently waiting for admin review. You will be notified once it is approved and live on the homepage.",
+    done: "Done",
+    goToDashboard: "Done",
     uploadImages: "Upload Images",
     viewImageLocations: "View image display locations",
     addEventImageOther: "Add event image for\nother locations",
@@ -395,10 +396,11 @@ const translations = {
     lastSaved: "ບັນທຶກລ່າສຸດ: ",
     continue: "ສືບຕໍ່",
     publish: "ເຜີຍແຜ່ກິດຈະກຳ",
-    successTitle: "ສ້າງກິດຈະກຳສຳເລັດແລ້ວ!",
+    successTitle: "ສົ່ງກິດຈະກຳສຳເລັດແລ້ວ!",
     successDesc:
-      "ກິດຈະກຳຂອງທ່ານຖືກສົ່ງແລ້ວ ແລະ ກຳລັງລໍຖ້າການອະນຸມັດຈາກແອັດມິນ. ທ່ານຈະໄດ້ຮັບແຈ້ງເຕືອນເມື່ອມັນຖືກເຜີຍແຜ່.",
-    goToDashboard: "ໄປທີ່ໜ້າຫຼັກ",
+      "ກິດຈະກຳຂອງທ່ານຖືກສົ່ງແລ້ວ ແລະ ກຳລັງລໍຖ້າການກວດສອບຈາກແອັດມິນ. ເມື່ອໄດ້ຮັບການອະນຸມັດແລ້ວ ຈະຖືກເຜີຍແຜ່ລົງໃນໜ້າຫຼັກທັນທີ.",
+    done: "ສຳເລັດ",
+    goToDashboard: "ສຳເລັດ",
     uploadImages: "ອັບໂຫຼດຮູບພາບ",
     viewImageLocations: "ເບິ່ງສະຖານທີ່ສະແດງຮູບພາບ",
     addEventImageOther: "ເພີ່ມຮູບພາບ event ສຳລັບ\nສະຖານທີ່ອື່ນໆ",
@@ -7235,13 +7237,17 @@ export default function CreateEvent() {
                     exit={{ scale: 0.9, opacity: 0 }}
                     className="bg-white border border-gray-100 rounded-[32px] w-full max-w-md p-10 text-center shadow-2xl"
                   >
-                    <div className="w-24 h-24 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
-                      <Check className="w-12 h-12 text-adv-orange" />
+                    <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner">
+                      <Clock className="w-10 h-10 text-adv-orange" />
                     </div>
-                    <h3 className="text-3xl font-extrabold text-adv-slate mb-4 tracking-tight">
+                    <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-50 border border-amber-200/80 text-amber-800 text-xs font-bold mb-3 shadow-2xs">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>{lang === "lo" ? "ລໍຖ້າແອດມິນກວດສອບ" : "Waiting for Admin Review"}</span>
+                    </div>
+                    <h3 className="text-2xl sm:text-3xl font-extrabold text-adv-slate mb-3 tracking-tight">
                       {wasEditing ? t.updateEventSuccessTitle : t.successTitle}
                     </h3>
-                    <p className="text-gray-500 mb-10 leading-relaxed font-medium">
+                    <p className="text-gray-500 mb-8 leading-relaxed font-medium text-sm sm:text-base">
                       {wasEditing ? t.updateEventSuccessDesc : t.successDesc}
                     </p>
                     {!wasEditing && smsNotificationStatus && (
@@ -7265,11 +7271,11 @@ export default function CreateEvent() {
                     <button
                       onClick={() => {
                         setShowSuccessModal(false);
-                        navigate("/PskAdmin");
+                        navigate("/");
                       }}
-                      className="w-full py-4 rounded-2xl bg-adv-orange hover:bg-orange-600 text-white font-bold transition-all shadow-xl shadow-orange-100 text-lg"
+                      className="w-full py-4 rounded-2xl bg-adv-orange hover:bg-orange-600 active:scale-[0.99] text-white font-bold transition-all shadow-xl shadow-orange-100 text-lg cursor-pointer"
                     >
-                      {t.goToDashboard}
+                      {t.done || (lang === "lo" ? "ສຳເລັດ" : "Done")}
                     </button>
                   </motion.div>
                 </motion.div>
