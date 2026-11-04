@@ -1384,12 +1384,10 @@ export default function EventDetails({
               {event.image && (
                 <div className="block lg:hidden w-full relative">
                   <div
-                    className="relative w-full aspect-square sm:aspect-[4/3] overflow-hidden rounded-t-3xl touch-pan-y select-none cursor-grab active:cursor-grabbing"
+                    className="relative w-full aspect-square sm:aspect-[4/3] overflow-hidden rounded-t-3xl touch-pan-y select-none cursor-grab active:cursor-grabbing bg-gray-50"
                     style={{
                       background: heroColors.background,
-                      backgroundColor: heroColors.dark,
-                      transition:
-                        "background 0.4s ease, background-color 0.4s ease",
+                      transition: "background 0.4s ease",
                     }}
                     onTouchStart={handleMobileTouchStart}
                     onTouchMove={handleMobileTouchMove}
@@ -1400,13 +1398,7 @@ export default function EventDetails({
                       src={galleryImages[activeImageIndex]}
                       alt=""
                       aria-hidden="true"
-                      className="absolute inset-0 w-full h-full object-cover blur-2xl scale-135 opacity-75 saturate-150 contrast-110 pointer-events-none"
-                    />
-                    <div
-                      className="absolute inset-0 pointer-events-none opacity-30"
-                      style={{
-                        background: `radial-gradient(circle at center, transparent 40%, ${heroColors.dark} 95%)`,
-                      }}
+                      className="absolute inset-0 w-full h-full object-cover blur-2xl scale-135 opacity-90 saturate-150 contrast-110 pointer-events-none"
                     />
                     <div className="absolute inset-0 flex items-center justify-center">
                       <AnimatePresence mode="wait">
@@ -1417,13 +1409,11 @@ export default function EventDetails({
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
                           transition={{ duration: 0.3, ease: "linear" }}
-                          className="relative z-10 w-full h-full object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.25)]"
+                          className="relative z-10 w-full h-full object-contain"
                           alt={event.title}
                         />
                       </AnimatePresence>
                     </div>
-                    {/* Subtle dark gradient overlay at top and bottom */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/40 pointer-events-none z-10" />
 
                     {/* Round White Back Button */}
                     <button
@@ -1554,12 +1544,10 @@ export default function EventDetails({
                     />
 
                     <div
-                      className="relative h-72 sm:h-[360px] md:h-[420px] lg:h-[460px] w-full cursor-zoom-in overflow-hidden rounded-3xl"
+                      className="relative h-72 sm:h-[360px] md:h-[420px] lg:h-[460px] w-full cursor-zoom-in overflow-hidden rounded-3xl bg-gray-50"
                       style={{
                         background: heroColors.background,
-                        backgroundColor: heroColors.dark,
-                        transition:
-                          "background 0.4s ease, background-color 0.4s ease",
+                        transition: "background 0.4s ease",
                       }}
                       onClick={() => setFullscreenImageIndex(activeImageIndex)}
                     >
@@ -1567,13 +1555,7 @@ export default function EventDetails({
                         src={galleryImages[activeImageIndex]}
                         alt=""
                         aria-hidden="true"
-                        className="absolute inset-0 w-full h-full object-cover blur-2xl scale-135 opacity-75 saturate-150 contrast-110 pointer-events-none"
-                      />
-                      <div
-                        className="absolute inset-0 pointer-events-none opacity-30"
-                        style={{
-                          background: `radial-gradient(circle at center, transparent 40%, ${heroColors.dark} 95%)`,
-                        }}
+                        className="absolute inset-0 w-full h-full object-cover blur-2xl scale-135 opacity-90 saturate-150 contrast-110 pointer-events-none"
                       />
                       <div className="absolute inset-0 flex items-center justify-center">
                         <AnimatePresence mode="wait">
@@ -1584,13 +1566,11 @@ export default function EventDetails({
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.3, ease: "linear" }}
-                            className="relative z-10 w-full h-full object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.25)]"
+                            className="relative z-10 w-full h-full object-contain"
                             alt={event.title}
                           />
                         </AnimatePresence>
                       </div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent pointer-events-none z-10" />
-                      <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent pointer-events-none z-10" />
 
                       {/* Left/Right Arrows on Hover */}
                       {galleryImages.length > 1 && (
