@@ -276,11 +276,11 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
           )}
 
           {/* White E-Ticket Card */}
-          <div className="relative w-full bg-white rounded-[24px] sm:rounded-[28px] text-gray-900 shadow-xl overflow-hidden px-3.5 sm:px-4 pt-3 pb-3 flex flex-col justify-start">
+          <div className="relative w-full bg-white rounded-[24px] sm:rounded-[28px] text-gray-900 shadow-xl overflow-visible px-3.5 sm:px-4 pt-3 pb-3.5 flex flex-col justify-start shrink-0">
             {/* Top Ticket Details */}
             <div className="w-full flex flex-col justify-start shrink-0">
               {/* Event Image Banner Header */}
-              <div className="w-full h-32 sm:h-36 rounded-xl sm:rounded-2xl overflow-hidden mb-2 sm:mb-2.5 shrink-0 bg-gray-100 shadow-2xs border border-gray-100">
+              <div className="w-full h-28 sm:h-32 rounded-xl sm:rounded-2xl overflow-hidden mb-2 sm:mb-2.5 shrink-0 bg-gray-100 shadow-2xs border border-gray-100">
                 <img 
                   src={ticket.event.image || '/pasopkan_logo.png'} 
                   alt={ticket.event.title} 
@@ -376,7 +376,7 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                     </span>
                   </div>
                 ) : (
-                  <div className="mb-2 text-xs font-medium text-gray-500 text-center">
+                  <div className="mb-1.5 text-xs font-medium text-gray-500 text-center">
                     {lang === 'lo' ? 'ສະແກນ QR ເພື່ອເຂົ້າງານ' : 'Scan to enter'}
                   </div>
                 )}
@@ -388,9 +388,9 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                   </div>
                 )}
 
-                <div className="relative bg-white rounded-2xl border border-gray-200 shadow-xs p-3 flex items-center justify-center overflow-hidden shrink-0 mx-auto">
+                <div className="relative bg-white rounded-2xl border border-gray-200 shadow-xs p-2.5 sm:p-3 flex items-center justify-center overflow-hidden shrink-0 mx-auto">
                   {isRefunded ? (
-                    <div className="w-[195px] h-[195px] sm:w-[210px] sm:h-[210px] flex flex-col items-center justify-center text-center p-2.5 bg-red-50/70 rounded-xl border-2 border-dashed border-red-300">
+                    <div className="w-[180px] h-[180px] sm:w-[195px] sm:h-[195px] flex flex-col items-center justify-center text-center p-2.5 bg-red-50/70 rounded-xl border-2 border-dashed border-red-300">
                       <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-1.5 shadow-inner">
                         <XCircle className="w-5 h-5 stroke-[2.5]" />
                       </div>
@@ -407,8 +407,8 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                     <>
                       <QRCodeSVG
                         value={currentTicketId}
-                        size={220}
-                        className={`w-[195px] h-[195px] sm:w-[210px] sm:h-[210px] transition-all duration-300 ${
+                        size={210}
+                        className={`w-[180px] h-[180px] sm:w-[195px] sm:h-[195px] transition-all duration-300 ${
                           isScanned || isExpired ? 'opacity-35 grayscale-[40%]' : 'opacity-100'
                         }`}
                         level="H"
@@ -464,7 +464,7 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
 
                 {/* Ticket Code Display under QR Code */}
                 {currentTicketId && (
-                  <div className="w-full mt-2.5 bg-[#F6F8FA] border border-[#E1E4E8] rounded-xl px-3 py-2 text-left shrink-0">
+                  <div className="w-full mt-2 bg-[#F6F8FA] border border-[#E1E4E8] rounded-xl px-3 py-1.5 text-left shrink-0">
                     <div className="flex items-start gap-1 text-[11px] sm:text-xs">
                       <span className="text-gray-400 font-medium shrink-0 leading-snug">
                         {lang === 'lo' ? 'ລະຫັດປີ້:' : 'Ticket Code:'}
@@ -477,53 +477,50 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
                 )}
               </div>
 
-              {/* Space under for ads: Dedicated ad banner area matching 800 x 160 px ratio */}
-              <div className="shrink-0 w-full mt-2.5 flex items-center justify-center">
-                {sponsorSettings?.isEnabled && (() => {
+              {/* Space under for ads: Dedicated ad banner area */}
+              <div className="shrink-0 w-full mt-2 sm:mt-2.5 flex items-center justify-center">
+                {(() => {
                   const resolvedAd = resolveTicketAd(sponsorSettings);
-                  if (resolvedAd.isDisplayed && resolvedAd.bannerUrl) {
-                    return (
-                      <div className="w-full h-11 sm:h-12 rounded-xl sm:rounded-2xl overflow-hidden bg-gray-50 border border-gray-200/80 shadow-2xs">
-                        {resolvedAd.websiteUrl ? (
-                          <a
-                            href={resolvedAd.websiteUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full h-full block relative group"
-                            title={resolvedAd.name}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <img 
-                              src={resolvedAd.bannerUrl} 
-                              alt={resolvedAd.name || 'Ad Banner'} 
-                              className="w-full h-full object-cover object-center rounded-xl sm:rounded-2xl group-hover:scale-[1.02] transition-transform duration-200" 
-                              referrerPolicy="no-referrer" 
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = '/Pasopkan ads.png';
-                              }}
-                            />
-                          </a>
-                        ) : (
+                  const bannerUrl = resolvedAd.bannerUrl || '/Pasopkan ads.png';
+                  const websiteUrl = resolvedAd.websiteUrl || (resolvedAd.status === 'default_fallback' ? undefined : 'https://pasopkan.com');
+                  const adName = resolvedAd.name || 'Pasopkan Sponsor Ad';
+
+                  return (
+                    <div className="w-full h-11 sm:h-12 rounded-xl sm:rounded-2xl overflow-hidden bg-gray-50 border border-gray-200/80 shadow-2xs">
+                      {websiteUrl ? (
+                        <a
+                          href={websiteUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full h-full block relative group"
+                          title={adName}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <img 
-                            src={resolvedAd.bannerUrl} 
-                            alt={resolvedAd.name || 'Ad Banner'} 
-                            className="w-full h-full object-cover object-center rounded-xl sm:rounded-2xl" 
+                            src={bannerUrl} 
+                            alt={adName} 
+                            className="w-full h-full object-cover object-center rounded-xl sm:rounded-2xl group-hover:scale-[1.02] transition-transform duration-200" 
                             referrerPolicy="no-referrer" 
-                            title={resolvedAd.name}
                             onError={(e) => {
                               (e.target as HTMLImageElement).src = '/Pasopkan ads.png';
                             }}
                           />
-                        )}
-                      </div>
-                    );
-                  }
-                  return null;
-                })() || (
-                  <div className="w-full h-11 sm:h-12 rounded-xl sm:rounded-2xl bg-[#FF7537] text-white flex items-center justify-center font-bold text-xs sm:text-sm shadow-xs select-none">
-                    {lang === 'lo' ? 'ພື້ນທີ່ ໂຄສະນາ 800 x 160 px' : 'Ad Banner Space 800 x 160 px'}
-                  </div>
-                )}
+                        </a>
+                      ) : (
+                        <img 
+                          src={bannerUrl} 
+                          alt={adName} 
+                          className="w-full h-full object-cover object-center rounded-xl sm:rounded-2xl" 
+                          referrerPolicy="no-referrer" 
+                          title={adName}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/Pasopkan ads.png';
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>
