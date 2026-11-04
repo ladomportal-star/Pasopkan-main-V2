@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
-  CheckCircle2,
   Clock,
   Globe2,
   KeyRound,
@@ -9,8 +8,6 @@ import {
   Phone,
   RotateCcw,
   ShieldCheck,
-  Sparkles,
-  TicketCheck,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -280,12 +277,6 @@ export default function Login({
               className="h-28 w-auto object-contain"
             />
           </Link>
-          <div className="mt-7 inline-flex items-center gap-2 rounded-full bg-orange-500/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-orange-600">
-            <Sparkles className="h-4 w-4" />
-            {lo
-              ? "ປະສົບການດີໆ ເລີ່ມຕົ້ນທີ່ນີ້"
-              : "Great experiences start here"}
-          </div>
           <h1
             className={`mt-6 max-w-2xl text-5xl font-black leading-[1.13] tracking-[-0.045em] xl:text-6xl ${dark ? "text-white" : "text-slate-950"}`}
           >
@@ -300,25 +291,6 @@ export default function Login({
               ? "ລວມກິດຈະກຳງານບຸນ ແລະ ປະສົບການທີ່ໜ້າຈົດຈຳທົ່ວປະເທດລາວ ໄວ້ໃນບ່ອນດຽວ."
               : "Events, festivals, and memorable experiences across Laos—carefully gathered in one place."}
           </p>
-          <div className="mt-9 grid max-w-xl gap-4 sm:grid-cols-3">
-            {[
-              [TicketCheck, lo ? "ປີ້ດິຈິຕອນ" : "Digital tickets"],
-              [ShieldCheck, lo ? "ປອດໄພ" : "Secure access"],
-              [CheckCircle2, lo ? "ໃຊ້ງານງ່າຍ" : "Easy booking"],
-            ].map(([Icon, label]) => (
-              <div
-                key={String(label)}
-                className={`rounded-2xl border p-4 ${dark ? "border-white/10 bg-white/[0.035]" : "border-white bg-white/70 shadow-sm"}`}
-              >
-                <Icon className="h-5 w-5 text-adv-orange" />
-                <p
-                  className={`mt-3 text-sm font-bold ${dark ? "text-zinc-200" : "text-slate-800"}`}
-                >
-                  {label as string}
-                </p>
-              </div>
-            ))}
-          </div>
         </motion.section>
 
         <motion.section
