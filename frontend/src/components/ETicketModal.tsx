@@ -276,22 +276,9 @@ export const ETicketModal: React.FC<ETicketModalProps> = ({
           )}
 
           {/* White E-Ticket Card */}
-          <div className="relative w-full bg-white rounded-[24px] sm:rounded-[28px] text-gray-900 shadow-xl overflow-visible px-3.5 sm:px-4 pt-3 pb-3.5 flex flex-col justify-start shrink-0">
+          <div className="relative w-full bg-white rounded-[24px] sm:rounded-[28px] text-gray-900 shadow-xl overflow-visible px-3.5 sm:px-4 pt-3.5 sm:pt-4 pb-3.5 flex flex-col justify-start shrink-0">
             {/* Top Ticket Details */}
             <div className="w-full flex flex-col justify-start shrink-0">
-              {/* Event Image Banner Header */}
-              <div className="w-full h-28 sm:h-32 rounded-xl sm:rounded-2xl overflow-hidden mb-2 sm:mb-2.5 shrink-0 bg-gray-100 shadow-2xs border border-gray-100">
-                <img 
-                  src={ticket.event.image || '/pasopkan_logo.png'} 
-                  alt={ticket.event.title} 
-                  className="w-full h-full object-cover object-center" 
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/pasopkan_logo.png';
-                  }}
-                />
-              </div>
-
               {/* Event Title */}
               <h1 className="text-base sm:text-lg font-bold text-gray-950 leading-snug tracking-tight mb-2 sm:mb-2.5 line-clamp-2">
                 {ticket.event.title}
