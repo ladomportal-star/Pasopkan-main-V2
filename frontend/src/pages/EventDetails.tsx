@@ -54,6 +54,8 @@ import {
   AlertCircle,
   ExternalLink,
   Video,
+  Mail,
+  Phone,
 } from "lucide-react";
 import { LaoEvent, TicketTier } from "../data/events";
 import { api } from "../lib/api";
@@ -1916,6 +1918,83 @@ export default function EventDetails({
                           : `${event.organizer || "ພັນທະມິດ Pasopkan"} ແມ່ນຜູ້ຈັດງານລະດັບພຣີມ່ຽມທີ່ໄດ້ຮັບການຢືນຢັນໃນ Pasopkan, ມຸ່ງໝັ້ນທີ່ຈະສ້າງສັນ ແລະ ນຳສະເໜີກິດຈະກຳວັດທະນະທຳ, ການຜະຈົນໄພ ແລະ ງານສັງຄົມ ທີ່ປອດໄພ ແລະ ໜ້າຈົດຈຳທີ່ສຸດໃນລາວ.`)}
                     </p>
                   </div>
+
+                  {/* Organizer Contact & Social Links */}
+                  {Boolean(
+                    event.organizerEmail ||
+                    event.organizerPhone ||
+                    event.organizerSocialLinks?.facebook ||
+                    event.organizerSocialLinks?.instagram ||
+                    event.organizerSocialLinks?.whatsapp ||
+                    event.organizerSocialLinks?.tiktok ||
+                    event.organizerSocialLinks?.website
+                  ) && (
+                    <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center gap-2">
+                      {event.organizerEmail && (
+                        <a
+                          href={`mailto:${event.organizerEmail}`}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 hover:bg-orange-50 text-gray-600 hover:text-adv-orange border border-gray-200/60 text-[11px] font-semibold transition-colors"
+                          title={event.organizerEmail}
+                        >
+                          <Mail className="w-3 h-3 text-adv-orange" />
+                          <span className="truncate max-w-[150px]">{event.organizerEmail}</span>
+                        </a>
+                      )}
+                      {event.organizerPhone && (
+                        <a
+                          href={`tel:${event.organizerPhone}`}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 hover:bg-orange-50 text-gray-600 hover:text-adv-orange border border-gray-200/60 text-[11px] font-semibold transition-colors"
+                        >
+                          <Phone className="w-3 h-3 text-adv-orange" />
+                          <span>{event.organizerPhone}</span>
+                        </a>
+                      )}
+                      {event.organizerSocialLinks?.facebook && (
+                        <a
+                          href={event.organizerSocialLinks.facebook.startsWith("http") ? event.organizerSocialLinks.facebook : `https://${event.organizerSocialLinks.facebook}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200/50 text-[11px] font-bold transition-colors"
+                        >
+                          <Facebook className="w-3 h-3" />
+                          <span>Facebook</span>
+                        </a>
+                      )}
+                      {event.organizerSocialLinks?.instagram && (
+                        <a
+                          href={event.organizerSocialLinks.instagram.startsWith("http") ? event.organizerSocialLinks.instagram : `https://instagram.com/${event.organizerSocialLinks.instagram.replace(/^@/, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-pink-50 hover:bg-pink-100 text-pink-600 border border-pink-200/50 text-[11px] font-bold transition-colors"
+                        >
+                          <Instagram className="w-3 h-3" />
+                          <span>Instagram</span>
+                        </a>
+                      )}
+                      {event.organizerSocialLinks?.whatsapp && (
+                        <a
+                          href={event.organizerSocialLinks.whatsapp.startsWith("http") ? event.organizerSocialLinks.whatsapp : `https://wa.me/${event.organizerSocialLinks.whatsapp.replace(/[^0-9]/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200/50 text-[11px] font-bold transition-colors"
+                        >
+                          <MessageSquare className="w-3 h-3" />
+                          <span>WhatsApp</span>
+                        </a>
+                      )}
+                      {event.organizerSocialLinks?.website && (
+                        <a
+                          href={event.organizerSocialLinks.website.startsWith("http") ? event.organizerSocialLinks.website : `https://${event.organizerSocialLinks.website}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200/60 text-[11px] font-bold transition-colors"
+                        >
+                          <Globe className="w-3 h-3 text-adv-orange" />
+                          <span>Website</span>
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -2521,6 +2600,83 @@ export default function EventDetails({
                         : `${event.organizer || "ພັນທະມິດ Pasopkan"} ແມ່ນຜູ້ຈັດງານລະດັບພຣີມ່ຽມທີ່ໄດ້ຮັບການຢືນຢັນໃນ Pasopkan, ມຸ່ງໝັ້ນທີ່ຈະສ້າງສັນ ແລະ ນຳສະເໜີກິດຈະກຳວັດທະນະທຳ, ການຜະຈົນໄພ ແລະ ງານສັງຄົມ ທີ່ປອດໄພ ແລະ ໜ້າຈົດຈຳທີ່ສຸດໃນລາວ.`)}
                   </p>
                 </div>
+
+                {/* Organizer Contact & Social Links */}
+                {Boolean(
+                  event.organizerEmail ||
+                  event.organizerPhone ||
+                  event.organizerSocialLinks?.facebook ||
+                  event.organizerSocialLinks?.instagram ||
+                  event.organizerSocialLinks?.whatsapp ||
+                  event.organizerSocialLinks?.tiktok ||
+                  event.organizerSocialLinks?.website
+                ) && (
+                  <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center gap-2">
+                    {event.organizerEmail && (
+                      <a
+                        href={`mailto:${event.organizerEmail}`}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 hover:bg-orange-50 text-gray-600 hover:text-adv-orange border border-gray-200/60 text-[11px] font-semibold transition-colors"
+                        title={event.organizerEmail}
+                      >
+                        <Mail className="w-3 h-3 text-adv-orange" />
+                        <span className="truncate max-w-[150px]">{event.organizerEmail}</span>
+                      </a>
+                    )}
+                    {event.organizerPhone && (
+                      <a
+                        href={`tel:${event.organizerPhone}`}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 hover:bg-orange-50 text-gray-600 hover:text-adv-orange border border-gray-200/60 text-[11px] font-semibold transition-colors"
+                      >
+                        <Phone className="w-3 h-3 text-adv-orange" />
+                        <span>{event.organizerPhone}</span>
+                      </a>
+                    )}
+                    {event.organizerSocialLinks?.facebook && (
+                      <a
+                        href={event.organizerSocialLinks.facebook.startsWith("http") ? event.organizerSocialLinks.facebook : `https://${event.organizerSocialLinks.facebook}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200/50 text-[11px] font-bold transition-colors"
+                      >
+                        <Facebook className="w-3 h-3" />
+                        <span>Facebook</span>
+                      </a>
+                    )}
+                    {event.organizerSocialLinks?.instagram && (
+                      <a
+                        href={event.organizerSocialLinks.instagram.startsWith("http") ? event.organizerSocialLinks.instagram : `https://instagram.com/${event.organizerSocialLinks.instagram.replace(/^@/, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-pink-50 hover:bg-pink-100 text-pink-600 border border-pink-200/50 text-[11px] font-bold transition-colors"
+                      >
+                        <Instagram className="w-3 h-3" />
+                        <span>Instagram</span>
+                      </a>
+                    )}
+                    {event.organizerSocialLinks?.whatsapp && (
+                      <a
+                        href={event.organizerSocialLinks.whatsapp.startsWith("http") ? event.organizerSocialLinks.whatsapp : `https://wa.me/${event.organizerSocialLinks.whatsapp.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200/50 text-[11px] font-bold transition-colors"
+                      >
+                        <MessageSquare className="w-3 h-3" />
+                        <span>WhatsApp</span>
+                      </a>
+                    )}
+                    {event.organizerSocialLinks?.website && (
+                      <a
+                        href={event.organizerSocialLinks.website.startsWith("http") ? event.organizerSocialLinks.website : `https://${event.organizerSocialLinks.website}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200/60 text-[11px] font-bold transition-colors"
+                      >
+                        <Globe className="w-3 h-3 text-adv-orange" />
+                        <span>Website</span>
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

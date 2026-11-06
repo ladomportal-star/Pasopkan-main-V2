@@ -46,6 +46,12 @@ import {
   Clock,
   Globe,
   ShieldAlert,
+  BarChart3,
+  Building2,
+  Facebook,
+  Instagram,
+  MessageSquare,
+  Share2,
 } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
@@ -479,6 +485,25 @@ export default function Account() {
     "profile" | "my-event" | "payouts"
   >((location.state as any)?.targetTab || "profile");
   const activeTab = organizerAccess ? requestedTab : "profile";
+
+  const [manageEventSubTab, setManageEventSubTab] = useState<
+    "overview" | "owner_profile"
+  >("overview");
+
+  // Event-specific Organizer Profile & Bio State
+  const [eventOrganizerName, setEventOrganizerName] = useState("");
+  const [eventOrganizerBio, setEventOrganizerBio] = useState("");
+  const [eventOrganizerLogo, setEventOrganizerLogo] = useState("");
+  const [eventOrganizerEmail, setEventOrganizerEmail] = useState("");
+  const [eventOrganizerPhone, setEventOrganizerPhone] = useState("");
+  const [eventFacebook, setEventFacebook] = useState("");
+  const [eventInstagram, setEventInstagram] = useState("");
+  const [eventWhatsapp, setEventWhatsapp] = useState("");
+  const [eventTiktok, setEventTiktok] = useState("");
+  const [eventWebsite, setEventWebsite] = useState("");
+  const [isSavingEventProfile, setIsSavingEventProfile] = useState(false);
+  const [eventLogoUploading, setEventLogoUploading] = useState(false);
+  const eventLogoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if ((location.state as any)?.targetTab) {
@@ -1263,6 +1288,136 @@ export default function Account() {
     }
   };
 
+  useEffect(() => {
+    if (!selectedEvent?.id) return;
+    const osl = (selectedEvent.organizerSocialLinks || {}) as Record<string, any>;
+    setEventOrganizerName(osl.eventOrganizerName || selectedEvent.organizer || "");
+    setEventOrganizerBio(
+      osl.eventOrganizerBio ||
+      osl.eventOrganizerInfo ||
+      selectedEvent.organizerBio ||
+      selectedEvent.organizerInfo ||
+      ""
+    );
+    setEventOrganizerLogo(osl.eventOrganizerLogo || selectedEvent.organizerLogo || "");
+    setEventOrganizerEmail(osl.eventOrganizerEmail || selectedEvent.organizerEmail || "");
+    setEventOrganizerPhone(
+      osl.eventOrganizerPhone ||
+      selectedEvent.organizerPhone ||
+      selectedEvent.organizerContact ||
+      ""
+    );
+    setEventFacebook(osl.facebook || "");
+    setEventInstagram(osl.instagram || "");
+    setEventWhatsapp(osl.whatsapp || "");
+    setEventTiktok(osl.tiktok || "");
+    setEventWebsite(osl.website || "");
+  }, [
+    selectedEvent?.id,
+    selectedEvent?.organizer,
+    selectedEvent?.organizerBio,
+    selectedEvent?.organizerInfo,
+    selectedEvent?.organizerLogo,
+    selectedEvent?.organizerEmail,
+    selectedEvent?.organizerPhone,
+    selectedEvent?.organizerContact,
+    selectedEvent?.organizerSocialLinks,
+  ]);
+
+  const handleEventLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setEventLogoUploading(true);
+    try {
+      const dataUrl = await prepareProfilePhoto(file);
+      setEventOrganizerLogo(dataUrl);
+      addToast(
+        lang === "lo"
+          ? "ເລືອກຮູບໂລໂກ້ແລ້ວ ກະລຸນາກົດບັນທຶກເພື່ອຢືນຢັນ"
+          : "Logo selected. Click save to apply changes.",
+        "info"
+      );
+    } catch (err) {
+      addToast(
+        err instanceof Error ? err.message : "Could not process image",
+        "error"
+      );
+    } finally {
+      setEventLogoUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleSaveEventProfile = async () => {
+    if (!selectedEvent?.id) return;
+    setIsSavingEventProfile(true);
+    try {
+      const updatedSocialLinks: Record<string, any> = {
+        ...((selectedEvent.organizerSocialLinks || {}) as Record<string, any>),
+        eventOrganizerName: eventOrganizerName.trim(),
+        eventOrganizerBio: eventOrganizerBio.trim(),
+        eventOrganizerLogo: eventOrganizerLogo,
+        eventOrganizerEmail: eventOrganizerEmail.trim(),
+        eventOrganizerPhone: eventOrganizerPhone.trim(),
+        facebook: eventFacebook.trim(),
+        instagram: eventInstagram.trim(),
+        whatsapp: eventWhatsapp.trim(),
+        tiktok: eventTiktok.trim(),
+        website: eventWebsite.trim(),
+      };
+
+      const payload = {
+        privateDetails: {
+          ...(selectedEvent.privateDetails || {}),
+          organizerSocialLinks: updatedSocialLinks,
+        },
+        organizer: {
+          name: eventOrganizerName.trim() || selectedEvent.organizer || "Organizer",
+          description: eventOrganizerBio.trim() || selectedEvent.organizerInfo || "",
+          logoUrl: eventOrganizerLogo || selectedEvent.organizerLogo || null,
+          contactEmail: eventOrganizerEmail.trim() || null,
+          contactPhone: eventOrganizerPhone.trim() || null,
+        },
+      };
+
+      const res = await api.updateEvent(String(selectedEvent.id), payload, { token });
+      if (!res.ok) {
+        throw new Error(res.error || "Failed to update event owner profile");
+      }
+
+      setMyEvents((prev) =>
+        prev.map((e) =>
+          String(e.id) === String(selectedEvent.id)
+            ? {
+                ...e,
+                organizer: eventOrganizerName.trim() || e.organizer,
+                organizerInfo: eventOrganizerBio.trim(),
+                organizerBio: eventOrganizerBio.trim(),
+                organizerLogo: eventOrganizerLogo,
+                organizerEmail: eventOrganizerEmail.trim(),
+                organizerPhone: eventOrganizerPhone.trim(),
+                organizerSocialLinks: updatedSocialLinks,
+              }
+            : e
+        )
+      );
+
+      addToast(
+        lang === "lo"
+          ? "ບັນທຶກໂປຣໄຟລ໌ ແລະ Bio ຂອງງານນີ້ສຳເລັດແລ້ວ!"
+          : "Event owner profile and bio saved successfully!",
+        "success"
+      );
+    } catch (err) {
+      addToast(
+        err instanceof Error ? err.message : "Failed to update profile",
+        "error"
+      );
+    } finally {
+      setIsSavingEventProfile(false);
+    }
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || isSavingProfilePhoto) return;
@@ -1671,21 +1826,64 @@ export default function Account() {
 
             {selectedEvent.id && (
               <>
-                <AccountMiniDashboard
-                  theme={theme}
-                  lang={lang}
-                  isSingleEvent={true}
-                  eventTitle={selectedEvent.title}
-                  totalAttendees={totalAttendeesCount}
-                  totalCheckedIn={checkedInCount}
-                  totalIncome={attendeeStats.totalIncomeKip}
-                  onNavigateToPayouts={() => {
-                    setActiveTab("payouts");
-                    window.scrollTo(0, 0);
-                  }}
-                />
+                {/* Event Management Sub-Tabs */}
+                <div className="flex items-center gap-2 border-b border-gray-150 dark:border-zinc-800 pb-3 mb-6 sm:mb-8 overflow-x-auto">
+                  <button
+                    type="button"
+                    onClick={() => setManageEventSubTab("overview")}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      manageEventSubTab === "overview"
+                        ? "bg-adv-orange text-white shadow-md shadow-orange-500/20"
+                        : theme === "dark"
+                          ? "bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800"
+                          : "bg-white text-gray-600 hover:text-adv-slate hover:bg-gray-100 shadow-xs border border-gray-200/60"
+                    }`}
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    <span>
+                      {lang === "lo"
+                        ? "ພາບລວມ ແລະ ການຈັດການ"
+                        : "Overview & Operations"}
+                    </span>
+                  </button>
 
-                <div className="space-y-6 sm:space-y-8">
+                  <button
+                    type="button"
+                    onClick={() => setManageEventSubTab("owner_profile")}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      manageEventSubTab === "owner_profile"
+                        ? "bg-adv-orange text-white shadow-md shadow-orange-500/20"
+                        : theme === "dark"
+                          ? "bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800"
+                          : "bg-white text-gray-600 hover:text-adv-slate hover:bg-gray-100 shadow-xs border border-gray-200/60"
+                    }`}
+                  >
+                    <User className="w-4 h-4" />
+                    <span>
+                      {lang === "lo"
+                        ? "ໂປຣໄຟລ໌ ແລະ Bio ຂອງງານນີ້"
+                        : "Owner Profile & Bio"}
+                    </span>
+                  </button>
+                </div>
+
+                {manageEventSubTab === "overview" && (
+                  <>
+                    <AccountMiniDashboard
+                      theme={theme}
+                      lang={lang}
+                      isSingleEvent={true}
+                      eventTitle={selectedEvent.title}
+                      totalAttendees={totalAttendeesCount}
+                      totalCheckedIn={checkedInCount}
+                      totalIncome={attendeeStats.totalIncomeKip}
+                      onNavigateToPayouts={() => {
+                        setActiveTab("payouts");
+                        window.scrollTo(0, 0);
+                      }}
+                    />
+
+                    <div className="space-y-6 sm:space-y-8">
                   {/* Event Card */}
                   <div
                     className={`rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm border p-4 sm:p-5 transition-all ${
@@ -2520,6 +2718,440 @@ export default function Account() {
                 </div>
               </>
             )}
+
+            {manageEventSubTab === "owner_profile" && (
+              <div className="space-y-6">
+                {/* Notice / Context card */}
+                <div
+                  className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl border flex items-start gap-3.5 transition-colors ${
+                    theme === "dark"
+                      ? "bg-zinc-900/70 border-zinc-800 text-zinc-300"
+                      : "bg-orange-50/60 border-orange-200/70 text-slate-700"
+                  }`}
+                >
+                  <div className="p-2 rounded-xl bg-adv-orange/10 text-adv-orange shrink-0 mt-0.5">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div className="space-y-1 text-xs sm:text-sm leading-relaxed">
+                    <h4 className="font-bold text-adv-slate dark:text-white text-sm sm:text-base">
+                      {lang === "lo"
+                        ? `ໂປຣໄຟລ໌ & Bio ສະເພາະສຳລັບງານ "${selectedEvent.title}"`
+                        : `Personal Profile & Bio for "${selectedEvent.title}"`}
+                    </h4>
+                    <p className="text-gray-500 dark:text-zinc-400">
+                      {lang === "lo"
+                        ? "ທຸກໆງານຂອງທ່ານຈະມີໂປຣໄຟລ໌, ໂລໂກ້, Bio ແລະ ຊ່ອງທາງຕິດຕໍ່ສະເພາະເປັນຂອງຕົນເອງ. ການປັບປຸງຂໍ້ມູນໃນໜ້ານີ້ຈະສະແດງສະເພາະໃນໜ້າລາຍລະອຽດຂອງງານນີ້ເທົ່ານັ້ນ ແລະ ບໍ່ກະທົບກັບງານອື່ນຂອງທ່ານ."
+                        : "Every event has its own independent owner profile, logo, bio, and contact channels. Updates made here apply directly to this event's public details page without affecting your other events."}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
+                  {/* Left: Edit Form (7 cols) */}
+                  <div
+                    className={`lg:col-span-7 rounded-2xl sm:rounded-3xl p-5 sm:p-7 border shadow-sm space-y-6 transition-all ${
+                      theme === "dark"
+                        ? "bg-zinc-900 border-zinc-800 text-white"
+                        : "bg-white border-gray-150 text-adv-slate"
+                    }`}
+                  >
+                    <div>
+                      <h3 className="text-base sm:text-lg font-bold">
+                        {lang === "lo"
+                          ? "ແກ້ໄຂຂໍ້ມູນໂປຣໄຟລ໌ ແລະ Bio"
+                          : "Edit Event Profile & Bio"}
+                      </h3>
+                      <p className="text-xs text-gray-400 font-medium mt-0.5">
+                        {lang === "lo"
+                          ? "ຂໍ້ມູນນີ້ຈະສະແດງໃນກ່ອງຜູ້ຈັດງານໃນໜ້າລາຍລະອຽດກິດຈະກຳ"
+                          : "This information is publicly presented in the host card on the event page."}
+                      </p>
+                    </div>
+
+                    {/* Event Organizer / Host Name */}
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+                        {lang === "lo" ? "ຊື່ຜູ້ຈັດງານ / ຍີ່ຫໍ້ (Host / Brand Name)" : "Host / Organizer Name"}
+                        <span className="text-adv-orange ml-1">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={eventOrganizerName}
+                        onChange={(e) => setEventOrganizerName(e.target.value)}
+                        placeholder={lang === "lo" ? "ຕົວຢ່າງ: Vang Vieng Rock Fest, Chef Somxay..." : "e.g. Vang Vieng Rock Fest, Chef Alex..."}
+                        className={`w-full px-4 py-3 rounded-xl border text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-colors ${
+                          theme === "dark"
+                            ? "bg-zinc-950 border-zinc-800 text-white focus:border-adv-orange"
+                            : "bg-white border-gray-200 text-adv-slate focus:border-adv-orange"
+                        }`}
+                      />
+                    </div>
+
+                    {/* Logo / Avatar Upload */}
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+                        {lang === "lo" ? "ຮູບໂປຣໄຟລ໌ / ໂລໂກ້ງານ (Logo / Avatar)" : "Event Host Logo / Avatar"}
+                      </label>
+                      <div className="flex flex-col sm:flex-row items-center gap-4">
+                        <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-gray-300 dark:border-zinc-700 overflow-hidden flex items-center justify-center shrink-0 bg-gray-50 dark:bg-zinc-950 shadow-inner relative group">
+                          {eventOrganizerLogo ? (
+                            <img
+                              src={eventOrganizerLogo}
+                              alt="Host Logo"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-tr from-adv-orange to-amber-500 flex items-center justify-center text-white font-black text-2xl">
+                              {(eventOrganizerName || selectedEvent.title || "P").charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex-1 space-y-2 text-center sm:text-left">
+                          <input
+                            ref={eventLogoInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleEventLogoUpload}
+                            className="hidden"
+                          />
+                          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                            <button
+                              type="button"
+                              onClick={() => eventLogoInputRef.current?.click()}
+                              disabled={eventLogoUploading}
+                              className="px-3.5 py-2 rounded-xl bg-adv-orange hover:bg-orange-600 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            >
+                              {eventLogoUploading ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Camera className="w-3.5 h-3.5" />
+                              )}
+                              <span>
+                                {eventOrganizerLogo
+                                  ? (lang === "lo" ? "ປ່ຽນຮູບໂລໂກ້" : "Change Logo")
+                                  : (lang === "lo" ? "ອັບໂຫຼດຮູບໂລໂກ້" : "Upload Logo")}
+                              </span>
+                            </button>
+                            {eventOrganizerLogo && (
+                              <button
+                                type="button"
+                                onClick={() => setEventOrganizerLogo("")}
+                                className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-600 dark:text-zinc-300 font-bold text-xs transition-colors cursor-pointer"
+                              >
+                                {lang === "lo" ? "ລຶບຮູບ" : "Remove"}
+                              </button>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-gray-400 font-medium">
+                            {lang === "lo"
+                              ? "ແນະນຳຂະໜາດ 1:1, ຮູບແບບ JPG, PNG, WEBP (ລະບົບຈະປັບຂະໜາດໃຫ້ເໝາະສົມອັດຕະໂນມັດ)"
+                              : "Recommended: Square 1:1 format (JPG, PNG, WEBP). System optimizes image automatically."}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bio / Description */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-400">
+                          {lang === "lo" ? "ຄຳອະທິບາຍ Bio ຂອງງານ (Event Bio / Story)" : "Event Host Bio / Description"}
+                        </label>
+                        <span className="text-[11px] text-gray-400 font-medium">
+                          {eventOrganizerBio.length} {lang === "lo" ? "ຕົວອັກສອນ" : "characters"}
+                        </span>
+                      </div>
+                      <textarea
+                        rows={4}
+                        value={eventOrganizerBio}
+                        onChange={(e) => setEventOrganizerBio(e.target.value)}
+                        placeholder={
+                          lang === "lo"
+                            ? "ແນະນຳກ່ຽວກັບຜູ້ຈັດງານ, ປະສົບການ, ຄວາມຕັ້ງໃຈ ຫຼື ເລື່ອງລາວຂອງງານນີ້..."
+                            : "Tell attendees about yourself, the team, experience, mission, or history behind this event..."
+                        }
+                        className={`w-full px-4 py-3 rounded-xl border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-colors leading-relaxed ${
+                          theme === "dark"
+                            ? "bg-zinc-950 border-zinc-800 text-white focus:border-adv-orange"
+                            : "bg-white border-gray-200 text-adv-slate focus:border-adv-orange"
+                        }`}
+                      />
+                    </div>
+
+                    {/* Contact Channels */}
+                    <div className="pt-2 border-t border-gray-100 dark:border-zinc-800">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+                        {lang === "lo" ? "ຊ່ອງທາງຕິດຕໍ່ໂດຍກົງ" : "Direct Contact Info"}
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-400 mb-1">
+                            {lang === "lo" ? "ອີເມວຕິດຕໍ່ (Email)" : "Contact Email"}
+                          </label>
+                          <div className="relative">
+                            <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            <input
+                              type="email"
+                              value={eventOrganizerEmail}
+                              onChange={(e) => setEventOrganizerEmail(e.target.value)}
+                              placeholder="host@example.com"
+                              className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-colors ${
+                                theme === "dark"
+                                  ? "bg-zinc-950 border-zinc-800 text-white focus:border-adv-orange"
+                                  : "bg-white border-gray-200 text-adv-slate focus:border-adv-orange"
+                              }`}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-400 mb-1">
+                            {lang === "lo" ? "ເບີໂທຕິດຕໍ່ (Phone)" : "Contact Phone"}
+                          </label>
+                          <div className="relative">
+                            <Phone className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            <input
+                              type="text"
+                              value={eventOrganizerPhone}
+                              onChange={(e) => setEventOrganizerPhone(e.target.value)}
+                              placeholder="+856 20 5555 1234"
+                              className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-colors ${
+                                theme === "dark"
+                                  ? "bg-zinc-950 border-zinc-800 text-white focus:border-adv-orange"
+                                  : "bg-white border-gray-200 text-adv-slate focus:border-adv-orange"
+                              }`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Social Links */}
+                    <div className="pt-2 border-t border-gray-100 dark:border-zinc-800">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+                        {lang === "lo" ? "ຊ່ອງທາງໂຊຊຽວມີເດຍ (Social Media)" : "Social Media & Website"}
+                      </h4>
+                      <div className="space-y-3">
+                        <div className="relative">
+                          <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 flex items-center justify-center absolute left-2 top-1/2 -translate-y-1/2">
+                            <Facebook className="w-4 h-4" />
+                          </div>
+                          <input
+                            type="text"
+                            value={eventFacebook}
+                            onChange={(e) => setEventFacebook(e.target.value)}
+                            placeholder="https://facebook.com/your-event-page"
+                            className={`w-full pl-12 pr-3 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-colors ${
+                              theme === "dark"
+                                ? "bg-zinc-950 border-zinc-800 text-white focus:border-adv-orange"
+                                : "bg-white border-gray-200 text-adv-slate focus:border-adv-orange"
+                            }`}
+                          />
+                        </div>
+
+                        <div className="relative">
+                          <div className="w-8 h-8 rounded-lg bg-pink-50 dark:bg-pink-950/40 text-pink-600 flex items-center justify-center absolute left-2 top-1/2 -translate-y-1/2">
+                            <Instagram className="w-4 h-4" />
+                          </div>
+                          <input
+                            type="text"
+                            value={eventInstagram}
+                            onChange={(e) => setEventInstagram(e.target.value)}
+                            placeholder="https://instagram.com/yourprofile or @username"
+                            className={`w-full pl-12 pr-3 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-colors ${
+                              theme === "dark"
+                                ? "bg-zinc-950 border-zinc-800 text-white focus:border-adv-orange"
+                                : "bg-white border-gray-200 text-adv-slate focus:border-adv-orange"
+                            }`}
+                          />
+                        </div>
+
+                        <div className="relative">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 flex items-center justify-center absolute left-2 top-1/2 -translate-y-1/2">
+                            <MessageSquare className="w-4 h-4" />
+                          </div>
+                          <input
+                            type="text"
+                            value={eventWhatsapp}
+                            onChange={(e) => setEventWhatsapp(e.target.value)}
+                            placeholder="WhatsApp (e.g. +856 20 5555 1234 or wa.me link)"
+                            className={`w-full pl-12 pr-3 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-colors ${
+                              theme === "dark"
+                                ? "bg-zinc-950 border-zinc-800 text-white focus:border-adv-orange"
+                                : "bg-white border-gray-200 text-adv-slate focus:border-adv-orange"
+                            }`}
+                          />
+                        </div>
+
+                        <div className="relative">
+                          <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center absolute left-2 top-1/2 -translate-y-1/2">
+                            <Share2 className="w-4 h-4" />
+                          </div>
+                          <input
+                            type="text"
+                            value={eventTiktok}
+                            onChange={(e) => setEventTiktok(e.target.value)}
+                            placeholder="TikTok profile / @username"
+                            className={`w-full pl-12 pr-3 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-colors ${
+                              theme === "dark"
+                                ? "bg-zinc-950 border-zinc-800 text-white focus:border-adv-orange"
+                                : "bg-white border-gray-200 text-adv-slate focus:border-adv-orange"
+                            }`}
+                          />
+                        </div>
+
+                        <div className="relative">
+                          <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 flex items-center justify-center absolute left-2 top-1/2 -translate-y-1/2">
+                            <Globe className="w-4 h-4 text-adv-orange" />
+                          </div>
+                          <input
+                            type="text"
+                            value={eventWebsite}
+                            onChange={(e) => setEventWebsite(e.target.value)}
+                            placeholder="https://yourwebsite.com"
+                            className={`w-full pl-12 pr-3 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-adv-orange/30 transition-colors ${
+                              theme === "dark"
+                                ? "bg-zinc-950 border-zinc-800 text-white focus:border-adv-orange"
+                                : "bg-white border-gray-200 text-adv-slate focus:border-adv-orange"
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Submit Action */}
+                    <div className="pt-3">
+                      <button
+                        type="button"
+                        onClick={handleSaveEventProfile}
+                        disabled={isSavingEventProfile}
+                        className="w-full py-3.5 px-6 rounded-2xl bg-adv-orange hover:bg-orange-600 text-white font-bold text-sm shadow-md shadow-orange-500/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                      >
+                        {isSavingEventProfile ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4" />
+                        )}
+                        <span>
+                          {lang === "lo"
+                            ? "ບັນທຶກໂປຣໄຟລ໌ ແລະ Bio ຂອງງານນີ້"
+                            : "Save Event Profile & Bio"}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Right: Live Preview (5 cols) */}
+                  <div className="lg:col-span-5 space-y-3 sticky top-24">
+                    <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider px-1">
+                      <Eye className="w-3.5 h-3.5 text-adv-orange" />
+                      <span>
+                        {lang === "lo"
+                          ? "ຕົວຢ່າງການສະແດງຜົນໃນໜ້າກິດຈະກຳ"
+                          : "Live Event Details Preview"}
+                      </span>
+                    </div>
+
+                    {/* Preview Card matching EventDetails */}
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200/80 text-adv-slate space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
+                          {eventOrganizerLogo ? (
+                            <img
+                              src={eventOrganizerLogo}
+                              alt="Preview"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-tr from-adv-orange to-amber-500 flex items-center justify-center text-white font-black text-sm">
+                              {(eventOrganizerName || selectedEvent.title || "P").charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
+                              {lang === "lo" ? "ຜູ້ຈັດກິດຈະກຳ" : "Event Organizer"}
+                            </span>
+                            <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-emerald-50 text-[8px] font-extrabold text-emerald-600 border border-emerald-100/30">
+                              <ShieldCheck className="w-2.5 h-2.5 shrink-0" />
+                              {lang === "lo" ? "ຢືນຢັນແລ້ວ" : "VERIFIED"}
+                            </span>
+                          </div>
+                          <h3 className="font-bold text-adv-slate text-sm">
+                            {eventOrganizerName || (lang === "lo" ? "ຊື່ຜູ້ຈັດງານ" : "Organizer Name")}
+                          </h3>
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-gray-100 space-y-2.5">
+                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                          <Building2 className="w-3.5 h-3.5 text-adv-orange" />
+                          <span>
+                            {lang === "lo" ? "ກ່ຽວກັບຜູ້ຈັດງານ / Bio" : "About Organizer / Bio"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 leading-relaxed font-medium bg-gray-50/80 rounded-xl p-3.5 border border-gray-100 whitespace-pre-line">
+                          {eventOrganizerBio || (lang === "lo"
+                            ? "ຄຳອະທິບາຍ Bio ຂອງຜູ້ຈັດງານຈະສະແດງຢູ່ບ່ອນນີ້..."
+                            : "Organizer bio and background story will appear here...")}
+                        </p>
+                      </div>
+
+                      {/* Contact badges preview */}
+                      {(eventOrganizerEmail ||
+                        eventOrganizerPhone ||
+                        eventFacebook ||
+                        eventInstagram ||
+                        eventWhatsapp ||
+                        eventWebsite) && (
+                        <div className="pt-2 border-t border-gray-100 flex flex-wrap items-center gap-1.5">
+                          {eventOrganizerEmail && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-gray-50 text-gray-600 border border-gray-200/60 text-[10px] font-semibold">
+                              <Mail className="w-2.5 h-2.5 text-adv-orange" />
+                              <span className="truncate max-w-[120px]">{eventOrganizerEmail}</span>
+                            </span>
+                          )}
+                          {eventOrganizerPhone && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-gray-50 text-gray-600 border border-gray-200/60 text-[10px] font-semibold">
+                              <Phone className="w-2.5 h-2.5 text-adv-orange" />
+                              <span>{eventOrganizerPhone}</span>
+                            </span>
+                          )}
+                          {eventFacebook && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-200/50 text-[10px] font-bold">
+                              <Facebook className="w-2.5 h-2.5" />
+                              <span>Facebook</span>
+                            </span>
+                          )}
+                          {eventInstagram && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-pink-50 text-pink-600 border border-pink-200/50 text-[10px] font-bold">
+                              <Instagram className="w-2.5 h-2.5" />
+                              <span>Instagram</span>
+                            </span>
+                          )}
+                          {eventWhatsapp && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200/50 text-[10px] font-bold">
+                              <MessageSquare className="w-2.5 h-2.5" />
+                              <span>WhatsApp</span>
+                            </span>
+                          )}
+                          {eventWebsite && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-gray-50 text-gray-700 border border-gray-200/60 text-[10px] font-bold">
+                              <Globe className="w-2.5 h-2.5 text-adv-orange" />
+                              <span>Website</span>
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
           </div>
         )}
 

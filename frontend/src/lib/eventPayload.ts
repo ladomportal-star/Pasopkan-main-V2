@@ -102,7 +102,14 @@ export function toEventPayload(e: FeEvent): Record<string, unknown> {
         saleStartDate: t.saleStartDate, saleEndDate: t.saleEndDate,
         saleStartTime: t.saleStartTime, saleEndTime: t.saleEndTime,
       })),
-      organizerSocialLinks: e.organizerSocialLinks ?? {},
+      organizerSocialLinks: {
+        ...(typeof e.organizerSocialLinks === "object" ? e.organizerSocialLinks : {}),
+        ...(e.eventOrganizerName ? { eventOrganizerName: str(e.eventOrganizerName) } : {}),
+        ...(e.eventOrganizerBio ? { eventOrganizerBio: str(e.eventOrganizerBio) } : {}),
+        ...(e.eventOrganizerLogo ? { eventOrganizerLogo: str(canonicalImage(e.eventOrganizerLogo)) } : {}),
+        ...(e.eventOrganizerEmail ? { eventOrganizerEmail: str(e.eventOrganizerEmail) } : {}),
+        ...(e.eventOrganizerPhone ? { eventOrganizerPhone: str(e.eventOrganizerPhone) } : {}),
+      },
     },
 
     organizer: e.organizer
@@ -166,7 +173,14 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
   };
   for (const key of ['coverImageUrl', 'zoneImageUrl']) remember(e[key], e[key + 'Display']);
   (e.galleryUrls ?? []).forEach((ref: string, i: number) => remember(ref, e.galleryUrlsDisplay?.[i]));
-  remember(e.organizer?.logoUrl, e.organizer?.logoUrlDisplay);
+  const osl = (e.organizerSocialLinks ?? e.privateDetails?.organizerSocialLinks ?? {}) as Record<string, any>;
+  remember(osl.eventOrganizerLogo, osl.eventOrganizerLogoDisplay);
+
+  const eventOrganizerName = osl.eventOrganizerName || e.organizer?.name || "";
+  const eventOrganizerBio = osl.eventOrganizerBio || osl.eventOrganizerInfo || e.organizer?.description || "";
+  const eventOrganizerLogo = osl.eventOrganizerLogoDisplay || osl.eventOrganizerLogo || e.organizer?.logoUrlDisplay || e.organizer?.logoUrl || "";
+  const eventOrganizerEmail = osl.eventOrganizerEmail || e.organizer?.contactEmail || "";
+  const eventOrganizerPhone = osl.eventOrganizerPhone || e.organizer?.contactPhone || "";
   const availableDates = (e.dates ?? []).map((d: BackendEvent) => ({
     date: day(d.date) ?? "",
     startTime: d.startTime ?? "",
@@ -214,7 +228,12 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
     onlineMeetingUrl: e.privateDetails?.onlineMeetingUrl ?? "",
     onlinePasscode: e.privateDetails?.onlinePasscode ?? "",
     onlineInstructions: e.privateDetails?.onlineInstructions ?? "",
-    organizerSocialLinks: e.privateDetails?.organizerSocialLinks ?? {},
+    organizerSocialLinks: osl,
+    eventOrganizerName,
+    eventOrganizerBio,
+    eventOrganizerLogo,
+    eventOrganizerEmail,
+    eventOrganizerPhone,
 
     venue: e.venueName ?? "",
     location: e.addressText ?? "",
@@ -237,12 +256,13 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
     requireEveryTicketInfo: !!e.requireEveryTicketInfo,
     maxTickets: e.maxTicketsPerOrder == null ? "unlimited" : String(e.maxTicketsPerOrder),
 
-    organizer: e.organizer?.name,
-    organizerInfo: e.organizer?.description,
-    organizerEmail: e.organizer?.contactEmail,
-    organizerPhone: e.organizer?.contactPhone,
-    organizerContact: e.organizer?.contactPhone,
-    organizerLogo: e.organizer?.logoUrlDisplay ?? e.organizer?.logoUrl,
+    organizer: eventOrganizerName || e.organizer?.name,
+    organizerInfo: eventOrganizerBio || e.organizer?.description,
+    organizerBio: eventOrganizerBio || e.organizer?.description,
+    organizerEmail: eventOrganizerEmail || e.organizer?.contactEmail,
+    organizerPhone: eventOrganizerPhone || e.organizer?.contactPhone,
+    organizerContact: eventOrganizerPhone || e.organizer?.contactPhone,
+    organizerLogo: eventOrganizerLogo || e.organizer?.logoUrlDisplay || e.organizer?.logoUrl,
     organizerId: e.organizerId,
 
     ticketTiers: (e.tiers ?? []).map((t: BackendEvent, index: number) => ({

@@ -160,7 +160,7 @@ export const createEventBody = z.object({
       bookingSlotCapacities: z.record(z.string(), z.coerce.number().int().nonnegative()).nullish(),
       attendeeQuestions: attendeeQuestionsSchema.nullish(),
       ticketSaleWindows: z.array(z.record(z.string(), z.unknown())).max(100).nullish(),
-      organizerSocialLinks: z.record(z.string(), z.string().max(2000)).nullish(),
+      organizerSocialLinks: z.record(z.string(), z.string().max(50000)).nullish(),
     })
     .optional(),
 

@@ -1,4 +1,4 @@
-const imageFields = new Set(['avatarUrl', 'coverImageUrl', 'zoneImageUrl', 'logoUrl']);
+const imageFields = new Set(['avatarUrl', 'coverImageUrl', 'zoneImageUrl', 'logoUrl', 'eventOrganizerLogo']);
 type Upload = (data: string, visibility: 'public' | 'private') => Promise<string>;
 type Resolve = (reference: string) => Promise<string>;
 

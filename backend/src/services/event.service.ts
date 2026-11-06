@@ -16,7 +16,12 @@ const ownerInclude = { ...publicInclude, privateDetails: true } as const;
 const registrationInclude = {
   ...publicInclude,
   privateDetails: {
-    select: { attendeeQuestions: true, ticketSaleWindows: true, bookingSlotCapacities: true },
+    select: {
+      attendeeQuestions: true,
+      ticketSaleWindows: true,
+      bookingSlotCapacities: true,
+      organizerSocialLinks: true,
+    },
   },
 } as const;
 function publicRegistration<
@@ -25,6 +30,7 @@ function publicRegistration<
       attendeeQuestions: unknown;
       ticketSaleWindows: unknown;
       bookingSlotCapacities: unknown;
+      organizerSocialLinks?: unknown;
     } | null;
   },
 >(event: T) {
@@ -34,6 +40,7 @@ function publicRegistration<
     attendeeQuestions: registrationQuestions(privateDetails?.attendeeQuestions),
     ticketSaleWindows: privateDetails?.ticketSaleWindows ?? [],
     bookingSlotCapacities: privateDetails?.bookingSlotCapacities ?? {},
+    organizerSocialLinks: privateDetails?.organizerSocialLinks ?? {},
   };
 }
 const publicStates = ["published", "sold_out", "completed"] as const;
@@ -95,7 +102,13 @@ export async function createEvent(body: CreateEventBody, uid: string) {
   if (body.rejectionReason)
     throw new HttpError(400, "Review reasons cannot be set when creating events");
   assertMediaReferences(
-    [body.coverImageUrl, body.galleryUrls, body.zoneImageUrl, body.organizer?.logoUrl],
+    [
+      body.coverImageUrl,
+      body.galleryUrls,
+      body.zoneImageUrl,
+      body.organizer?.logoUrl,
+      body.privateDetails?.organizerSocialLinks?.eventOrganizerLogo,
+    ],
     uid,
     "public",
   );
@@ -152,7 +165,13 @@ export async function createEvent(body: CreateEventBody, uid: string) {
 }
 export async function updateEvent(ref: string, patch: UpdateEventBody, uid: string) {
   assertMediaReferences(
-    [patch.coverImageUrl, patch.galleryUrls, patch.zoneImageUrl, patch.organizer?.logoUrl],
+    [
+      patch.coverImageUrl,
+      patch.galleryUrls,
+      patch.zoneImageUrl,
+      patch.organizer?.logoUrl,
+      patch.privateDetails?.organizerSocialLinks?.eventOrganizerLogo,
+    ],
     uid,
     "public",
   );
@@ -165,7 +184,8 @@ export async function updateEvent(ref: string, patch: UpdateEventBody, uid: stri
   ]);
   const submitting =
     actorRole?.role === "organizer" &&
-    (patch.status === "pending_review" || currentEvent?.status === "published");
+    patch.status === "pending_review" &&
+    currentEvent?.status !== "pending_review";
   if (submitting && !actorRole?.organizerTermsAcceptedAt && !patch.termsAccepted)
     throw new HttpError(400, "Accept the organizer terms before submitting an event");
   const otp = submitting ? await validateSubmissionOtp(uid, patch.submissionOtp) : null;
@@ -191,7 +211,8 @@ export async function updateEvent(ref: string, patch: UpdateEventBody, uid: stri
       });
     if (
       actor.role === "organizer" &&
-      (patch.status === "pending_review" || event.status === "published") &&
+      patch.status === "pending_review" &&
+      event.status !== "pending_review" &&
       !otp
     )
       throw new HttpError(403, "Event submission requires a fresh phone OTP");
@@ -219,7 +240,9 @@ export async function updateEvent(ref: string, patch: UpdateEventBody, uid: stri
     const data = columns(patch);
     if (patch.status === "published" || patch.status === "pending_review")
       Object.assign(data, { rejectionReason: null });
-    if (actor.role !== "admin" && event.status === "published") data.status = "pending_review";
+    if (actor.role !== "admin" && event.status === "published" && patch.status === "pending_review") {
+      data.status = "pending_review";
+    }
     await tx.event.update({ where: { id: event.id }, data });
     if (patch.tiers !== undefined) await tx.ticketTier.deleteMany({ where: { eventId: event.id } });
     if (patch.dates !== undefined) await tx.eventDate.deleteMany({ where: { eventId: event.id } });
