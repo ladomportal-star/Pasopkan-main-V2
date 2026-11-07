@@ -1934,13 +1934,91 @@ export default function Account() {
                         <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-2.5 sm:gap-5 text-sm sm:text-base text-gray-500 dark:text-gray-400 font-semibold">
                           <span className="flex items-center gap-1.5 sm:gap-2">
                             <CalendarIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-adv-orange shrink-0" />
-                            {selectedEvent.dateType === "booking"
-                              ? `${formatEventDateDDMMYYYY(selectedEvent.bookingStartDate || selectedEvent.date)} to ${selectedEvent.bookingEndDate ? formatEventDateDDMMYYYY(selectedEvent.bookingEndDate) : "Ongoing"} • Daily Sessions`
-                              : formatEventDateDDMMYYYY(selectedEvent.date)}
+                            {(() => {
+                              // Booking experience
+                              if (selectedEvent.dateType === "booking") {
+                                const start = formatEventDateDDMMYYYY(
+                                  selectedEvent.bookingStartDate || selectedEvent.date || selectedEvent.startDate
+                                );
+                                const end = formatEventDateDDMMYYYY(
+                                  selectedEvent.bookingEndDate || selectedEvent.endDate
+                                );
+                                if (start && end && start !== end) {
+                                  return `${start} - ${end} • Daily Sessions`;
+                                }
+                                if (start) {
+                                  return `${start} • Daily Sessions`;
+                                }
+                                if (
+                                  Array.isArray(selectedEvent.bookingAvailableDays) &&
+                                  selectedEvent.bookingAvailableDays.length > 0
+                                ) {
+                                  return `${lang === "lo" ? "ເປີດໃຫ້ຈອງ" : "Open for booking"}: ${selectedEvent.bookingAvailableDays.join(", ")}`;
+                                }
+                                return lang === "lo"
+                                  ? "ກິດຈະກຳແບບຈອງລາຍວັນ"
+                                  : "Booking Experience";
+                              }
+
+                              // Flexible dates
+                              if (selectedEvent.dateType === "flexible") {
+                                if (selectedEvent.flexibleDateDesc?.trim()) {
+                                  return selectedEvent.flexibleDateDesc.trim();
+                                }
+                                const firstAvailable = selectedEvent.availableDates?.find(
+                                  (d: any) => d?.date
+                                )?.date;
+                                const lastAvailable = selectedEvent.availableDates
+                                  ?.slice()
+                                  .reverse()
+                                  .find((d: any) => d?.date)?.date;
+                                const start = formatEventDateDDMMYYYY(
+                                  selectedEvent.date || selectedEvent.startDate || firstAvailable
+                                );
+                                const end = formatEventDateDDMMYYYY(
+                                  selectedEvent.endDate || lastAvailable
+                                );
+                                if (start && end && start !== end) {
+                                  return `${start} - ${end}`;
+                                }
+                                if (start) return start;
+                                return lang === "lo"
+                                  ? "ວັນທີຍືດຫຍຸ່ນ / ເປີດບໍລິການທຸກມື້"
+                                  : "Flexible Dates / Open Daily";
+                              }
+
+                              // Fixed date
+                              const start = formatEventDateDDMMYYYY(
+                                selectedEvent.date || selectedEvent.startDate || selectedEvent.availableDates?.[0]?.date
+                              );
+                              const end = formatEventDateDDMMYYYY(
+                                selectedEvent.endDate || selectedEvent.availableDates?.at(-1)?.date
+                              );
+                              if (start && end && start !== end) {
+                                return `${start} - ${end}`;
+                              }
+                              if (start) return start;
+                              return lang === "lo"
+                                ? "ລໍຖ້າປະກາດວັນທີ"
+                                : "Date to be announced";
+                            })()}
                           </span>
                           <span className="flex items-center gap-1.5 sm:gap-2">
                             <MapPin className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-adv-orange shrink-0" />{" "}
-                            {selectedEvent.location}
+                            {selectedEvent.location ||
+                              selectedEvent.venue ||
+                              [
+                                selectedEvent.venue,
+                                selectedEvent.district,
+                                selectedEvent.province,
+                              ]
+                                .filter(Boolean)
+                                .join(", ") ||
+                              selectedEvent.addressText ||
+                              selectedEvent.province ||
+                              (lang === "lo"
+                                ? "ບໍ່ມີຂໍ້ມູນສະຖານທີ່"
+                                : "Location not specified")}
                           </span>
                         </div>
                       </div>

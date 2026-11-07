@@ -61,14 +61,14 @@ export function toEventPayload(e: FeEvent): Record<string, unknown> {
     status: toStatus(e.status),
 
     dateType,
-    startDate: calendarDates[0] ?? day(e.date) ?? day(e.startDate) ?? null,
+    startDate: calendarDates[0] ?? day(e.date) ?? day(e.startDate) ?? day(e.bookingStartDate) ?? null,
     startTime: str(sessions[0]?.startTime) ?? (dateType === "booking" ? str(e.bookingTimeSlots?.[0]) : undefined) ?? str(e.time) ?? str(e.startTime) ?? null,
-    endDate: calendarDates.at(-1) ?? day(e.endDate) ?? null,
+    endDate: calendarDates.at(-1) ?? day(e.endDate) ?? day(e.bookingEndDate) ?? null,
     endTime: str(sessions.at(-1)?.endTime) ?? str(e.endTime) ?? null,
     flexibleDateDesc: dateType === "flexible" ? str(e.flexibleDateDesc) ?? null : null,
 
-    venueName: str(e.venue) ?? str(e.venueName),
-    addressText: str(e.location) ?? str(e.streetAddress),
+    venueName: str(e.venue) ?? str(e.venueName) ?? null,
+    addressText: str(e.addressText) ?? str(e.location) ?? str(e.streetAddress) ?? null,
     province: str(e.province),
     district: str(e.district),
     latitude: e.latitude === "" || e.latitude == null ? undefined : Number(e.latitude),
@@ -188,6 +188,25 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
     timeSlots: d.timeSlots ?? [],
   }));
 
+  const sortedDates = availableDates
+    .map((d: any) => d.date)
+    .filter(Boolean)
+    .sort();
+
+  const rawStartDate = day(e.startDate) || sortedDates[0] || day(e.date) || "";
+  const rawEndDate = day(e.endDate) || sortedDates.at(-1) || day(e.endDate) || "";
+
+  const venue = e.venueName ?? e.venue ?? "";
+  const addressText = e.addressText ?? "";
+  const province = e.province ?? "";
+  const district = e.district ?? "";
+  const resolvedLocation =
+    addressText ||
+    [venue, district, province].filter(Boolean).join(", ") ||
+    venue ||
+    province ||
+    "";
+
   return {
     id: e.id,
     mediaReferences,
@@ -205,15 +224,23 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
     status: e.status,
 
     dateType: e.dateType,
-    date: day(e.startDate) ?? "",
+    date: rawStartDate,
+    startDate: rawStartDate,
+    endDate: rawEndDate,
+    bookingStartDate: rawStartDate,
+    bookingEndDate: rawEndDate,
     time: e.startTime,
-    endDate: day(e.endDate) ?? "",
     endTime: e.endTime,
-    flexibleDateDesc: e.flexibleDateDesc,
+    flexibleDateDesc: e.flexibleDateDesc ?? "",
     availableDates,
     hasTimeSelection: availableDates.some((d: FeEvent) => !!d.startTime),
     timeSlots: Array.from(new Set(availableDates.flatMap((d: FeEvent) => d.timeSlots))),
-    bookingAvailableDays: e.dateType === "booking" ? availableDates.map((d: FeEvent) => d.date) : [],
+    bookingAvailableDays:
+      e.dateType === "booking"
+        ? (Array.isArray(e.bookingAvailableDays) && e.bookingAvailableDays.length
+            ? e.bookingAvailableDays
+            : (sortedDates.length > 0 ? sortedDates : (rawStartDate ? [rawStartDate] : [])))
+        : [],
     bookingTimeSlots:
       e.dateType === "booking" ? Array.from(new Set(availableDates.flatMap((d: FeEvent) => d.timeSlots))) : [],
     bookingSlotCapacities:
@@ -235,10 +262,11 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
     eventOrganizerEmail,
     eventOrganizerPhone,
 
-    venue: e.venueName ?? "",
-    location: e.addressText ?? "",
-    province: e.province,
-    district: e.district,
+    venue,
+    location: resolvedLocation,
+    addressText,
+    province,
+    district,
     latitude: e.latitude ?? undefined,
     longitude: e.longitude ?? undefined,
     googleMapUrl: e.googleMapUrl,
