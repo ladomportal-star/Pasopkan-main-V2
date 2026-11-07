@@ -206,3 +206,92 @@ export const laosDistricts: Record<string, { id: string, name: string, nameLo: s
 export const getDistrictsForProvince = (provinceId: string) => {
   return laosDistricts[provinceId] || [];
 };
+
+export function formatLocationDisplay(
+  location?: {
+    venue?: string | null;
+    venueName?: string | null;
+    location?: string | null;
+    addressText?: string | null;
+    province?: string | null;
+    district?: string | null;
+  } | null,
+  lang: "lo" | "en" = "lo"
+): string {
+  if (!location) return "";
+
+  const provinceVal = location.province?.trim() || "";
+  const districtVal = location.district?.trim() || "";
+
+  // 1. Resolve province name
+  const pOpt = laosProvinces.find(
+    (p) =>
+      p.id.toLowerCase() === provinceVal.toLowerCase() ||
+      p.name.toLowerCase() === provinceVal.toLowerCase() ||
+      p.nameLo === provinceVal
+  );
+  const provinceName = pOpt ? (lang === "lo" ? pOpt.nameLo : pOpt.name) : provinceVal;
+
+  // 2. Resolve district name
+  let dOpt: { id: string; name: string; nameLo: string } | undefined;
+  if (pOpt) {
+    dOpt = getDistrictsForProvince(pOpt.id).find(
+      (d) =>
+        d.id.toLowerCase() === districtVal.toLowerCase() ||
+        d.name.toLowerCase() === districtVal.toLowerCase() ||
+        d.nameLo === districtVal
+    );
+  }
+  if (!dOpt && districtVal) {
+    for (const distList of Object.values(laosDistricts)) {
+      const match = distList.find(
+        (d) =>
+          d.id.toLowerCase() === districtVal.toLowerCase() ||
+          d.name.toLowerCase() === districtVal.toLowerCase() ||
+          d.nameLo === districtVal
+      );
+      if (match) {
+        dOpt = match;
+        break;
+      }
+    }
+  }
+
+  const districtRawName = dOpt ? (lang === "lo" ? dOpt.nameLo : dOpt.name) : districtVal;
+  const districtName = districtRawName
+    ? lang === "lo"
+      ? (districtRawName.startsWith("ເມືອງ") ? districtRawName : `ເມືອງ${districtRawName}`)
+      : (districtRawName.toLowerCase().includes("district") ? districtRawName : `${districtRawName} District`)
+    : "";
+
+  const venueName = (location.venue || location.venueName)?.trim() || "";
+  const specificAddress = (location.addressText || location.location)?.trim() || "";
+
+  // Parts to assemble
+  const parts: string[] = [];
+
+  if (venueName) {
+    parts.push(venueName);
+  } else if (
+    specificAddress &&
+    specificAddress !== districtRawName &&
+    specificAddress !== provinceName
+  ) {
+    parts.push(specificAddress);
+  }
+
+  if (districtName) {
+    parts.push(districtName);
+  }
+
+  if (provinceName && provinceName !== venueName) {
+    parts.push(provinceName);
+  }
+
+  if (parts.length > 0) {
+    return parts.join(", ");
+  }
+
+  if (specificAddress) return specificAddress;
+  return lang === "lo" ? "ລາວ" : "Laos";
+}

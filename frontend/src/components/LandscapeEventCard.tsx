@@ -5,6 +5,7 @@ import { Calendar, MapPin, ArrowRight, Gauge, Layers, Clock, Flame } from 'lucid
 import { LaoEvent, getEventStatus } from '../data/events';
 import { useLanguage } from '../context/LanguageContext';
 import { formatEventDateDDMMYYYY } from '../lib/dateFormat';
+import { formatLocationDisplay } from '../lib/laosLocations';
 
 const translations = {
   en: {
@@ -167,7 +168,7 @@ const LandscapeEventCard: React.FC<LandscapeEventCardProps> = ({ event, index, u
         <div className="flex flex-col gap-1.5 mb-2.5 min-h-[46px] sm:min-h-[50px] justify-start">
           <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200/60 w-fit max-w-full">
             <MapPin className="w-3 h-3 text-adv-orange shrink-0" />
-            <span className="truncate">{event.venue || event.location}</span>
+            <span className="truncate">{formatLocationDisplay(event, lang as "lo" | "en") || event.venue || event.location}</span>
           </div>
 
           {dateBadge ? (

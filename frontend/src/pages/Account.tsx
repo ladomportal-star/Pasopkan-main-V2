@@ -68,6 +68,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { LaoEvent, Coupon } from "../data/events";
 import { fromBackendEvent, toEventPayload } from "../lib/eventPayload";
 import { formatEventDateDDMMYYYY } from "../lib/dateFormat";
+import { formatLocationDisplay } from "../lib/laosLocations";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
@@ -2005,17 +2006,9 @@ export default function Account() {
                           </span>
                           <span className="flex items-center gap-1.5 sm:gap-2">
                             <MapPin className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-adv-orange shrink-0" />{" "}
-                            {selectedEvent.location ||
+                            {formatLocationDisplay(selectedEvent, lang as "lo" | "en") ||
+                              selectedEvent.location ||
                               selectedEvent.venue ||
-                              [
-                                selectedEvent.venue,
-                                selectedEvent.district,
-                                selectedEvent.province,
-                              ]
-                                .filter(Boolean)
-                                .join(", ") ||
-                              selectedEvent.addressText ||
-                              selectedEvent.province ||
                               (lang === "lo"
                                 ? "ບໍ່ມີຂໍ້ມູນສະຖານທີ່"
                                 : "Location not specified")}

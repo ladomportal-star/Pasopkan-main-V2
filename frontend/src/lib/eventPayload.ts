@@ -4,6 +4,8 @@
 // every page component already renders, so wiring a page to the real API is
 // a data-source swap, not a rewrite.
 
+import { formatLocationDisplay } from "./laosLocations";
+
 const CATEGORIES = ["Sports", "Workshop", "Festival", "Voucher", "Other"] as const;
 type Category = (typeof CATEGORIES)[number];
 
@@ -201,8 +203,8 @@ export function fromBackendEvent(e: BackendEvent): FeEvent {
   const province = e.province ?? "";
   const district = e.district ?? "";
   const resolvedLocation =
+    formatLocationDisplay({ venue, addressText, province, district }, "lo") ||
     addressText ||
-    [venue, district, province].filter(Boolean).join(", ") ||
     venue ||
     province ||
     "";

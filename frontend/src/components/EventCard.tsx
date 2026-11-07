@@ -5,6 +5,7 @@ import { Calendar, MapPin, ArrowRight, Clock } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { LaoEvent } from '../data/events';
 import { formatEventDateDDMMYYYY } from '../lib/dateFormat';
+import { formatLocationDisplay } from '../lib/laosLocations';
 
 interface EventCardProps {
   key?: React.Key;
@@ -162,7 +163,7 @@ export default function EventCard({ event, index = 0, userCoords }: EventCardPro
         <div className="flex flex-col gap-1.5 mb-2.5">
           <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200/60 w-fit max-w-full">
             <MapPin className="w-3 h-3 text-adv-orange shrink-0" />
-            <span className="truncate">{event.venue || event.location}</span>
+            <span className="truncate">{formatLocationDisplay(event, lang as "lo" | "en") || event.venue || event.location}</span>
           </div>
 
           {dateBadge && (
