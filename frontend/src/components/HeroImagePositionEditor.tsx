@@ -22,12 +22,12 @@ interface HeroImagePositionEditorProps {
 }
 
 /**
- * Frames that mirror the homepage hero box (Home.tsx):
- * - desktop (lg+): ~1184px wide x 1080px tall
- * - mobile: ~350px wide x 220px tall
+ * Frames that mirror the homepage hero box as it actually renders (Home.tsx).
+ * Measured: desktop (lg+, landscape) is 1184px x 260px - the `landscape:h-[260px]`
+ * rule overrides `lg:h-[1080px]` on desktop screens; phone portrait is 350px x 220px.
  */
 const FRAME_CLASS: Record<HeroPreviewMode, string> = {
-  desktop: 'w-full max-w-[560px] aspect-[1184/1080] rounded-[2rem]',
+  desktop: 'w-full aspect-[1184/260] rounded-[2rem]',
   mobile: 'w-full max-w-[320px] aspect-[350/220] rounded-[1.5rem]',
 };
 
