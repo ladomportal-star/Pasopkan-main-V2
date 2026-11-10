@@ -128,7 +128,6 @@ export default function AdminRefunds({
   const [viewing, setViewing] = useState<AdminRefundItem | null>(null);
   const [creating, setCreating] = useState(false);
   const [newReference, setNewReference] = useState("");
-  const [newAmount, setNewAmount] = useState("");
   const [newReason, setNewReason] = useState("");
 
   const authOptions = useMemo(() => ({ token, throwOnError: true as const }), [token]);
@@ -244,6 +243,8 @@ export default function AdminRefunds({
       onUpdated?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not sync PhaJay refund");
+      // A PhaJay rejection marks the refund as failed on the server; refresh to show it.
+      await load().catch(() => undefined);
     } finally {
       setBusyKey("");
     }
@@ -281,11 +282,6 @@ export default function AdminRefunds({
       setError("ກະລຸນາປ້ອນລະຫັດ Order/ປີ້ ແລະເຫດຜົນ");
       return;
     }
-    const parsedAmount = newAmount.trim() ? Number(newAmount.trim()) : undefined;
-    if (parsedAmount !== undefined && (!Number.isInteger(parsedAmount) || parsedAmount <= 0)) {
-      setError("ຍອດເງິນຄືນຕ້ອງເປັນຕົວເລກຈຳນວນເຕັມທີ່ຫຼາຍກວ່າ 0");
-      return;
-    }
     setBusyKey("create");
     setError("");
     setMessage("");
@@ -294,14 +290,12 @@ export default function AdminRefunds({
         "/admin/refunds",
         {
           reference: newReference.trim(),
-          amountKip: parsedAmount,
           reason: newReason.trim(),
         },
         authOptions,
       );
       setCreating(false);
       setNewReference("");
-      setNewAmount("");
       setNewReason("");
       setMessage("ສ້າງລາຍການຄືນເງິນໃໝ່ສຳເລັດ");
       await load();
@@ -699,7 +693,7 @@ export default function AdminRefunds({
                               </button>
                             </>
                           )}
-                          {refund.status === "approved" &&
+                          {(refund.status === "approved" || refund.status === "failed") &&
                             Boolean(refund.payment.providerTransactionId) && (
                               <button
                                 type="button"
@@ -708,12 +702,13 @@ export default function AdminRefunds({
                                 onClick={() => void handleProviderRefundAction(refund, "execute")}
                                 className="rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1 text-[11px] font-black text-orange-600 hover:bg-orange-100 disabled:opacity-50"
                               >
-                                ໂອນຄືນ PhaJay
+                                {refund.status === "failed" ? "ລອງໃໝ່ PhaJay" : "ໂອນຄືນ PhaJay"}
                               </button>
                             )}
                           {(refund.status === "processing" ||
                             Boolean(refund.providerRefundId)) &&
-                            refund.status !== "succeeded" && (
+                            refund.status !== "succeeded" &&
+                            refund.status !== "failed" && (
                               <button
                                 type="button"
                                 title="ກວດສະຖານະການຄືນເງິນຈາກ PhaJay"
@@ -812,7 +807,7 @@ export default function AdminRefunds({
               </div>
             </div>
             <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-6 py-4">
-              {viewing.status === "approved" &&
+              {(viewing.status === "approved" || viewing.status === "failed") &&
                 Boolean(viewing.payment.providerTransactionId) && (
                   <button
                     type="button"
@@ -824,12 +819,13 @@ export default function AdminRefunds({
                     }}
                     className="rounded-xl bg-adv-orange px-4 py-2 text-xs font-black text-white"
                   >
-                    ສົ່ງຄືນເງິນຜ່ານ PhaJay
+                    {viewing.status === "failed" ? "ລອງສົ່ງຄືນເງິນໃໝ່" : "ສົ່ງຄືນເງິນຜ່ານ PhaJay"}
                   </button>
                 )}
               {(viewing.status === "processing" ||
                 Boolean(viewing.providerRefundId)) &&
-                viewing.status !== "succeeded" && (
+                viewing.status !== "succeeded" &&
+                viewing.status !== "failed" && (
                   <button
                     type="button"
                     disabled={Boolean(busyKey)}
@@ -920,20 +916,9 @@ export default function AdminRefunds({
                   className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-orange-400"
                 />
               </label>
-              <label className="block">
-                <span className="text-xs font-bold text-slate-700">
-                  ຍອດເງິນຄືນ (ກີບ - ປະຫວ່າງໄວ້ເພື່ອຄືນເຕັມຈຳນວນ)
-                </span>
-                <input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={newAmount}
-                  onChange={(event) => setNewAmount(event.target.value)}
-                  placeholder="ເຊັ່ນ 150000"
-                  className="mt-1.5 w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-orange-400"
-                />
-              </label>
+              <p className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs font-semibold text-amber-800">
+                PhaJay ຮອງຮັບສະເພາະການຄືນເງິນເຕັມຈຳນວນ — ລະບົບຈະຄືນຍອດທີ່ຊຳລະທັງໝົດຂອງ Order ນີ້.
+              </p>
               <label className="block">
                 <span className="text-xs font-bold text-slate-700">ເຫດຜົນການຄືນເງິນ *</span>
                 <textarea

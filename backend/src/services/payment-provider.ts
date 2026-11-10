@@ -1,4 +1,13 @@
 import type { IncomingHttpHeaders } from "node:http";
+import { HttpError } from "../middlewares/error.middleware.ts";
+
+/** The provider answered and definitively refused the request (HTTP 4xx).
+ * Unlike timeouts or 5xx responses, no money can have moved. */
+export class PaymentProviderRejectedError extends HttpError {
+  constructor(message: string) {
+    super(502, message);
+  }
+}
 
 export type PaymentCheckoutMethod =
   "bcel" | "ldb" | "jdb" | "ib" | "stb" | "apb" | "m-money" | "credit_card" | "payment_link";

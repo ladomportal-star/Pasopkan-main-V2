@@ -205,6 +205,11 @@ export async function approveRefund(uid: string, id: string) {
     });
     if (refund.status !== "pending_approval") throw new HttpError(409, "Refund already reviewed");
     if (refund.payment.state !== "completed") throw new HttpError(409, "Payment is not settled");
+    if (refund.amountKip !== refund.payment.amountKip)
+      throw new HttpError(
+        422,
+        "PhaJay only supports full refunds. Reject this partial refund and create a full one instead.",
+      );
     const reserved = await tx.refund.aggregate({
       where: {
         paymentId: refund.paymentId,
@@ -309,12 +314,15 @@ export async function createAdminRefund(
       },
       _sum: { amountKip: true },
     });
-    const remaining = payment.amountKip - (reserved._sum.amountKip ?? 0);
-    if (remaining <= 0)
-      throw new HttpError(409, "This payment already has a full refund requested or approved");
-    const amountKip = input.amountKip ?? remaining;
-    if (!Number.isSafeInteger(amountKip) || amountKip <= 0 || amountKip > remaining)
-      throw new HttpError(409, "Refund amount exceeds remaining paid amount");
+    if ((reserved._sum.amountKip ?? 0) > 0)
+      throw new HttpError(409, "This payment already has a refund requested or approved");
+    // PhaJay refunds the whole transaction, so only full refunds can be executed.
+    const amountKip = payment.amountKip;
+    if (input.amountKip !== undefined && input.amountKip !== amountKip)
+      throw new HttpError(
+        422,
+        `PhaJay only supports full refunds. The refund amount must be ${amountKip} ${payment.currency}.`,
+      );
     const refund = await tx.refund.create({
       data: {
         paymentId: payment.id,

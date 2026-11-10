@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { HttpError } from "../middlewares/error.middleware.ts";
+import { PaymentProviderRejectedError } from "./payment-provider.ts";
 import type {
   PaymentCheckoutMethod,
   PaymentProvider,
@@ -77,6 +78,8 @@ export class PhajayProvider implements PaymentProvider {
     if (!response.ok) {
       const message =
         asString(payload.message) || asString(payload.error) || "PhaJay request failed";
+      if (response.status >= 400 && response.status < 500)
+        throw new PaymentProviderRejectedError(message);
       throw new HttpError(502, message);
     }
     return payload;

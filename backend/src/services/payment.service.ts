@@ -3,7 +3,11 @@ import { db } from "../config/database.ts";
 import { env } from "../config/env.ts";
 import { HttpError } from "../middlewares/error.middleware.ts";
 import { createNotification } from "./notification.service.ts";
-import type { PaymentCheckoutMethod, PaymentProvider } from "./payment-provider.ts";
+import {
+  PaymentProviderRejectedError,
+  type PaymentCheckoutMethod,
+  type PaymentProvider,
+} from "./payment-provider.ts";
 import { PhajayProvider } from "./phajay-provider.ts";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -209,24 +213,48 @@ class PaymentService {
     if (!refund) throw new HttpError(404, "Refund not found");
     if (refund.status === "succeeded") return refund;
     if (refund.status === "processing") return refund;
-    if (refund.status !== "approved") throw new HttpError(409, "Refund is not approved");
+    // A failed refund can be retried: PhaJay confirmed it did not move the money.
+    if (refund.status !== "approved" && refund.status !== "failed")
+      throw new HttpError(409, "Refund is not approved");
+    const isRetry = refund.status === "failed";
     if (!refund.payment.providerTransactionId)
       throw new HttpError(409, "Payment has no provider transaction ID");
     if (refund.amountKip !== refund.payment.amountKip)
       throw new HttpError(422, "PhaJay only supports a full transaction refund");
     const claimed = await db.refund.updateMany({
-      where: { id: refund.id, status: "approved" },
+      where: { id: refund.id, status: refund.status },
       data: { status: "processing" },
     });
     if (claimed.count !== 1) throw new HttpError(409, "Refund execution is already in progress");
     // If the provider received the request but its response is lost, this stays
     // in processing. That fail-safe prevents a duplicate money movement.
-    const result = await provider.refund({
-      transactionId: refund.payment.providerTransactionId,
-      amountKip: refund.amountKip,
-      currency: refund.currency,
-      idempotencyKey: refund.idempotencyKey,
-    });
+    let result: Awaited<ReturnType<PaymentProvider["refund"]>>;
+    try {
+      result = await provider.refund({
+        transactionId: refund.payment.providerTransactionId,
+        amountKip: refund.amountKip,
+        currency: refund.currency,
+        idempotencyKey: refund.idempotencyKey,
+      });
+    } catch (error) {
+      // PhaJay explicitly refused the request, so nothing was refunded and the
+      // admin can safely retry once the cause is fixed.
+      if (error instanceof PaymentProviderRejectedError) {
+        await db.$transaction([
+          db.refund.update({ where: { id: refund.id }, data: { status: "failed" } }),
+          db.auditLog.create({
+            data: {
+              actorId: actor.id,
+              action: "refund.provider_rejected",
+              entityType: "Refund",
+              entityId: refund.id,
+              metadata: { message: error.message, retry: isRetry },
+            },
+          }),
+        ]);
+      }
+      throw error;
+    }
     return db.$transaction(async (tx) => {
       const updated = await tx.refund.update({
         where: { id: refund.id },
@@ -238,7 +266,7 @@ class PaymentService {
           action: "refund.submitted_to_provider",
           entityType: "Refund",
           entityId: refund.id,
-          metadata: { providerRefundId: result.refundId, status: result.status },
+          metadata: { providerRefundId: result.refundId, status: result.status, retry: isRetry },
         },
       });
       return updated;
