@@ -147,6 +147,18 @@ function formatActionAndDetails(log: AdminAuditLogItem): {
         actionLabel: "Refund rejected",
         details: target,
       };
+    case "refund.marked_manual": {
+      const ref = typeof meta.reference === "string" ? meta.reference : "";
+      return {
+        actionLabel: "Refund paid manually",
+        details: ref ? `${target} (${ref})` : target,
+      };
+    }
+    case "refund.provider_rejected":
+      return {
+        actionLabel: "PhaJay refund rejected",
+        details: target,
+      };
     case "refund.created":
       return {
         actionLabel: "Refund created",

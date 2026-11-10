@@ -284,6 +284,70 @@ export async function rejectRefund(uid: string, id: string) {
   });
 }
 
+/** Records a refund that an admin paid back outside PhaJay (e.g. bank transfer),
+ * typically because the payment has no PhaJay transaction to refund. */
+export async function markRefundPaidManually(
+  uid: string,
+  id: string,
+  input: { reference: string; note?: string },
+) {
+  return db.$transaction(async (tx) => {
+    const admin = await tx.user.findUnique({ where: { authId: uid } });
+    if (admin?.role !== "admin") throw new HttpError(403, "Admins only");
+    const initial = await tx.refund.findUnique({ where: { id } });
+    if (!initial) throw new HttpError(404, "Refund not found");
+    await tx.$queryRaw`SELECT id FROM "Payment" WHERE id = ${initial.paymentId}::uuid FOR UPDATE`;
+    const refund = await tx.refund.findUniqueOrThrow({
+      where: { id },
+      include: { payment: { include: { order: { include: { user: true } } } } },
+    });
+    // Only approved refunds, or ones PhaJay confirmed it did not pay, can be settled
+    // by hand. "processing" may still be moving money at PhaJay.
+    if (refund.status !== "approved" && refund.status !== "failed")
+      throw new HttpError(409, "Only approved or failed refunds can be marked as refunded manually");
+    const result = await tx.refund.update({
+      where: { id },
+      data: { status: "succeeded" },
+    });
+    await tx.payment.update({ where: { id: refund.paymentId }, data: { state: "refunded" } });
+    await tx.order.update({
+      where: { id: refund.payment.orderId },
+      data: { status: "refunded" },
+    });
+    await tx.orderItem.updateMany({
+      where: { orderId: refund.payment.orderId },
+      data: { status: "refunded" },
+    });
+    await createNotification(
+      refund.payment.order.user.authId,
+      {
+        type: "ticket",
+        title: "Refund completed",
+        titleLo: "ການຄືນເງິນສຳເລັດແລ້ວ",
+        message: `Your refund for ${refund.payment.order.eventTitle} (${refund.payment.order.orderNumber}) has been paid.`,
+        messageLo: `ການຄືນເງິນສຳລັບ ${refund.payment.order.eventTitle} (${refund.payment.order.orderNumber}) ໄດ້ໂອນຄືນແລ້ວ.`,
+        data: { orderId: refund.payment.orderId, refundId: refund.id },
+      },
+      tx,
+    );
+    await tx.auditLog.create({
+      data: {
+        actorId: admin.id,
+        action: "refund.marked_manual",
+        entityType: "Refund",
+        entityId: id,
+        metadata: {
+          reference: input.reference.trim(),
+          note: input.note?.trim() || null,
+          previousStatus: refund.status,
+          amountKip: refund.amountKip,
+        },
+      },
+    });
+    return result;
+  });
+}
+
 export async function createAdminRefund(
   uid: string,
   input: { reference: string; amountKip?: number; reason: string },

@@ -18,6 +18,7 @@ import {
   approveRefund,
   rejectRefund,
   createAdminRefund,
+  markRefundPaidManually,
 } from "../services/moderation.service.ts";
 import { INITIAL_BLOG_POSTS, type BlogPost } from "../data/defaultBlogs.ts";
 import { paymentService } from "../services/payment.service.ts";
@@ -1043,6 +1044,24 @@ router.post(
     res.json({
       refund: await paymentService.executeApprovedRefund(req.params.id, req.user!.uid),
       providerExecution: "submitted",
+    });
+  },
+);
+router.post(
+  "/admin/refunds/:id/mark-manual",
+  requireAuth,
+  requireAdmin,
+  validate({
+    params: id,
+    body: z.object({
+      reference: z.string().trim().min(1).max(160),
+      note: z.string().trim().max(500).optional(),
+    }),
+  }),
+  async (req, res) => {
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json({
+      refund: await markRefundPaidManually(req.user!.uid, req.params.id, req.body),
     });
   },
 );

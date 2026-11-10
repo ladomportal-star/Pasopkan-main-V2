@@ -129,6 +129,14 @@ export default function AdminRefunds({
   const [creating, setCreating] = useState(false);
   const [newReference, setNewReference] = useState("");
   const [newReason, setNewReason] = useState("");
+  const [manualReference, setManualReference] = useState("");
+  const [manualNote, setManualNote] = useState("");
+
+  // Never carry a transfer reference over to a different refund.
+  useEffect(() => {
+    setManualReference("");
+    setManualNote("");
+  }, [viewing?.id]);
 
   const authOptions = useMemo(() => ({ token, throwOnError: true as const }), [token]);
 
@@ -245,6 +253,36 @@ export default function AdminRefunds({
       setError(err instanceof Error ? err.message : "Could not sync PhaJay refund");
       // A PhaJay rejection marks the refund as failed on the server; refresh to show it.
       await load().catch(() => undefined);
+    } finally {
+      setBusyKey("");
+    }
+  }
+
+  async function handleMarkManual(refund: AdminRefundItem) {
+    if (!manualReference.trim()) {
+      setError("ກະລຸນາປ້ອນເລກອ້າງອີງການໂອນເງິນ");
+      return;
+    }
+    setBusyKey(`manual:${refund.id}`);
+    setError("");
+    setMessage("");
+    try {
+      await api.post(
+        `/admin/refunds/${refund.id}/mark-manual`,
+        {
+          reference: manualReference.trim(),
+          ...(manualNote.trim() ? { note: manualNote.trim() } : {}),
+        },
+        authOptions,
+      );
+      setMessage("ບັນທຶກການຄືນເງິນດ້ວຍຕົນເອງສຳເລັດ");
+      setViewing(null);
+      setManualReference("");
+      setManualNote("");
+      await load();
+      onUpdated?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not record manual refund");
     } finally {
       setBusyKey("");
     }
@@ -694,6 +732,17 @@ export default function AdminRefunds({
                             </>
                           )}
                           {(refund.status === "approved" || refund.status === "failed") &&
+                            !refund.payment.providerTransactionId && (
+                              <button
+                                type="button"
+                                title="ບໍ່ມີທຸລະກຳ PhaJay — ຄືນເງິນດ້ວຍຕົນເອງ"
+                                onClick={() => setViewing(refund)}
+                                className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-black text-slate-700 hover:bg-slate-100"
+                              >
+                                ຄືນເງິນດ້ວຍຕົນເອງ
+                              </button>
+                            )}
+                          {(refund.status === "approved" || refund.status === "failed") &&
                             Boolean(refund.payment.providerTransactionId) && (
                               <button
                                 type="button"
@@ -806,6 +855,40 @@ export default function AdminRefunds({
                 </p>
               </div>
             </div>
+            {(viewing.status === "approved" || viewing.status === "failed") && (
+              <div className="space-y-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
+                <div>
+                  <p className="text-xs font-black text-slate-800">ຄືນເງິນດ້ວຍຕົນເອງ (ໂອນທະນາຄານ)</p>
+                  <p className="mt-0.5 text-[11px] text-slate-500">
+                    {viewing.payment.providerTransactionId
+                      ? "ໃຊ້ເມື່ອໂອນຄືນຜ່ານ PhaJay ບໍ່ໄດ້ ແລະ ທ່ານໄດ້ໂອນເງິນຄືນໃຫ້ລູກຄ້າເອງແລ້ວ."
+                      : "ລາຍການນີ້ບໍ່ມີທຸລະກຳ PhaJay — ໂອນເງິນຄືນໃຫ້ລູກຄ້າເອງ ແລ້ວບັນທຶກເລກອ້າງອີງຢູ່ນີ້."}
+                  </p>
+                </div>
+                <input
+                  value={manualReference}
+                  onChange={(event) => setManualReference(event.target.value)}
+                  maxLength={160}
+                  placeholder="ເລກອ້າງອີງການໂອນ *"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-orange-400"
+                />
+                <input
+                  value={manualNote}
+                  onChange={(event) => setManualNote(event.target.value)}
+                  maxLength={500}
+                  placeholder="ໝາຍເຫດ (ບໍ່ບັງຄັບ)"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-orange-400"
+                />
+                <button
+                  type="button"
+                  disabled={Boolean(busyKey) || !manualReference.trim()}
+                  onClick={() => void handleMarkManual(viewing)}
+                  className="w-full rounded-xl bg-slate-900 px-4 py-2 text-xs font-black text-white disabled:opacity-50"
+                >
+                  {busyKey === `manual:${viewing.id}` ? "ກຳລັງບັນທຶກ..." : "ຢືນຢັນວ່າໄດ້ຄືນເງິນແລ້ວ"}
+                </button>
+              </div>
+            )}
             <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-6 py-4">
               {(viewing.status === "approved" || viewing.status === "failed") &&
                 Boolean(viewing.payment.providerTransactionId) && (
