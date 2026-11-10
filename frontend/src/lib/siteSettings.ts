@@ -100,6 +100,34 @@ export interface HeroSlide {
   title_en?: string;
 
   title_lo?: string;
+
+  /** Focal point (0-100 %, CSS object-position) on desktop screens (lg and up). */
+  desktopPosition?: HeroImagePosition;
+
+  /** Focal point (0-100 %, CSS object-position) on phones and tablets. */
+  mobilePosition?: HeroImagePosition;
+}
+
+export interface HeroImagePosition {
+  x: number;
+  y: number;
+}
+
+export const DEFAULT_HERO_IMAGE_POSITION: HeroImagePosition = { x: 50, y: 50 };
+
+/** Clamp a stored position to a valid 0-100 % object-position value. */
+export function normalizeHeroImagePosition(value: unknown): HeroImagePosition {
+  const source = (value ?? {}) as Partial<HeroImagePosition>;
+  const clamp = (n: unknown) =>
+    typeof n === 'number' && Number.isFinite(n)
+      ? Math.min(100, Math.max(0, Math.round(n * 10) / 10))
+      : 50;
+  return { x: clamp(source.x), y: clamp(source.y) };
+}
+
+export function heroObjectPosition(value: unknown): string {
+  const { x, y } = normalizeHeroImagePosition(value);
+  return `${x}% ${y}%`;
 }
 
 export interface HomeHeroSettings {

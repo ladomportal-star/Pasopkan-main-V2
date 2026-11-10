@@ -69,6 +69,7 @@ import {
   PrivacySection,
   HomeHeroSettings,
   HeroSlide,
+  HeroImagePosition,
   TicketSponsorSettings,
   SponsorItem,
   DEFAULT_HOME_HERO_SETTINGS,
@@ -84,6 +85,7 @@ import {
   TermIconOption
 } from '../lib/termIcons';
 import { compressImage } from '../lib/imageCompression';
+import HeroImagePositionEditor, { type HeroPreviewMode } from './HeroImagePositionEditor';
 import { api } from '../lib/api';
 import { formatEventDateDDMMYYYY } from '../lib/dateFormat';
 
@@ -130,6 +132,7 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
   // Form States
   const [homeHeroForm, setHomeHeroForm] = useState<HomeHeroSettings | null>(null);
   const [previewSlideIdx, setPreviewSlideIdx] = useState<number>(0);
+  const [heroPreviewMode, setHeroPreviewMode] = useState<HeroPreviewMode>('desktop');
   const [ticketSponsorsForm, setTicketSponsorsForm] = useState<TicketSponsorSettings | null>(null);
   const [ticketPreview, setTicketPreview] = useState<TicketPreview | null>(null);
   const [ticketPreviewLoading, setTicketPreviewLoading] = useState(true);
@@ -312,6 +315,18 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
     setHomeHeroForm({
       ...homeHeroForm,
       slides: newSlides
+    });
+  };
+
+  const updateHeroSlidePosition = (index: number, mode: HeroPreviewMode, position: HeroImagePosition) => {
+    setHomeHeroForm((prev) => {
+      if (!prev || !prev.slides[index]) return prev;
+      const newSlides = [...prev.slides];
+      newSlides[index] = {
+        ...newSlides[index],
+        [mode === 'desktop' ? 'desktopPosition' : 'mobilePosition']: position,
+      };
+      return { ...prev, slides: newSlides };
     });
   };
 
@@ -991,23 +1006,16 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                 </div>
               </div>
 
-              <div className="relative h-48 sm:h-64 md:h-72 w-full flex flex-col items-center justify-center text-center p-6 overflow-hidden">
-                {/* Background image preview */}
-                {homeHeroForm.slides[previewSlideIdx]?.imageUrl ? (
-                  <img
-                    src={homeHeroForm.slides[previewSlideIdx].imageUrl}
-                    alt="Preview"
-                    className="absolute inset-0 w-full h-full object-cover transition-all duration-700"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  <div className="absolute inset-0 bg-gradient-to-tr from-slate-900 to-slate-800 flex items-center justify-center text-gray-500 text-xs font-bold">
-                    No image URL specified
-                  </div>
-                )}
-
+              <div className="p-4 sm:p-6">
+                <HeroImagePositionEditor
+                  lang={lang}
+                  imageUrl={homeHeroForm.slides[previewSlideIdx]?.imageUrl ?? ''}
+                  mode={heroPreviewMode}
+                  onModeChange={setHeroPreviewMode}
+                  desktopPosition={homeHeroForm.slides[previewSlideIdx]?.desktopPosition}
+                  mobilePosition={homeHeroForm.slides[previewSlideIdx]?.mobilePosition}
+                  onChange={(mode, position) => updateHeroSlidePosition(previewSlideIdx, mode, position)}
+                >
                 {/* Preview Prev / Next Controls */}
                 {homeHeroForm.slides.length > 1 && (
                   <>
@@ -1041,6 +1049,7 @@ export default function SiteSettingsTab({ lang, t, addActivityLog }: SiteSetting
                     </div>
                   </>
                 )}
+                </HeroImagePositionEditor>
               </div>
             </div>
 

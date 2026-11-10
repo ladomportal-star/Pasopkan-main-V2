@@ -28,7 +28,7 @@ import LandscapeEventCard from '../components/LandscapeEventCard';
 import HomeBlogSection from '../components/HomeBlogSection';
 import { listAllPublicEvents } from '../lib/publicEvents';
 import { fromBackendEvent } from '../lib/eventPayload';
-import { getHomeHeroSettings, type HomeHeroSettings } from '../lib/siteSettings';
+import { getHomeHeroSettings, heroObjectPosition, type HomeHeroSettings } from '../lib/siteSettings';
 import SEO from '../components/SEO';
 
 const translations = {
@@ -377,6 +377,8 @@ export default function Home() {
       .map((slide) => ({
         id: slide.id,
         image: slide.imageUrl.trim(),
+        desktopPosition: heroObjectPosition(slide.desktopPosition),
+        mobilePosition: heroObjectPosition(slide.mobilePosition),
         title: lang === 'lo' ? (slide.title_lo || slide.title_en || 'Pasopkan') : (slide.title_en || slide.title_lo || 'Pasopkan'),
       })),
     [homeHeroSettings?.slides, lang],
@@ -568,7 +570,11 @@ export default function Home() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3, ease: "linear" }}
-                className="absolute inset-0 w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full object-cover [object-position:var(--hero-pos-mobile)] lg:[object-position:var(--hero-pos-desktop)]"
+                style={{
+                  '--hero-pos-mobile': currentSlide.mobilePosition,
+                  '--hero-pos-desktop': currentSlide.desktopPosition,
+                } as React.CSSProperties}
                 alt={currentSlide.title}
                 onError={() => setFailedHeroImage(currentSlide.image)}
                 fetchPriority="high"
