@@ -286,12 +286,12 @@ class PaymentService {
   }
   async getPaymentStatus(transactionId: string, uid?: string) {
     if (!uid) throw new HttpError(401, "Sign in to view payment status");
-    if (!env.payment.provider)
-      throw new HttpError(503, "Payment provider integration is not configured");
     const isUuid = UUID_REGEX.test(transactionId);
+    // Owner-scoped lookup; stored states remain readable while the provider is
+    // unconfigured, and live polling below only runs with a registered adapter.
     const payment = await db.payment.findFirst({
       where: {
-        provider: env.payment.provider,
+        ...(env.payment.provider ? { provider: env.payment.provider } : {}),
         order: { user: { authId: uid } },
         OR: [
           { providerTransactionId: transactionId },

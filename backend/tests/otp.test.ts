@@ -35,7 +35,7 @@ describe("phone OTP authentication", () => {
     const response = await request(app).post("/api/otp/send").send({ phone: "+1 333 444 5555" });
 
     expect(response.status).toBe(400);
-    expect(response.body.error).toBe("Validation failed");
+    expect(response.body.error).toBe("Use a Lao mobile number such as 020 5555 5555");
     expect(signInWithOtp).not.toHaveBeenCalled();
   });
 
