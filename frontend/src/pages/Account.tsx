@@ -1279,9 +1279,11 @@ export default function Account() {
           : e,
       ),
     );
+    // Send only the coupons: a full-event payload would resubmit a live event for
+    // review (and try to replace ticket tiers that already have orders).
     const res = await api.updateEvent(
       String(selectedEvent.id),
-      toEventPayload({ ...selectedEvent, coupons: updatedCoupons }),
+      { coupons: toEventPayload({ ...selectedEvent, coupons: updatedCoupons }).coupons },
       { token },
     );
     if (!res.ok) {

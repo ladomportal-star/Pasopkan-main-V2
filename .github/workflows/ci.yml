@@ -1,0 +1,51 @@
+# Runs the same checks as `npm run check` (backend) and `npm run build` (frontend)
+# on every push and pull request, so broken code is caught before Vercel/Railway.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      # The access-control tests render frontend route guards, so both need deps.
+      - run: npm ci
+        working-directory: frontend
+      - run: npm ci
+        working-directory: backend
+      - run: npm run db:generate
+        working-directory: backend
+      - run: npm run typecheck
+        working-directory: backend
+      - run: npm run lint
+        working-directory: backend
+      - name: Tests (temporary local PostgreSQL cluster)
+        working-directory: backend
+        run: |
+          export POSTGRES_BIN="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -1)"
+          npm test
+
+  frontend:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - name: Type-check and build
+        run: npm run build
+        working-directory: frontend
