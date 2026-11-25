@@ -1,0 +1,48 @@
+name: CI
+
+# Type-check, test and build every push and pull request, so nothing reaches
+# Railway/Vercel (which deploy from main) without passing.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run typecheck
+      # npm test starts its own throwaway PostgreSQL cluster with initdb/pg_ctl.
+      - name: Test
+        run: |
+          export POSTGRES_BIN="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -1)"
+          npm test
+
+  frontend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
