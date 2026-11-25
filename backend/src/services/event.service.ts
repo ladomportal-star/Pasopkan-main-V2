@@ -44,6 +44,29 @@ function publicRegistration<
   };
 }
 const publicStates = ["published", "sold_out", "completed"] as const;
+/** Events that are on sale; an organizer's content change sends them back to review. */
+const liveStates = ["published", "sold_out"] as const;
+/**
+ * Fields an organizer may change on a live event without another admin review:
+ * discount coupons and the organizer's public profile. Anything buyers rely on
+ * (title, description, images, dates, venue, tickets, settings, payout account)
+ * must be resubmitted for review.
+ */
+const operationalFields = new Set([
+  "coupons",
+  "organizer",
+  "privateDetails",
+  "termsAccepted",
+  "submissionOtp",
+]);
+function isOperationalPatch(patch: UpdateEventBody) {
+  return (
+    patch.status === undefined &&
+    Object.entries(patch).every(([key, value]) => value === undefined || operationalFields.has(key))
+  );
+}
+const isLive = (status?: string | null) =>
+  !!status && (liveStates as readonly string[]).includes(status);
 const refWhere = (ref: string) => (/^[0-9a-f-]{36}$/i.test(ref) ? { id: ref } : { slug: ref });
 function columns(body: Partial<CreateEventBody>) {
   const {
@@ -182,10 +205,22 @@ export async function updateEvent(ref: string, patch: UpdateEventBody, uid: stri
     }),
     db.event.findFirst({ where: refWhere(ref), select: { status: true } }),
   ]);
+  // Every organizer submission (first or repeated) and every content change to a
+  // live event needs a fresh one-use SMS code; the transaction re-checks this.
   const submitting =
     actorRole?.role === "organizer" &&
-    patch.status === "pending_review" &&
-    currentEvent?.status !== "pending_review";
+    (patch.status === "pending_review" ||
+      (isLive(currentEvent?.status) && !isOperationalPatch(patch)));
+  if (
+    actorRole?.role === "organizer" &&
+    isLive(currentEvent?.status) &&
+    patch.status !== undefined &&
+    patch.status !== "pending_review"
+  )
+    throw new HttpError(
+      409,
+      "A live event can only be resubmitted for review; ask an admin to cancel it",
+    );
   if (submitting && !actorRole?.organizerTermsAcceptedAt && !patch.termsAccepted)
     throw new HttpError(400, "Accept the organizer terms before submitting an event");
   const otp = submitting ? await validateSubmissionOtp(uid, patch.submissionOtp) : null;
@@ -209,15 +244,24 @@ export async function updateEvent(ref: string, patch: UpdateEventBody, uid: stri
         where: { id: actor.id, organizerTermsAcceptedAt: null },
         data: { organizerTermsAcceptedAt: new Date() },
       });
-    if (
-      actor.role === "organizer" &&
-      patch.status === "pending_review" &&
-      event.status !== "pending_review" &&
-      !otp
-    )
+    const organizerLiveEdit =
+      actor.role !== "admin" && isLive(event.status) && !isOperationalPatch(patch);
+    if (actor.role === "organizer" && patch.status === "pending_review" && !otp)
       throw new HttpError(403, "Event submission requires a fresh phone OTP");
     if (["cancelled", "completed"].includes(event.status))
       throw new HttpError(409, "Closed events cannot be modified or reopened");
+    if (organizerLiveEdit) {
+      if (patch.status !== undefined && patch.status !== "pending_review")
+        throw new HttpError(
+          409,
+          "A live event can only be resubmitted for review; ask an admin to cancel it",
+        );
+      if (!otp)
+        throw new HttpError(
+          403,
+          "Changes to a live event need a fresh phone OTP and another admin review",
+        );
+    }
     if (
       patch.status &&
       !["draft", "pending_review"].includes(patch.status) &&
@@ -240,15 +284,35 @@ export async function updateEvent(ref: string, patch: UpdateEventBody, uid: stri
     const data = columns(patch);
     if (patch.status === "published" || patch.status === "pending_review")
       Object.assign(data, { rejectionReason: null });
-    if (actor.role !== "admin" && event.status === "published" && patch.status === "pending_review") {
-      data.status = "pending_review";
-    }
+    if (organizerLiveEdit) data.status = "pending_review";
+    // Operational edits to a live event may only touch the organizer's public
+    // links; payout account and buyer-facing details stay as reviewed.
+    const operationalLiveEdit =
+      actor.role !== "admin" && isLive(event.status) && !organizerLiveEdit;
+    const privateDetails =
+      operationalLiveEdit && patch.privateDetails
+        ? { organizerSocialLinks: patch.privateDetails.organizerSocialLinks }
+        : patch.privateDetails;
     await tx.event.update({ where: { id: event.id }, data });
     if (patch.tiers !== undefined) await tx.ticketTier.deleteMany({ where: { eventId: event.id } });
     if (patch.dates !== undefined) await tx.eventDate.deleteMany({ where: { eventId: event.id } });
     if (patch.coupons !== undefined) await tx.coupon.deleteMany({ where: { eventId: event.id } });
     await children(tx, event.id, patch);
-    await savePrivateDetails(tx, event.id, patch.privateDetails);
+    await savePrivateDetails(tx, event.id, privateDetails);
+    if (operationalLiveEdit)
+      await tx.auditLog.create({
+        data: {
+          actorId: actor.id,
+          action: "event.live_update",
+          entityType: "Event",
+          entityId: event.id,
+          metadata: {
+            fields: Object.keys(patch).filter(
+              (key) => patch[key as keyof UpdateEventBody] !== undefined,
+            ),
+          },
+        },
+      });
     if (otp) {
       await consumeSubmissionOtp(tx, otp);
       await tx.auditLog.create({

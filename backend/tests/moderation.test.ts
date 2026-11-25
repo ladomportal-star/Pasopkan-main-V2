@@ -217,4 +217,59 @@ describe("admin moderation boundaries", () => {
       await db.auditLog.count({ where: { entityId: event.id, action: "event.cancelled" } }),
     ).toBe(1);
   });
+
+  it("sends organizer content edits on a live event back to review", async () => {
+    const owner = await as("live-edit-host");
+    const event = await createEvent(app, owner);
+    const path = `/api/events/${event.id}`;
+    const stored = () => db.event.findUniqueOrThrow({ where: { id: event.id } });
+
+    // Without a fresh OTP the change is refused and the live listing is untouched.
+    expect(
+      (await request(app).put(path).set(owner).send({ title: "Bait and switch" })).status,
+    ).toBe(403);
+    expect(await stored()).toMatchObject({ status: "published", title: "That Luang Festival" });
+
+    // A live event with sales cannot be quietly pulled back to draft.
+    expect((await request(app).put(path).set(owner).send({ status: "draft" })).status).toBe(409);
+    expect((await stored()).status).toBe("published");
+
+    // Coupons and the organizer's public links stay editable while on sale, but
+    // the payout account cannot be changed through that shortcut.
+    const operational = await request(app)
+      .put(path)
+      .set(owner)
+      .send({
+        coupons: [{ code: "EARLY10", discountType: "percent", discountValue: 10 }],
+        privateDetails: {
+          accountNumber: "ATTACKER-0001",
+          organizerSocialLinks: { facebook: "https://facebook.com/host" },
+        },
+      });
+    expect(operational.status).toBe(200);
+    expect(operational.body.event.status).toBe("published");
+    expect(operational.body.event.coupons.map((c: { code: string }) => c.code)).toEqual([
+      "EARLY10",
+    ]);
+    const details = await db.eventPrivateDetails.findUniqueOrThrow({
+      where: { eventId: event.id },
+    });
+    expect(details.accountNumber).not.toBe("ATTACKER-0001");
+    expect(details.organizerSocialLinks).toEqual({ facebook: "https://facebook.com/host" });
+    expect(
+      await db.auditLog.count({ where: { entityId: event.id, action: "event.live_update" } }),
+    ).toBe(1);
+
+    // With a fresh OTP the content change is accepted but goes back to admin review.
+    const edited = await request(app)
+      .put(path)
+      .set(owner)
+      .send({
+        title: "Changed after approval",
+        termsAccepted: true,
+        submissionOtp: await submissionProofFor(owner),
+      });
+    expect(edited.status).toBe(200);
+    expect(edited.body.event.status).toBe("pending_review");
+  });
 });

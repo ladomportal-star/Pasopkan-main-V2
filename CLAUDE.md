@@ -17,9 +17,9 @@ Read `CONTEXT.md` for the business terms (Order, Payment, Refund, Organizer, …
 2. Make the change. Add or update tests under `backend/tests/` for any backend behaviour change,
    especially payments, orders, refunds, check-in and access control.
 3. Commit and push the branch. GitHub Actions (`.github/workflows/ci.yml`) runs:
-   - backend: `npm ci`, `npx prisma generate`, `npm run typecheck`, `npm test`
+   - backend: `npm run typecheck`, `npm run lint` (eslint), `npm test`
      (tests start their own throwaway PostgreSQL; they never touch a real database)
-   - frontend: `npm ci`, `npm run lint` (tsc), `npm run build`
+   - frontend: `npm run build` (type-checks with tsc, then builds with Vite)
 4. Open a pull request into `main`. Merge only when CI is green.
 5. After merging, check production:
    - `https://api.pasopkan.la/api/health` returns `"status":"ok"` and `"database":"connected"`.

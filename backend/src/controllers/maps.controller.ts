@@ -23,7 +23,7 @@ function normalizeUrl(rawUrl: string): string {
 /** Resolve Google Maps shortlinks (maps.app.goo.gl/…) to coords + place name + clean embed URL. */
 export async function resolveMapUrl(req: Request, res: Response) {
   try {
-    let targetUrl = normalizeUrl((req.query.url as string) || "");
+    const targetUrl = normalizeUrl((req.query.url as string) || "");
     if (
       !targetUrl ||
       (!targetUrl.includes("goo.gl") &&
@@ -77,11 +77,15 @@ export async function resolveMapUrl(req: Request, res: Response) {
           finalUrl = secondResponse.url || cont;
           responseHtml = await secondResponse.text();
         }
-      } catch {}
+      } catch {
+        // Consent follow-up is best effort; fall back to the first response.
+      }
     } else {
       try {
         responseHtml = await response.text();
-      } catch {}
+      } catch {
+        // An unreadable body only means no HTML fallback is available.
+      }
     }
 
     // Check meta refresh or canonical in HTML if still on a shortlink or consent page
@@ -206,7 +210,7 @@ export async function resolveMapUrl(req: Request, res: Response) {
         responseHtml.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i) ||
         responseHtml.match(/<title>([^<]+)<\/title>/i);
       if (titleMatch && titleMatch[1]) {
-        let extractedTitle = titleMatch[1].replace(/ - Google Maps/i, "").trim();
+        const extractedTitle = titleMatch[1].replace(/ - Google Maps/i, "").trim();
         if (
           extractedTitle &&
           !extractedTitle.toLowerCase().includes("google maps") &&
