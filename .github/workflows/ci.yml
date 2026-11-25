@@ -28,6 +28,9 @@ jobs:
       # npm test starts its own throwaway PostgreSQL cluster with initdb/pg_ctl.
       - name: Test
         run: |
+          # The runner's default socket folder is root-owned; let the throwaway cluster use it.
+          sudo mkdir -p /var/run/postgresql
+          sudo chmod a+rwx /var/run/postgresql
           export POSTGRES_BIN="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -1)"
           npm test
 
