@@ -79,6 +79,7 @@ import SEO from "../components/SEO";
 import { OrganizerEventAnalytics } from "../components/OrganizerEventAnalytics";
 import { EventDetailGraphSection } from "../components/EventDetailGraphSection";
 import { compressImage } from "../lib/imageCompression";
+import { sanitizeHtml } from "../lib/sanitizeHtml";
 
 const translations = {
   en: {
@@ -2638,7 +2639,9 @@ export default function CreateEvent() {
         prevStepRef.current !== 1 ||
         editorRef.current.innerHTML !== editorContent
       ) {
-        editorRef.current.innerHTML = editorContent;
+        // Saved descriptions may come from another account (an admin editing an organizer's
+        // event), so never load them into the live editor unsanitized.
+        editorRef.current.innerHTML = sanitizeHtml(editorContent);
       }
     }
     prevStepRef.current = activeStep;
