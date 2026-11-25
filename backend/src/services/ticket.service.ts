@@ -7,6 +7,7 @@ import { getOrCreateUser } from "./user.service.ts";
 import { saleBoundary, validateAttendees } from "./event-registration.ts";
 import type { PaymentCheckoutMethod } from "./payment-provider.ts";
 import { paymentService } from "./payment.service.ts";
+import { releaseOrderStock } from "./order-reservation.ts";
 export interface CreateOrderInput {
   uid: string;
   email?: string;
@@ -48,6 +49,11 @@ export async function listOrders(uid: string) {
 
 export async function requestOrderRefund(uid: string, orderId: string, reason?: string) {
   return db.$transaction(async (tx) => {
+    // Lock before reading status: two simultaneous requests would otherwise both see
+    // "confirmed" and both return a free order's stock. Payments first, then the order,
+    // the same order payment settlement uses, so the two cannot deadlock.
+    await tx.$queryRaw`SELECT id FROM "Payment" WHERE "orderId" = ${orderId}::uuid ORDER BY id FOR UPDATE`;
+    await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${orderId}::uuid FOR UPDATE`;
     const order = await tx.order.findFirst({
       where: { id: orderId, user: { authId: uid } },
       include: {
@@ -167,16 +173,7 @@ export async function requestOrderRefund(uid: string, orderId: string, reason?: 
     }
 
     // Free ticket order (0 LAK): cancel/refund immediately and return stock.
-    const quantities = new Map<string, number>();
-    for (const item of order.items) {
-      quantities.set(item.tierId, (quantities.get(item.tierId) ?? 0) + 1);
-    }
-    for (const [tierId, quantity] of quantities) {
-      await tx.ticketTier.update({
-        where: { id: tierId },
-        data: { quantitySold: { decrement: quantity } },
-      });
-    }
+    await releaseOrderStock(tx, order.id);
     const updatedOrder = await tx.order.update({
       where: { id: order.id },
       data: { status: "refunded" },
@@ -439,14 +436,7 @@ export async function createOrder(input: CreateOrderInput) {
     await db.$transaction(async (tx) => {
       const order = await tx.order.findUnique({ where: { id: result.order.id } });
       if (!order || order.status !== "pending") return;
-      const items = await tx.orderItem.findMany({ where: { orderId: order.id } });
-      const quantities = new Map<string, number>();
-      for (const item of items) quantities.set(item.tierId, (quantities.get(item.tierId) ?? 0) + 1);
-      for (const [tierId, quantity] of quantities)
-        await tx.ticketTier.update({
-          where: { id: tierId },
-          data: { quantitySold: { decrement: quantity } },
-        });
+      await releaseOrderStock(tx, order.id);
       await tx.order.update({ where: { id: order.id }, data: { status: "cancelled" } });
       await tx.orderItem.updateMany({ where: { orderId: order.id }, data: { status: "void" } });
       await tx.payment.updateMany({ where: { orderId: order.id }, data: { state: "failed" } });
@@ -460,14 +450,7 @@ export async function releaseExpiredOrders() {
       Array<{ id: string }>
     >`UPDATE "Order" SET status = 'cancelled', "updatedAt" = now() WHERE status = 'pending' AND "expiresAt" <= now() RETURNING id`;
     for (const { id } of expired) {
-      const items = await tx.orderItem.findMany({ where: { orderId: id } });
-      const quantities = new Map<string, number>();
-      for (const item of items) quantities.set(item.tierId, (quantities.get(item.tierId) ?? 0) + 1);
-      for (const [tierId, quantity] of quantities)
-        await tx.ticketTier.update({
-          where: { id: tierId },
-          data: { quantitySold: { decrement: quantity } },
-        });
+      await releaseOrderStock(tx, id);
       await tx.orderItem.updateMany({ where: { orderId: id }, data: { status: "void" } });
       await tx.auditLog.create({
         data: { action: "order.expired", entityType: "Order", entityId: id },

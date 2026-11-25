@@ -65,18 +65,25 @@ describe("protected application pages", () => {
     "/privacy",
     "/unknown-page",
   ])("does not mount data on %s before login", (path) => {
-    expect(render(path)).toEqual({ html: "", mounted: false });
+    // RequireAccount shows a loading indicator while it redirects to /login;
+    // what matters is that the protected page never renders.
+    const { html, mounted } = render(path);
+    expect(mounted).toBe(false);
+    expect(html).not.toContain("PROTECTED DATA");
   });
-  it.each(["/", "/category/festival", "/event/one"])("allows public event discovery at %s", (path) => {
-    const html = renderToString(
-      h(
-        MemoryRouter,
-        { initialEntries: [path] },
-        h(Routes, null, h(Route, { path: "*", element: "PUBLIC EVENT CATALOG" })),
-      ),
-    );
-    expect(html).toBe("PUBLIC EVENT CATALOG");
-  });
+  it.each(["/", "/category/festival", "/event/one"])(
+    "allows public event discovery at %s",
+    (path) => {
+      const html = renderToString(
+        h(
+          MemoryRouter,
+          { initialEntries: [path] },
+          h(Routes, null, h(Route, { path: "*", element: "PUBLIC EVENT CATALOG" })),
+        ),
+      );
+      expect(html).toBe("PUBLIC EVENT CATALOG");
+    },
+  );
   it("does not flash protected pages while session loading or for anonymous sessions", () => {
     auth.loading = true;
     expect(render("/checkout").mounted).toBe(false);

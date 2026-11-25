@@ -79,6 +79,7 @@ import DotsLoader from "../components/DotsLoader";
 import { useAuth } from "../context/AuthContext";
 import { LOGIN_RETURN_KEY } from "../lib/authAccess";
 import { supabase } from "../lib/supabase";
+import { sanitizeHtml } from "../lib/sanitizeHtml";
 import SEO from "../components/SEO";
 
 const XIcon = ({ className = "w-3.5 h-3.5" }: { className?: string }) => (
@@ -596,7 +597,7 @@ const renderFormattedDescription = (desc: string) => {
             {index > 0 && <div className="border-t border-gray-200/70 my-5" />}
             <div
               className="text-gray-800 leading-relaxed text-sm sm:text-[15px] rich-text-content"
-              dangerouslySetInnerHTML={{ __html: formatHtmlLinks(para) }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(formatHtmlLinks(para)) }}
             />
           </div>
         ))}
@@ -620,7 +621,7 @@ const renderFormattedDescription = (desc: string) => {
             <div
               className="text-gray-800 leading-relaxed text-sm sm:text-[15px] rich-text-content"
               dangerouslySetInnerHTML={{
-                __html: formatHtmlLinks(formattedPara),
+                __html: sanitizeHtml(formatHtmlLinks(formattedPara)),
               }}
             />
           </div>

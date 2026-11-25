@@ -5,8 +5,92 @@ import { HttpError } from "../middlewares/error.middleware.ts";
 import { createNotification } from "./notification.service.ts";
 import type { PaymentCheckoutMethod, PaymentProvider } from "./payment-provider.ts";
 import { PhajayProvider } from "./phajay-provider.ts";
+import { releaseOrderStock } from "./order-reservation.ts";
+import type { Prisma } from "../lib/prisma.ts";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Apply a payment the provider has confirmed as paid. The signed webhook and the status poll
+ *  both go through here, so a late payment is handled the same way whichever arrives first.
+ *  Idempotent: running it again repairs a missing late-payment refund but never repeats effects. */
+async function settlePaidPayment(
+  tx: Prisma.TransactionClient,
+  paymentId: string,
+  transactionId: string,
+  source: "webhook" | "status_poll",
+): Promise<{ isPaid: boolean }> {
+  await tx.$queryRaw`SELECT id FROM "Payment" WHERE id = ${paymentId}::uuid FOR UPDATE`;
+  const payment = await tx.payment.findUniqueOrThrow({ where: { id: paymentId } });
+  await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${payment.orderId}::uuid FOR UPDATE`;
+  const order = await tx.order.findUniqueOrThrow({
+    where: { id: payment.orderId },
+    include: { user: true },
+  });
+  // Money already went back; a replayed "paid" event must not reopen it.
+  if (payment.state === "refunded") return { isPaid: false };
+
+  const newlyCompleted = payment.state !== "completed";
+  if (newlyCompleted)
+    await tx.payment.update({
+      where: { id: payment.id },
+      data: { providerTransactionId: transactionId, state: "completed", verifiedAt: new Date() },
+    });
+
+  let isPaid = order.status === "confirmed";
+  if (order.status === "pending" && order.expiresAt > new Date()) {
+    await tx.order.update({
+      where: { id: order.id },
+      data: { status: "confirmed", paidAt: new Date() },
+    });
+    await tx.orderItem.updateMany({
+      where: { orderId: order.id, status: "pending" },
+      data: { status: "valid" },
+    });
+    await createNotification(
+      order.user.authId,
+      {
+        type: "ticket",
+        title: "Payment confirmed",
+        message: order.eventTitle,
+        data: { orderId: order.id, transactionId },
+      },
+      tx,
+    );
+    isPaid = true;
+  } else if (order.status === "pending" || order.status === "cancelled") {
+    // The hold ran out before the money arrived. If the expiry job has not run yet, expire the
+    // order now so it cannot later be cancelled without a refund.
+    if (order.status === "pending") {
+      await releaseOrderStock(tx, order.id);
+      await tx.order.update({ where: { id: order.id }, data: { status: "cancelled" } });
+      await tx.orderItem.updateMany({ where: { orderId: order.id }, data: { status: "void" } });
+      await tx.auditLog.create({
+        data: { action: "order.expired", entityType: "Order", entityId: order.id },
+      });
+    }
+    const prior = await tx.refund.findFirst({ where: { paymentId: payment.id } });
+    if (!prior)
+      await tx.refund.create({
+        data: {
+          paymentId: payment.id,
+          amountKip: payment.amountKip,
+          currency: payment.currency,
+          reason: "Payment completed after the order expired",
+        },
+      });
+  }
+
+  if (newlyCompleted)
+    await tx.auditLog.create({
+      data: {
+        action: "payment.verified",
+        entityType: "Payment",
+        entityId: payment.id,
+        metadata: { transactionId, orderNumber: order.orderNumber, source },
+      },
+    });
+  return { isPaid };
+}
 
 class PaymentService {
   private provider: PaymentProvider | null = null;
@@ -125,62 +209,16 @@ class PaymentService {
         throw new HttpError(409, "PhaJay transaction does not match this payment");
 
       if (verified.outcome === "paid") {
-        if (payment.state === "completed")
-          return { txId: verified.transactionId, isPaid: true, status: "completed" };
-        await tx.payment.update({
-          where: { id: payment.id },
-          data: {
-            providerTransactionId: verified.transactionId,
-            state: "completed",
-            verifiedAt: new Date(),
-          },
-        });
-        if (payment.order.status === "pending" && payment.order.expiresAt > new Date()) {
-          await tx.order.update({
-            where: { id: payment.orderId },
-            data: { status: "confirmed", paidAt: new Date() },
-          });
-          await tx.orderItem.updateMany({
-            where: { orderId: payment.orderId, status: "pending" },
-            data: { status: "valid" },
-          });
-          await createNotification(
-            payment.order.user.authId,
-            {
-              type: "ticket",
-              title: "Payment confirmed",
-              message: payment.order.eventTitle,
-              data: { orderId: payment.orderId, transactionId: verified.transactionId },
-            },
-            tx,
-          );
-        } else if (payment.order.status === "cancelled") {
-          const prior = await tx.refund.findFirst({ where: { paymentId: payment.id } });
-          if (!prior)
-            await tx.refund.create({
-              data: {
-                paymentId: payment.id,
-                amountKip: payment.amountKip,
-                currency: payment.currency,
-                reason: "Payment completed after the order expired",
-              },
-            });
-        }
-        await tx.auditLog.create({
-          data: {
-            action: "payment.verified",
-            entityType: "Payment",
-            entityId: payment.id,
-            metadata: {
-              transactionId: verified.transactionId,
-              orderNumber: verified.merchantReference,
-            },
-          },
-        });
+        const { isPaid } = await settlePaidPayment(
+          tx,
+          payment.id,
+          verified.transactionId,
+          "webhook",
+        );
         return {
           txId: verified.transactionId,
-          isPaid: payment.order.status !== "cancelled",
-          status: "completed",
+          isPaid,
+          status: payment.state === "refunded" ? "refunded" : "completed",
         };
       }
 
@@ -190,6 +228,17 @@ class PaymentService {
           : verified.outcome === "failed"
             ? ("failed" as const)
             : ("pending" as const);
+      // Webhooks can arrive late, out of order, or be resent. A settled payment only moves
+      // forward to refunded; a stale "pending" or "failed" event must not undo it.
+      if (
+        payment.state === "refunded" ||
+        (payment.state === "completed" && state !== "refunded")
+      )
+        return {
+          txId: verified.transactionId,
+          isPaid: payment.state === "completed" && payment.order.status === "confirmed",
+          status: payment.state,
+        };
       await tx.payment.update({
         where: { id: payment.id },
         data: { providerTransactionId: verified.transactionId, state },
@@ -286,12 +335,12 @@ class PaymentService {
   }
   async getPaymentStatus(transactionId: string, uid?: string) {
     if (!uid) throw new HttpError(401, "Sign in to view payment status");
-    if (!env.payment.provider)
-      throw new HttpError(503, "Payment provider integration is not configured");
     const isUuid = UUID_REGEX.test(transactionId);
+    // Owner-scoped lookup; stored states remain readable while the provider is
+    // unconfigured, and live polling below only runs with a registered adapter.
     const payment = await db.payment.findFirst({
       where: {
-        provider: env.payment.provider,
+        ...(env.payment.provider ? { provider: env.payment.provider } : {}),
         order: { user: { authId: uid } },
         OR: [
           { providerTransactionId: transactionId },
@@ -312,54 +361,9 @@ class PaymentService {
           checked.currency === undefined || checked.currency === payment.currency;
         if (checked.outcome === "paid" && amountMatches && currencyMatches) {
           const settledTxId = checked.transactionId || payment.providerTransactionId;
-          await db.$transaction(async (tx) => {
-            await tx.$queryRaw`SELECT id FROM "Payment" WHERE id = ${payment.id}::uuid FOR UPDATE`;
-            const fresh = await tx.payment.findUniqueOrThrow({
-              where: { id: payment.id },
-              include: { order: { include: { user: true } } },
-            });
-            if (fresh.state === "completed") return;
-            await tx.payment.update({
-              where: { id: fresh.id },
-              data: {
-                providerTransactionId: settledTxId,
-                state: "completed",
-                verifiedAt: new Date(),
-              },
-            });
-            if (fresh.order.status === "pending" && fresh.order.expiresAt > new Date()) {
-              await tx.order.update({
-                where: { id: fresh.orderId },
-                data: { status: "confirmed", paidAt: new Date() },
-              });
-              await tx.orderItem.updateMany({
-                where: { orderId: fresh.orderId, status: "pending" },
-                data: { status: "valid" },
-              });
-              await createNotification(
-                fresh.order.user.authId,
-                {
-                  type: "ticket",
-                  title: "Payment confirmed",
-                  message: fresh.order.eventTitle,
-                  data: { orderId: fresh.orderId, transactionId: settledTxId },
-                },
-                tx,
-              );
-            }
-            await tx.auditLog.create({
-              data: {
-                action: "payment.verified",
-                entityType: "Payment",
-                entityId: fresh.id,
-                metadata: {
-                  transactionId: settledTxId,
-                  orderNumber: fresh.order.orderNumber,
-                  source: "status_poll",
-                },
-              },
-            });
-          });
+          await db.$transaction((tx) =>
+            settlePaidPayment(tx, payment.id, settledTxId, "status_poll"),
+          );
           return {
             status: "COMPLETED",
             verified: true,

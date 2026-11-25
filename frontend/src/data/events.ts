@@ -80,6 +80,10 @@ export interface LaoEvent {
   organizerPhone?: string;
   organizerContact?: string;
   organizerLogo?: string;
+  /** Event-specific organizer links: facebook, instagram, whatsapp, tiktok, website. */
+  organizerSocialLinks?: Record<string, string>;
+  /** Display URL -> canonical storage:// reference, used when saving images back. */
+  mediaReferences?: Record<string, string>;
   showRemainingTickets?: boolean;
   allowRefunds?: boolean;
   maxTickets?: string;
@@ -90,8 +94,9 @@ export interface LaoEvent {
   languages?: string[];
   durationEn?: string;
   durationLo?: string;
-  latitude?: number;
-  longitude?: number;
+  // The API serializes database decimals as strings; older data used numbers.
+  latitude?: number | string;
+  longitude?: number | string;
   googleMapUrl?: string;
   attendeeQuestions?: AttendeeQuestion[];
   price?: number;

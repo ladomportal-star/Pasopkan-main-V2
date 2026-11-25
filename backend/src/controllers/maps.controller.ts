@@ -20,16 +20,52 @@ function normalizeUrl(rawUrl: string): string {
   return val;
 }
 
+/** This endpoint is public and fetches the URL server-side, so it must only ever reach Google.
+ *  A substring check ("contains maps") let callers point it at internal hosts. */
+const GOOGLE_HOST = /^(?:[a-z0-9-]+\.)*google\.(?:com|la|co\.th|com\.vn)$/;
+const SHORTLINK_HOSTS = new Set(["goo.gl", "maps.app.goo.gl"]);
+
+export function isGoogleMapsUrl(raw: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return false;
+  }
+  const host = url.hostname.toLowerCase();
+  return (
+    (url.protocol === "https:" || url.protocol === "http:") &&
+    !url.username &&
+    !url.password &&
+    url.port === "" &&
+    (SHORTLINK_HOSTS.has(host) || GOOGLE_HOST.test(host))
+  );
+}
+
+/** Fetch with redirects followed by hand, re-checking that every hop stays on Google. */
+async function fetchGoogle(start: string, headers: Record<string, string>) {
+  let current = start;
+  for (let hop = 0; hop < 6; hop++) {
+    if (!isGoogleMapsUrl(current)) throw new Error("Map link redirected outside Google");
+    const response = await fetch(current, {
+      method: "GET",
+      redirect: "manual",
+      headers,
+      signal: AbortSignal.timeout(8_000),
+    });
+    const location =
+      response.status >= 300 && response.status < 400 ? response.headers.get("location") : null;
+    if (!location) return { response, url: current };
+    current = new URL(location, current).toString();
+  }
+  throw new Error("Too many map link redirects");
+}
+
 /** Resolve Google Maps shortlinks (maps.app.goo.gl/…) to coords + place name + clean embed URL. */
 export async function resolveMapUrl(req: Request, res: Response) {
   try {
-    let targetUrl = normalizeUrl((req.query.url as string) || "");
-    if (
-      !targetUrl ||
-      (!targetUrl.includes("goo.gl") &&
-        !targetUrl.includes("google.com") &&
-        !targetUrl.includes("maps"))
-    ) {
+    const targetUrl = normalizeUrl((req.query.url as string) || "");
+    if (!targetUrl || !isGoogleMapsUrl(targetUrl)) {
       return fail(res, "Invalid URL provided", 400);
     }
 
@@ -52,13 +88,10 @@ export async function resolveMapUrl(req: Request, res: Response) {
         "SOCS=CAISNQgDEitib3FfaWRlbnRpdHlmcm9udGVuZHVpc2VydmVyXzIwMjMwODI5LjA2X3AxGgJlbiACGgYIgLCtpgY; CONSENT=YES+1",
     };
 
-    const response = await fetch(targetUrl, {
-      method: "GET",
-      redirect: "follow",
-      headers,
-    });
+    const first = await fetchGoogle(targetUrl, headers);
+    const response = first.response;
 
-    let finalUrl = response.url || targetUrl;
+    let finalUrl = first.url;
     let responseHtml = "";
 
     // Handle Google Consent redirect: https://consent.google.com/m?continue=...
@@ -66,22 +99,22 @@ export async function resolveMapUrl(req: Request, res: Response) {
       try {
         const u = new URL(finalUrl);
         const cont = u.searchParams.get("continue");
-        if (cont && (cont.includes("google.com/maps") || cont.includes("goo.gl"))) {
+        if (cont && isGoogleMapsUrl(cont)) {
           finalUrl = cont;
           // Follow continue URL with consent cookies to get real Maps page
-          const secondResponse = await fetch(cont, {
-            method: "GET",
-            redirect: "follow",
-            headers,
-          });
-          finalUrl = secondResponse.url || cont;
-          responseHtml = await secondResponse.text();
+          const second = await fetchGoogle(cont, headers);
+          finalUrl = second.url;
+          responseHtml = await second.response.text();
         }
-      } catch {}
+      } catch {
+        // Consent follow-up is best effort; fall back to the first response.
+      }
     } else {
       try {
         responseHtml = await response.text();
-      } catch {}
+      } catch {
+        // An unreadable body only means no HTML fallback is available.
+      }
     }
 
     // Check meta refresh or canonical in HTML if still on a shortlink or consent page
@@ -206,7 +239,7 @@ export async function resolveMapUrl(req: Request, res: Response) {
         responseHtml.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i) ||
         responseHtml.match(/<title>([^<]+)<\/title>/i);
       if (titleMatch && titleMatch[1]) {
-        let extractedTitle = titleMatch[1].replace(/ - Google Maps/i, "").trim();
+        const extractedTitle = titleMatch[1].replace(/ - Google Maps/i, "").trim();
         if (
           extractedTitle &&
           !extractedTitle.toLowerCase().includes("google maps") &&
