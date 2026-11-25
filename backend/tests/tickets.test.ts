@@ -126,6 +126,27 @@ describe("tickets", () => {
     expect(other.body.tickets).toHaveLength(0);
   });
 
+  it("returns a free order's stock only once when refund requests race", async () => {
+    const event = await createEvent(app, await as("org"), {
+      tiers: [{ name: "Free seats", priceKip: 0, quantityTotal: 10 }],
+    });
+    await db.event.update({ where: { id: event.id }, data: { allowRefunds: true } });
+    const tier = event.tiers[0].id;
+    const order = await buy("free-refunder", { eventId: event.id, tierId: tier, quantity: 2 });
+    expect(order.body.order.status).toBe("confirmed");
+
+    const refund = async () =>
+      request(app)
+        .post(`/api/tickets/${order.body.order.id}/refund`)
+        .set(await as("free-refunder"))
+        .send({});
+    const results = await Promise.all([refund(), refund(), refund()]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 409, 409]);
+
+    const row = await db.ticketTier.findUniqueOrThrow({ where: { id: tier } });
+    expect(row.quantitySold).toBe(0);
+  });
+
   it("gives stock back when an unpaid order expires", async () => {
     const event = await createEvent(app, await as("org"), {
       tiers: [{ name: "Held", priceKip: 20000, quantityTotal: 1 }],
